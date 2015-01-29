@@ -1,0 +1,171 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@(cluster:String,topic: String, topicIdentity: kafka.manager.TopicIdentity)
+
+@getPreferredReplicasLevel(percentage: Int) = {
+    @percentage match {
+        case i if i > 50 && i<=75 => {warning}
+        case i if i <=  50 => {danger}
+        case i => {}
+    }
+}
+
+@getBrokersSkewedLevel(percentage: Int) = {
+    @percentage match {
+        case i if i > 0 => {warning}
+        case i => {}
+    }
+}
+
+@getBrokersSpreadLevel(percentage: Int) = {
+    @percentage match {
+        case i if i > 50 && i<=75 => {warning}
+        case i if i <=  50 => {danger}
+        case i => {}
+    }
+}
+
+@getPartitionLeaderLevel(leader: Int) = {
+    @leader match {
+        case i if i < 0 => {danger}
+        case i => {}
+    }
+}
+
+@getIsUnderReplicatedLevel(underReplicated: Boolean) = {
+    @underReplicated match {
+        case true => {warning}
+        case false => {}
+    }
+}
+
+@getIsPreferredLeaderLevel(preferredReplica: Boolean) = {
+    @preferredReplica match {
+        case false => {warning}
+        case true => {}
+    }
+}
+
+@getBrokerIsSkewedLevel(isSkewed: Boolean) = {
+    @isSkewed match {
+        case true => {warning}
+        case false => {}
+    }
+}
+
+    <div class="row">
+        <div class="col-md-5">
+            <div class="panel panel-default">
+                <div class="panel-heading"><h4>Topic Summary</h4></div>
+                <table class="table">
+                    <tbody>
+                    <tr>
+                        <td>Replication</td>
+                        <td>@topicIdentity.replicationFactor</td>
+                    <tr>
+                        <td>Number of Partitions</td>
+                        <td>@topicIdentity.partitions</td>
+                    </tr>
+                    <tr>
+                        <td>Total number of Brokers</td>
+                        <td>@topicIdentity.numBrokers</td>
+                    </tr>
+                    <tr>
+                        <td>Number of Brokers for Topic</td>
+                        <td>@topicIdentity.topicBrokers</td>
+                    </tr>
+                    <tr>
+                        <td>Preferred Replicas %</td>
+                        <td class="@getPreferredReplicasLevel(topicIdentity.preferredReplicasPercentage)">
+                            @topicIdentity.preferredReplicasPercentage
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Brokers Skewed %</td>
+                        <td class="@getBrokersSkewedLevel(topicIdentity.brokersSkewPercentage)">
+                            @topicIdentity.brokersSkewPercentage
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Brokers Spread %</td>
+                        <td class="@getBrokersSpreadLevel(topicIdentity.brokersSpreadPercentage)">
+                            @topicIdentity.brokersSpreadPercentage
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            @b3.form(routes.ReassignPartitions.handleOperation(cluster,topic)) {
+                            <fieldset>
+                                <input type="hidden" name="operation" value="generate">
+                                @b3.submit('class -> "btn btn-primary btn-block"){ Generate Partition Assignments}
+                            </fieldset>
+                            }
+                        </td>
+                        <td>
+                            @b3.form(routes.ReassignPartitions.handleOperation(cluster,topic)) {
+                            <fieldset>
+                                <input type="hidden" name="operation" value="run">
+                                @b3.submit('class -> "btn btn-primary btn-block"){ Reassign Partitions }
+                            </fieldset>
+                            }
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="col-md-7">
+            <div class="panel panel-default">
+                <div class="panel-heading"><h4>Partitions by Broker</h4></div>
+                <table class="table">
+                    <thead>
+                    <tr><th>Broker</th><th># of Partitions</th><th>Partitions</th><th>Skewed?</th></tr>
+                    </thead>
+                    <tbody>
+                    @for(btp <- topicIdentity.partitionsByBroker) {
+                    <tr>
+                        <td><a href="@routes.Application.broker(cluster,btp.id)">@btp.id</a></td>
+                        <td>@btp.partitions.size</td>
+                        <td>@btp.partitions.mkString("(",",",")")</td>
+                        <td class="@getBrokerIsSkewedLevel(btp.isSkewed)">
+                            @btp.isSkewed
+                        </td>
+                    </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="panel panel-default">
+                <div class="panel-heading"><h4>Partition Information</h4></div>
+                <table class="table">
+                    <thead>
+                    <tr><th>Partition</th><th>Leader</th><th>Replicas</th><th>In Sync Replicas</th><th>Preferred Leader?</th><th>Under Replicated?</th></tr>
+                    </thead>
+                    <tbody>
+                    @for((_,tpi) <- topicIdentity.partitionsIdentity.toIndexedSeq.sortBy(_._2.partNum)) {
+                    <tr>
+                        <td>@tpi.partNum</td>
+                        <td class="@getPartitionLeaderLevel(tpi.leader)">
+                            <a href="@routes.Application.broker(cluster,tpi.leader)">@tpi.leader</a>
+                        </td>
+                        <td>@tpi.replicas.mkString("(",",",")")</td>
+                        <td>@tpi.isr.mkString("(",",",")")</td>
+                        <td class="@getIsPreferredLeaderLevel(tpi.isPreferredLeader)">
+                            @tpi.isPreferredLeader
+                        </td>
+                        <td class="@getIsUnderReplicatedLevel(tpi.isUnderReplicated)">
+                            @tpi.isUnderReplicated
+                        </td>
+                    </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>

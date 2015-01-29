@@ -1,0 +1,26 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import scalaz.{\/}
+@(theMenu: Html,
+  crumbs: IndexedSeq[models.navigation.BreadCrumbs.BreadCrumbRendered],
+  errorOrSuccess: kafka.manager.ApiError \/ Unit,
+  actionTitle: String,
+  successLink: models.FollowLink,
+  errorLink: models.FollowLink)
+
+@link(followLink: FollowLink) = {
+    <a href="@followLink.url">@followLink.title</a>
+}
+
+@main(actionTitle, menu = theMenu, breadcrumbs = views.html.navigation.breadCrumbs(crumbs)) {
+
+    <div class="col-md-6 un-pad-me">
+        <div class="panel panel-default">
+            <div class="panel-heading"><h3>@actionTitle</h3></div>
+            @errorOrSuccess.fold( a => views.html.errors.onApiError(a, Some(errorLink)) , b => link(successLink))
+        </div>
+    </div>
+
+}

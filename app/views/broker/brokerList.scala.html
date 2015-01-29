@@ -1,0 +1,23 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import scalaz.{\/}
+@(cluster:String, errorOrBrokers: kafka.manager.ApiError \/ IndexedSeq[kafka.manager.BrokerIdentity])
+
+@theMenu = {
+    @views.html.navigation.clusterMenu(cluster,"Brokers","",models.navigation.Menus.clusterMenus(cluster))
+}
+
+@main(
+    "Broker List",
+    menu = theMenu,
+    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Brokers",cluster))) {
+    <div class="col-md-6 un-pad-me">
+        <div class="panel panel-default">
+            <div class="panel-heading"><h3>Brokers</h3></div>
+            @errorOrBrokers.fold( views.html.errors.onApiError(_), views.html.broker.brokerListContent(cluster,_) )
+        </div>
+    </div>
+
+}

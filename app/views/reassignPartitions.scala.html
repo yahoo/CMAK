@@ -1,0 +1,70 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import scalaz.{\/}
+@(cluster:String, errorOrStatus: kafka.manager.ApiError \/ Option[kafka.manager.ActorModel.ReassignPartitions])
+
+@theMenu = {
+@views.html.navigation.clusterMenu(cluster,"Reassign Partitions","",models.navigation.Menus.clusterMenus(cluster))
+}
+
+@renderView(c: String, viewOption: Option[kafka.manager.ActorModel.ReassignPartitions]) = {
+@viewOption.fold {
+<div class="row">
+    <div class="alert alert-warning" role="alert">
+        No data found for any recent reassign partitions command.
+    </div>
+</div>
+} { repar =>
+<div class="row">
+    <div class="panel panel-default">
+        <div class="panel-heading">Status</div>
+        <table class="table">
+            <tbody>
+            <tr>
+                <td>Submitted:</td>
+                <td>@repar.startTime</td>
+            <tr>
+                <td>Completed:</td>
+                <td>@repar.endTime.map(_.toString()).getOrElse("pending")</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+<div class="row">
+    <div class="panel panel-default">
+        <div class="panel-heading">Request Data</div>
+        <table class="table">
+            <thead>
+            <tr><th>Topic</th><th>Partition</th><th>Replica Assignment</th></tr>
+            </thead>
+            <tbody>
+            @for((kafka.manager.utils.TopicAndPartition(topic,partNum),assignment) <- repar.partitionsToBeReassigned) {
+            <tr>
+                <td><a href="@routes.Application.topic(cluster,topic)">@topic</a></td>
+                <td>@partNum</td>
+                <td>@assignment.mkString("(",",",")")</td>
+            </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+}
+}
+
+@main(
+    "Reassign Partitions",
+    menu = theMenu,
+    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Reassign Partitions",cluster))) {
+<div class="col-md-6 un-pad-me">
+    <div class="panel panel-default">
+        <div class="panel-heading"><h3>Reassign Partitions</h3></div>
+        <div class="col-md-12">
+            @errorOrStatus.fold[Html](views.html.errors.onApiError(_), renderView(cluster, _))
+        </div>
+    </div>
+</div>
+}

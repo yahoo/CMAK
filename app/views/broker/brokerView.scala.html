@@ -1,0 +1,24 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import scalaz.{\/}
+@(cluster:String, brokerId: Int, errorOrBrokerView: kafka.manager.ApiError \/ kafka.manager.ActorModel.BVView)
+
+@theMenu = {
+    @views.html.navigation.clusterMenu(cluster,"Brokers","",models.navigation.Menus.clusterMenus(cluster))
+}
+
+@main(
+    "Broker View",
+    menu = theMenu,
+    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndCluster("Broker View",cluster,brokerId.toString))) {
+<div class="col-md-12 un-pad-me">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>Broker Id @brokerId</h3>
+        </div>
+    @errorOrBrokerView.fold[Html](views.html.errors.onApiError(_), views.html.broker.brokerViewContent(cluster, brokerId, _))
+    </div>
+</div>
+}

@@ -1,0 +1,23 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import scalaz.{\/}
+@(errorOrClusters: kafka.manager.ApiError \/ kafka.manager.ActorModel.KMClusterList)
+
+@main(
+    "Kafka Manager",
+    views.html.navigation.defaultMenu(views.html.navigation.menuNav("Cluster","List",models.navigation.Menus.indexMenu)),
+    views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withView("Clusters"))) {
+<div class="col-md-6 un-pad-me">
+    <div class="panel panel-default">
+        <div class="panel-heading"><h3>Clusters</h3></div>
+        @errorOrClusters.fold(views.html.errors.onApiError(_), cl => {
+            views.html.cluster.clusterList(cl.active)
+        })
+        @errorOrClusters.fold( _ => Html(""), cl => {
+            views.html.cluster.pendingClusterList(cl.pending)
+        })
+    </div>
+</div>
+}

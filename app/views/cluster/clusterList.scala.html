@@ -1,0 +1,59 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@(clusters: IndexedSeq[kafka.manager.ClusterConfig])
+
+@import b3.vertical.fieldConstructor
+
+            <table class="table">
+                <thead>
+                <tr><th>Active</th><th>Operations</th><th>Version</th></tr>
+                </thead>
+                <tbody>
+                @for(cluster <- clusters) {
+                <tr>
+                    <td>
+                        @if(cluster.enabled) {
+                            <a href="@routes.Application.cluster(cluster.name)">@cluster.name</a>
+                        } else {
+                            @cluster.name
+                        }
+                    </td>
+                    <td>
+                        <div class="btn-group-horizontal" role="group" aria-label="...">
+                        @if(cluster.enabled) {
+                            <a href="@routes.Cluster.updateCluster(cluster.name)" class="btn btn-default ops-button" role="button">Modify</a>
+                            @b3.form(routes.Cluster.handleUpdateCluster(cluster.name)) {
+                            <input type="hidden" name="name" value="@cluster.name">
+                            <input type="hidden" name="kafkaVersion" value="@cluster.version.toString">
+                            <input type="hidden" name="zkHosts" value="@cluster.curatorConfig.zkConnect">
+                            <input type="hidden" name="operation" value="Disable">
+                            @b3.submit('class -> "btn btn-warning ops-button"){ Disable }
+                            }
+                        } else {
+                            @b3.form(routes.Cluster.handleUpdateCluster(cluster.name)) {
+                            <input type="hidden" name="name" value="@cluster.name">
+                            <input type="hidden" name="kafkaVersion" value="@cluster.version.toString">
+                            <input type="hidden" name="zkHosts" value="@cluster.curatorConfig.zkConnect">
+                            <input type="hidden" name="operation" value="Enable">
+                            @b3.submit('class -> "btn btn-success ops-button"){ Enable }
+                            }
+                            @b3.form(routes.Cluster.handleUpdateCluster(cluster.name)) {
+                            <input type="hidden" name="name" value="@cluster.name">
+                            <input type="hidden" name="kafkaVersion" value="@cluster.version.toString">
+                            <input type="hidden" name="zkHosts" value="@cluster.curatorConfig.zkConnect">
+                            <input type="hidden" name="operation" value="Delete">
+                            @b3.submit('class -> "btn btn-danger ops-button"){ Delete }
+                            }
+                        }
+                        </div>
+                    </td>
+                    <td>
+                        @cluster.version.toString
+                    </td>
+                </tr>
+                }
+                </tbody>
+            </table>
+

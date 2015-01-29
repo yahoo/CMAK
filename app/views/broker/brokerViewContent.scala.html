@@ -1,0 +1,23 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@(cluster: String, brokerId: Int, brokerView :kafka.manager.ActorModel.BVView)
+
+        <table class="table">
+            <thead>
+            <tr><th>Topic</th><th>Replication</th><th>Total Partitions</th><th>Partitions on Broker</th><th>Partitions</th><th>Skewed?</th></tr>
+            </thead>
+            <tbody>
+            @for((ti,bp) <- brokerView.topicPartitions) {
+            <tr>
+                <td><a href="@routes.Application.topic(cluster,ti.topic)">@ti.topic</a></td>
+                <td>@ti.replicationFactor</td>
+                <td>@ti.partitions</td>
+                <td>@bp.size</td>
+                <td>@bp.mkString("(",",",")")</td>
+                <td>@ti.partitionsByBroker.find(_.id == brokerId).map(_.isSkewed).getOrElse("Unknown")</td>
+            </tr>
+            }
+            </tbody>
+        </table>

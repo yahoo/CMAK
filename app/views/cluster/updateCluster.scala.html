@@ -1,0 +1,42 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import scalaz.{\/}
+@(clusterName: String, errorOrForm: kafka.manager.ApiError \/ Form[models.form.ClusterOperation])(implicit request: RequestHeader)
+
+@import b3.vertical.fieldConstructor
+@import controllers.routes
+
+@theMenu = {
+    @views.html.navigation.defaultMenu(views.html.navigation.menuNav("Cluster","Update Cluster",models.navigation.Menus.indexMenu))
+}
+
+@drawForm(form : Form[models.form.ClusterOperation]) = {
+    @b3.form(routes.Cluster.handleUpdateCluster(clusterName)) {
+    <fieldset>
+        <input type="hidden" name="operation" value="Update">
+        <input type="hidden" name="name" value="@clusterName">
+        @b3.text(form("zkHosts"), '_label -> "Cluster Zookeeper Hosts", 'placeholder -> "zk1:2181,zk2:2181,zk3:2181", 'autoFocus -> true)
+        @b3.select( form("kafkaVersion"), options = kafka.manager.KafkaVersion.formSelectList, '_label -> "Kafka Version" )
+        @b3.submit('class -> "btn btn-primary btn"){ Save }
+        <a href="@routes.Application.index()" class="btn btn-default" role="button">Cancel</a>
+    </fieldset>
+    }
+}
+
+@main(
+    "Update Cluster",
+    menu = theMenu,
+    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Update Cluster",clusterName))) {
+
+<div class="col-md-6 un-pad-me">
+    <div class="panel panel-default">
+        <div class="panel-heading"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>Update Cluster</h3></div>
+        <div class="panel-body">
+            @errorOrForm.fold(views.html.errors.onApiError(_), drawForm(_))
+        </div>
+    </div>
+</div>
+
+}

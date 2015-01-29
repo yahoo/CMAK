@@ -1,0 +1,26 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import scalaz.{\/}
+@(cluster:String,
+  topic: String, errorOrTopicIdentity: kafka.manager.ApiError \/ kafka.manager.TopicIdentity
+)
+
+@theMenu = {
+    @views.html.navigation.clusterMenu(cluster,"Topic","",models.navigation.Menus.clusterMenus(cluster))
+}
+
+@main(
+    "Topic View",
+    menu = theMenu,
+    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndCluster("Topic View",cluster,topic))) {
+<div class="col-md-12 un-pad-me">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>@topic</h3>
+        </div>
+        @errorOrTopicIdentity.fold(views.html.errors.onApiError(_),views.html.topic.topicViewContent(cluster,topic,_))
+    </div>
+</div>
+}

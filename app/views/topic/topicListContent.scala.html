@@ -1,0 +1,13 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@(cluster: String, topics: IndexedSeq[String])
+
+<table class="table">
+    <tbody>
+    @for( topic <- topics) {
+      <tr><td><a href="@routes.Application.topic(cluster,topic)">@topic</a></td></tr>
+    }
+    </tbody>
+</table>

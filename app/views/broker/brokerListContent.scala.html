@@ -1,0 +1,17 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@(cluster:String, brokers: IndexedSeq[kafka.manager.BrokerIdentity])
+
+            <table class="table">
+                <thead>
+                <tr><td>Id</td><td>Host</td><td>Port</td></tr>
+                </thead>
+                <tbody>
+                @for(broker <- brokers) {
+                <tr><td><a href="@routes.Application.broker(cluster,broker.id.toInt)">@broker.id</a></td><td>@broker.host</td><td>@broker.port</td></tr>
+                }
+                </tbody>
+            </table>
+

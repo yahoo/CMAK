@@ -1,0 +1,36 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@(addClusterForm: Form[kafka.manager.ClusterConfig])(implicit request: RequestHeader)
+
+@import b3.vertical.fieldConstructor
+@import controllers.routes
+
+@theMenu = {
+    @views.html.navigation.defaultMenu(views.html.navigation.menuNav("Cluster","Add Cluster",models.navigation.Menus.indexMenu))
+}
+
+@drawForm(form : Form[kafka.manager.ClusterConfig]) = {
+    @b3.form(routes.Cluster.handleAddCluster) {
+    <fieldset>
+        @b3.text(form("name"), '_label -> "Cluster Name", 'placeholder -> "", 'autofocus -> true )
+        @b3.text(form("zkHosts"), '_label -> "Cluster Zookeeper Hosts", 'placeholder -> "zk1:2181,zk2:2181,zk3:2181")
+        @b3.select( form("kafkaVersion"), options = kafka.manager.KafkaVersion.formSelectList, '_label -> "Kafka Version" )
+        @b3.submit('class -> "btn btn-primary"){ Save }
+        <a href="@routes.Application.index()" class="btn btn-default" role="button">Cancel</a>
+    </fieldset>
+    }
+}
+
+@main("Add Cluster", menu = theMenu, breadcrumbs = views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withView("Add Cluster"))) {
+    <div class="col-md-6 un-pad-me">
+        <div class="panel panel-default">
+            <div class="panel-heading"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>Add Cluster</h3></div>
+            <div class="panel-body">
+                @drawForm(addClusterForm)
+            </div>
+        </div>
+    </div>
+}
+

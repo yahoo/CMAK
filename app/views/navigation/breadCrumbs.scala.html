@@ -1,0 +1,29 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@(crumbs: IndexedSeq[models.navigation.BreadCrumbs.BreadCrumbRendered])
+
+@import models.navigation.BreadCrumbs._
+
+@renderLink(name: String, link: String) = {
+<li><a href="@link">@name</a></li>
+}
+
+@renderText(name: String) = {
+<li>@name</li>
+}
+
+@renderActive(name: String) = {
+<li class="active">@name</li>
+}
+
+
+<ol class="breadcrumb">
+    @crumbs.map {
+        case BCLink(name, link) =>  { @renderLink(name,link) }
+        case BCText(name) => { @renderText(name) }
+        case BCActive(name) => { @renderActive(name) }
+    }
+</ol>
+

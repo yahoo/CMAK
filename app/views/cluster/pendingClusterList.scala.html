@@ -1,0 +1,25 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@(clusters: IndexedSeq[kafka.manager.ClusterConfig])
+
+@import b3.vertical.fieldConstructor
+
+@if(clusters.nonEmpty) {
+            <div class="panel-body"><br></div>
+            <table class="table">
+                <thead>
+                <tr><th>Pending</th><th>Status</th><th>Version</th></tr>
+                </thead>
+                <tbody>
+                @for(cluster <- clusters) {
+                <tr>
+                    <td>@cluster.name</td>
+                    <td>pending changes</td>
+                    <td>@cluster.version.toString</td>
+                </tr>
+                }
+                </tbody>
+            </table>
+}

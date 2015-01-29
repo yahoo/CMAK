@@ -1,0 +1,82 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import scalaz.{\/}
+@(cluster:String,
+errorOrStatus: kafka.manager.ApiError \/ Option[kafka.manager.ActorModel.PreferredReplicaElection],
+operationForm: Form[models.form.PreferredReplicaElectionOperation]
+)
+
+@theMenu = {
+@views.html.navigation.clusterMenu(cluster,"Preferred Replica Election","",models.navigation.Menus.clusterMenus(cluster))
+}
+
+@renderView(c: String, viewOption: Option[kafka.manager.ActorModel.PreferredReplicaElection]) = {
+@viewOption.fold {
+<div class="row">
+    <div class="alert alert-warning" role="alert">
+        No data found for any recent preferred replica election command.
+    </div>
+</div>
+} { pre =>
+<div class="row">
+    <div class="panel panel-default">
+        <div class="panel-heading">Last Request Info</div>
+        <table class="table">
+            <tbody>
+            <tr>
+                <td>Submitted:</td>
+                <td>@pre.startTime</td>
+            <tr>
+                <td>Completed:</td>
+                <td>@pre.endTime.map(_.toString()).getOrElse("pending")</td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+<div class="row">
+    <div class="panel panel-default">
+        <div class="panel-heading">Request Data</div>
+        <table class="table">
+            <thead>
+            <tr><th>Topic</th><th>Partition</th></tr>
+            </thead>
+            <tbody>
+            @for(kafka.manager.utils.TopicAndPartition(topic,partNum) <- pre.topicAndPartition) {
+            <tr>
+                <td><a href="@routes.Application.topic(cluster,topic)">@topic</a></td>
+                <td>@partNum</td>
+            </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+}
+}
+
+@main(
+    "Preferred Replica Election",
+    menu = theMenu,
+    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Preferred Replica Election",cluster))) {
+<div class="col-md-6 un-pad-me">
+    <div class="panel panel-default">
+        <div class="panel-heading"><h3>Preferred Replica Election</h3></div>
+        <div class="col-md-12">
+            <div class="row">
+                @b3.form(routes.PreferredReplicaElection.handleRunElection(cluster)) {
+                <fieldset>
+                    <input type="hidden" name="operation" value="run">
+                    @b3.submit('class -> "btn btn-primary"){ Run Preferred Replica Election }
+                </fieldset>
+                }
+            </div>
+
+            @errorOrStatus.fold[Html](views.html.errors.onApiError(_), renderView(cluster, _))
+        </div>
+    </div>
+</div>
+
+    }

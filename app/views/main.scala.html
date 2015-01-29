@@ -1,0 +1,39 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@(title: String, menu: Html, breadcrumbs: Html = Html(""))(content: Html)
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>@title</title>
+    <link rel="shortcut icon" type="image/png" href="@routes.Assets.versioned("images/favicon.png")">
+    <link rel='stylesheet' href='@routes.WebJarAssets.at(WebJarAssets.locate("css/bootstrap.min.css"))'>
+    <script>
+        @Html(org.webjars.RequireJS.getSetupJavaScript(routes.WebJarAssets.at("").url))
+    </script>
+    <link rel="stylesheet" media="screen" href="@routes.Assets.versioned("stylesheets/index.min.css")">
+    <!--
+    <script data-main="@routes.Assets.versioned("javascripts/index.js")" src="@routes.WebJarAssets.at(WebJarAssets.locate("require.min.js"))"></script>
+    -->
+</head>
+<body role="document">
+
+@menu
+
+<div class="container" role="main">
+@breadcrumbs
+@content
+</div>
+
+<script src="@routes.WebJarAssets.at(WebJarAssets.locate("jquery.min.js"))"></script>
+<script src="@routes.WebJarAssets.at(WebJarAssets.locate("js/bootstrap.min.js"))"></script>
+<script>
+    function goBack() {
+        window.history.back()
+    }
+</script>
+
+</body>
+</html>
