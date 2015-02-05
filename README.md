@@ -52,6 +52,15 @@ Deployment
 The command below will create a zip file which can be used to deploy the application.
 
     sbt clean dist
+    mv ./target/universal/kafka-manager-1.0-SNAPSHOT.zip /opt
+    cd /opt && unzip kafka-manager-1.0-SNAPSHOT.zip
+    /opt/kafka-manager-1.0-SNAPSHOT/bin/kafka-manager
+
+Open localhost:9000
+
+Optionally, you can run on a different port
+
+    /opt/kafka-manager-1.0-SNAPSHOT/bin/kafka-manager -Dhttp.port=9002
 
 Please refer to play framework documentation on production deployment.
 
