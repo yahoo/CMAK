@@ -67,7 +67,7 @@ please use the following (the example assumes oracle java8):
       /path/to/sbt -java-home /usr/local/oracle-java-8 dist clean
 
 This ensures that the 'java' and 'javac' binaries in your path are first looked up in the
-oracle java8 release. Next, for all downstream tools that only listed to JAVA_HOME, it points
+oracle java8 release. Next, for all downstream tools that only listen to JAVA_HOME, it points
 them to the oracle java8 location. Lastly, it tells sbt to use the oracle java8 location as
 well.
 
