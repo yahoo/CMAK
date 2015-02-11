@@ -4,7 +4,8 @@
  */
 name := """kafka-manager"""
 
-version := "1.0-SNAPSHOT"
+/* For packaging purposes, -SNAPSHOT MUST contain a digit */
+version := "1.0-SNAPSHOT1"
 
 scalaVersion := "2.11.4"
 
@@ -38,3 +39,40 @@ pipelineStages := Seq(digest, gzip)
 includeFilter in (Assets, LessKeys.less) := "*.less"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
+
+/*
+ * Allow packaging as part of the build
+ */
+enablePlugins(SbtNativePackager)
+
+/* Debian Settings - to create, run as:
+   $ sbt debian:packageBin
+
+   See here for details:
+   http://www.scala-sbt.org/sbt-native-packager/formats/debian.html
+*/
+
+maintainer := "Yahoo <yahoo@example.com>"
+packageSummary := "A tool for managing Apache Kafka"
+packageDescription := "A tool for managing Apache Kafka"
+
+/* End Debian Settings */
+
+
+/* RPM Settings - to create, run as:
+   $ sbt rpm:packageBin
+
+   See here for details:
+   http://www.scala-sbt.org/sbt-native-packager/formats/rpm.html
+*/
+
+rpmRelease := "1"
+rpmVendor := "yahoo"
+rpmUrl := Some("https://github.com/yahoo/kafka-manager")
+rpmLicense := Some("Apache")
+
+/* End RPM Settings */
+
+
+
+
