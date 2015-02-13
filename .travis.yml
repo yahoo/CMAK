@@ -2,5 +2,4 @@ language: scala
 install: true
 script: "./sbt clean test"
 scala:
-- 2.10.1
-- 2.9.3
+- 2.11.5
