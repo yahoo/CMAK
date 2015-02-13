@@ -45,6 +45,9 @@ in the distribution zip file; you may modify settings after unzipping the file o
 
     kafka-manager.zkhosts="my.zookeeper.host.com:2181"
 
+Alternatively, use the environment variable `ZK_HOSTS` if you don't want to hardcode any values.
+
+    ZK_HOSTS="my.zookeeper.host.com:2181"
 
 Deployment
 ----------
