@@ -55,6 +55,17 @@ The command below will create a zip file which can be used to deploy the applica
 
 Please refer to play framework documentation on production deployment.
 
+
+Packaging
+---------
+
+If you'd like to create a Debian or RPM package instead, you can run one of:
+
+    sbt debian:packageBin
+
+    sbt rpm:packageBin
+
+
 Credits
 -------
 
