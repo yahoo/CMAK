@@ -12,12 +12,6 @@ import org.scalatest.{Matchers, FunSuite}
  */
 class TestClusterConfig extends FunSuite with Matchers {
 
-  test("invalid zk hosts") {
-    intercept[IllegalArgumentException] {
-      ClusterConfig("qa","0.8.1.1","localhost")
-    }
-  }
-
   test("invalid name") {
     intercept[IllegalArgumentException] {
       ClusterConfig("qa!","0.8.1.1","localhost")

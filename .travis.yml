@@ -1,0 +1,5 @@
+language: scala
+install: true
+script: "./sbt clean test"
+scala:
+- 2.11.5
