@@ -71,7 +71,6 @@ object ClusterConfig {
 
   def validateZkHosts(zkHosts: String): Unit = {
     require(zkHosts.length > 0, "cluster zk hosts is illegal, can't be empty!")
-    require(zkHosts.contains(":"), "cluster zk hosts is illegal, no port defined!")
   }
 
   def apply(name: String, version : String, zkHosts: String, zkMaxRetry: Int = 100) : ClusterConfig = {
