@@ -1,3 +1,8 @@
+import com.typesafe.sbt.SbtNativePackager._
+import com.typesafe.sbt.SbtNativePackager.autoImport._
+import com.typesafe.sbt.packager.archetypes.JavaAppPackaging
+import com.typesafe.sbt.packager.docker.DockerPlugin
+
 /**
  * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
  * See accompanying LICENSE file.
@@ -38,3 +43,19 @@ pipelineStages := Seq(digest, gzip)
 includeFilter in (Assets, LessKeys.less) := "*.less"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
+
+enablePlugins(JavaAppPackaging) 
+
+enablePlugins(DockerPlugin)
+
+packageName := packageName.value
+
+version := version.value
+
+dockerBaseImage := "zenphu/jzmq:latest"
+
+dockerExposedPorts := Seq(9000, 9443)
+
+dockerExposedVolumes := Seq("/opt/docker/logs")
+
+dockerEntrypoint := Seq("./bin/kafka-manager")
