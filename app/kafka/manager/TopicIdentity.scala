@@ -61,7 +61,7 @@ case class TopicIdentity(topic:String, partitions:Int, partitionsIdentity: Map[I
   val brokersSpreadPercentage : Int = {
     if(numBrokers > 0)
       (100 * topicBrokers) / numBrokers
-    else 100
+    else 100 // everthing is spreaded if nothing has to be spreaded
   }
   
 }
