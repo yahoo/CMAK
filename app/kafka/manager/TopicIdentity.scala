@@ -57,8 +57,13 @@ case class TopicIdentity(topic:String, partitions:Int, partitionsIdentity: Map[I
       (100 * partitionsByBroker.count(_.isSkewed)) / topicBrokers
     else 0
   }
-
-  val brokersSpreadPercentage : Int = (100 * topicBrokers) / numBrokers
+  
+  val brokersSpreadPercentage : Int = {
+    if(numBrokers > 0)
+      (100 * topicBrokers) / numBrokers
+    else 100 // everthing is spreaded if nothing has to be spreaded
+  }
+  
 }
 
 object TopicIdentity {
