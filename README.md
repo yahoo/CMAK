@@ -92,6 +92,15 @@ add the -java-home option as follows:
 
     $ bin/kafka-manager -java-home /usr/local/oracle-java-8
 
+Packaging
+---------
+
+If you'd like to create a Debian or RPM package instead, you can run one of:
+
+    sbt debian:packageBin
+
+    sbt rpm:packageBin
+
 Credits
 -------
 
@@ -104,4 +113,3 @@ License
 -------
 
 Apache Licensed. See accompanying LICENSE file.
-

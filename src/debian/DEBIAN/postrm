@@ -1,0 +1,4 @@
+#!/bin/sh
+
+# Intentionally disabled: Service does not start cleanly without
+# configuring it properly first.

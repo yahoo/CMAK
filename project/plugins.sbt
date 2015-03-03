@@ -22,3 +22,6 @@ addSbtPlugin("com.typesafe.sbt" % "sbt-less" % "1.0.2")
 addSbtPlugin("com.typesafe.sbt" % "sbt-coffeescript" % "1.0.0")
 
 addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.7.4")
+
+// Support packaging plugins
+addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.0.0-M4")
