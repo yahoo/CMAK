@@ -207,7 +207,7 @@ class TestKafkaManager extends CuratorAwareTest {
   }
 
   test("update cluster version") {
-    val future = kafkaManager.updateCluster("dev","0.8.2-beta",testServer.getConnectString)
+    val future = kafkaManager.updateCluster("dev","0.8.2.0",testServer.getConnectString)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
 
