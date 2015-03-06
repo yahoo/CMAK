@@ -33,7 +33,7 @@ class TestClusterConfig extends FunSuite with Matchers {
   }
 
   test("serialize and deserialize") {
-    val cc = ClusterConfig("qa","0.8.2-beta","localhost:2181")
+    val cc = ClusterConfig("qa","0.8.2.0","localhost:2181")
     val serialize: String = ClusterConfig.serialize(cc)
     val deserialize = ClusterConfig.deserialize(serialize)
     assert(deserialize.isSuccess === true)
@@ -41,9 +41,9 @@ class TestClusterConfig extends FunSuite with Matchers {
   }
 
   test("deserialize without version") {
-    val cc = ClusterConfig("qa","0.8.2-beta","localhost:2181")
+    val cc = ClusterConfig("qa","0.8.2.0","localhost:2181")
     val serialize: String = ClusterConfig.serialize(cc)
-    val noverison = serialize.replace(""","kafkaVersion":"0.8.2-beta"""","")
+    val noverison = serialize.replace(""","kafkaVersion":"0.8.2.0"""","")
     assert(!noverison.contains("kafkaVersion"))
     val deserialize = ClusterConfig.deserialize(noverison)
     assert(deserialize.isSuccess === true)
