@@ -11,6 +11,12 @@ scalaVersion := "2.11.5"
 
 scalacOptions ++= Seq("-Xlint","-Xfatal-warnings","-deprecation","-feature","-language:implicitConversions","-language:postfixOps")
 
+// From https://www.playframework.com/documentation/2.3.x/ProductionDist
+assemblyMergeStrategy in assembly := {
+  case "play/core/server/ServerWithStop.class" => MergeStrategy.first
+  case other => (assemblyMergeStrategy in assembly).value(other)
+}
+
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.3.7",
   "org.webjars" %% "webjars-play" % "2.3.0-2",
