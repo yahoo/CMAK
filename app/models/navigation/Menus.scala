@@ -13,8 +13,7 @@ object Menus {
   def clusterMenus(cluster: String) : IndexedSeq[Menu] = IndexedSeq(
     Menu("Cluster",IndexedSeq(
       "Summary".clusterRouteMenuItem(cluster),
-      "List".baseRouteMenuItem,
-      "Add Cluster".baseRouteMenuItem),
+      "List".baseRouteMenuItem),
       None),
     "Brokers".clusterMenu(cluster),
     Menu("Topic",IndexedSeq(
@@ -27,8 +26,7 @@ object Menus {
 
   def indexMenu : IndexedSeq[Menu] = IndexedSeq(
     Menu("Cluster",IndexedSeq(
-      "List".baseRouteMenuItem,
-      "Add Cluster".baseRouteMenuItem),
+      "List".baseRouteMenuItem),
       None)
   )
 }

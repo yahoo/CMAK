@@ -146,6 +146,8 @@ class KafkaManager(akkaConfig: Config) {
     }
   }
 
+  def getConfigWithDefaults = configWithDefaults
+  
   def addCluster(clusterName: String, version: String, zkHosts: String) : Future[ApiError \/ Unit] = {
     val cc = ClusterConfig(clusterName, version, zkHosts)
     tryWithKafkaManagerActor(KMAddCluster(cc)) { result: KMCommandResult =>

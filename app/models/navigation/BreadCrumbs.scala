@@ -27,8 +27,7 @@ object BreadCrumbs {
   import models.navigation.QuickRoutes._
 
   val baseBreadCrumbs: Map[String, IndexedSeq[BreadCrumb]] = Map(
-    "Clusters" -> IndexedSeq.empty[BreadCrumb],
-    "Add Cluster" -> IndexedSeq("Clusters".baseRouteBreadCrumb)
+    "Clusters" -> IndexedSeq.empty[BreadCrumb]
   )
 
   val clusterBreadCrumbs: Map[String, IndexedSeq[BreadCrumb]] = Map(
