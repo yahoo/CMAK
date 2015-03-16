@@ -176,7 +176,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           }
         } pipeTo sender()
 
-      case CMGeneratePartitionAssignments(topics) =>
+      case CMGeneratePartitionAssignments(topics, brokers) =>
         implicit val ec = longRunningExecutionContext
         val eventualBrokerList = withKafkaStateActor(KSGetBrokers)(identity[BrokerList])
         val eventualDescriptions = withKafkaStateActor(KSGetTopicDescriptions(topics))(identity[TopicDescriptions])
@@ -185,8 +185,11 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           tds <- eventualDescriptions
           tis = tds.descriptions.map(TopicIdentity.from(bl, _))
         } yield {
+          bl.list.map(_.id.toInt)
+          // check if any nonexistent broker got selected for reassignment
+          require(isValidBrokerList(bl, brokers), "Nonexistent broker(s) selected")
           tis.map(ti => (ti.topic, AdminUtils.assignReplicasToBrokers(
-            bl.list.map(_.id.toInt),
+            brokers,
             ti.partitions,
             ti.replicationFactor)))
         }
@@ -242,6 +245,8 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
                 throw new IllegalArgumentException(s"No generated assignment found for topic ${ti.topic}")
               } { childData =>
                 val assignments = deserializeAssignments(childData.getData)
+                // check if any nonexistent broker got selected for reassignment
+                require(isValidAssignment(bl, assignments), "The assignments contain nonexistent broker(s)")
                 TopicIdentity.reassignReplicas(ti, assignments)
               }
             }.flatten
@@ -285,5 +290,16 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         mutex.release()
       }
     }
+  }
+
+  def isValidBrokerList(availableBrokers: BrokerList, selectedBrokers: Seq[Int]) : Boolean = {
+    val availableBrokerIds: Set[Int] = availableBrokers.list.map(_.id.toInt).toSet
+    val nonExisting = selectedBrokers filter { b: Int => !availableBrokerIds.contains(b) }
+    nonExisting.isEmpty
+  }
+
+  def isValidAssignment(availableBrokers: BrokerList, assignments: Map[Int, Seq[Int]]): Boolean = {
+    val brokersAssigned = assignments.flatMap({ case  (pt, bl) => bl }).toSet.toSeq
+    isValidBrokerList(availableBrokers, brokersAssigned)
   }
 }

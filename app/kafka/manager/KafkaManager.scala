@@ -254,8 +254,8 @@ class KafkaManager(akkaConfig: Config) {
     }
   }
 
-  def generatePartitionAssignments(clusterName: String, topics: Set[String]) : Future[IndexedSeq[ApiError] \/ Unit] = {
-    val results = tryWithKafkaManagerActor(KMClusterCommandRequest(clusterName,CMGeneratePartitionAssignments(topics))) { result: CMCommandResults =>
+  def generatePartitionAssignments(clusterName: String, topics: Set[String], brokers: Seq[Int]) : Future[IndexedSeq[ApiError] \/ Unit] = {
+    val results = tryWithKafkaManagerActor(KMClusterCommandRequest(clusterName,CMGeneratePartitionAssignments(topics,brokers))) { result: CMCommandResults =>
       val errors = result.result.collect { case Failure(t) => ApiError(t.getMessage) }
       if(errors.isEmpty)
         \/-({})

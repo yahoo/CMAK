@@ -43,7 +43,7 @@ object ActorModel {
   case class CMDeleteTopic(topic: String) extends CommandRequest
   case class CMRunPreferredLeaderElection(topics: Set[String]) extends CommandRequest
   case class CMRunReassignPartition(topics: Set[String]) extends CommandRequest
-  case class CMGeneratePartitionAssignments(topics: Set[String]) extends CommandRequest
+  case class CMGeneratePartitionAssignments(topics: Set[String], brokers: Seq[Int]) extends CommandRequest
 
 
   case class CMCommandResult(result: Try[Unit]) extends CommandResponse

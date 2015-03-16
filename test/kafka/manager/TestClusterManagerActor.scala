@@ -138,7 +138,8 @@ class TestClusterManagerActor extends CuratorAwareTest {
   test("generate partition assignments for topic") {
     withClusterManagerActor(KSGetTopics) { result : TopicList =>
       val topicSet = result.list.toSet
-      withClusterManagerActor(CMGeneratePartitionAssignments(topicSet)) { cmResults: CMCommandResults =>
+      val brokers = Seq(0)
+      withClusterManagerActor(CMGeneratePartitionAssignments(topicSet, brokers)) { cmResults: CMCommandResults =>
         cmResults.result.foreach { t =>
           if(t.isFailure) {
             t.get

@@ -98,7 +98,8 @@
                         <td>
                             @b3.form(routes.ReassignPartitions.handleOperation(cluster,topic)) {
                             <fieldset>
-                                <input type="hidden" name="operation" value="generate">
+                                <input type="hidden" name="operation" value="confirm">
+                                <input type="hidden" name="brokers" value="@Seq()">
                                 @b3.submit('class -> "btn btn-primary btn-block"){ Generate Partition Assignments}
                             </fieldset>
                             }
@@ -107,6 +108,7 @@
                             @b3.form(routes.ReassignPartitions.handleOperation(cluster,topic)) {
                             <fieldset>
                                 <input type="hidden" name="operation" value="run">
+                                <input type="hidden" name="brokers" value="@Seq()">
                                 @b3.submit('class -> "btn btn-primary btn-block"){ Reassign Partitions }
                             </fieldset>
                             }

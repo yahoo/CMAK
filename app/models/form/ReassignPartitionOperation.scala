@@ -10,25 +10,27 @@ package models.form
  */
 sealed trait ReassignPartitionOperation
 
-case object GenerateAssignment extends ReassignPartitionOperation
+case object ConfirmAssignment extends ReassignPartitionOperation
+case class GenerateAssignment(brokers: Seq[Int]) extends ReassignPartitionOperation
 case object RunAssignment extends ReassignPartitionOperation
 case class UnknownRPO(op: String) extends ReassignPartitionOperation
 
 object ReassignPartitionOperation {
-  def apply(s: String) : ReassignPartitionOperation = {
+  def apply(s: String, brokers: Seq[Int]) : ReassignPartitionOperation = {
     s match {
-      case "generate" => GenerateAssignment
+      case "confirm" => ConfirmAssignment
+      case "generate" => GenerateAssignment(brokers)
       case "run" => RunAssignment
       case a => UnknownRPO(a)
     }
   }
 
-  def unapply(op: ReassignPartitionOperation) : Option[String] = {
+  def unapply(op: ReassignPartitionOperation) : Option[(String, Seq[Int])] = {
     op match {
-      case GenerateAssignment => Some("generate")
-      case RunAssignment => Some("run")
-      case UnknownRPO(_) => None
+      case ConfirmAssignment => Some(("confirm", Nil))
+      case GenerateAssignment(brokers) => Some(("generate", brokers))
+      case RunAssignment => Some(("run", Nil))
+      case UnknownRPO(_) => Some(("unknown", Nil))
     }
   }
-
 }
