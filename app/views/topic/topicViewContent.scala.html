@@ -2,8 +2,17 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
+@import b3.vertical.fieldConstructor
 @(cluster:String,topic: String, topicIdentity: kafka.manager.TopicIdentity)
 
+@getUnderReplicatedLevel(percentage: Int) = {
+    @percentage match {
+        case i if i > 50 => {danger}
+        case i if i > 0 => {warning}
+        case i => {}
+    }
+}
+        
 @getPreferredReplicasLevel(percentage: Int) = {
     @percentage match {
         case i if i > 50 && i<=75 => {warning}
@@ -95,6 +104,13 @@
                         </td>
                     </tr>
                     <tr>
+                        <td>Under-replicated %</td>
+                        <td class="@getUnderReplicatedLevel(topicIdentity.underReplicatedPercentage)">
+                            @topicIdentity.underReplicatedPercentage
+                        </td>
+                    </tr>
+                    <!--
+                    <tr>
                         <td>
                             @b3.form(routes.ReassignPartitions.handleOperation(cluster,topic)) {
                             <fieldset>
@@ -104,6 +120,8 @@
                             </fieldset>
                             }
                         </td>
+                    </tr>
+                    <tr>
                         <td>
                             @b3.form(routes.ReassignPartitions.handleOperation(cluster,topic)) {
                             <fieldset>
@@ -114,11 +132,71 @@
                             }
                         </td>
                     </tr>
+                    <tr>
+                        <td>
+                            @b3.form(routes.Topic.handleDeleteTopic(cluster, topic)) {
+                            <fieldset>
+                                @b3.hidden("topic",topic)
+                                @b3.submit('class -> "btn btn-primary btn-block"){ Delete Topic }
+                            </fieldset>
+                            }
+                        </td>
+                    </tr>-->
                     </tbody>
                 </table>
+                @if(!topicIdentity.config.isEmpty) {
+                <table class="table">
+                    <thead>
+                    <th>Config</th><th>Value</th>
+                    </thead>
+                    <tbody>
+                    @for( (k,v) <- topicIdentity.config) {
+                    <tr>
+                        <td>@k</td>
+                        <td>@v</td>
+                    </tr>
+                    }
+                    </tbody>
+                </table>
+                }
             </div>
         </div>
         <div class="col-md-7">
+            <div class="panel panel-default">
+                <div class="panel-heading"><h4>Operations</h4></div>
+                <table class="table">
+                    <tbody>
+                    <tr>
+                        <td>
+                            @b3.form(routes.ReassignPartitions.handleOperation(cluster,topic)) {
+                            <fieldset>
+                                <input type="hidden" name="operation" value="generate">
+                                @b3.submit('class -> "btn btn-primary btn-block"){ Generate Partition Assignments}
+                            </fieldset>
+                            }
+                        </td>
+                        <td>
+                            @b3.form(routes.ReassignPartitions.handleOperation(cluster,topic)) {
+                            <fieldset>
+                                <input type="hidden" name="operation" value="run">
+                                @b3.submit('class -> "btn btn-primary btn-block"){ Reassign Partitions }
+                            </fieldset>
+                            }
+                        </td>
+                        @if(topicIdentity.deleteSupported) {
+                        <td>
+                            @b3.form(routes.Topic.handleDeleteTopic(cluster, topic)) {
+                            <fieldset>
+                                @b3.hidden("topic",topic)
+                                @b3.submit('class -> "btn btn-primary btn-block"){ Delete Topic }
+                            </fieldset>
+                            }
+                        </td>
+                        }
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
             <div class="panel panel-default">
                 <div class="panel-heading"><h4>Partitions by Broker</h4></div>
                 <table class="table">

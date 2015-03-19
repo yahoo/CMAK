@@ -4,6 +4,7 @@
 *@
 @(cluster: String, createTopicForm: Form[models.form.CreateTopic])(implicit request: RequestHeader)
 
+@import helper._
 @import b3.vertical.fieldConstructor
 @import controllers.routes
 
@@ -24,8 +25,12 @@
                     @b3.text(createTopicForm("topic"), '_label -> "Topic", 'placeholder -> "", 'autofocus -> true )
                     @b3.text(createTopicForm("partitions"), '_label -> "Partitions", 'placeholder -> "8")
                     @b3.text(createTopicForm("replication"), '_label -> "Replication Factor", 'placeholder -> "3")
-                    @b3.submit('class -> "btn btn-primary"){ Create }
-                    <a href="@routes.Application.topics(cluster)" class="btn btn-default" role="button">Cancel</a>
+                    @helper.repeat(createTopicForm("configs"), min = 1) { configsForm =>
+                        @b3.hidden(configsForm("name").name, configsForm("name").value.getOrElse(""))
+                        @b3.text(configsForm("value"), '_label -> configsForm("name").value.getOrElse(""))
+                    }
+                    @b3.submit('class -> "submit-button btn btn-primary"){ Create }
+                    <a href="@routes.Topic.topics(cluster)" class="cancel-button btn btn-default" role="button">Cancel</a>
                 </fieldset>
                 }
             </div>

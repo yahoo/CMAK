@@ -19,6 +19,7 @@ package kafka.manager.utils
 
 import java.util.Properties
 
+import kafka.manager.{Kafka_0_8_2_0, KafkaVersion}
 import org.apache.curator.framework.CuratorFramework
 import org.apache.zookeeper.KeeperException.NodeExistsException
 import org.slf4j.LoggerFactory
@@ -30,7 +31,7 @@ import scala.util.Random
  * Borrowed from kafka 0.8.1.1, adapted to use curator framework
  * https://git-wip-us.apache.org/repos/asf?p=kafka.git;a=blob;f=core/src/main/scala/kafka/admin/AdminUtils.scala
  */
-object AdminUtils {
+class AdminUtils(version: KafkaVersion) {
 
   private[this] lazy val logger = LoggerFactory.getLogger(this.getClass)
 
@@ -88,6 +89,13 @@ object AdminUtils {
     val shift = 1 + (secondReplicaShift + replicaIndex) % (nBrokers - 1)
     (firstReplicaIndex + shift) % nBrokers
   }
+  
+  def isDeleteSupported : Boolean = {
+    version match {
+      case Kafka_0_8_2_0 => true
+      case _ => false
+    }
+  }
 
   def deleteTopic(curator: CuratorFramework, topic: String): Unit = {
     ZkUtils.createPersistentPath(curator,ZkUtils.getDeleteTopicPath(topic))
@@ -111,7 +119,7 @@ object AdminUtils {
                                                      update: Boolean = false) {
     // validate arguments
     Topic.validate(topic)
-    LogConfig.validate(config)
+    TopicConfigs.validate(version,config)
     checkCondition(partitionReplicaAssignment.values.map(_.size).toSet.size == 1, TopicErrors.InconsistentPartitionReplicas)
 
     val topicPath = ZkUtils.getTopicPath(topic)

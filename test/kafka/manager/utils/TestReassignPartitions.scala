@@ -4,8 +4,11 @@
  */
 package kafka.manager.utils
 
+import java.util.Properties
+
 import kafka.manager.ActorModel._
-import kafka.manager.TopicIdentity
+import kafka.manager.{Kafka_0_8_2_0, TopicIdentity}
+import kafka.manager.utils.zero81._
 
 /**
  * @author hiral
@@ -13,6 +16,10 @@ import kafka.manager.TopicIdentity
 class TestReassignPartitions extends CuratorAwareTest {
 
   import ReassignPartitionErrors._
+
+  private[this] val adminUtils  = new AdminUtils(Kafka_0_8_2_0)
+  
+  private[this] val reassignPartitionCommand = new ReassignPartitionCommand(adminUtils)
 
   private[this] val brokerList = IndexedSeq(1,2,3)
 
@@ -23,23 +30,26 @@ class TestReassignPartitions extends CuratorAwareTest {
   override protected def beforeAll(): Unit = {
     super.beforeAll()
     withCurator { curator =>
-      AdminUtils.createTopic(curator,brokerList,"mytopic1",3,3)
-      AdminUtils.createTopic(curator,brokerList,"mytopic2",6,3)
-      AdminUtils.createTopic(curator,brokerList,"mytopic3",9,3)
+      val properties = new Properties()
+      properties.put(LogConfig.RententionMsProp,"86400000")
+      adminUtils.createTopic(curator,brokerList,"mytopic1",3,3,properties)
+      adminUtils.createTopic(curator,brokerList,"mytopic2",6,3)
+      adminUtils.createTopic(curator,brokerList,"mytopic3",9,3)
     }
   }
 
   private[this] def getTopicIdentity(topic: String): TopicIdentity = {
     produceWithCurator { curator =>
       val json : String = curator.getData.forPath(ZkUtils.getTopicPath(topic))
-      val td: TopicDescription = TopicDescription(topic,json,None)
+      val configJson : String = curator.getData.forPath(ZkUtils.getTopicConfigPath(topic))
+      val td: TopicDescription = TopicDescription(topic,json,None,Option(configJson),false)
       TopicIdentity.from(brokerList.size,td)
     }
   }
 
   test("reassign partitions with empty set") {
     withCurator { curator =>
-      assert(ReassignPartitionCommand.executeAssignment(curator,Map.empty, Map.empty).isFailure)
+      assert(reassignPartitionCommand.executeAssignment(curator,Map.empty, Map.empty).isFailure)
       assert(curator.checkExists().forPath(ZkUtils.ReassignPartitionsPath) == null)
     }
   }
@@ -49,12 +59,12 @@ class TestReassignPartitions extends CuratorAwareTest {
       withCurator { curator =>
         val current = Map("mytopic1" -> mytopic1, "mytopic2" -> mytopic2, "mytopic3" -> mytopic3)
         val generated = current.map { case (t,td) =>
-          (t,ReassignPartitionCommand.generateAssignment(
+          (t,reassignPartitionCommand.generateAssignment(
             brokerList,
             td.copy(partitions = td.partitions - 1, partitionsIdentity = td.partitionsIdentity - (td.partitions - 1))).get)
         }
 
-        ReassignPartitionCommand.executeAssignment(curator,current,generated).get
+        reassignPartitionCommand.executeAssignment(curator,current,generated).get
       }
     }
   }
@@ -64,12 +74,12 @@ class TestReassignPartitions extends CuratorAwareTest {
       withCurator { curator =>
         val current = Map("mytopic1" -> mytopic1, "mytopic2" -> mytopic2, "mytopic3" -> mytopic3)
         val generated = current.map { case (t,td) =>
-          (t,ReassignPartitionCommand.generateAssignment(
+          (t,reassignPartitionCommand.generateAssignment(
             brokerList,
             td.copy(partitionsIdentity = td.partitionsIdentity.map { case (p,l) => (p, l.copy(replicas = l.replicas.drop(1)))})).get)
         }
 
-        ReassignPartitionCommand.executeAssignment(curator,current,generated).get
+        reassignPartitionCommand.executeAssignment(curator,current,generated).get
       }
     }
   }
@@ -78,12 +88,12 @@ class TestReassignPartitions extends CuratorAwareTest {
     withCurator { curator =>
       val current = Map("mytopic1" -> mytopic1, "mytopic2" -> mytopic2, "mytopic3" -> mytopic3)
       val generated = current.map { case (t,td) =>
-        (t,ReassignPartitionCommand.generateAssignment(
+        (t,reassignPartitionCommand.generateAssignment(
           brokerList,
           td).get)
       }
 
-      assert(ReassignPartitionCommand.executeAssignment(curator,current,generated).isSuccess)
+      assert(reassignPartitionCommand.executeAssignment(curator,current,generated).isSuccess)
     }
   }
 
@@ -92,12 +102,12 @@ class TestReassignPartitions extends CuratorAwareTest {
       withCurator { curator =>
         val current = Map("mytopic1" -> mytopic1, "mytopic2" -> mytopic2, "mytopic3" -> mytopic3)
         val generated = current.map { case (t,td) =>
-          (t,ReassignPartitionCommand.generateAssignment(
+          (t,reassignPartitionCommand.generateAssignment(
             brokerList,
             td).get)
         }
 
-        ReassignPartitionCommand.executeAssignment(curator,current,generated).get
+        reassignPartitionCommand.executeAssignment(curator,current,generated).get
       }
     }
   }

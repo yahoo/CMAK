@@ -22,14 +22,14 @@ object QuickRoutes {
     "Update Cluster" -> controllers.routes.Cluster.updateCluster,
     "Summary" -> controllers.routes.Application.cluster,
     "Brokers" -> controllers.routes.Application.brokers,
-    "Topics" -> controllers.routes.Application.topics,
-    "List" -> controllers.routes.Application.topics,
+    "Topics" -> controllers.routes.Topic.topics,
+    "List" -> controllers.routes.Topic.topics,
     "Create" -> controllers.routes.Topic.createTopic,
     "Preferred Replica Election" -> controllers.routes.PreferredReplicaElection.preferredReplicaElection,
     "Reassign Partitions" -> controllers.routes.ReassignPartitions.reassignPartitions
   )
   val topicRoutes : Map[String, (String, String) => Call] = Map(
-    "Topic View" -> controllers.routes.Application.topic
+    "Topic View" -> controllers.routes.Topic.topic
   )
 
   implicit class BaseRoute(s: String) {

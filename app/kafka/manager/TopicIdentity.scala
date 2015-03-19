@@ -6,6 +6,7 @@
 package kafka.manager
 
 import ActorModel.{BrokerList, TopicDescription}
+import org.slf4j.LoggerFactory
 
 import scala.util.Try
 
@@ -29,7 +30,11 @@ object TopicPartitionIdentity {
 
 case class BrokerTopicPartitions(id: Int, partitions: IndexedSeq[Int], isSkewed: Boolean)
 
-case class TopicIdentity(topic:String, partitions:Int, partitionsIdentity: Map[Int,TopicPartitionIdentity], numBrokers: Int) {
+case class TopicIdentity(topic:String, 
+                         partitions:Int, 
+                         partitionsIdentity: Map[Int,TopicPartitionIdentity], 
+                         numBrokers: Int, 
+                         config: List[(String,String)], deleteSupported: Boolean) {
 
   val replicationFactor : Int = partitionsIdentity.head._2.replicas.size
 
@@ -49,6 +54,8 @@ case class TopicIdentity(topic:String, partitions:Int, partitionsIdentity: Map[I
 
 
   val preferredReplicasPercentage : Int = (100 * partitionsIdentity.count(_._2.isPreferredLeader)) / partitions
+  
+  val underReplicatedPercentage : Int = (100 * partitionsIdentity.count(_._2.isUnderReplicated)) / partitions
 
   val topicBrokers : Int = partitionsByBroker.size
 
@@ -57,16 +64,18 @@ case class TopicIdentity(topic:String, partitions:Int, partitionsIdentity: Map[I
       (100 * partitionsByBroker.count(_.isSkewed)) / topicBrokers
     else 0
   }
-  
-  val brokersSpreadPercentage : Int = {
-    if(numBrokers > 0)
-      (100 * topicBrokers) / numBrokers
-    else 100 // everthing is spreaded if nothing has to be spreaded
+
+  val brokersSpreadPercentage : Int = if(numBrokers > 0) {
+    (100 * topicBrokers) / numBrokers
+  } else {
+    100 // everthing is spreaded if nothing has to be spreaded
   }
   
 }
 
 object TopicIdentity {
+  
+  lazy val logger = LoggerFactory.getLogger(this.getClass)
 
   implicit def from(brokers: Int,td: TopicDescription) : TopicIdentity = {
     import play.api.libs.json._
@@ -76,21 +85,41 @@ object TopicIdentity {
     val tpi : Map[Int,TopicPartitionIdentity] = partMap.map { case (part, replicas) =>
       (part.toInt,TopicPartitionIdentity.from(part.toInt,stateMap.get(part),replicas))
       }.toMap
-    TopicIdentity(td.topic,partMap.size,tpi,brokers)
+    val config : Map[String, String] = {
+      try {
+        val resultOption = td.config.map { configString =>
+          val configJson = Json.parse(configString)
+          (configJson \ "config").as[Map[String,String]]
+        }
+        resultOption.getOrElse(Map.empty)
+      } catch {
+        case e: Exception =>
+          logger.error(s"Failed to parse topic config : ${td.config.getOrElse("")}",e)
+          Map.empty
+      }
+    }
+    TopicIdentity(td.topic,partMap.size,tpi,brokers,config.toList,td.deleteSupported)
   }
 
   implicit def from(bl: BrokerList,td: TopicDescription) : TopicIdentity = {
     from(bl.list.size, td)
   }
 
-  implicit def reassignReplicas(currentTopicIdentity: TopicIdentity, assignedReplicas: Map[Int, Seq[Int]]) : Try[TopicIdentity] = {
+  implicit def reassignReplicas(currentTopicIdentity: TopicIdentity, 
+                                assignedReplicas: Map[Int, Seq[Int]]) : Try[TopicIdentity] = {
     Try {
       val newTpi : Map[Int, TopicPartitionIdentity] = currentTopicIdentity.partitionsIdentity.map { case (part, tpi) =>
         val newReplicaSet = assignedReplicas.get(part)
         require(newReplicaSet.isDefined, s"Missing replica assignment for partition $part for topic ${currentTopicIdentity.topic}")
         (part,tpi.copy(replicas = newReplicaSet.get.toSet))
       }
-      TopicIdentity(currentTopicIdentity.topic,currentTopicIdentity.partitions,newTpi,currentTopicIdentity.numBrokers)
+      TopicIdentity(
+        currentTopicIdentity.topic,
+        currentTopicIdentity.partitions,
+        newTpi,
+        currentTopicIdentity.numBrokers,
+        currentTopicIdentity.config, 
+        currentTopicIdentity.deleteSupported)
     }
   }
 }

@@ -16,7 +16,9 @@
     <div class="col-md-6 un-pad-me">
         <div class="panel panel-default">
             <div class="panel-heading"><h3>Topics</h3></div>
-            @errorOrTopics.fold( views.html.errors.onApiError(_), tl => views.html.topic.topicListContent(cluster,tl.list))
+            @errorOrTopics.fold( 
+                views.html.errors.onApiError(_),
+                tl => views.html.topic.topicListContent(cluster,tl.list.map(t => (t, tl.deleteSet(t)))))
         </div>
     </div>
 

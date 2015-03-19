@@ -55,7 +55,7 @@ object ReassignPartitions extends Controller{
               views.html.navigation.clusterMenu(c,"Reassign Partitions","",navigation.Menus.clusterMenus(c)),
               models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View",c,t,"Generate Partition Assignments"),
               s"Generate Partition Assignments - $t",c,t,
-              errorOrSuccess, FollowLink("Try again.",routes.Application.topic(c,t).toString())
+              errorOrSuccess, FollowLink("Try again.",routes.Topic.topic(c,t).toString())
             ))
           }
         case GenerateAssignment(brokers) =>
@@ -65,8 +65,8 @@ object ReassignPartitions extends Controller{
               models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View",c,t,"Generate Partition Assignments"),
               errorOrSuccess,
               s"Generate Partition Assignments - $t",
-              FollowLink("Go to topic view.",routes.Application.topic(c,t).toString()),
-              FollowLink("Try again.",routes.Application.topic(c,t).toString())
+              FollowLink("Go to topic view.",routes.Topic.topic(c,t).toString()),
+              FollowLink("Try again.",routes.Topic.topic(c,t).toString())
             ))
           }
         case RunAssignment =>
@@ -77,7 +77,7 @@ object ReassignPartitions extends Controller{
               errorOrSuccess,
               s"Run Reassign Partitions - $t",
               FollowLink("Go to reassign partitions.",routes.ReassignPartitions.reassignPartitions(c).toString()),
-              FollowLink("Try again.",routes.Application.topic(c,t).toString())
+              FollowLink("Try again.",routes.Topic.topic(c,t).toString())
             ))
           }
         case UnknownRPO(opString) =>

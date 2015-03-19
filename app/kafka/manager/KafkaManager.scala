@@ -66,7 +66,7 @@ object KafkaManager {
       ThreadPoolSize -> "2",
       MutexTimeoutMillis -> "4000",
       StartDelayMillis -> "1000",
-      ApiTimeoutMillis -> "1000"
+      ApiTimeoutMillis -> "5000"
     )
     import scala.collection.JavaConverters._
     ConfigFactory.parseMap(defaults.asJava)

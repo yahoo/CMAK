@@ -81,14 +81,21 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
 
   private[this] val mutex = new InterProcessSemaphoreMutex(curator, zkPath("mutex"))
 
-  private[this] val ksProps = Props(classOf[KafkaStateActor],sharedClusterCurator)
+  private[this] val adminUtils = new AdminUtils(cmConfig.clusterConfig.version)
+
+  private[this] val ksProps = Props(classOf[KafkaStateActor],sharedClusterCurator, adminUtils.isDeleteSupported)
   private[this] val kafkaStateActor : ActorPath = context.actorOf(ksProps.withDispatcher(cmConfig.pinnedDispatcherName),"kafka-state").path
 
   private[this] val bvcProps = Props(classOf[BrokerViewCacheActor],kafkaStateActor,cmConfig.updatePeriod)
   private[this] val brokerViewCacheActor : ActorPath = context.actorOf(bvcProps,"broker-view").path
 
   private[this] val kcProps = {
-    val kcaConfig = KafkaCommandActorConfig(sharedClusterCurator,cmConfig.threadPoolSize,cmConfig.maxQueueSize,cmConfig.askTimeoutMillis)
+    val kcaConfig = KafkaCommandActorConfig(
+      sharedClusterCurator,
+      cmConfig.threadPoolSize,
+      cmConfig.maxQueueSize,
+      cmConfig.askTimeoutMillis, 
+      cmConfig.clusterConfig.version)
     Props(classOf[KafkaCommandActor],kcaConfig)
   }
   private[this] val kafkaCommandActor : ActorPath = context.actorOf(kcProps,"kafka-command").path
@@ -189,7 +196,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           // check if any nonexistent broker got selected for reassignment
           val nonExistentBrokers = getNonExistentBrokers(bl, brokers)
           require(nonExistentBrokers.isEmpty, "Nonexistent broker(s) selected: [%s]".format(nonExistentBrokers.mkString(", ")))
-          tis.map(ti => (ti.topic, AdminUtils.assignReplicasToBrokers(
+          tis.map(ti => (ti.topic, adminUtils.assignReplicasToBrokers(
             brokers,
             ti.partitions,
             ti.replicationFactor)))
