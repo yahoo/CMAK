@@ -232,10 +232,35 @@ class KafkaManager(akkaConfig: Config) {
           Future.successful[ApiError \/ TopicIdentity](-\/(ApiError(s"Topic not found $topic for cluster $clusterName")))
         } { td =>
           tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, KSGetBrokers)) { brokerList: BrokerList =>
-            TopicIdentity.from(brokerList, td)
+            val metrics = getTopicMetrics(clusterName, topic)
+            TopicIdentity.from(brokerList, td, Some(metrics))
           }
         }
       })
+    }
+  }
+
+  def getTopicMetrics(clusterName: String, topic: String) : TopicMetrics = {
+    // TODO How to get the JMX host and port of the broker ?
+    val connect = KafkaJMX.connect("localhost", 9999)
+    if(connect.isLeft) {
+      // Unable to connect to JMX server
+      TopicMetrics(
+        RateMetric(0,0,0,0,0),
+        RateMetric(0,0,0,0,0),
+        RateMetric(0,0,0,0,0),
+        RateMetric(0,0,0,0,0),
+        RateMetric(0,0,0,0,0),
+        RateMetric(0,0,0,0,0))
+    } else {
+      val mbsc =  connect.right.get
+      TopicMetrics(
+        KafkaMetrics.getBytesInPerSec(Some(topic))(mbsc),
+        KafkaMetrics.getBytesOutPerSec(Some(topic))(mbsc),
+        KafkaMetrics.getBytesRejectedPerSec(Some(topic))(mbsc),
+        KafkaMetrics.getFailedFetchRequestsPerSec(Some(topic))(mbsc),
+        KafkaMetrics.getFailedProduceRequestsPerSec(Some(topic))(mbsc),
+        KafkaMetrics.getMessagesInPerSec(Some(topic))(mbsc))
     }
   }
 

@@ -76,7 +76,7 @@ class BrokerViewCacheActor(kafkaStateActorPath: ActorPath, updatePeriod: FiniteD
       brokerList <- brokerListOption
       topicDescriptions <- topicDescriptionsOption
     } {
-      val topicIdentity : IndexedSeq[TopicIdentity] = topicDescriptions.descriptions.map(TopicIdentity.from(brokerList.list.size,_))
+      val topicIdentity : IndexedSeq[TopicIdentity] = topicDescriptions.descriptions.map(TopicIdentity.from(brokerList.list.size,_,None))
       val groupByBroker =
         topicIdentity.flatMap(ti => ti.partitionsByBroker.map( btp => (ti,btp.id,btp.partitions))).groupBy(_._2)
 
