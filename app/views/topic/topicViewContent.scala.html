@@ -169,6 +169,17 @@
                 </table>
             </div>
             <div class="panel panel-default">
+                <div class="panel-heading"><h4>Metrics</h4></div>
+                <table class="table">
+                    <tbody>
+                        <tr>
+                            <td>Messages in per sec (mean rate)</td>
+                            <td>@topicIdentity.metrics.map(_.messagesInPerSec.formatMeanRate)</td>
+                        <tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="panel panel-default">
                 <div class="panel-heading"><h4>Partitions by Broker</h4></div>
                 <table class="table">
                     <thead>
