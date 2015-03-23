@@ -21,7 +21,7 @@ import scala.util.{Success, Failure, Try}
 import ActorModel._
 import kafka.manager.utils._
 import scala.collection.JavaConverters._
-class KafkaStateActor(curator: CuratorFramework, deleteSupported: Boolean = false) extends BaseQueryCommandActor {
+class KafkaStateActor(curator: CuratorFramework, deleteSupported: Boolean) extends BaseQueryCommandActor {
 
   // e.g. /brokers/topics/analytics_content/partitions/0/state
   private[this] val topicsTreeCache = new TreeCache(curator,ZkUtils.BrokerTopicsPath)

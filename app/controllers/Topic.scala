@@ -20,7 +20,7 @@ import play.api.mvc._
 
 import scala.concurrent.Future
 import scala.util.{Success, Failure, Try}
-import scalaz.-\/
+import scalaz.{\/-, -\/}
 
 /**
  * @author hiral
@@ -87,15 +87,13 @@ object Topic extends Controller{
 
   def createTopic(clusterName: String) = Action.async { implicit request =>
     createTopicForm(clusterName).map { errorOrForm =>
-      errorOrForm.fold(
-        error => Ok(views.html.errors.onApiError(error)), 
-        form => Ok(views.html.topic.createTopic(clusterName, form)))
+      Ok(views.html.topic.createTopic(clusterName, errorOrForm))
     }
   }
 
   def handleCreateTopic(clusterName: String) = Action.async { implicit request =>
     defaultCreateForm.bindFromRequest.fold(
-      formWithErrors => Future.successful(BadRequest(views.html.topic.createTopic(clusterName,formWithErrors))),
+      formWithErrors => Future.successful(BadRequest(views.html.topic.createTopic(clusterName,\/-(formWithErrors)))),
       ct => {
         val props = new Properties()
         ct.configs.filter(_.value.isDefined).foreach(c => props.setProperty(c.name,c.value.get))

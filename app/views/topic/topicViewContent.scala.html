@@ -109,39 +109,6 @@
                             @topicIdentity.underReplicatedPercentage
                         </td>
                     </tr>
-                    <!--
-                    <tr>
-                        <td>
-                            @b3.form(routes.ReassignPartitions.handleOperation(cluster,topic)) {
-                            <fieldset>
-                                <input type="hidden" name="operation" value="confirm">
-                                <input type="hidden" name="brokers" value="@Seq()">
-                                @b3.submit('class -> "btn btn-primary btn-block"){ Generate Partition Assignments}
-                            </fieldset>
-                            }
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            @b3.form(routes.ReassignPartitions.handleOperation(cluster,topic)) {
-                            <fieldset>
-                                <input type="hidden" name="operation" value="run">
-                                <input type="hidden" name="brokers" value="@Seq()">
-                                @b3.submit('class -> "btn btn-primary btn-block"){ Reassign Partitions }
-                            </fieldset>
-                            }
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            @b3.form(routes.Topic.handleDeleteTopic(cluster, topic)) {
-                            <fieldset>
-                                @b3.hidden("topic",topic)
-                                @b3.submit('class -> "btn btn-primary btn-block"){ Delete Topic }
-                            </fieldset>
-                            }
-                        </td>
-                    </tr>-->
                     </tbody>
                 </table>
                 @if(!topicIdentity.config.isEmpty) {
@@ -170,7 +137,8 @@
                         <td>
                             @b3.form(routes.ReassignPartitions.handleOperation(cluster,topic)) {
                             <fieldset>
-                                <input type="hidden" name="operation" value="generate">
+                                <input type="hidden" name="operation" value="confirm">
+                                <input type="hidden" name="brokers" value="@Seq()">
                                 @b3.submit('class -> "btn btn-primary btn-block"){ Generate Partition Assignments}
                             </fieldset>
                             }
@@ -179,6 +147,7 @@
                             @b3.form(routes.ReassignPartitions.handleOperation(cluster,topic)) {
                             <fieldset>
                                 <input type="hidden" name="operation" value="run">
+                                <input type="hidden" name="brokers" value="@Seq()">
                                 @b3.submit('class -> "btn btn-primary btn-block"){ Reassign Partitions }
                             </fieldset>
                             }
