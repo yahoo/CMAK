@@ -127,6 +127,17 @@
                 </table>
                 }
             </div>
+            <div class="panel panel-default">
+                <div class="panel-heading"><h4>Metrics</h4></div>
+                <table class="table">
+                    <tbody>
+                        <tr>
+                            <td>Messages in per sec (mean rate)</td>
+                            <td>@topicIdentity.metrics.map(_.messagesInPerSec.formatMeanRate)</td>
+                        <tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
         <div class="col-md-7">
             <div class="panel panel-default">
@@ -157,17 +168,6 @@
                             <a href="@routes.ReassignPartitions.confirmAssignment(cluster,topic)" class="submit-button btn btn-primary" role="button">Generate Partition Assignments</a>
                         </td>
                     </tr>
-                    </tbody>
-                </table>
-            </div>
-            <div class="panel panel-default">
-                <div class="panel-heading"><h4>Metrics</h4></div>
-                <table class="table">
-                    <tbody>
-                        <tr>
-                            <td>Messages in per sec (mean rate)</td>
-                            <td>@topicIdentity.metrics.map(_.messagesInPerSec.formatMeanRate)</td>
-                        <tr>
                     </tbody>
                 </table>
             </div>
