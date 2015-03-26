@@ -5,7 +5,7 @@
 
 package controllers
 
-import kafka.manager.ApiError
+import kafka.manager.{BrokerIdentity, ApiError}
 import models.navigation.Menus
 import models.{navigation, FollowLink}
 import models.form._
@@ -26,6 +26,7 @@ object ReassignPartitions extends Controller{
   private[this] val kafkaManager = KafkaManagerContext.getKafkaManger
 
   val validateOperation : Constraint[String] = Constraint("validate operation value") {
+    case "confirm" => Valid
     case "run" => Valid
     case "generate" => Valid
     case any: Any => Invalid(s"Invalid operation value: $any")
@@ -33,7 +34,8 @@ object ReassignPartitions extends Controller{
 
   val reassignPartitionsForm = Form(
     mapping(
-      "operation" -> nonEmptyText.verifying(validateOperation)
+      "operation" -> nonEmptyText.verifying(validateOperation),
+      "brokers" -> seq(number)
     )(ReassignPartitionOperation.apply)(ReassignPartitionOperation.unapply)
   )
 
@@ -47,8 +49,17 @@ object ReassignPartitions extends Controller{
     reassignPartitionsForm.bindFromRequest.fold(
       formWithErrors => Future.successful(BadRequest(views.html.topic.topicView(c,t,-\/(ApiError("Unknown operation!"))))),
       op => op match {
-        case GenerateAssignment =>
-          kafkaManager.generatePartitionAssignments(c,Set(t)).map { errorOrSuccess =>
+        case ConfirmAssignment =>
+          kafkaManager.getBrokerList(c).map { errorOrSuccess =>
+            Ok(views.html.topic.confirmAssignment(
+              views.html.navigation.clusterMenu(c,"Reassign Partitions","",navigation.Menus.clusterMenus(c)),
+              models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View",c,t,"Generate Partition Assignments"),
+              s"Generate Partition Assignments - $t",c,t,
+              errorOrSuccess, FollowLink("Try again.",routes.Application.topic(c,t).toString())
+            ))
+          }
+        case GenerateAssignment(brokers) =>
+          kafkaManager.generatePartitionAssignments(c,Set(t),brokers).map { errorOrSuccess =>
             Ok(views.html.common.resultsOfCommand(
               views.html.navigation.clusterMenu(c,"Reassign Partitions","",Menus.clusterMenus(c)),
               models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View",c,t,"Generate Partition Assignments"),

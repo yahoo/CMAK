@@ -176,7 +176,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           }
         } pipeTo sender()
 
-      case CMGeneratePartitionAssignments(topics) =>
+      case CMGeneratePartitionAssignments(topics, brokers) =>
         implicit val ec = longRunningExecutionContext
         val eventualBrokerList = withKafkaStateActor(KSGetBrokers)(identity[BrokerList])
         val eventualDescriptions = withKafkaStateActor(KSGetTopicDescriptions(topics))(identity[TopicDescriptions])
@@ -185,8 +185,12 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           tds <- eventualDescriptions
           tis = tds.descriptions.map(TopicIdentity.from(bl, _))
         } yield {
+          bl.list.map(_.id.toInt)
+          // check if any nonexistent broker got selected for reassignment
+          val nonExistentBrokers = getNonExistentBrokers(bl, brokers)
+          require(nonExistentBrokers.isEmpty, "Nonexistent broker(s) selected: [%s]".format(nonExistentBrokers.mkString(", ")))
           tis.map(ti => (ti.topic, AdminUtils.assignReplicasToBrokers(
-            bl.list.map(_.id.toInt),
+            brokers,
             ti.partitions,
             ti.replicationFactor)))
         }
@@ -242,6 +246,9 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
                 throw new IllegalArgumentException(s"No generated assignment found for topic ${ti.topic}")
               } { childData =>
                 val assignments = deserializeAssignments(childData.getData)
+                // check if any nonexistent broker got selected for reassignment
+                val nonExistentBrokers = getNonExistentBrokers(bl, assignments)
+                require(nonExistentBrokers.isEmpty, "The assignments contain nonexistent broker(s): [%s]".format(nonExistentBrokers.mkString(", ")))
                 TopicIdentity.reassignReplicas(ti, assignments)
               }
             }.flatten
@@ -285,5 +292,15 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         mutex.release()
       }
     }
+  }
+
+  def getNonExistentBrokers(availableBrokers: BrokerList, selectedBrokers: Seq[Int]): Seq[Int] = {
+    val availableBrokerIds: Set[Int] = availableBrokers.list.map(_.id.toInt).toSet
+    selectedBrokers filter { b: Int => !availableBrokerIds.contains(b) }
+  }
+
+  def getNonExistentBrokers(availableBrokers: BrokerList, assignments: Map[Int, Seq[Int]]): Seq[Int] = {
+    val brokersAssigned = assignments.flatMap({ case  (pt, bl) => bl }).toSet.toSeq
+    getNonExistentBrokers(availableBrokers, brokersAssigned)
   }
 }

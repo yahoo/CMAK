@@ -143,7 +143,7 @@ class TestKafkaManager extends CuratorAwareTest {
 
   test("generate partition assignments") {
     val topicList = getTopicList()
-    val future = kafkaManager.generatePartitionAssignments("dev",topicList.list.toSet)
+    val future = kafkaManager.generatePartitionAssignments("dev",topicList.list.toSet,Seq(0))
     val result = Await.result(future,duration)
     assert(result.isRight === true)
   }
