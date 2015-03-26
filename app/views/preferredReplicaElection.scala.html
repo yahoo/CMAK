@@ -3,6 +3,7 @@
 * See accompanying LICENSE file.
 *@
 @import scalaz.{\/}
+@import b3.vertical.fieldConstructor
 @(cluster:String,
 errorOrStatus: kafka.manager.ApiError \/ Option[kafka.manager.ActorModel.PreferredReplicaElection],
 operationForm: Form[models.form.PreferredReplicaElectionOperation]
@@ -46,7 +47,7 @@ operationForm: Form[models.form.PreferredReplicaElectionOperation]
             <tbody>
             @for(kafka.manager.utils.TopicAndPartition(topic,partNum) <- pre.topicAndPartition) {
             <tr>
-                <td><a href="@routes.Application.topic(cluster,topic)">@topic</a></td>
+                <td><a href="@routes.Topic.topic(cluster,topic)">@topic</a></td>
                 <td>@partNum</td>
             </tr>
             }

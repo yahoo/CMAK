@@ -53,7 +53,7 @@ class TestKafkaManager extends CuratorAwareTest {
   }
 
   test("add cluster") {
-    val future = kafkaManager.addCluster("dev","0.8.1.1",kafkaServerZkPath)
+    val future = kafkaManager.addCluster("dev","0.8.2.0",kafkaServerZkPath)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
     Thread.sleep(2000)
@@ -166,6 +166,10 @@ class TestKafkaManager extends CuratorAwareTest {
     val future = kafkaManager.deleteTopic("dev",createTopicName)
     val result = Await.result(future,duration)
     assert(result.isRight === true, result)
+    val future2 = kafkaManager.getTopicList("dev")
+    val result2 = Await.result(future2,duration)
+    assert(result2.isRight === true, result2)
+    assert(result2.toOption.get.deleteSet(createTopicName),"Topic not in delete set")
     Thread.sleep(2000)
   }
 
@@ -207,7 +211,7 @@ class TestKafkaManager extends CuratorAwareTest {
   }
 
   test("update cluster version") {
-    val future = kafkaManager.updateCluster("dev","0.8.2-beta",testServer.getConnectString)
+    val future = kafkaManager.updateCluster("dev","0.8.1.1",testServer.getConnectString)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
 
@@ -215,7 +219,15 @@ class TestKafkaManager extends CuratorAwareTest {
     val result2 = Await.result(future2,duration)
     assert(result2.isRight === true)
     assert(result2.toOption.get.pending.nonEmpty === true)
-    Thread.sleep(3000)
+    Thread.sleep(5000)
+  }
+
+  test("delete topic not supported prior to 0.8.2.0") {
+    val future = kafkaManager.deleteTopic("dev",createTopicName)
+    val result = Await.result(future,duration)
+    assert(result.isLeft === true, result)
+    assert(result.swap.toOption.get.msg.contains("not supported"))
+    Thread.sleep(2000)
   }
 
   test("delete cluster") {

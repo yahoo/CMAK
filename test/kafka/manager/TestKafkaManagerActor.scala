@@ -106,7 +106,7 @@ class TestKafkaManagerActor extends CuratorAwareTest {
   }
 
   test("update cluster version") {
-    val cc2 = ClusterConfig("dev","0.8.2-beta",kafkaServerZkPath)
+    val cc2 = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath)
     withKafkaManagerActor(KMUpdateCluster(cc2)) { result: KMCommandResult =>
       result.result.get
       Thread.sleep(3000)
@@ -133,7 +133,7 @@ class TestKafkaManagerActor extends CuratorAwareTest {
       println(result)
       result.msg.contains("dev")
     }
-    val cc2 = ClusterConfig("dev","0.8.2-beta",kafkaServerZkPath)
+    val cc2 = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath)
     withKafkaManagerActor(KMAddCluster(cc2)) { result: KMCommandResult =>
       result.result.get
       Thread.sleep(1000)

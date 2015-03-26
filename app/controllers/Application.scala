@@ -28,21 +28,9 @@ object Application extends Controller {
     }
   }
 
-  def topics(c: String) = Action.async {
-    kafkaManager.getTopicList(c).map { errorOrTopicList =>
-      Ok(views.html.topic.topicList(c,errorOrTopicList))
-    }
-  }
-
   def brokers(c: String) = Action.async {
     kafkaManager.getBrokerList(c).map { errorOrBrokerList =>
       Ok(views.html.broker.brokerList(c,errorOrBrokerList))
-    }
-  }
-
-  def topic(c: String, t: String) = Action.async {
-    kafkaManager.getTopicIdentity(c,t).map { errorOrTopicIdentity =>
-      Ok(views.html.topic.topicView(c,t,errorOrTopicIdentity))
     }
   }
 

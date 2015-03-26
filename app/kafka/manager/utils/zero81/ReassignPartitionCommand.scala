@@ -15,9 +15,10 @@
  * limitations under the License.
  */
 
-package kafka.manager.utils
+package kafka.manager.utils.zero81
 
-import kafka.manager.{TopicPartitionIdentity, TopicIdentity}
+import kafka.manager.utils._
+import kafka.manager.{TopicIdentity, TopicPartitionIdentity}
 import org.apache.curator.framework.CuratorFramework
 import org.apache.zookeeper.KeeperException.NodeExistsException
 import org.slf4j.LoggerFactory
@@ -28,38 +29,45 @@ import scala.util.Try
  * Borrowed from kafka 0.8.1.1, adapted to use curator framework
  * https://git-wip-us.apache.org/repos/asf?p=kafka.git;a=blob;f=core/src/main/scala/kafka/admin/ReassignPartitionsCommand.scala
  */
-object ReassignPartitionCommand {
+import kafka.manager.utils.zero81.ReassignPartitionErrors._
 
-  import ReassignPartitionErrors._
+class ReassignPartitionCommand(adminUtils: AdminUtils) {
+
 
   private[this] val logger = LoggerFactory.getLogger(this.getClass)
 
-  def generateAssignment(brokerList: Seq[Int], currentTopicIdentity : TopicIdentity) : Try[TopicIdentity] = {
+  def generateAssignment(brokerList: Seq[Int], currentTopicIdentity: TopicIdentity): Try[TopicIdentity] = {
     Try {
-      val assignedReplicas = AdminUtils.assignReplicasToBrokers(
+      val assignedReplicas = adminUtils.assignReplicasToBrokers(
         brokerList,
         currentTopicIdentity.partitions,
         currentTopicIdentity.replicationFactor)
-      val newTpi : Map[Int, TopicPartitionIdentity] = currentTopicIdentity.partitionsIdentity.map { case (part, tpi) =>
+      val newTpi: Map[Int, TopicPartitionIdentity] = currentTopicIdentity.partitionsIdentity.map { case (part, tpi) =>
         val newReplicaSet = assignedReplicas.get(part)
         checkCondition(newReplicaSet.isDefined, MissingReplicaSetForPartition(part))
-        (part,tpi.copy(replicas = newReplicaSet.get.toSet))
+        (part, tpi.copy(replicas = newReplicaSet.get.toSet))
       }
       logger.info(s"Generated topic replica assignment topic=${currentTopicIdentity.topic}, $newTpi")
-      TopicIdentity(currentTopicIdentity.topic,currentTopicIdentity.partitions,newTpi,currentTopicIdentity.numBrokers)
+      TopicIdentity(
+        currentTopicIdentity.topic,
+        currentTopicIdentity.partitions,
+        newTpi,
+        currentTopicIdentity.numBrokers,
+        currentTopicIdentity.config, 
+        currentTopicIdentity.deleteSupported)
     }
   }
 
-  def validateAssignment(current: TopicIdentity, generated: TopicIdentity) : Unit = {
+  def validateAssignment(current: TopicIdentity, generated: TopicIdentity): Unit = {
     //perform validation
 
     checkCondition(generated.partitionsIdentity.nonEmpty, ReassignmentDataEmptyForTopic(current.topic))
-    checkCondition(current.partitions == generated.partitions, PartitionsOutOfSync(current.partitions,generated.partitions))
+    checkCondition(current.partitions == generated.partitions, PartitionsOutOfSync(current.partitions, generated.partitions))
     checkCondition(current.replicationFactor == generated.replicationFactor, ReplicationOutOfSync(current.replicationFactor, generated.replicationFactor))
   }
 
   def getValidAssignments(currentTopicIdentity: Map[String, TopicIdentity],
-                          generatedTopicIdentity: Map[String, TopicIdentity]) : Try[Map[TopicAndPartition, Seq[Int]]] = {
+                          generatedTopicIdentity: Map[String, TopicIdentity]): Try[Map[TopicAndPartition, Seq[Int]]] = {
     Try {
       currentTopicIdentity.flatMap { case (topic, current) =>
         generatedTopicIdentity.get(topic).fold {
@@ -84,7 +92,7 @@ object ReassignPartitionCommand {
 
   def executeAssignment(curator: CuratorFramework,
                         currentTopicIdentity: Map[String, TopicIdentity],
-                        generatedTopicIdentity: Map[String, TopicIdentity]) : Try[Unit] = {
+                        generatedTopicIdentity: Map[String, TopicIdentity]): Try[Unit] = {
     getValidAssignments(currentTopicIdentity, generatedTopicIdentity).flatMap {
       validAssignments =>
         Try {
@@ -93,7 +101,7 @@ object ReassignPartitionCommand {
           try {
             logger.info(s"Creating reassign partitions path ${ZkUtils.ReassignPartitionsPath} : $jsonReassignmentData")
             //validate parsing of generated json
-            parsePartitionReassignmentZkData(jsonReassignmentData)
+            ReassignPartitionCommand.parsePartitionReassignmentZkData(jsonReassignmentData)
             ZkUtils.createPersistentPath(curator, ZkUtils.ReassignPartitionsPath, jsonReassignmentData)
           } catch {
             case ze: NodeExistsException =>
@@ -104,6 +112,10 @@ object ReassignPartitionCommand {
         }
     }
   }
+
+}
+  
+object ReassignPartitionCommand {
 
   def parsePartitionReassignmentZkData(json : String) : Map[TopicAndPartition, Seq[Int]] = {
     import org.json4s.JsonAST._

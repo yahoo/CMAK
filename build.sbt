@@ -5,7 +5,7 @@
 name := """kafka-manager"""
 
 /* For packaging purposes, -SNAPSHOT MUST contain a digit */
-version := "1.0-SNAPSHOT1"
+version := "1.1"
 
 scalaVersion := "2.11.5"
 
@@ -30,8 +30,8 @@ libraryDependencies ++= Seq(
   "org.json4s" %% "json4s-jackson" % "3.2.11",
   "org.json4s" %% "json4s-scalaz" % "3.2.11",
   "org.slf4j" % "log4j-over-slf4j" % "1.7.7",
-  "com.adrianhurt" %% "play-bootstrap3" % "0.1.1",
-  "org.apache.kafka" %% "kafka" % "0.8.2-beta" % "test",
+  "com.adrianhurt" %% "play-bootstrap3" % "0.4",
+  "org.apache.kafka" %% "kafka" % "0.8.2.0" % "test",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "org.apache.curator" % "curator-test" % "2.7.0" % "test" force()
 )

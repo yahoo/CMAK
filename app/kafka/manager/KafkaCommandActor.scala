@@ -9,12 +9,13 @@ import java.util.concurrent.{LinkedBlockingQueue, TimeUnit, ThreadPoolExecutor}
 
 import akka.pattern._
 import akka.util.Timeout
+import kafka.manager.utils.zero81.{ReassignPartitionCommand, PreferredReplicaLeaderElectionCommand}
 import org.apache.curator.framework.CuratorFramework
-import kafka.manager.utils.{ZkUtils, ReassignPartitionCommand, PreferredReplicaLeaderElectionCommand, AdminUtils}
+import kafka.manager.utils.{AdminUtils, ZkUtils}
 
 import scala.concurrent.{Future, ExecutionContext}
 import scala.concurrent.duration._
-import scala.util.Try
+import scala.util.{Failure, Try}
 
 /**
  * @author hiral
@@ -25,14 +26,19 @@ import ActorModel._
 case class KafkaCommandActorConfig(curator: CuratorFramework,
                                    threadPoolSize: Int = 2,
                                    maxQueueSize: Int = 100,
-                                   askTimeoutMillis: Long = 400)
+                                   askTimeoutMillis: Long = 400, 
+                                   version: KafkaVersion)
 class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extends BaseCommandActor {
 
-  val longRunningExecutor = new ThreadPoolExecutor(
+  private[this] val longRunningExecutor = new ThreadPoolExecutor(
     kafkaCommandActorConfig.threadPoolSize, kafkaCommandActorConfig.threadPoolSize,0L,TimeUnit.MILLISECONDS,new LinkedBlockingQueue[Runnable](kafkaCommandActorConfig.maxQueueSize))
-  val longRunningExecutionContext = ExecutionContext.fromExecutor(longRunningExecutor)
+  private[this] val longRunningExecutionContext = ExecutionContext.fromExecutor(longRunningExecutor)
 
-  val askTimeout: Timeout = kafkaCommandActorConfig.askTimeoutMillis.milliseconds
+  private[this] val askTimeout: Timeout = kafkaCommandActorConfig.askTimeoutMillis.milliseconds
+
+  private[this] val adminUtils = new AdminUtils(kafkaCommandActorConfig.version)
+
+  private[this] val reassignPartitionCommand = new ReassignPartitionCommand(adminUtils)
 
   @scala.throws[Exception](classOf[Exception])
   override def preStart() = {
@@ -72,20 +78,26 @@ class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extend
     implicit val ec = longRunningExecutionContext
     request match {
       case KCDeleteTopic(topic) =>
-        longRunning {
-          Future {
-            KCCommandResult(Try {
-              //AdminUtils.deleteTopic(kafkaCommandActorConfig.curator, topic) //this should work in 0.8.2
-              //this is hack in 0.8.1.1
-              kafkaCommandActorConfig.curator.delete().deletingChildrenIfNeeded().forPath(ZkUtils.getTopicPath(topic))
-            })
-          }
+        kafkaCommandActorConfig.version match {
+          case Kafka_0_8_1_1 =>
+            val result : KCCommandResult = KCCommandResult(Failure(new UnsupportedOperationException(
+              s"Delete topic not supported for kafka version ${kafkaCommandActorConfig.version}")))
+            sender ! result
+          case Kafka_0_8_2_0 =>
+            longRunning {
+              Future {
+                KCCommandResult(Try {
+                  adminUtils.deleteTopic(kafkaCommandActorConfig.curator, topic) //this should work in 0.8.2
+                  kafkaCommandActorConfig.curator.delete().deletingChildrenIfNeeded().forPath(ZkUtils.getTopicPath(topic))
+                })
+              }
+            }
         }
       case KCCreateTopic(topic, brokers, partitions, replicationFactor, config) =>
         longRunning {
           Future {
             KCCommandResult(Try {
-              AdminUtils.createTopic(kafkaCommandActorConfig.curator, brokers, topic, partitions, replicationFactor, config)
+              adminUtils.createTopic(kafkaCommandActorConfig.curator, brokers, topic, partitions, replicationFactor, config)
             })
           }
         }
@@ -105,7 +117,7 @@ class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extend
           log.info("Running reassign partition from {} to {}", current, generated)
           Future {
             KCCommandResult(
-              ReassignPartitionCommand.executeAssignment(kafkaCommandActorConfig.curator, current, generated)
+              reassignPartitionCommand.executeAssignment(kafkaCommandActorConfig.curator, current, generated)
             )
           }
         }

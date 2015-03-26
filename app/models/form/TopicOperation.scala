@@ -11,6 +11,10 @@ package models.form
 
 sealed trait TopicOperation
 
-case class CreateTopic(topic: String, partitions: Int, replication: Int) extends TopicOperation
+case class TConfig(name: String, value: Option[String])
+
+case class CreateTopic(topic: String, partitions: Int, replication: Int, configs: List[TConfig]) extends TopicOperation
 case class DeleteTopic(topic: String) extends TopicOperation
-case class AlterTopic(topic: String, partitions: Int)
+case class AlterTopic(topic: String, partitions: Int) extends TopicOperation
+case class UnknownTO(op: String) extends TopicOperation
+

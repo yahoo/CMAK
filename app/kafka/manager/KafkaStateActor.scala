@@ -5,11 +5,12 @@
 
 package kafka.manager
 
+import kafka.manager.utils.zero81.{ReassignPartitionCommand, PreferredReplicaLeaderElectionCommand}
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.cache._
 import org.apache.curator.framework.CuratorFramework
 import org.joda.time.{DateTimeZone, DateTime}
-import kafka.manager.utils.{ReassignPartitionCommand, TopicAndPartition, PreferredReplicaLeaderElectionCommand, ZkUtils}
+import kafka.manager.utils.{TopicAndPartition, ZkUtils}
 
 import scala.collection.mutable
 import scala.util.{Success, Failure, Try}
@@ -20,7 +21,7 @@ import scala.util.{Success, Failure, Try}
 import ActorModel._
 import kafka.manager.utils._
 import scala.collection.JavaConverters._
-class KafkaStateActor(curator: CuratorFramework) extends BaseQueryCommandActor {
+class KafkaStateActor(curator: CuratorFramework, deleteSupported: Boolean) extends BaseQueryCommandActor {
 
   // e.g. /brokers/topics/analytics_content/partitions/0/state
   private[this] val topicsTreeCache = new TreeCache(curator,ZkUtils.BrokerTopicsPath)
@@ -30,6 +31,8 @@ class KafkaStateActor(curator: CuratorFramework) extends BaseQueryCommandActor {
   private[this] val brokersPathCache = new PathChildrenCache(curator,ZkUtils.BrokerIdsPath,true)
 
   private[this] val adminPathCache = new PathChildrenCache(curator,ZkUtils.AdminPath,true)
+  
+  private[this] val deleteTopicsPathCache = new PathChildrenCache(curator, ZkUtils.DeleteTopicsPath,true)
 
   @volatile
   private[this] var topicsTreeCacheLastUpdateMillis : Long = System.currentTimeMillis()
@@ -116,6 +119,8 @@ class KafkaStateActor(curator: CuratorFramework) extends BaseQueryCommandActor {
     brokersPathCache.start(StartMode.BUILD_INITIAL_CACHE)
     log.info("Starting admin path cache...")
     adminPathCache.start(StartMode.BUILD_INITIAL_CACHE)
+    log.info("Starting delete topics path cache...")
+    deleteTopicsPathCache.start(StartMode.BUILD_INITIAL_CACHE)
 
     log.info("Adding topics tree cache listener...")
     topicsTreeCache.getListenable.addListener(topicsTreeCacheListener)
@@ -140,6 +145,10 @@ class KafkaStateActor(curator: CuratorFramework) extends BaseQueryCommandActor {
     log.info("Removing topics tree cache listener...")
     Try(topicsTreeCache.getListenable.removeListener(topicsTreeCacheListener))
 
+    log.info("Shutting down delete topics path cache...")
+    Try(deleteTopicsPathCache.close())
+    log.info("Shutting down admin path cache...")
+    Try(adminPathCache.close())
     log.info("Shutting down brokers path cache...")
     Try(brokersPathCache.close())
     log.info("Shutting down topics config path cache...")
@@ -163,7 +172,8 @@ class KafkaStateActor(curator: CuratorFramework) extends BaseQueryCommandActor {
         val statePath = s"$partitionsPath/$part/state"
         Option(topicsTreeCache.getCurrentData(statePath)).map(cd => (part, asString(cd.getData)))
       }
-    } yield TopicDescription(topic, description, Some(states))
+      config = getTopicConfigString(topic)
+    } yield TopicDescription(topic, description, Some(states),config, deleteSupported)
   }
 
   override def processActorResponse(response: ActorResponse): Unit = {
@@ -171,22 +181,36 @@ class KafkaStateActor(curator: CuratorFramework) extends BaseQueryCommandActor {
       case any: Any => log.warning("Received unknown message: {}", any)
     }
   }
+  
+  private[this] def getTopicConfigString(topic: String) : Option[String] = {
+    val data: mutable.Buffer[ChildData] = topicsConfigPathCache.getCurrentData.asScala
+    val result: Option[ChildData] = data.find(p => p.getPath.endsWith(topic))
+    result.map(cd => asString(cd.getData))
+  }
 
   override def processQueryRequest(request: QueryRequest): Unit = {
     request match {
       case KSGetTopics =>
+        val deleteSet: Set[String] = {
+          if(deleteSupported) {
+            val deleteTopicsData: mutable.Buffer[ChildData] = deleteTopicsPathCache.getCurrentData.asScala
+            deleteTopicsData.map { cd =>
+              nodeFromPath(cd.getPath)
+            }.toSet
+          } else {
+            Set.empty
+          }
+        }
         withTopicsTreeCache { cache =>
           cache.getCurrentChildren(ZkUtils.BrokerTopicsPath)
         }.fold {
-          sender ! TopicList(IndexedSeq.empty)
+          sender ! TopicList(IndexedSeq.empty, deleteSet)
         } { data: java.util.Map[String, ChildData] =>
-          sender ! TopicList(data.asScala.map(kv => kv._1).toIndexedSeq)
+          sender ! TopicList(data.asScala.map(kv => kv._1).toIndexedSeq, deleteSet)
         }
 
       case KSGetTopicConfig(topic) =>
-        val data: mutable.Buffer[ChildData] = topicsConfigPathCache.getCurrentData.asScala
-        val result: Option[ChildData] = data.find(p => p.getPath.endsWith(topic))
-        sender ! TopicConfig(topic, result.map(cd => asString(cd.getData)))
+        sender ! TopicConfig(topic, getTopicConfigString(topic))
 
       case KSGetTopicDescription(topic) =>
         sender ! getTopicDescription(topic)

@@ -10,6 +10,9 @@ It supports the following :
  - Run preferred replica election
  - Generate partition assignments (based on current state of cluster)
  - Run reassignment of partition (based on generated assignments)
+ - Create a topic with optional topic configs (0.8.1.1 has different configs than 0.8.2+)
+ - Delete topic (only supported on 0.8.2+ and remember set delete.topic.enable=true in broker config)
+ - Topic list now indicates topics marked for deletion (only supported on 0.8.2+)
 
 Cluster Management
 
@@ -32,7 +35,7 @@ Broker View
 Requirements
 ------------
 
-1. [Kafka 0.8.1.1 or 0.8.2-beta](http://kafka.apache.org/downloads.html)
+1. [Kafka 0.8.1.1 or 0.8.2.0](http://kafka.apache.org/downloads.html)
 2. [sbt 0.13.x](http://www.scala-sbt.org/download.html)
 3. Java 7+
 

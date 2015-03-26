@@ -98,10 +98,14 @@ object ActorModel {
   case object KSGetBrokers extends KSRequest
   case class KSGetBrokerState(id: String) extends  KSRequest
 
-  case class TopicList(list: IndexedSeq[String]) extends QueryResponse
+  case class TopicList(list: IndexedSeq[String], deleteSet: Set[String]) extends QueryResponse
   case class TopicConfig(topic: String, config: Option[String]) extends QueryResponse
 
-  case class TopicDescription(topic: String, description: String, partitionState: Option[Map[String, String]]) extends  QueryResponse
+  case class TopicDescription(topic: String, 
+                              description: String, 
+                              partitionState: Option[Map[String, String]], 
+                              config:Option[String], 
+                              deleteSupported: Boolean) extends  QueryResponse
   case class TopicDescriptions(descriptions: IndexedSeq[TopicDescription], lastUpdateMillis: Long) extends QueryResponse
 
   case class BrokerInfo(id: String, config: String)

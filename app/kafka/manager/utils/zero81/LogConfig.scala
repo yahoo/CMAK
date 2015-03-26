@@ -15,9 +15,11 @@
  * limitations under the License.
  */
 
-package kafka.manager.utils
+package kafka.manager.utils.zero81
 
 import java.util.Properties
+
+import kafka.manager.utils.TopicConfigs
 
 /**
  * Copied from kafka 0.8.1.1
@@ -39,7 +41,7 @@ case class LogConfig(segmentSize: Int = 1024*1024,
 
   def toProps: Properties = {
     val props = new Properties()
-    import LogConfig._
+    import kafka.manager.utils.zero81.LogConfig._
     props.put(SegmentBytesProp, segmentSize.toString)
     props.put(SegmentMsProp, segmentMs.toString)
     props.put(SegmentIndexBytesProp, maxIndexSize.toString)
@@ -57,7 +59,7 @@ case class LogConfig(segmentSize: Int = 1024*1024,
   }
 }
 
-object LogConfig {
+object LogConfig extends TopicConfigs {
   val SegmentBytesProp = "segment.bytes"
   val SegmentMsProp = "segment.ms"
   val SegmentIndexBytesProp = "segment.index.bytes"
@@ -85,6 +87,8 @@ object LogConfig {
     DeleteRetentionMsProp,
     MinCleanableDirtyRatioProp,
     CleanupPolicyProp)
+  
+  def configNames = ConfigNames
 
   /**
    * Parse the given properties instance into a LogConfig object

@@ -4,7 +4,7 @@
  */
 package kafka.manager.utils
 
-import kafka.manager.ClusterConfig
+import kafka.manager.{Kafka_0_8_1_1, ClusterConfig}
 import org.scalatest.{Matchers, FunSuite}
 
 /**
@@ -33,20 +33,29 @@ class TestClusterConfig extends FunSuite with Matchers {
   }
 
   test("serialize and deserialize") {
-    val cc = ClusterConfig("qa","0.8.2-beta","localhost:2181")
+    val cc = ClusterConfig("qa","0.8.2.0","localhost:2181")
     val serialize: String = ClusterConfig.serialize(cc)
     val deserialize = ClusterConfig.deserialize(serialize)
     assert(deserialize.isSuccess === true)
-    cc == deserialize.get
+    assert(cc == deserialize.get)
   }
 
   test("deserialize without version") {
-    val cc = ClusterConfig("qa","0.8.2-beta","localhost:2181")
+    val cc = ClusterConfig("qa","0.8.2.0","localhost:2181")
     val serialize: String = ClusterConfig.serialize(cc)
-    val noverison = serialize.replace(""","kafkaVersion":"0.8.2-beta"""","")
+    val noverison = serialize.replace(""","kafkaVersion":"0.8.2.0"""","")
     assert(!noverison.contains("kafkaVersion"))
     val deserialize = ClusterConfig.deserialize(noverison)
     assert(deserialize.isSuccess === true)
-    cc == deserialize.get
+    assert(cc.copy(version = Kafka_0_8_1_1) == deserialize.get)
+  }
+
+  test("deserialize from 0.8.2-beta as 0.8.2.0") {
+    val cc = ClusterConfig("qa","0.8.2-beta","localhost:2181")
+    val serialize: String = ClusterConfig.serialize(cc)
+    val noverison = serialize.replace(""","kafkaVersion":"0.8.2.0"""",""","kafkaVersion":"0.8.2-beta"""")
+    val deserialize = ClusterConfig.deserialize(noverison)
+    assert(deserialize.isSuccess === true)
+    assert(cc == deserialize.get)
   }
 }

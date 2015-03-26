@@ -1,0 +1,35 @@
+/**
+ * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+ * See accompanying LICENSE file.
+ */
+
+package kafka.manager.utils
+
+import java.util.Properties
+
+import kafka.manager.{Kafka_0_8_2_0, Kafka_0_8_1_1, KafkaVersion}
+
+trait TopicConfigs {
+  def configNames : Set[String]
+  def validate(props: Properties)
+}
+
+object TopicConfigs {
+  
+  val topicConfigsByVersion : Map[KafkaVersion, TopicConfigs] = Map(
+    Kafka_0_8_1_1 -> zero81.LogConfig, 
+    Kafka_0_8_2_0 -> zero82.LogConfig)
+
+  def configNames(version: KafkaVersion) : Set[String] = {
+    topicConfigsByVersion.get(version) match {
+      case Some(tc) => tc.configNames
+      case None => throw new IllegalArgumentException(s"Undefined topic configs for version : $version, cannot get config names")
+    }
+  }
+  def validate(version: KafkaVersion, props: Properties) : Unit = {
+    topicConfigsByVersion.get(version) match {
+      case Some(tc) => tc.validate(props)
+      case None => throw new IllegalArgumentException(s"Undefined topic configs for version : $version, cannot validate config")
+    }
+  }
+}
