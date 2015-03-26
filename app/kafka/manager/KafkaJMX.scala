@@ -84,15 +84,15 @@ case class RateMetric(count: Long,
   val UNIT = Array[Char]('k', 'm', 'b', 't')
 
   def formatFifteenMinuteRate = {
-    rateFormat(meanRate, 0)
+    rateFormat(fifteenMinuteRate, 0)
   }
 
   def formatFiveMinuteRate = {
-    rateFormat(meanRate, 0)
+    rateFormat(fiveMinuteRate, 0)
   }
 
   def formatOneMinuteRate = {
-    rateFormat(meanRate, 0)
+    rateFormat(oneMinuteRate, 0)
   }
 
   def formatMeanRate = {
