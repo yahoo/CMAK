@@ -10,7 +10,7 @@ import java.util.Properties
 import kafka.manager.utils.TopicConfigs
 import kafka.manager.{ApiError, Kafka_0_8_2_0, Kafka_0_8_1_1}
 import models.FollowLink
-import models.form.{DeleteTopic, TConfig, CreateTopic}
+import models.form.{GenerateAssignment, DeleteTopic, TConfig, CreateTopic}
 import models.navigation.Menus
 import play.api.data.Form
 import play.api.data.Forms._

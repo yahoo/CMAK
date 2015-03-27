@@ -10,7 +10,7 @@ import kafka.manager.ActorModel.BrokerInfo
 /**
  * @author hiral
  */
-case class BrokerIdentity(id: String, host: String, port: Int)
+case class BrokerIdentity(id: Int, host: String, port: Int)
 
 object BrokerIdentity {
   import play.api.libs.json._

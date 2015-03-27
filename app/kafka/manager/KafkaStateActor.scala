@@ -57,7 +57,7 @@ class KafkaStateActor(curator: CuratorFramework, deleteSupported: Boolean) exten
 
   private[this] val adminPathCacheListener = new PathChildrenCacheListener {
     override def childEvent(client: CuratorFramework, event: PathChildrenCacheEvent): Unit = {
-      log.debug(s"Got event : ${event.getType} path=${Option(event.getData).map(_.getPath)}")
+      log.info(s"Got event : ${event.getType} path=${Option(event.getData).map(_.getPath)}")
       event.getType match {
         case PathChildrenCacheEvent.Type.INITIALIZED =>
           event.getInitialData.asScala.foreach { cd: ChildData =>
@@ -76,7 +76,7 @@ class KafkaStateActor(curator: CuratorFramework, deleteSupported: Boolean) exten
     }
 
     private[this] def updatePreferredLeaderElection(cd: ChildData): Unit = {
-      if(cd != null && cd.getPath == ZkUtils.PreferredReplicaLeaderElectionPath) {
+      if(cd != null && cd.getPath.endsWith(ZkUtils.PreferredReplicaLeaderElectionPath)) {
         Try {
           self ! KSUpdatePreferredLeaderElection(cd.getStat.getMtime, cd.getData)
         }
@@ -84,7 +84,7 @@ class KafkaStateActor(curator: CuratorFramework, deleteSupported: Boolean) exten
     }
 
     private[this] def updateReassignPartition(cd: ChildData): Unit = {
-      if(cd != null && cd.getPath == ZkUtils.ReassignPartitionsPath) {
+      if(cd != null && cd.getPath.endsWith(ZkUtils.ReassignPartitionsPath)) {
         Try {
           self ! KSUpdateReassignPartition(cd.getStat.getMtime, cd.getData)
         }
@@ -92,7 +92,7 @@ class KafkaStateActor(curator: CuratorFramework, deleteSupported: Boolean) exten
     }
 
     private[this] def endPreferredLeaderElection(cd: ChildData): Unit = {
-      if(cd != null && cd.getPath == ZkUtils.PreferredReplicaLeaderElectionPath) {
+      if(cd != null && cd.getPath.endsWith(ZkUtils.PreferredReplicaLeaderElectionPath)) {
         Try {
           self ! KSEndPreferredLeaderElection(cd.getStat.getMtime)
         }
@@ -100,7 +100,7 @@ class KafkaStateActor(curator: CuratorFramework, deleteSupported: Boolean) exten
     }
 
     private[this] def endReassignPartition(cd: ChildData): Unit = {
-      if(cd != null && cd.getPath == ZkUtils.ReassignPartitionsPath) {
+      if(cd != null && cd.getPath.endsWith(ZkUtils.ReassignPartitionsPath)) {
         Try {
           self ! KSEndReassignPartition(cd.getStat.getMtime)
         }
@@ -237,8 +237,8 @@ class KafkaStateActor(curator: CuratorFramework, deleteSupported: Boolean) exten
       case KSGetBrokers =>
         val data: mutable.Buffer[ChildData] = brokersPathCache.getCurrentData.asScala
         val result: IndexedSeq[BrokerInfo] = data.map { cd =>
-          BrokerInfo(nodeFromPath(cd.getPath), asString(cd.getData))
-        }.toIndexedSeq.sortBy(_.id.toInt)
+          BrokerInfo(nodeFromPath(cd.getPath).toInt, asString(cd.getData))
+        }.toIndexedSeq.sortBy(_.id)
         sender ! BrokerList(result)
 
       case KSGetPreferredLeaderElection =>
@@ -263,7 +263,7 @@ class KafkaStateActor(curator: CuratorFramework, deleteSupported: Boolean) exten
             existing =>
               existing.endTime.fold {
                 //update without end? Odd, copy existing
-                preferredLeaderElection = Some(existing.copy(topicAndPartition = s))
+                preferredLeaderElection = Some(existing.copy(topicAndPartition = existing.topicAndPartition ++ s))
               } { _ =>
                 //new op started
                 preferredLeaderElection = Some(PreferredReplicaElection(getDateTime(millis), s, None))
@@ -280,7 +280,7 @@ class KafkaStateActor(curator: CuratorFramework, deleteSupported: Boolean) exten
             existing =>
               existing.endTime.fold {
                 //update without end? Odd, copy existing
-                reassignPartitions = Some(existing.copy(partitionsToBeReassigned = m))
+                reassignPartitions = Some(existing.copy(partitionsToBeReassigned = existing.partitionsToBeReassigned ++ m))
               } { _ =>
                 //new op started
                 reassignPartitions = Some(ReassignPartitions(getDateTime(millis),m, None))
