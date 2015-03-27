@@ -38,7 +38,7 @@ object ReassignPartitions extends Controller{
     )(ReassignPartitionOperation.apply)(ReassignPartitionOperation.unapply)
   )
   
-  val generatePartitionsForm = Form(
+  val generateAssignmentsForm = Form(
     mapping(
       "brokers" -> seq {
         mapping(
@@ -59,16 +59,16 @@ object ReassignPartitions extends Controller{
   def confirmAssignment(c: String, t: String) = Action.async {
     kafkaManager.getBrokerList(c).map { errorOrSuccess =>
       Ok(views.html.topic.confirmAssignment(
-        c, t, errorOrSuccess.map(l => generatePartitionsForm.fill(GenerateAssignment(l.map(BrokerSelect.from))))
+        c, t, errorOrSuccess.map(l => generateAssignmentsForm.fill(GenerateAssignment(l.map(BrokerSelect.from))))
       ))
     }
   }
   
   def handleGenerateAssignment(c: String, t: String) = Action.async { implicit request =>
-    generatePartitionsForm.bindFromRequest.fold(
+    generateAssignmentsForm.bindFromRequest.fold(
       errors => Future.successful( Ok(views.html.topic.confirmAssignment( c, t, \/-(errors) ))),
-      gp => {
-        kafkaManager.generatePartitionAssignments(c, Set(t), gp.brokers.filter(_.selected).map(_.id)).map { errorOrSuccess =>
+      assignment => {
+        kafkaManager.generatePartitionAssignments(c, Set(t), assignment.brokers.filter(_.selected).map(_.id)).map { errorOrSuccess =>
           Ok(views.html.common.resultsOfCommand(
             views.html.navigation.clusterMenu(c, "Reassign Partitions", "", Menus.clusterMenus(c)),
             models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View", c, t, "Generate Partition Assignments"),
