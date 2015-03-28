@@ -10,13 +10,13 @@ import kafka.manager.ActorModel.BrokerInfo
 /**
  * @author hiral
  */
-case class BrokerIdentity(id: Int, host: String, port: Int)
+case class BrokerIdentity(id: Int, host: String, port: Int, jmxPort: Int)
 
 object BrokerIdentity {
   import play.api.libs.json._
 
   implicit def from(info: BrokerInfo): BrokerIdentity = {
     val config = Json.parse(info.config)
-    BrokerIdentity(info.id, (config \ "host").as[String], (config \ "port").as[Int])
+    BrokerIdentity(info.id, (config \ "host").as[String], (config \ "port").as[Int], (config \ "jmx_port").as[Int])
   }
 }
