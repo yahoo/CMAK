@@ -6,11 +6,11 @@
 
             <table class="table">
                 <thead>
-                <tr><td>Id</td><td>Host</td><td>Port</td></tr>
+                <tr><td>Id</td><td>Host</td><td>Port</td><td>JMX Port</td></tr>
                 </thead>
                 <tbody>
                 @for(broker <- brokers) {
-                <tr><td><a href="@routes.Application.broker(cluster,broker.id.toInt)">@broker.id</a></td><td>@broker.host</td><td>@broker.port</td></tr>
+                <tr><td><a href="@routes.Application.broker(cluster,broker.id.toInt)">@broker.id</a></td><td>@broker.host</td><td>@broker.port</td><td>@broker.jmxPort</td></tr>
                 }
                 </tbody>
             </table>
