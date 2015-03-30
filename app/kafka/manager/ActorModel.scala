@@ -108,7 +108,7 @@ object ActorModel {
                               deleteSupported: Boolean) extends  QueryResponse
   case class TopicDescriptions(descriptions: IndexedSeq[TopicDescription], lastUpdateMillis: Long) extends QueryResponse
 
-  case class BrokerInfo(id: String, config: String)
+  case class BrokerInfo(id: Int, config: String)
   case class BrokerList(list: IndexedSeq[BrokerInfo]) extends QueryResponse
 
   case class PreferredReplicaElection(startTime: DateTime, topicAndPartition: Set[TopicAndPartition], endTime: Option[DateTime]) extends QueryResponse

@@ -5,7 +5,7 @@
 
 package controllers
 
-import kafka.manager.{BrokerIdentity, ApiError}
+import kafka.manager.ApiError
 import models.navigation.Menus
 import models.{navigation, FollowLink}
 import models.form._
@@ -15,7 +15,7 @@ import play.api.data.validation.{Valid, Invalid, Constraint}
 import play.api.mvc._
 
 import scala.concurrent.Future
-import scalaz.-\/
+import scalaz.{\/-, -\/}
 
 /**
  * @author hiral
@@ -34,9 +34,20 @@ object ReassignPartitions extends Controller{
 
   val reassignPartitionsForm = Form(
     mapping(
-      "operation" -> nonEmptyText.verifying(validateOperation),
-      "brokers" -> seq(number)
+      "operation" -> nonEmptyText.verifying(validateOperation)
     )(ReassignPartitionOperation.apply)(ReassignPartitionOperation.unapply)
+  )
+  
+  val generateAssignmentsForm = Form(
+    mapping(
+      "brokers" -> seq {
+        mapping(
+          "id" -> number(min = 0),
+          "host" -> nonEmptyText,
+          "selected" -> boolean
+        )(BrokerSelect.apply)(BrokerSelect.unapply)
+      }
+    )(GenerateAssignment.apply)(GenerateAssignment.unapply)
   )
 
   def reassignPartitions(c: String) = Action.async {
@@ -44,31 +55,38 @@ object ReassignPartitions extends Controller{
       Ok(views.html.reassignPartitions(c,errorOrStatus))
     }
   }
+  
+  def confirmAssignment(c: String, t: String) = Action.async {
+    kafkaManager.getBrokerList(c).map { errorOrSuccess =>
+      Ok(views.html.topic.confirmAssignment(
+        c, t, errorOrSuccess.map(l => generateAssignmentsForm.fill(GenerateAssignment(l.map(BrokerSelect.from))))
+      ))
+    }
+  }
+  
+  def handleGenerateAssignment(c: String, t: String) = Action.async { implicit request =>
+    generateAssignmentsForm.bindFromRequest.fold(
+      errors => Future.successful( Ok(views.html.topic.confirmAssignment( c, t, \/-(errors) ))),
+      assignment => {
+        kafkaManager.generatePartitionAssignments(c, Set(t), assignment.brokers.filter(_.selected).map(_.id)).map { errorOrSuccess =>
+          Ok(views.html.common.resultsOfCommand(
+            views.html.navigation.clusterMenu(c, "Reassign Partitions", "", Menus.clusterMenus(c)),
+            models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View", c, t, "Generate Partition Assignments"),
+            errorOrSuccess,
+            s"Generate Partition Assignments - $t",
+            FollowLink("Go to topic view.", routes.Topic.topic(c, t).toString()),
+            FollowLink("Try again.", routes.Topic.topic(c, t).toString())
+          ))
+
+        }
+      }
+    )
+  }
 
   def handleOperation(c: String, t: String) = Action.async { implicit request =>
     reassignPartitionsForm.bindFromRequest.fold(
       formWithErrors => Future.successful(BadRequest(views.html.topic.topicView(c,t,-\/(ApiError("Unknown operation!"))))),
       op => op match {
-        case ConfirmAssignment =>
-          kafkaManager.getBrokerList(c).map { errorOrSuccess =>
-            Ok(views.html.topic.confirmAssignment(
-              views.html.navigation.clusterMenu(c,"Reassign Partitions","",navigation.Menus.clusterMenus(c)),
-              models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View",c,t,"Generate Partition Assignments"),
-              s"Generate Partition Assignments - $t",c,t,
-              errorOrSuccess, FollowLink("Try again.",routes.Topic.topic(c,t).toString())
-            ))
-          }
-        case GenerateAssignment(brokers) =>
-          kafkaManager.generatePartitionAssignments(c,Set(t),brokers).map { errorOrSuccess =>
-            Ok(views.html.common.resultsOfCommand(
-              views.html.navigation.clusterMenu(c,"Reassign Partitions","",Menus.clusterMenus(c)),
-              models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View",c,t,"Generate Partition Assignments"),
-              errorOrSuccess,
-              s"Generate Partition Assignments - $t",
-              FollowLink("Go to topic view.",routes.Topic.topic(c,t).toString()),
-              FollowLink("Try again.",routes.Topic.topic(c,t).toString())
-            ))
-          }
         case RunAssignment =>
           kafkaManager.runReassignPartitions(c,Set(t)).map { errorOrSuccess =>
             Ok(views.html.common.resultsOfCommand(

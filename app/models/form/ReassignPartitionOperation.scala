@@ -5,32 +5,36 @@
 
 package models.form
 
+import kafka.manager.BrokerIdentity
+
 /**
  * @author hiral
  */
 sealed trait ReassignPartitionOperation
 
-case object ConfirmAssignment extends ReassignPartitionOperation
-case class GenerateAssignment(brokers: Seq[Int]) extends ReassignPartitionOperation
+case class BrokerSelect(id: Int, host: String, selected: Boolean)
+object BrokerSelect {
+  implicit def from(bi: BrokerIdentity) : BrokerSelect = {
+    BrokerSelect(bi.id,bi.host,true)
+  }
+}
+
+case class GenerateAssignment(brokers: Seq[BrokerSelect])
 case object RunAssignment extends ReassignPartitionOperation
 case class UnknownRPO(op: String) extends ReassignPartitionOperation
 
 object ReassignPartitionOperation {
-  def apply(s: String, brokers: Seq[Int]) : ReassignPartitionOperation = {
+  def apply(s: String) : ReassignPartitionOperation = {
     s match {
-      case "confirm" => ConfirmAssignment
-      case "generate" => GenerateAssignment(brokers)
       case "run" => RunAssignment
       case a => UnknownRPO(a)
     }
   }
 
-  def unapply(op: ReassignPartitionOperation) : Option[(String, Seq[Int])] = {
+  def unapply(op: ReassignPartitionOperation) : Option[String] = {
     op match {
-      case ConfirmAssignment => Some(("confirm", Nil))
-      case GenerateAssignment(brokers) => Some(("generate", brokers))
-      case RunAssignment => Some(("run", Nil))
-      case UnknownRPO(_) => Some(("unknown", Nil))
+      case RunAssignment => Option("run")
+      case UnknownRPO(_) => Option("unknown")
     }
   }
 }

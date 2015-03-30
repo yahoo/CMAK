@@ -103,10 +103,10 @@ class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extend
         }
       case KCPreferredReplicaLeaderElection(topicAndPartition) =>
         longRunning {
+          log.info("Running replica leader election : {}", topicAndPartition)
           Future {
             KCCommandResult(
               Try {
-                log.info("Running replica leader election : {}", topicAndPartition)
                 PreferredReplicaLeaderElectionCommand.writePreferredReplicaElectionData(kafkaCommandActorConfig.curator, topicAndPartition)
               }
             )

@@ -134,24 +134,6 @@
                 <table class="table">
                     <tbody>
                     <tr>
-                        <td>
-                            @b3.form(routes.ReassignPartitions.handleOperation(cluster,topic)) {
-                            <fieldset>
-                                <input type="hidden" name="operation" value="confirm">
-                                <input type="hidden" name="brokers" value="@Seq()">
-                                @b3.submit('class -> "btn btn-primary btn-block"){ Generate Partition Assignments}
-                            </fieldset>
-                            }
-                        </td>
-                        <td>
-                            @b3.form(routes.ReassignPartitions.handleOperation(cluster,topic)) {
-                            <fieldset>
-                                <input type="hidden" name="operation" value="run">
-                                <input type="hidden" name="brokers" value="@Seq()">
-                                @b3.submit('class -> "btn btn-primary btn-block"){ Reassign Partitions }
-                            </fieldset>
-                            }
-                        </td>
                         @if(topicIdentity.deleteSupported) {
                         <td>
                             @b3.form(routes.Topic.handleDeleteTopic(cluster, topic)) {
@@ -162,6 +144,18 @@
                             }
                         </td>
                         }
+                        <td>
+                            @b3.form(routes.ReassignPartitions.handleOperation(cluster,topic)) {
+                            <fieldset>
+                                <input type="hidden" name="operation" value="run">
+                                <input type="hidden" name="brokers" value="@Seq()">
+                                @b3.submit('class -> "btn btn-primary btn-block"){ Reassign Partitions }
+                            </fieldset>
+                            }
+                        </td>
+                        <td>
+                            <a href="@routes.ReassignPartitions.confirmAssignment(cluster,topic)" class="submit-button btn btn-primary" role="button">Generate Partition Assignments</a>
+                        </td>
                     </tr>
                     </tbody>
                 </table>
