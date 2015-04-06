@@ -242,8 +242,16 @@ class KafkaManager(akkaConfig: Config) {
 
   def getTopicMetrics(clusterName: String, topic: String) : TopicMetrics = {
     // TODO How to get the JMX host and port of the broker ?
-    val connect = KafkaJMX.connect("localhost", 9999)
-    if(connect.isLeft) {
+    KafkaJMX.connect("localhost", 9999).map {
+      mbsc =>
+        TopicMetrics(
+          KafkaMetrics.getBytesInPerSec(Some(topic))(mbsc),
+          KafkaMetrics.getBytesOutPerSec(Some(topic))(mbsc),
+          KafkaMetrics.getBytesRejectedPerSec(Some(topic))(mbsc),
+          KafkaMetrics.getFailedFetchRequestsPerSec(Some(topic))(mbsc),
+          KafkaMetrics.getFailedProduceRequestsPerSec(Some(topic))(mbsc),
+          KafkaMetrics.getMessagesInPerSec(Some(topic))(mbsc))
+    }.getOrElse {
       // Unable to connect to JMX server
       TopicMetrics(
         RateMetric(0,0,0,0,0),
@@ -252,15 +260,6 @@ class KafkaManager(akkaConfig: Config) {
         RateMetric(0,0,0,0,0),
         RateMetric(0,0,0,0,0),
         RateMetric(0,0,0,0,0))
-    } else {
-      val mbsc =  connect.right.get
-      TopicMetrics(
-        KafkaMetrics.getBytesInPerSec(Some(topic))(mbsc),
-        KafkaMetrics.getBytesOutPerSec(Some(topic))(mbsc),
-        KafkaMetrics.getBytesRejectedPerSec(Some(topic))(mbsc),
-        KafkaMetrics.getFailedFetchRequestsPerSec(Some(topic))(mbsc),
-        KafkaMetrics.getFailedProduceRequestsPerSec(Some(topic))(mbsc),
-        KafkaMetrics.getMessagesInPerSec(Some(topic))(mbsc))
     }
   }
 
