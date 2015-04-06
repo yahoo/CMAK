@@ -217,7 +217,6 @@ class KafkaManager(akkaConfig: Config) {
         }
       })
     }
-
   }
 
   def getTopicIdentity(clusterName: String, topic: String) : Future[ApiError \/ TopicIdentity] = {
@@ -231,35 +230,32 @@ class KafkaManager(akkaConfig: Config) {
         tdOption.fold {
           Future.successful[ApiError \/ TopicIdentity](-\/(ApiError(s"Topic not found $topic for cluster $clusterName")))
         } { td =>
-          tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, KSGetBrokers)) { brokerList: BrokerList =>
-            val metrics = getTopicMetrics(clusterName, topic)
-            TopicIdentity.from(brokerList, td, Some(metrics))
+          val futureBrokerList = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, KSGetBrokers))(identity[BrokerList])
+          futureBrokerList.flatMap[ApiError \/ TopicIdentity] { errOrBL =>
+            errOrBL.fold(
+            { err: ApiError =>
+              Future.successful(-\/[ApiError](err))
+            }, { brokerList: BrokerList =>
+              // TODO Retrieve metrics for all brokers
+              val brokerId = brokerList.list.head.id.toInt
+              getTopicMetrics(clusterName, brokerId, topic).map { errOrMetrics =>
+                errOrMetrics.fold(
+                { err: ApiError =>
+                  -\/[ApiError](err)
+                }, { metricsOption: Option[BrokerMetrics] =>
+                  \/-(TopicIdentity.from(brokerList, td, metricsOption))
+                })
+              }
+            })
           }
         }
       })
     }
   }
 
-  def getTopicMetrics(clusterName: String, topic: String) : TopicMetrics = {
-    // TODO How to get the JMX host and port of the broker ?
-    KafkaJMX.connect("localhost", 9999).map {
-      mbsc =>
-        TopicMetrics(
-          KafkaMetrics.getBytesInPerSec(Some(topic))(mbsc),
-          KafkaMetrics.getBytesOutPerSec(Some(topic))(mbsc),
-          KafkaMetrics.getBytesRejectedPerSec(Some(topic))(mbsc),
-          KafkaMetrics.getFailedFetchRequestsPerSec(Some(topic))(mbsc),
-          KafkaMetrics.getFailedProduceRequestsPerSec(Some(topic))(mbsc),
-          KafkaMetrics.getMessagesInPerSec(Some(topic))(mbsc))
-    }.getOrElse {
-      // Unable to connect to JMX server
-      TopicMetrics(
-        RateMetric(0,0,0,0,0),
-        RateMetric(0,0,0,0,0),
-        RateMetric(0,0,0,0,0),
-        RateMetric(0,0,0,0,0),
-        RateMetric(0,0,0,0,0),
-        RateMetric(0,0,0,0,0))
+  def getTopicMetrics(clusterName: String, brokerId: Int, topic: String) : Future[ApiError \/ Option[BrokerMetrics]] = {
+    tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName,BVGetTopicMetrics(brokerId, topic))) { brokerMetrics: Option[BrokerMetrics] =>
+      brokerMetrics
     }
   }
 

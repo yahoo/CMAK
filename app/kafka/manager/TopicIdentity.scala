@@ -38,7 +38,7 @@ case class TopicIdentity(topic:String,
                          configReadVersion: Int, 
                          config: List[(String,String)], 
                          deleteSupported: Boolean,
-                         metrics: Option[TopicMetrics] = None) {
+                         metrics: Option[BrokerMetrics] = None) {
 
   val replicationFactor : Int = partitionsIdentity.head._2.replicas.size
 
@@ -81,7 +81,7 @@ object TopicIdentity {
   
   lazy val logger = LoggerFactory.getLogger(this.getClass)
 
-  implicit def from(brokers: Int,td: TopicDescription, tm: Option[TopicMetrics]) : TopicIdentity = {
+  implicit def from(brokers: Int,td: TopicDescription, tm: Option[BrokerMetrics]) : TopicIdentity = {
     import play.api.libs.json._
     val descJson = Json.parse(td.description._2)
     val partMap = (descJson \ "partitions").as[Map[String,Seq[Int]]]
@@ -105,7 +105,7 @@ object TopicIdentity {
     TopicIdentity(td.topic,td.description._1,partMap.size,tpi,brokers,config._1,config._2.toList,td.deleteSupported, tm)
   }
 
-  implicit def from(bl: BrokerList,td: TopicDescription, tm: Option[TopicMetrics]) : TopicIdentity = {
+  implicit def from(bl: BrokerList,td: TopicDescription, tm: Option[BrokerMetrics]) : TopicIdentity = {
     from(bl.list.size, td, tm)
   }
 
@@ -133,11 +133,9 @@ object TopicIdentity {
   }
 }
 
-case class TopicMetrics(bytesInPerSec: RateMetric,
-                        bytesOutPerSec: RateMetric,
-                        bytesRejectedPerSec: RateMetric,
-                        failedFetchRequestsPerSec: RateMetric,
-                        failedProduceRequestsPerSec: RateMetric,
-                        messagesInPerSec: RateMetric) {
-}
-
+case class BrokerMetrics(bytesInPerSec: RateMetric,
+                         bytesOutPerSec: RateMetric,
+                         bytesRejectedPerSec: RateMetric,
+                         failedFetchRequestsPerSec: RateMetric,
+                         failedProduceRequestsPerSec: RateMetric,
+                         messagesInPerSec: RateMetric)

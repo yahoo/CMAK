@@ -18,32 +18,32 @@ object KafkaJMX {
 
 object KafkaMetrics {
 
-  def getBytesInPerSec(topicOption: Option[String] = None)(mbsc: MBeanServerConnection) = {
-    getBrokerTopicRateMetrics("BytesInPerSec", topicOption)(mbsc)
+  def getBytesInPerSec(mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
+    getBrokerTopicRateMetrics(mbsc, "BytesInPerSec", topicOption)
   }
 
-  def getBytesOutPerSec(topicOption: Option[String] = None)(mbsc: MBeanServerConnection) = {
-    getBrokerTopicRateMetrics("BytesOutPerSec", topicOption)(mbsc)
+  def getBytesOutPerSec(mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
+    getBrokerTopicRateMetrics(mbsc, "BytesOutPerSec", topicOption)
   }
 
-  def getBytesRejectedPerSec(topicOption: Option[String] = None)(mbsc: MBeanServerConnection) = {
-    getBrokerTopicRateMetrics("BytesRejectedPerSec", topicOption)(mbsc)
+  def getBytesRejectedPerSec(mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
+    getBrokerTopicRateMetrics(mbsc, "BytesRejectedPerSec", topicOption)
   }
 
-  def getFailedFetchRequestsPerSec(topicOption: Option[String] = None)(mbsc: MBeanServerConnection) = {
-    getBrokerTopicRateMetrics("FailedFetchRequestsPerSec", topicOption)(mbsc)
+  def getFailedFetchRequestsPerSec(mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
+    getBrokerTopicRateMetrics(mbsc, "FailedFetchRequestsPerSec", topicOption)
   }
 
-  def getFailedProduceRequestsPerSec(topicOption: Option[String] = None)(mbsc: MBeanServerConnection) = {
-    getBrokerTopicRateMetrics("FailedProduceRequestsPerSec", topicOption)(mbsc)
+  def getFailedProduceRequestsPerSec(mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
+    getBrokerTopicRateMetrics(mbsc, "FailedProduceRequestsPerSec", topicOption)
   }
 
-  def getMessagesInPerSec(topicOption: Option[String] = None)(mbsc: MBeanServerConnection) = {
-    getBrokerTopicRateMetrics("MessagesInPerSec", topicOption)(mbsc)
+  def getMessagesInPerSec(mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
+    getBrokerTopicRateMetrics(mbsc, "MessagesInPerSec", topicOption)
   }
 
-  private def getBrokerTopicRateMetrics(metricName: String, topicOption: Option[String])(mbsc: MBeanServerConnection) = {
-    getRateMetric(getObjectName(metricName, topicOption))(mbsc)
+  private def getBrokerTopicRateMetrics(mbsc: MBeanServerConnection, metricName: String, topicOption: Option[String]) = {
+    getRateMetric(mbsc, getObjectName(metricName, topicOption))
   }
 
   private def getObjectName(name: String, topicOption: Option[String] = None) = {
@@ -51,7 +51,7 @@ object KafkaMetrics {
     new ObjectName(s"kafka.server:type=BrokerTopicMetrics,name=$name$topicProp")
   }
 
-  private def getRateMetric(name:ObjectName)(mbsc: MBeanServerConnection) = {
+  private def getRateMetric(mbsc: MBeanServerConnection, name:ObjectName) = {
     import scala.collection.JavaConverters._
     try {
       val attributeList = mbsc.getAttributes(name, Array("Count", "FifteenMinuteRate", "FiveMinuteRate", "OneMinuteRate", "MeanRate"))
@@ -101,18 +101,24 @@ case class RateMetric(count: Long,
 
   // See: http://stackoverflow.com/a/4753866
   def rateFormat(rate: Double, iteration: Int): String = {
-    val value = (rate.toLong / 100) / 10.0
-    val isRound: Boolean = (value * 10) % 10 == 0 //true if the decimal part is equal to 0 (then it's trimmed anyway)
-    if (value < 1000) { //this determines the class, i.e. 'k', 'm' etc
-      if (value > 99.9 || isRound || (!isRound && value > 9.99)) { //this decides whether to trim the decimals
-        value.toInt * 10 / 10 + "" + UNIT(iteration) // (int) value * 10 / 10 drops the decimal
+    if (rate < 100) {
+      BigDecimal(rate).setScale(2, BigDecimal.RoundingMode.HALF_UP).toString
+    } else {
+      val value = (rate.toLong / 100) / 10.0
+      val isRound: Boolean = (value * 10) % 10 == 0 //true if the decimal part is equal to 0 (then it's trimmed anyway)
+      if (value < 1000) {
+        //this determines the class, i.e. 'k', 'm' etc
+        if (value > 99.9 || isRound || (!isRound && value > 9.99)) {
+          //this decides whether to trim the decimals
+          value.toInt * 10 / 10 + "" + UNIT(iteration) // (int) value * 10 / 10 drops the decimal
+        }
+        else {
+          value + "" + UNIT(iteration)
+        }
       }
       else {
-        value + "" + UNIT(iteration)
+        rateFormat(value, iteration + 1)
       }
-    }
-    else {
-      rateFormat(value, iteration + 1)
     }
   }
 }

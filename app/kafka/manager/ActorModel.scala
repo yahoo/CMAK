@@ -31,7 +31,8 @@ object ActorModel {
 
   case object BVForceUpdate extends CommandRequest
   case class BVGetView(id: Int) extends BVRequest
-  case class BVView(topicPartitions: Map[TopicIdentity, IndexedSeq[Int]]) extends QueryResponse
+  case class BVGetTopicMetrics(id: Int, topic: String) extends BVRequest
+  case class BVView(topicPartitions: Map[TopicIdentity, IndexedSeq[Int]], metrics: Option[BrokerMetrics] = None) extends QueryResponse
 
   case object CMGetView extends QueryRequest
   case class CMView(topicsCount: Int, brokersCount: Int, clusterConfig: ClusterConfig) extends QueryResponse
