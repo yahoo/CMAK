@@ -3,15 +3,15 @@ package kafka.manager
 import javax.management._
 import javax.management.remote.{JMXConnectorFactory, JMXServiceURL}
 
+import scala.util.Try
+
 object KafkaJMX {
 
-  def connect(jmxHost: String, jmxPort: Int): Either[ApiError, MBeanServerConnection] = {
-    try {
+  def connect(jmxHost: String, jmxPort: Int): Try[MBeanServerConnection] = {
+    Try {
       val url = new JMXServiceURL(s"service:jmx:rmi:///jndi/rmi://$jmxHost:$jmxPort/jmxrmi")
       val jmxc = JMXConnectorFactory.connect(url, null)
-      Right(jmxc.getMBeanServerConnection)
-    } catch {
-      case t: Throwable => Left(ApiError.fromThrowable(t))
+      jmxc.getMBeanServerConnection
     }
   }
 }
