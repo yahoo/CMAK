@@ -5,6 +5,7 @@
 
 package controllers
 
+import kafka.manager.ActorModel.TopicList
 import kafka.manager.ApiError
 import models.navigation.Menus
 import models.{navigation, FollowLink}
@@ -38,6 +39,17 @@ object ReassignPartitions extends Controller{
     )(ReassignPartitionOperation.apply)(ReassignPartitionOperation.unapply)
   )
   
+  val reassignMultipleTopicsForm = Form(
+    mapping(
+      "topics" -> seq {
+        mapping(
+          "name" -> nonEmptyText,
+          "selected" -> boolean
+        )(TopicSelect.apply)(TopicSelect.unapply)
+      }
+    )(RunMultipleAssignments.apply)(RunMultipleAssignments.unapply)
+  )
+  
   val generateAssignmentsForm = Form(
     mapping(
       "brokers" -> seq {
@@ -50,12 +62,38 @@ object ReassignPartitions extends Controller{
     )(GenerateAssignment.apply)(GenerateAssignment.unapply)
   )
 
+  val generateMultipleAssignmentsForm = Form(
+    mapping(
+      "topics" -> seq {
+        mapping(
+          "name" -> nonEmptyText,
+          "selected" -> boolean
+        )(TopicSelect.apply)(TopicSelect.unapply)
+      },
+      "brokers" -> seq {
+        mapping(
+          "id" -> number(min = 0),
+          "host" -> nonEmptyText,
+          "selected" -> boolean
+        )(BrokerSelect.apply)(BrokerSelect.unapply)
+      }
+    )(GenerateMultipleAssignments.apply)(GenerateMultipleAssignments.unapply)
+  )
+
   def reassignPartitions(c: String) = Action.async {
     kafkaManager.getReassignPartitions(c).map { errorOrStatus =>
       Ok(views.html.reassignPartitions(c,errorOrStatus))
     }
   }
-  
+
+  def runMultipleAssignments(c: String) = Action.async {
+    kafkaManager.getTopicList(c).map { errorOrSuccess =>
+      Ok(views.html.topic.runMultipleAssignments(
+        c, errorOrSuccess.map(l => reassignMultipleTopicsForm.fill(RunMultipleAssignments(l.list.map(TopicSelect.from))))
+      ))
+    }
+  }
+
   def confirmAssignment(c: String, t: String) = Action.async {
     kafkaManager.getBrokerList(c).map { errorOrSuccess =>
       Ok(views.html.topic.confirmAssignment(
@@ -63,7 +101,24 @@ object ReassignPartitions extends Controller{
       ))
     }
   }
-  
+
+  def confirmMultipleAssignments(c: String) = Action.async {
+    val topicList = kafkaManager.getTopicList(c)
+    topicList.flatMap { errOrTL =>
+      errOrTL.fold(
+      { err: ApiError =>
+        Future.successful( Ok(views.html.topic.confirmMultipleAssignments( c, -\/(err) )))
+      }, { tL: TopicList =>
+        kafkaManager.getBrokerList(c).map { errorOrSuccess =>
+          Ok(views.html.topic.confirmMultipleAssignments(
+            c, errorOrSuccess.map(l => generateMultipleAssignmentsForm.fill(GenerateMultipleAssignments(tL.list.map(TopicSelect.from), l.map(BrokerSelect.from))))
+          ))
+        }
+      }
+      )
+    }
+  }
+
   def handleGenerateAssignment(c: String, t: String) = Action.async { implicit request =>
     generateAssignmentsForm.bindFromRequest.fold(
       errors => Future.successful( Ok(views.html.topic.confirmAssignment( c, t, \/-(errors) ))),
@@ -78,6 +133,47 @@ object ReassignPartitions extends Controller{
             FollowLink("Try again.", routes.Topic.topic(c, t).toString())
           ))
 
+        }
+      }
+    )
+  }
+
+  def handleGenerateMultipleAssignments(c: String) = Action.async { implicit request =>
+    generateMultipleAssignmentsForm.bindFromRequest.fold(
+      errors => Future.successful( Ok(views.html.topic.confirmMultipleAssignments( c, \/-(errors) ))),
+      assignment => {
+        kafkaManager.generatePartitionAssignments(c, assignment.topics.filter(_.selected).map(_.name).toSet, assignment.brokers.filter(_.selected).map(_.id)).map { errorOrSuccess =>
+          Ok(views.html.common.resultsOfCommand(
+            views.html.navigation.clusterMenu(c, "Reassign Partitions", "", Menus.clusterMenus(c)),
+            models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View", c, "", "Generate Partition Assignments"),
+            errorOrSuccess,
+            s"Generate Partition Assignments",
+            FollowLink("Go to topic list.", routes.Topic.topics(c).toString()),
+            FollowLink("Try again.", routes.Topic.topics(c).toString())
+          ))
+
+        }
+      }
+    )
+  }
+  
+  def handleRunMultipleAssignments(c: String) = Action.async { implicit request =>
+    reassignMultipleTopicsForm.bindFromRequest.fold(
+      errors => Future.successful( Ok(views.html.topic.runMultipleAssignments( c, \/-(errors) ))),
+      assignment => {
+        kafkaManager
+          .runReassignPartitions(c, assignment.topics.filter(_.selected).map(_.name).toSet)
+          .map { errorOrSuccess =>
+          Ok(
+            views.html.common.resultsOfCommand(
+              views.html.navigation.clusterMenu(c, "Reassign Partitions", "", navigation.Menus.clusterMenus(c)),
+              models.navigation.BreadCrumbs.withNamedViewAndCluster("Topics", c, "Reassign Partitions"),
+              errorOrSuccess,
+              s"Run Reassign Partitions",
+              FollowLink("Go to reassign partitions.", routes.ReassignPartitions.reassignPartitions(c).toString()),
+              FollowLink("Try again.", routes.Topic.topics(c).toString())
+            )
+          )
         }
       }
     )

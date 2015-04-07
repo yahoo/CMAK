@@ -18,6 +18,10 @@ GET         /clusters/:c/assignment             controllers.ReassignPartitions.r
 POST        /clusters/:c/assignment             controllers.ReassignPartitions.handleOperation(c:String,t:String)
 GET         /clusters/:c/assignment/confirm     controllers.ReassignPartitions.confirmAssignment(c:String,t:String)
 POST        /clusters/:c/assignment/generate    controllers.ReassignPartitions.handleGenerateAssignment(c:String,t:String)
+GET         /clusters/:c/assignments/confirm    controllers.ReassignPartitions.confirmMultipleAssignments(c:String)
+POST        /clusters/:c/assignments/generate   controllers.ReassignPartitions.handleGenerateMultipleAssignments(c:String)
+GET         /clusters/:c/assignments/run        controllers.ReassignPartitions.runMultipleAssignments(c:String)
+POST        /clusters/:c/assignments/run        controllers.ReassignPartitions.handleRunMultipleAssignments(c:String)
 GET         /addCluster                         controllers.Cluster.addCluster
 GET         /updateCluster                      controllers.Cluster.updateCluster(c: String)
 POST        /clusters                           controllers.Cluster.handleAddCluster
