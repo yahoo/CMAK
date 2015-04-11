@@ -5,7 +5,7 @@
 @import scalaz.{\/}
 @import b3.vertical.fieldConstructor
 @(cluster: String,
-errorOrForm: kafka.manager.ApiError \/ Form[models.form.RunMultipleAssignments]
+  errorOrForm: kafka.manager.ApiError \/ Form[models.form.RunMultipleAssignments]
 )
 
 @theMenu = {
@@ -24,37 +24,43 @@ errorOrForm: kafka.manager.ApiError \/ Form[models.form.RunMultipleAssignments]
 }
 
 @renderForm(confirmForm: Form[models.form.RunMultipleAssignments]) = {
-<div class="col-md-12">
-    <p> </p><p>Choose topics to reassign:</p>
-    <p>
-    <table class="table">
-        <tbody>
-        <tr>
-            @b3.form(routes.ReassignPartitions.handleRunMultipleAssignments(cluster)) {
-            <fieldset>
-                @helper.repeat(confirmForm("topics"), min = 1) { topicSelectForm =>
-                @b3.hidden(topicSelectForm("name").name,topicSelectForm("name").value.getOrElse(""))
-                @checkboxWithLink(topicSelectForm("selected"),topicSelectForm("name").value.getOrElse(""))
-                }
-                <br><br>
-                @b3.submit('class -> "btn btn-primary btn-block"){ Run Partition Assignments }
-            </fieldset>
-            }
-        </tr>
-        </tbody>
-    </table>
-    </p>
-</div>
+    <h4>Choose topics to reassign:</h4>
+    @b3.form(routes.ReassignPartitions.handleRunMultipleAssignments(cluster)) {
+        <table class="table">
+            <thead>
+            <tr><th>Topics</th></tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>
+                    <button type="button" class="btn btn-default" onClick="checkBoxSelect('topics',true);">
+                        <b>Select All</b>
+                    </button>
+                    <button type="button" class="btn btn-default" onClick="checkBoxSelect('topics',false);">
+                        <b>Select None</b>
+                    </button>
+                    @helper.repeat(confirmForm("topics"), min = 1) { topicSelectForm =>
+                        @b3.hidden(topicSelectForm("name").name,topicSelectForm("name").value.getOrElse(""))
+                        @checkboxWithLink(topicSelectForm("selected"),topicSelectForm("name").value.getOrElse(""))
+                    }
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        @b3.submit('class -> "btn btn-primary btn-block"){ Run Partition Assignments }
+    }
 }
 
 @main(
-"Run Assignment",
-menu = theMenu,
-breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Topics",cluster))) {
+  "Run Assignment",
+  menu = theMenu,
+  breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Topics",cluster))) {
 <div class="col-md-6 un-pad-me">
     <div class="panel panel-default">
         <div class="panel-heading"><h3>Run Assignments</h3></div>
-        @errorOrForm.fold( views.html.errors.onApiError(_), renderForm(_))
+        <div class="panel-body">
+            @errorOrForm.fold( views.html.errors.onApiError(_), renderForm(_))
+        </div>
     </div>
 </div>
 }
