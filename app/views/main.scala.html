@@ -33,6 +33,10 @@
     function goBack() {
         window.history.back()
     }
+    
+    function checkBoxSelect(idPrefix, booleanValue) {
+        $("[id^="+idPrefix+"]").prop("checked",booleanValue);
+    }
 </script>
 
 </body>
