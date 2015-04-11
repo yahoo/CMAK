@@ -22,6 +22,10 @@
             <tr>
                 @b3.form(routes.ReassignPartitions.handleGenerateAssignment(cluster,topic)) {
                     <fieldset>
+                        @helper.repeat(confirmForm("topics"), min = 1) { topicSelectForm =>
+                        @b3.hidden(topicSelectForm("name").name,topicSelectForm("name").value.getOrElse(""))
+                        @b3.hidden(topicSelectForm("selected"),topicSelectForm("selected").value.getOrElse(true))
+                        }
                         @helper.repeat(confirmForm("brokers"), min = 1) { brokerSelectForm =>
                             @b3.hidden(brokerSelectForm("id").name,brokerSelectForm("id").value.getOrElse(-1))
                             @b3.hidden(brokerSelectForm("host").name,brokerSelectForm("host").value.getOrElse(""))

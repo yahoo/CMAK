@@ -19,7 +19,16 @@ object BrokerSelect {
   }
 }
 
+case class TopicSelect(name: String, selected: Boolean)
+object TopicSelect {
+  implicit def from(topicName: String) : TopicSelect = {
+    TopicSelect(topicName,true)
+  }
+}
+
 case class GenerateAssignment(brokers: Seq[BrokerSelect])
+case class GenerateMultipleAssignments(topics: Seq[TopicSelect], brokers: Seq[BrokerSelect])
+case class RunMultipleAssignments(topics: Seq[TopicSelect])
 case object RunAssignment extends ReassignPartitionOperation
 case class UnknownRPO(op: String) extends ReassignPartitionOperation
 
