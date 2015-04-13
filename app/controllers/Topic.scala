@@ -182,10 +182,10 @@ object Topic extends Controller{
       addTopicPartitions => {
         kafkaManager.addTopicPartitions(clusterName,addTopicPartitions.topic,addTopicPartitions.brokers.filter(_.selected).map(_.id),addTopicPartitions.partitions,addTopicPartitions.readVersion).map { errorOrSuccess =>
           Ok(views.html.common.resultOfCommand(
-            views.html.navigation.clusterMenu(clusterName,"Topic","Create",Menus.clusterMenus(clusterName)),
-            models.navigation.BreadCrumbs.withNamedViewAndCluster("Topics",clusterName,"Create Topic"),
+            views.html.navigation.clusterMenu(clusterName,"Topic","Topic View",Menus.clusterMenus(clusterName)),
+            models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View",clusterName, topic,"Add Partitions"),
             errorOrSuccess,
-            "Add Paritions",
+            "Add Partitions",
             FollowLink("Go to topic view.",routes.Topic.topic(clusterName, addTopicPartitions.topic).toString()),
             FollowLink("Try again.",routes.Topic.addPartitions(clusterName, topic).toString())
           ))
@@ -226,8 +226,8 @@ object Topic extends Controller{
         updateTopicConfig.configs.filter(_.value.isDefined).foreach(c => props.setProperty(c.name,c.value.get))
         kafkaManager.updateTopicConfig(clusterName,updateTopicConfig.topic,props,updateTopicConfig.readVersion).map { errorOrSuccess =>
           Ok(views.html.common.resultOfCommand(
-            views.html.navigation.clusterMenu(clusterName,"Topic","Create",Menus.clusterMenus(clusterName)),
-            models.navigation.BreadCrumbs.withNamedViewAndCluster("Topics",clusterName,"Create Topic"),
+            views.html.navigation.clusterMenu(clusterName,"Topic","Topic View",Menus.clusterMenus(clusterName)),
+            models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View",clusterName, topic,"Update Config"),
             errorOrSuccess,
             "Update Config",
             FollowLink("Go to topic view.",routes.Topic.topic(clusterName, updateTopicConfig.topic).toString()),
