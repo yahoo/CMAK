@@ -27,6 +27,10 @@ package object utils {
   def toJson(map: Map[String, Any]): String = {
     write(map)
   }
+  
+  def toJson(s: String) : String = {
+    "\"" + s + "\""
+  }
 
   def fromJson[T](s: String) : T = {
     read(s)

@@ -101,6 +101,22 @@ class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extend
             })
           }
         }
+      case KCAddTopicPartitions(topic, brokers, partitions, partitionReplicaList, readVersion) =>
+        longRunning {
+          Future {
+            KCCommandResult(Try {
+              adminUtils.addPartitions(kafkaCommandActorConfig.curator, topic, partitions, partitionReplicaList, brokers, readVersion)
+            })
+          }
+        }
+      case KCUpdateTopicConfig(topic, config, readVersion) =>
+        longRunning {
+          Future {
+            KCCommandResult(Try {
+              adminUtils.changeTopicConfig(kafkaCommandActorConfig.curator, topic, config, readVersion)
+            })
+          }
+        }
       case KCPreferredReplicaLeaderElection(topicAndPartition) =>
         longRunning {
           log.info("Running replica leader election : {}", topicAndPartition)

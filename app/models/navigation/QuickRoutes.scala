@@ -29,7 +29,9 @@ object QuickRoutes {
     "Reassign Partitions" -> controllers.routes.ReassignPartitions.reassignPartitions
   )
   val topicRoutes : Map[String, (String, String) => Call] = Map(
-    "Topic View" -> controllers.routes.Topic.topic
+    "Topic View" -> controllers.routes.Topic.topic,
+    "Add Partitions" -> controllers.routes.Topic.addPartitions,
+    "Update Config" -> controllers.routes.Topic.addPartitions
   )
 
   implicit class BaseRoute(s: String) {
@@ -63,6 +65,9 @@ object QuickRoutes {
   }
 
   implicit class TopicRoute(s: String) {
+    def topicRouteMenuItem(c: String, t: String): (String, Call) = {
+      s -> topicRoutes(s)(c,t)
+    }
     def topicRoute(c: String, t: String): Call = {
       topicRoutes(s)(c,t)
     }

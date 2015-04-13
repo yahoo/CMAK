@@ -13,16 +13,16 @@ import scala.util.Try
 /**
  * @author hiral
  */
-case class TopicPartitionIdentity(partNum: Int, leader:Int, isr: Set[Int], replicas: Set[Int], isPreferredLeader: Boolean = false, isUnderReplicated: Boolean = false)
+case class TopicPartitionIdentity(partNum: Int, leader:Int, isr: Seq[Int], replicas: Seq[Int], isPreferredLeader: Boolean = false, isUnderReplicated: Boolean = false)
 object TopicPartitionIdentity {
   import play.api.libs.json._
-  implicit def from(partition: Int, state:Option[String], replicas: Set[Int]) : TopicPartitionIdentity = {
+  implicit def from(partition: Int, state:Option[String], replicas: Seq[Int]) : TopicPartitionIdentity = {
     val leaderAndIsr = for {
       json <- state
       parsedJson = Json.parse(json)
-    } yield ((parsedJson \ "leader").as[Int], (parsedJson \ "isr").as[Set[Int]])
+    } yield ((parsedJson \ "leader").as[Int], (parsedJson \ "isr").as[Seq[Int]])
 
-    leaderAndIsr.fold(TopicPartitionIdentity(partition,-2,Set.empty,replicas)) { case (leader, isr) =>
+    leaderAndIsr.fold(TopicPartitionIdentity(partition,-2,Seq.empty,replicas)) { case (leader, isr) =>
       TopicPartitionIdentity(partition, leader, isr, replicas, leader == replicas.head, isr.size != replicas.size)
     }
   }
@@ -31,9 +31,11 @@ object TopicPartitionIdentity {
 case class BrokerTopicPartitions(id: Int, partitions: IndexedSeq[Int], isSkewed: Boolean)
 
 case class TopicIdentity(topic:String, 
+                         readVersion: Int,
                          partitions:Int, 
                          partitionsIdentity: Map[Int,TopicPartitionIdentity], 
                          numBrokers: Int, 
+                         configReadVersion: Int, 
                          config: List[(String,String)], deleteSupported: Boolean) {
 
   val replicationFactor : Int = partitionsIdentity.head._2.replicas.size
@@ -79,26 +81,26 @@ object TopicIdentity {
 
   implicit def from(brokers: Int,td: TopicDescription) : TopicIdentity = {
     import play.api.libs.json._
-    val descJson = Json.parse(td.description)
-    val partMap = (descJson \ "partitions").as[Map[String,Set[Int]]]
+    val descJson = Json.parse(td.description._2)
+    val partMap = (descJson \ "partitions").as[Map[String,Seq[Int]]]
     val stateMap = td.partitionState.getOrElse(Map.empty)
     val tpi : Map[Int,TopicPartitionIdentity] = partMap.map { case (part, replicas) =>
       (part.toInt,TopicPartitionIdentity.from(part.toInt,stateMap.get(part),replicas))
       }.toMap
-    val config : Map[String, String] = {
+    val config : (Int,Map[String, String]) = {
       try {
-        val resultOption = td.config.map { configString =>
-          val configJson = Json.parse(configString)
-          (configJson \ "config").as[Map[String,String]]
+        val resultOption: Option[(Int,Map[String, String])] = td.config.map { configString =>
+          val configJson = Json.parse(configString._2)
+          (configString._1,(configJson \ "config").as[Map[String,String]])
         }
-        resultOption.getOrElse(Map.empty)
+        resultOption.getOrElse((-1,Map.empty[String, String]))
       } catch {
         case e: Exception =>
           logger.error(s"Failed to parse topic config : ${td.config.getOrElse("")}",e)
-          Map.empty
+          (-1,Map.empty[String, String])
       }
     }
-    TopicIdentity(td.topic,partMap.size,tpi,brokers,config.toList,td.deleteSupported)
+    TopicIdentity(td.topic,td.description._1,partMap.size,tpi,brokers,config._1,config._2.toList,td.deleteSupported)
   }
 
   implicit def from(bl: BrokerList,td: TopicDescription) : TopicIdentity = {
@@ -109,16 +111,20 @@ object TopicIdentity {
                                 assignedReplicas: Map[Int, Seq[Int]]) : Try[TopicIdentity] = {
     Try {
       val newTpi : Map[Int, TopicPartitionIdentity] = currentTopicIdentity.partitionsIdentity.map { case (part, tpi) =>
-        val newReplicaSet = assignedReplicas.get(part)
-        require(newReplicaSet.isDefined, s"Missing replica assignment for partition $part for topic ${currentTopicIdentity.topic}")
-        (part,tpi.copy(replicas = newReplicaSet.get.toSet))
+        val newReplicaSeq = assignedReplicas.get(part)
+        require(newReplicaSeq.isDefined, s"Missing replica assignment for partition $part for topic ${currentTopicIdentity.topic}")
+        val newReplicaSet = newReplicaSeq.get.toSet
+        require(newReplicaSeq.get.size == newReplicaSet.size, s"Duplicates found in replica set ${newReplicaSeq.get} for partition $part for topic ${currentTopicIdentity.topic}")
+        (part,tpi.copy(replicas = newReplicaSeq.get))
       }
       TopicIdentity(
         currentTopicIdentity.topic,
+        currentTopicIdentity.readVersion,
         currentTopicIdentity.partitions,
         newTpi,
         currentTopicIdentity.numBrokers,
-        currentTopicIdentity.config, 
+        currentTopicIdentity.configReadVersion,
+        currentTopicIdentity.config,
         currentTopicIdentity.deleteSupported)
     }
   }

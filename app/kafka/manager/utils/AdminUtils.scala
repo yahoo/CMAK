@@ -19,8 +19,9 @@ package kafka.manager.utils
 
 import java.util.Properties
 
-import kafka.manager.{Kafka_0_8_2_0, KafkaVersion}
+import kafka.manager.{TopicIdentity, Kafka_0_8_2_0, KafkaVersion}
 import org.apache.curator.framework.CuratorFramework
+import org.apache.zookeeper.CreateMode
 import org.apache.zookeeper.KeeperException.NodeExistsException
 import org.slf4j.LoggerFactory
 
@@ -98,6 +99,7 @@ class AdminUtils(version: KafkaVersion) {
   }
 
   def deleteTopic(curator: CuratorFramework, topic: String): Unit = {
+    checkCondition(topicExists(curator, topic),TopicErrors.TopicDoesNotExist(topic))
     ZkUtils.createPersistentPath(curator,ZkUtils.getDeleteTopicPath(topic))
   }
 
@@ -116,7 +118,8 @@ class AdminUtils(version: KafkaVersion) {
                                                      topic: String,
                                                      partitionReplicaAssignment: Map[Int, Seq[Int]],
                                                      config: Properties = new Properties,
-                                                     update: Boolean = false) {
+                                                     update: Boolean = false, 
+                                                     readVersion: Int = -1) {
     // validate arguments
     Topic.validate(topic)
     TopicConfigs.validate(version,config)
@@ -130,26 +133,32 @@ class AdminUtils(version: KafkaVersion) {
       case (part,reps) => checkCondition(reps.size == reps.toSet.size, TopicErrors.DuplicateReplicAssignment(topic,part,reps))
     }
 
-    // write out the config if there is any, this isn't transactional with the partition assignments
-    writeTopicConfig(curator, topic, config)
+    // write out the config on create, not update, if there is any, this isn't transactional with the partition assignments
+    if(!update) {
+      writeTopicConfig(curator, topic, config)
+    }
 
     // create the partition assignment
-    writeTopicPartitionAssignment(curator, topic, partitionReplicaAssignment, update)
+    writeTopicPartitionAssignment(curator, topic, partitionReplicaAssignment, update, readVersion)
   }
 
   /**
    * Write out the topic config to zk, if there is any
    */
-  private def writeTopicConfig(curator: CuratorFramework, topic: String, config: Properties) {
+  private def writeTopicConfig(curator: CuratorFramework, topic: String, config: Properties, readVersion: Int = -1) {
     val configMap: mutable.Map[String, String] = {
       import scala.collection.JavaConverters._
       config.asScala
     }
     val map : Map[String, Any] = Map("version" -> 1, "config" -> configMap)
-    ZkUtils.updatePersistentPath(curator, ZkUtils.getTopicConfigPath(topic), toJson(map))
+    ZkUtils.updatePersistentPath(curator, ZkUtils.getTopicConfigPath(topic), toJson(map), readVersion)
   }
 
-  private def writeTopicPartitionAssignment(curator: CuratorFramework, topic: String, replicaAssignment: Map[Int, Seq[Int]], update: Boolean) {
+  private def writeTopicPartitionAssignment(curator: CuratorFramework, 
+                                            topic: String, 
+                                            replicaAssignment: Map[Int, Seq[Int]], 
+                                            update: Boolean, 
+                                            readVersion: Int = -1) {
     try {
       val zkPath = ZkUtils.getTopicPath(topic)
       val jsonPartitionData = ZkUtils.replicaAssignmentZkData(replicaAssignment.map(e => (e._1.toString -> e._2)))
@@ -159,12 +168,104 @@ class AdminUtils(version: KafkaVersion) {
         ZkUtils.createPersistentPath(curator, zkPath, jsonPartitionData)
       } else {
         logger.info("Topic update {}", jsonPartitionData.toString)
-        ZkUtils.updatePersistentPath(curator, zkPath, jsonPartitionData)
+        ZkUtils.updatePersistentPath(curator, zkPath, jsonPartitionData, readVersion)
       }
       logger.debug("Updated path %s with %s for replica assignment".format(zkPath, jsonPartitionData))
     } catch {
       case e: NodeExistsException => throw new IllegalArgumentException("topic %s already exists".format(topic))
       case e2: Throwable => throw new IllegalArgumentException(e2.toString)
     }
+  }
+
+  /**
+   * Add partitions to existing topic with optional replica assignment
+   *
+   * @param curator Zookeeper client
+   * @param topic topic for adding partitions to
+   * @param newNumPartitions Number of partitions to be set
+   * @param partitionReplicaList current partition to replic set mapping
+   * @param brokerList broker list
+   */
+  def addPartitions(curator: CuratorFramework,
+                    topic: String,
+                    newNumPartitions: Int,
+                    partitionReplicaList : Map[Int, Seq[Int]],
+                    brokerList: Seq[Int], 
+                    readVersion: Int
+                     ) {
+    
+    /*
+    import collection.JavaConverters._
+    val newConfigSet = config.entrySet().asScala.map(e => (e.getKey.toString, e.getValue.toString)).toSet
+
+    if(newConfigSet == oldConfigSet) {
+      logger.info(s"No config changes.  newConfigSet=$newConfigSet oldConfigSet=$oldConfigSet")
+    } else {
+      logger.info(s"Config changed.  newConfigSet=$newConfigSet oldConfigSet=$oldConfigSet")
+      changeTopicConfig(curator,topic,config)
+    }*/
+    
+    val brokerListSorted: Seq[Int] = brokerList.sorted
+    val currentNumPartitions: Int = partitionReplicaList.size
+    
+    checkCondition(currentNumPartitions > 0,
+      TopicErrors.PartitionsGreaterThanZero)
+    
+    checkCondition(currentNumPartitions < newNumPartitions,
+      TopicErrors.CannotAddZeroPartitions(topic,currentNumPartitions,newNumPartitions))
+
+    val currentReplicationFactor: Int = partitionReplicaList.head._2.size
+    
+    checkCondition(brokerListSorted.size >= currentReplicationFactor,
+      TopicErrors.ReplicationGreaterThanNumBrokers(currentReplicationFactor,brokerListSorted.size))
+    
+    val partitionsToAdd = newNumPartitions - currentNumPartitions
+
+    // create the new partition replication list
+    val addedPartitionReplicaList : Map[Int, Seq[Int]] =
+      assignReplicasToBrokers(
+        brokerListSorted, partitionsToAdd, currentReplicationFactor, partitionReplicaList.head._2.head, currentNumPartitions)
+
+    logger.info("Add partition list for %s is %s".format(topic, addedPartitionReplicaList))
+    //val partitionReplicaList : Map[Int, Seq[Int]] = topicIdentity.partitionsIdentity.map(p => p._1 -> p._2.replicas.toSeq)
+    
+    // add the new partitions
+    val newPartitionsReplicaList : Map[Int, Seq[Int]] = partitionReplicaList ++ addedPartitionReplicaList
+    
+    checkCondition(newPartitionsReplicaList.size == newNumPartitions,
+      TopicErrors.FailedToAddNewPartitions(topic, newNumPartitions, newPartitionsReplicaList.size))
+    
+    createOrUpdateTopicPartitionAssignmentPathInZK(curator, topic, newPartitionsReplicaList, update=true, readVersion=readVersion)
+  }
+
+  /**
+   * Update the config for an existing topic and create a change notification so the change will propagate to other brokers
+   * @param curator: The zk client handle used to write the new config to zookeeper
+   * @param topic: The topic for which configs are being changed
+   * @param config: The final set of configs that will be applied to the topic. If any new configs need to be added or
+   *                 existing configs need to be deleted, it should be done prior to invoking this API
+   *
+   */
+  def changeTopicConfig(curator: CuratorFramework, topic: String, config: Properties, readVersion: Int) {
+    checkCondition(topicExists(curator, topic),TopicErrors.TopicDoesNotExist(topic))
+
+    // remove the topic overrides
+    TopicConfigs.validate(version,config)
+
+    // write the new config--may not exist if there were previously no overrides
+    writeTopicConfig(curator, topic, config, readVersion)
+
+    // create the change notification
+    curator
+      .create()
+      .creatingParentsIfNeeded()
+      .withMode(CreateMode.PERSISTENT_SEQUENTIAL)
+      .forPath(s"${ZkUtils.TopicConfigChangesPath}/$TopicConfigChangeZnodePrefix", toJson(topic))
+  }
+  
+  def topicExists(curator: CuratorFramework, topic: String):  Boolean = {
+    val topicPath = ZkUtils.getTopicPath(topic)
+    val result = curator.checkExists().forPath(topicPath)
+    result != null
   }
 }

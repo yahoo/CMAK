@@ -4,9 +4,12 @@
  */
 package kafka.manager.utils
 
+import java.util.Properties
+
 import TopicErrors._
 import kafka.manager.ActorModel.TopicDescription
 import kafka.manager.{Kafka_0_8_2_0, TopicIdentity}
+import org.apache.zookeeper.data.Stat
 
 /**
  * @author hiral
@@ -84,10 +87,13 @@ class TestCreateTopic extends CuratorAwareTest {
   test("create topic") {
     withCurator { curator =>
       val brokerList = IndexedSeq(1,2,3)
-      adminUtils.createTopic(curator,brokerList,"mytopic",10,3)
-      val json:String = curator.getData.forPath(ZkUtils.getTopicPath("mytopic"))
+      val properties = new Properties()
+      properties.setProperty(kafka.manager.utils.zero82.LogConfig.RententionMsProp,"1800000")
+      adminUtils.createTopic(curator,brokerList,"mytopic",10,3, properties)
+      val stat = new Stat()
+      val json:String = curator.getData.storingStatIn(stat).forPath(ZkUtils.getTopicPath("mytopic"))
       val configJson : String = curator.getData.forPath(ZkUtils.getTopicConfigPath("mytopic"))
-      val td = TopicIdentity.from(3,TopicDescription("mytopic",json,None,Option(configJson),false))
+      val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion(),json),None,Option((-1,configJson)),false))
       assert(td.partitions == 10)
       assert(td.replicationFactor == 3)
     }
@@ -101,6 +107,96 @@ class TestCreateTopic extends CuratorAwareTest {
         val json: String = curator.getData.forPath(ZkUtils.getTopicPath("mytopic"))
         assert(json == "{\"version\":1,\"partitions\":{\"8\":[2,3,1],\"4\":[1,3,2],\"9\":[3,2,1],\"5\":[2,1,3],\"6\":[3,1,2],\"1\":[1,2,3],\"0\":[3,1,2],\"2\":[2,3,1],\"7\":[1,2,3],\"3\":[3,2,1]}}")
       }
+    }
+  }
+  
+  test("alter topic - cannot add zero partitions") {
+    checkError[CannotAddZeroPartitions] {
+      withCurator { curator =>
+        val brokerList = IndexedSeq(1,2,3)
+        val stat = new Stat
+        val json:String = curator.getData.storingStatIn(stat).forPath(ZkUtils.getTopicPath("mytopic"))
+        val configJson : String = curator.getData.forPath(ZkUtils.getTopicConfigPath("mytopic"))
+        val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion,json),None,Option((-1,configJson)),false))
+        val numPartitions = td.partitions
+        adminUtils.addPartitions(curator, td.topic, numPartitions, td.partitionsIdentity.mapValues(_.replicas.toSeq),brokerList, stat.getVersion)
+      }
+    }
+  }
+
+  test("alter topic - replication factor greater than num brokers") {
+    checkError[ReplicationGreaterThanNumBrokers] {
+      withCurator { curator =>
+        val brokerList = IndexedSeq(1,2)
+        val stat = new Stat
+        val json:String = curator.getData.storingStatIn(stat).forPath(ZkUtils.getTopicPath("mytopic"))
+        val configJson : String = curator.getData.forPath(ZkUtils.getTopicConfigPath("mytopic"))
+        val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion,json),None,Option((-1,configJson)),false))
+        val numPartitions = td.partitions + 2
+        adminUtils.addPartitions(curator, td.topic, numPartitions, td.partitionsIdentity.mapValues(_.replicas.toSeq),brokerList,stat.getVersion)
+      }
+    }
+  }
+
+  test("alter topic - add partitions") {
+    withCurator { curator =>
+      val brokerList = IndexedSeq(1,2,3)
+      val stat = new Stat
+      val json:String = curator.getData.storingStatIn(stat).forPath(ZkUtils.getTopicPath("mytopic"))
+      val configJson : String = curator.getData.forPath(ZkUtils.getTopicConfigPath("mytopic"))
+      val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion,json),None,Option((-1,configJson)),false))
+      val numPartitions = td.partitions + 2
+      adminUtils.addPartitions(curator, td.topic, numPartitions, td.partitionsIdentity.mapValues(_.replicas.toSeq),brokerList,stat.getVersion)
+
+      //check partitions were added and config updated
+      {
+        val json: String = curator.getData.forPath(ZkUtils.getTopicPath("mytopic"))
+        val configJson: String = curator.getData.forPath(ZkUtils.getTopicConfigPath("mytopic"))
+        val td = TopicIdentity.from(3, TopicDescription("mytopic", (-1,json), None, Option((-1,configJson)), false))
+        assert(td.partitions === numPartitions, "Failed to add partitions!")
+        assert(td.config.toMap.apply(kafka.manager.utils.zero82.LogConfig.RententionMsProp) === "1800000")
+      }
+    }
+  }
+
+  test("alter topic - update config") {
+    withCurator { curator =>
+      val brokerList = IndexedSeq(1,2,3)
+      val stat = new Stat
+      val json:String = curator.getData.storingStatIn(stat).forPath(ZkUtils.getTopicPath("mytopic"))
+      val configStat = new Stat
+      val configJson : String = curator.getData.storingStatIn(configStat).forPath(ZkUtils.getTopicConfigPath("mytopic"))
+      val configReadVersion = configStat.getVersion
+      val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion,json),None,Option((configReadVersion,configJson)),false))
+      val properties = new Properties()
+      td.config.foreach { case (k,v) => properties.put(k,v)}
+      properties.setProperty(kafka.manager.utils.zero82.LogConfig.RententionMsProp,"3600000")
+      adminUtils.changeTopicConfig(curator, td.topic, properties, stat.getVersion)
+
+      //check config
+      {
+        val json: String = curator.getData.forPath(ZkUtils.getTopicPath("mytopic"))
+        val configStat = new Stat
+        val configJson : String = curator.getData.storingStatIn(configStat).forPath(ZkUtils.getTopicConfigPath("mytopic"))
+        val td = TopicIdentity.from(3, TopicDescription("mytopic", (-1,json), None, Option((configStat.getVersion,configJson)), false))
+        assert(td.config.toMap.apply(kafka.manager.utils.zero82.LogConfig.RententionMsProp) === "3600000")
+        assert(configReadVersion != configStat.getVersion)
+      }
+
+      //check config change notification
+      {
+        import scala.collection.JavaConverters._
+
+        val json: Option[String] = Option(curator.getChildren.forPath(ZkUtils.TopicConfigChangesPath)).map { children =>
+          val last = children.asScala.last
+          val json : String = curator.getData.forPath(s"${ZkUtils.TopicConfigChangesPath}/$last")
+          json
+        }
+
+        assert(json.isDefined, "Failed to get data for config change!")
+        assert(json.get === "\"mytopic\"")
+      }
+
     }
   }
 }

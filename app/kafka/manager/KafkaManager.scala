@@ -299,6 +299,44 @@ class KafkaManager(akkaConfig: Config) {
     }
   }
 
+  def addTopicPartitions(clusterName: String,
+                  topic: String, 
+                  brokers: Seq[Int],
+                  partitions: Int,
+                  readVersion: Int) : Future[ApiError \/ Unit] = {
+    implicit val ec = apiExecutionContext
+    getTopicIdentity(clusterName, topic).flatMap { topicIdentityOrError =>
+      topicIdentityOrError.fold( e => Future.successful(-\/(e)) ,{ ti =>
+        val partitionReplicaList: Map[Int, Seq[Int]] = ti.partitionsIdentity.mapValues(_.replicas)
+        withKafkaManagerActor(
+          KMClusterCommandRequest(
+            clusterName, 
+            CMAddTopicPartitions(topic, brokers, partitions, partitionReplicaList, readVersion)
+          )
+        ) {
+          result: Future[CMCommandResult] =>
+            result.map(cmr => toDisjunction(cmr.result))
+        }
+      })
+    }
+  }
+
+  def updateTopicConfig(clusterName: String,
+                         topic: String, 
+                         config: Properties,
+                         readVersion: Int) : Future[ApiError \/ Unit] = {
+    implicit val ec = apiExecutionContext
+    withKafkaManagerActor(
+      KMClusterCommandRequest(
+        clusterName,
+        CMUpdateTopicConfig(topic, config, readVersion)
+      )
+    ) {
+      result: Future[CMCommandResult] =>
+        result.map(cmr => toDisjunction(cmr.result))
+    }
+  }
+
   def deleteTopic(clusterName: String,
                   topic: String) : Future[ApiError \/ Unit] = {
     implicit val ec = apiExecutionContext

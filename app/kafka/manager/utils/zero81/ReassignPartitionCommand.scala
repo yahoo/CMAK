@@ -43,17 +43,22 @@ class ReassignPartitionCommand(adminUtils: AdminUtils) {
         currentTopicIdentity.partitions,
         currentTopicIdentity.replicationFactor)
       val newTpi: Map[Int, TopicPartitionIdentity] = currentTopicIdentity.partitionsIdentity.map { case (part, tpi) =>
-        val newReplicaSet = assignedReplicas.get(part)
-        checkCondition(newReplicaSet.isDefined, MissingReplicaSetForPartition(part))
-        (part, tpi.copy(replicas = newReplicaSet.get.toSet))
+        val newReplicaSeq = assignedReplicas.get(part)
+        checkCondition(newReplicaSeq.isDefined, MissingReplicaSetForPartition(part))
+        val newReplicaSet = newReplicaSeq.get.toSet
+        checkCondition(newReplicaSeq.get.size == newReplicaSet.size, 
+          DuplicateFoundInReplicaSetForPartition(newReplicaSeq.get,part,currentTopicIdentity.topic))
+        (part, tpi.copy(replicas = newReplicaSeq.get))
       }
       logger.info(s"Generated topic replica assignment topic=${currentTopicIdentity.topic}, $newTpi")
       TopicIdentity(
         currentTopicIdentity.topic,
+        currentTopicIdentity.readVersion,
         currentTopicIdentity.partitions,
         newTpi,
         currentTopicIdentity.numBrokers,
-        currentTopicIdentity.config, 
+        currentTopicIdentity.configReadVersion,
+        currentTopicIdentity.config,
         currentTopicIdentity.deleteSupported)
     }
   }
@@ -155,6 +160,9 @@ object ReassignPartitionErrors {
     "progress for.  Aborting operation")
   class FailedToReassignPartitionReplicas private[ReassignPartitionErrors] (t: Throwable) extends UtilError(
     s"Failed to reassign partition replicas ${t.getStackTrace.mkString("[","\n","]")}")
+  class DuplicateFoundInReplicaSetForPartition private[ReassignPartitionErrors](replicas: Seq[Int], part: Int, topic: String) extends UtilError(
+    s"Duplicate found in replica set $replicas for partition $part for topic $topic"
+  )
 
   def MissingReplicaSetForPartition(part: Int) = new MissingReplicaSetForPartition(part)
   def ReassignmentDataEmptyForTopic(topic: String) = new ReassignmentDataEmptyForTopic(topic)
@@ -163,4 +171,6 @@ object ReassignPartitionErrors {
   val NoValidAssignments = new NoValidAssignments
   val AlreadyInProgress = new ReassignmentAlreadyInProgress
   def FailedToReassignPartitionReplicas(t: Throwable) = new FailedToReassignPartitionReplicas(t)
+  def DuplicateFoundInReplicaSetForPartition(replicas: Seq[Int], part: Int, topic: String) = 
+    new DuplicateFoundInReplicaSetForPartition(replicas,part,topic)
 }

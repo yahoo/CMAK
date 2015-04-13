@@ -157,6 +157,14 @@
                             <a href="@routes.ReassignPartitions.confirmAssignment(cluster,topic)" class="submit-button btn btn-primary" role="button">Generate Partition Assignments</a>
                         </td>
                     </tr>
+                    <tr>
+                        <td>
+                            <a href="@routes.Topic.addPartitions(cluster,topic)" class="submit-button btn btn-primary" role="button">Add Partitions</a>
+                        </td>
+                        <td>
+                            <a href="@routes.Topic.updateConfig(cluster,topic)" class="submit-button btn btn-primary" role="button">Update Config</a>
+                        </td>
+                    </tr>
                     </tbody>
                 </table>
             </div>

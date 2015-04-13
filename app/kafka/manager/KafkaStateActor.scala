@@ -161,8 +161,8 @@ class KafkaStateActor(curator: CuratorFramework, deleteSupported: Boolean) exten
 
   def getTopicDescription(topic: String) : Option[TopicDescription] = {
     val topicPath = "%s/%s".format(ZkUtils.BrokerTopicsPath,topic)
-    val descriptionOption : Option[String] =
-      Option(topicsTreeCache.getCurrentData(topicPath)).map(childData => asString(childData.getData))
+    val descriptionOption : Option[(Int,String)] =
+      Option(topicsTreeCache.getCurrentData(topicPath)).map( childData => (childData.getStat.getVersion,asString(childData.getData)))
 
     for {
       description <- descriptionOption
@@ -173,7 +173,7 @@ class KafkaStateActor(curator: CuratorFramework, deleteSupported: Boolean) exten
         Option(topicsTreeCache.getCurrentData(statePath)).map(cd => (part, asString(cd.getData)))
       }
       config = getTopicConfigString(topic)
-    } yield TopicDescription(topic, description, Some(states),config, deleteSupported)
+    } yield TopicDescription(topic, description, Option(states),config, deleteSupported)
   }
 
   override def processActorResponse(response: ActorResponse): Unit = {
@@ -182,10 +182,10 @@ class KafkaStateActor(curator: CuratorFramework, deleteSupported: Boolean) exten
     }
   }
   
-  private[this] def getTopicConfigString(topic: String) : Option[String] = {
+  private[this] def getTopicConfigString(topic: String) : Option[(Int,String)] = {
     val data: mutable.Buffer[ChildData] = topicsConfigPathCache.getCurrentData.asScala
     val result: Option[ChildData] = data.find(p => p.getPath.endsWith(topic))
-    result.map(cd => asString(cd.getData))
+    result.map(cd => (cd.getStat.getVersion,asString(cd.getData)))
   }
 
   override def processQueryRequest(request: QueryRequest): Unit = {
