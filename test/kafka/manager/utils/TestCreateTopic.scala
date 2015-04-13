@@ -171,7 +171,7 @@ class TestCreateTopic extends CuratorAwareTest {
       val properties = new Properties()
       td.config.foreach { case (k,v) => properties.put(k,v)}
       properties.setProperty(kafka.manager.utils.zero82.LogConfig.RententionMsProp,"3600000")
-      adminUtils.changeTopicConfig(curator, td.topic, properties, stat.getVersion)
+      adminUtils.changeTopicConfig(curator, td.topic, properties, configReadVersion)
 
       //check config
       {
