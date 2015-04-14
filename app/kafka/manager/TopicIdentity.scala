@@ -34,7 +34,9 @@ case class TopicIdentity(topic:String,
                          partitions:Int, 
                          partitionsIdentity: Map[Int,TopicPartitionIdentity], 
                          numBrokers: Int, 
-                         config: List[(String,String)], deleteSupported: Boolean) {
+                         config: List[(String,String)], 
+                         deleteSupported: Boolean,
+                         metrics: Option[BrokerMetrics] = None) {
 
   val replicationFactor : Int = partitionsIdentity.head._2.replicas.size
 
@@ -77,7 +79,7 @@ object TopicIdentity {
   
   lazy val logger = LoggerFactory.getLogger(this.getClass)
 
-  implicit def from(brokers: Int,td: TopicDescription) : TopicIdentity = {
+  implicit def from(brokers: Int,td: TopicDescription, tm: Option[BrokerMetrics]) : TopicIdentity = {
     import play.api.libs.json._
     val descJson = Json.parse(td.description)
     val partMap = (descJson \ "partitions").as[Map[String,Set[Int]]]
@@ -98,11 +100,11 @@ object TopicIdentity {
           Map.empty
       }
     }
-    TopicIdentity(td.topic,partMap.size,tpi,brokers,config.toList,td.deleteSupported)
+    TopicIdentity(td.topic,partMap.size,tpi,brokers,config.toList,td.deleteSupported, tm)
   }
 
-  implicit def from(bl: BrokerList,td: TopicDescription) : TopicIdentity = {
-    from(bl.list.size, td)
+  implicit def from(bl: BrokerList,td: TopicDescription, tm: Option[BrokerMetrics]) : TopicIdentity = {
+    from(bl.list.size, td, tm)
   }
 
   implicit def reassignReplicas(currentTopicIdentity: TopicIdentity, 
@@ -119,7 +121,15 @@ object TopicIdentity {
         newTpi,
         currentTopicIdentity.numBrokers,
         currentTopicIdentity.config, 
-        currentTopicIdentity.deleteSupported)
+        currentTopicIdentity.deleteSupported,
+        currentTopicIdentity.metrics)
     }
   }
 }
+
+case class BrokerMetrics(bytesInPerSec: RateMetric,
+                         bytesOutPerSec: RateMetric,
+                         bytesRejectedPerSec: RateMetric,
+                         failedFetchRequestsPerSec: RateMetric,
+                         failedProduceRequestsPerSec: RateMetric,
+                         messagesInPerSec: RateMetric)

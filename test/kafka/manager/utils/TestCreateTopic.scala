@@ -87,7 +87,7 @@ class TestCreateTopic extends CuratorAwareTest {
       adminUtils.createTopic(curator,brokerList,"mytopic",10,3)
       val json:String = curator.getData.forPath(ZkUtils.getTopicPath("mytopic"))
       val configJson : String = curator.getData.forPath(ZkUtils.getTopicConfigPath("mytopic"))
-      val td = TopicIdentity.from(3,TopicDescription("mytopic",json,None,Option(configJson),false))
+      val td = TopicIdentity.from(3,TopicDescription("mytopic",json,None,Option(configJson),false),None)
       assert(td.partitions == 10)
       assert(td.replicationFactor == 3)
     }
