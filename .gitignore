@@ -12,3 +12,13 @@ dist
 activator*
 RUNNING_PID
 .DS_Store
+/bin
+.cache
+.classpath
+.project
+.sbtserver/
+.tmpBin
+project/.sbtserver
+project/.sbtserver.lock
+project/play-fork-run.sbt
+project/sbt-ui.sbt

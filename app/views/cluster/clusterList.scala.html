@@ -23,7 +23,6 @@
                     <td>
                         <div class="btn-group-horizontal" role="group" aria-label="...">
                         @if(cluster.enabled) {
-                            <a href="@routes.Cluster.updateCluster(cluster.name)" class="btn btn-default ops-button" role="button">Modify</a>
                             @b3.form(routes.Cluster.handleUpdateCluster(cluster.name)) {
                             <input type="hidden" name="name" value="@cluster.name">
                             <input type="hidden" name="kafkaVersion" value="@cluster.version.toString">
@@ -38,13 +37,6 @@
                             <input type="hidden" name="zkHosts" value="@cluster.curatorConfig.zkConnect">
                             <input type="hidden" name="operation" value="Enable">
                             @b3.submit('class -> "btn btn-success ops-button"){ Enable }
-                            }
-                            @b3.form(routes.Cluster.handleUpdateCluster(cluster.name)) {
-                            <input type="hidden" name="name" value="@cluster.name">
-                            <input type="hidden" name="kafkaVersion" value="@cluster.version.toString">
-                            <input type="hidden" name="zkHosts" value="@cluster.curatorConfig.zkConnect">
-                            <input type="hidden" name="operation" value="Delete">
-                            @b3.submit('class -> "btn btn-danger ops-button"){ Delete }
                             }
                         }
                         </div>

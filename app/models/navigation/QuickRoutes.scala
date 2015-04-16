@@ -15,8 +15,7 @@ object QuickRoutes {
 
   val baseRoutes : Map[String, Call] = Map(
     "Clusters" -> controllers.routes.Application.index(),
-    "List" -> controllers.routes.Application.index(),
-    "Add Cluster" -> controllers.routes.Cluster.addCluster()
+    "List" -> controllers.routes.Application.index()
   )
   val clusterRoutes : Map[String, String => Call] = Map(
     "Update Cluster" -> controllers.routes.Cluster.updateCluster,

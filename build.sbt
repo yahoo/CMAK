@@ -82,3 +82,6 @@ rpmLicense := Some("Apache")
 
 
 
+
+
+fork in run := true
