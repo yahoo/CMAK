@@ -162,6 +162,48 @@ class TestKafkaManager extends CuratorAwareTest {
     assert(result.isRight === true)
   }
 
+  test("add topic partitions") {
+    val tiFuture= kafkaManager.getTopicIdentity("dev",createTopicName)
+    val tiOrError = Await.result(tiFuture, duration)
+    assert(tiOrError.isRight, "Failed to get topic identity!")
+    val ti = tiOrError.toOption.get
+    val future = kafkaManager.addTopicPartitions("dev",createTopicName,Seq(0),ti.partitions + 1,ti.readVersion)
+    val result = Await.result(future,duration)
+    assert(result.isRight === true)
+    
+    //check new partition num
+    {
+      val tiFuture= kafkaManager.getTopicIdentity("dev",createTopicName)
+      val tiOrError = Await.result(tiFuture, duration)
+      assert(tiOrError.isRight, "Failed to get topic identity!")
+      val ti = tiOrError.toOption.get
+      assert(ti.partitions === 5)
+    }
+  }
+
+  test("update topic config") {
+    val tiFuture= kafkaManager.getTopicIdentity("dev",createTopicName)
+    val tiOrError = Await.result(tiFuture, duration)
+    assert(tiOrError.isRight, "Failed to get topic identity!")
+    val ti = tiOrError.toOption.get
+    val config = new Properties()
+    config.put(kafka.manager.utils.zero82.LogConfig.RententionMsProp,"1800000")
+    val configReadVersion = ti.configReadVersion
+    val future = kafkaManager.updateTopicConfig("dev",createTopicName,config,configReadVersion)
+    val result = Await.result(future,duration)
+    assert(result.isRight === true)
+
+    //check new topic config
+    {
+      val tiFuture= kafkaManager.getTopicIdentity("dev",createTopicName)
+      val tiOrError = Await.result(tiFuture, duration)
+      assert(tiOrError.isRight, "Failed to get topic identity!")
+      val ti = tiOrError.toOption.get
+      assert(ti.configReadVersion > configReadVersion)
+      assert(ti.config.toMap.apply(kafka.manager.utils.zero82.LogConfig.RententionMsProp) === "1800000")
+    }
+  }
+
   test("delete topic") {
     val future = kafkaManager.deleteTopic("dev",createTopicName)
     val result = Await.result(future,duration)

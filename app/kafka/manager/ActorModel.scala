@@ -40,6 +40,12 @@ object ActorModel {
                            partitions: Int,
                            replicationFactor: Int,
                            config: Properties = new Properties) extends CommandRequest
+  case class CMAddTopicPartitions(topic: String,
+                                  brokers: Seq[Int],
+                                  partitions: Int,
+                                  partitionReplicaList: Map[Int, Seq[Int]],
+                                  readVersion: Int) extends CommandRequest
+  case class CMUpdateTopicConfig(topic: String, config: Properties, readVersion: Int) extends CommandRequest
   case class CMDeleteTopic(topic: String) extends CommandRequest
   case class CMRunPreferredLeaderElection(topics: Set[String]) extends CommandRequest
   case class CMRunReassignPartition(topics: Set[String]) extends CommandRequest
@@ -54,6 +60,12 @@ object ActorModel {
                            partitions: Int,
                            replicationFactor:Int,
                            config: Properties) extends CommandRequest
+  case class KCAddTopicPartitions(topic: String,
+                           brokers: Seq[Int],
+                           partitions: Int, 
+                           partitionReplicaList: Map[Int, Seq[Int]], 
+                           readVersion: Int) extends CommandRequest
+  case class KCUpdateTopicConfig(topic: String, config: Properties, readVersion: Int) extends CommandRequest
   case class KCDeleteTopic(topic: String) extends CommandRequest
   case class KCPreferredReplicaLeaderElection(topicAndPartition: Set[TopicAndPartition]) extends CommandRequest
   case class KCReassignPartition(currentTopicIdentity: Map[String, TopicIdentity],
@@ -99,12 +111,12 @@ object ActorModel {
   case class KSGetBrokerState(id: String) extends  KSRequest
 
   case class TopicList(list: IndexedSeq[String], deleteSet: Set[String]) extends QueryResponse
-  case class TopicConfig(topic: String, config: Option[String]) extends QueryResponse
+  case class TopicConfig(topic: String, config: Option[(Int,String)]) extends QueryResponse
 
   case class TopicDescription(topic: String, 
-                              description: String, 
+                              description: (Int,String),
                               partitionState: Option[Map[String, String]], 
-                              config:Option[String], 
+                              config:Option[(Int,String)],
                               deleteSupported: Boolean) extends  QueryResponse
   case class TopicDescriptions(descriptions: IndexedSeq[TopicDescription], lastUpdateMillis: Long) extends QueryResponse
 

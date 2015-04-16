@@ -64,9 +64,9 @@ object ZkUtils {
    * create parrent directory if necessary. Never throw NodeExistException.
    * Return the updated path zkVersion
    */
-  def updatePersistentPath(curator: CuratorFramework, path: String, ba: Array[Byte]) = {
+  def updatePersistentPath(curator: CuratorFramework, path: String, ba: Array[Byte], version: Int = -1) = {
     try {
-      curator.setData().forPath(path, ba)
+      curator.setData().withVersion(version).forPath(path, ba)
     } catch {
       case e: NoNodeException => {
         try {

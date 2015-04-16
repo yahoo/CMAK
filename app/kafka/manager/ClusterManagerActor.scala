@@ -166,6 +166,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           kcResponse: KCCommandResult =>
             Future.successful(CMCommandResult(kcResponse.result))
         } pipeTo sender()
+        
       case CMCreateTopic(topic, partitions, replication, config) =>
         implicit val ec = longRunningExecutionContext
         val eventualTopicDescription = withKafkaStateActor(KSGetTopicDescription(topic))(identity[Option[TopicDescription]])
@@ -180,6 +181,48 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
             }
           } { td =>
             Future.successful(CMCommandResult(Failure(new IllegalArgumentException(s"Topic already exists : $topic"))))
+          }
+        } pipeTo sender()
+        
+      case CMAddTopicPartitions(topic, brokers, partitions, partitionReplicaList, readVersion) =>
+        implicit val ec = longRunningExecutionContext
+        val eventualTopicDescription = withKafkaStateActor(KSGetTopicDescription(topic))(identity[Option[TopicDescription]])
+        val eventualBrokerList = withKafkaStateActor(KSGetBrokers)(identity[BrokerList])
+        eventualTopicDescription.map { topicDescriptionOption =>
+          topicDescriptionOption.fold {
+            Future.successful(CMCommandResult(Failure(new IllegalArgumentException(s"Topic doesn't exist : $topic"))))
+          } { td =>
+            eventualBrokerList.flatMap {
+              bl => {
+                val brokerSet = bl.list.map(_.id).toSet
+                withKafkaCommandActor(KCAddTopicPartitions(topic, brokers.filter(brokerSet.apply), partitions, partitionReplicaList, readVersion))
+                {
+                  kcResponse: KCCommandResult =>
+                    CMCommandResult(kcResponse.result)
+                }
+              }
+            }
+          }
+        } pipeTo sender()
+
+      case CMUpdateTopicConfig(topic, config, readVersion) =>
+        implicit val ec = longRunningExecutionContext
+        val eventualTopicDescription = withKafkaStateActor(KSGetTopicDescription(topic))(identity[Option[TopicDescription]])
+        val eventualBrokerList = withKafkaStateActor(KSGetBrokers)(identity[BrokerList])
+        eventualTopicDescription.map { topicDescriptionOption =>
+          topicDescriptionOption.fold {
+            Future.successful(CMCommandResult(Failure(new IllegalArgumentException(s"Topic doesn't exist : $topic"))))
+          } { td =>
+            eventualBrokerList.flatMap {
+              bl => {
+                val brokerSet = bl.list.map(_.id).toSet
+                withKafkaCommandActor(KCUpdateTopicConfig(topic, config, readVersion))
+                {
+                  kcResponse: KCCommandResult =>
+                    CMCommandResult(kcResponse.result)
+                }
+              }
+            }
           }
         } pipeTo sender()
 

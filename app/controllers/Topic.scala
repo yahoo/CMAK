@@ -8,9 +8,9 @@ package controllers
 import java.util.Properties
 
 import kafka.manager.utils.TopicConfigs
-import kafka.manager.{ApiError, Kafka_0_8_2_0, Kafka_0_8_1_1}
+import kafka.manager.{TopicIdentity, ApiError, Kafka_0_8_2_0, Kafka_0_8_1_1}
 import models.FollowLink
-import models.form.{DeleteTopic, TConfig, CreateTopic}
+import models.form._
 import models.navigation.Menus
 import play.api.data.Form
 import play.api.data.Forms._
@@ -46,7 +46,7 @@ object Topic extends Controller{
     mapping(
       "topic" -> nonEmptyText.verifying(maxLength(250), validateName),
       "partitions" -> number(min = 1, max = 10000),
-      "replication" -> number(min = 1, max = 10),
+      "replication" -> number(min = 1, max = 1000),
       "configs" -> list(
         mapping(
           "name" -> nonEmptyText,
@@ -60,6 +60,34 @@ object Topic extends Controller{
     mapping(
       "topic" -> nonEmptyText.verifying(maxLength(250), validateName)
     )(DeleteTopic.apply)(DeleteTopic.unapply)
+  )
+
+  val defaultAddPartitionsForm = Form(
+    mapping(
+      "topic" -> nonEmptyText.verifying(maxLength(250), validateName),
+      "brokers" -> seq {
+        mapping(
+          "id" -> number(min = 0),
+          "host" -> nonEmptyText,
+          "selected" -> boolean
+        )(BrokerSelect.apply)(BrokerSelect.unapply)
+      },
+      "partitions" -> number(min = 1, max = 10000),
+      "readVersion" -> number(min = 0)
+    )(AddTopicPartitions.apply)(AddTopicPartitions.unapply)
+  )
+
+  val defaultUpdateConfigForm = Form(
+    mapping(
+      "topic" -> nonEmptyText.verifying(maxLength(250), validateName),
+      "configs" -> list(
+        mapping(
+          "name" -> nonEmptyText,
+          "value" -> optional(text)
+        )(TConfig.apply)(TConfig.unapply)
+      ),
+      "readVersion" -> number(min = 0)
+    )(UpdateTopicConfig.apply)(UpdateTopicConfig.unapply)
   )
 
   private def createTopicForm(clusterName: String) = {
@@ -133,4 +161,80 @@ object Topic extends Controller{
     )
   }
 
+  def addPartitions(clusterName: String, topic: String) = Action.async { implicit request =>
+    val errorOrFormFuture = kafkaManager.getTopicIdentity(clusterName, topic).flatMap { errorOrTopicIdentity =>
+      errorOrTopicIdentity.fold( e => Future.successful(-\/(e)),{ topicIdentity =>
+        kafkaManager.getBrokerList(clusterName).map { errorOrBrokerList =>
+          errorOrBrokerList.map { bl =>
+            defaultAddPartitionsForm.fill(AddTopicPartitions(topic,bl.map(bi => BrokerSelect.from(bi)),topicIdentity.partitions,topicIdentity.readVersion))
+          }
+        }
+      })
+    }
+    errorOrFormFuture.map { errorOrForm =>
+      Ok(views.html.topic.addPartitions(clusterName, topic, errorOrForm))
+    }
+  }
+
+  def handleAddPartitions(clusterName: String, topic: String) = Action.async { implicit request =>
+    defaultAddPartitionsForm.bindFromRequest.fold(
+      formWithErrors => Future.successful(BadRequest(views.html.topic.addPartitions(clusterName, topic,\/-(formWithErrors)))),
+      addTopicPartitions => {
+        kafkaManager.addTopicPartitions(clusterName,addTopicPartitions.topic,addTopicPartitions.brokers.filter(_.selected).map(_.id),addTopicPartitions.partitions,addTopicPartitions.readVersion).map { errorOrSuccess =>
+          Ok(views.html.common.resultOfCommand(
+            views.html.navigation.clusterMenu(clusterName,"Topic","Topic View",Menus.clusterMenus(clusterName)),
+            models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View",clusterName, topic,"Add Partitions"),
+            errorOrSuccess,
+            "Add Partitions",
+            FollowLink("Go to topic view.",routes.Topic.topic(clusterName, addTopicPartitions.topic).toString()),
+            FollowLink("Try again.",routes.Topic.addPartitions(clusterName, topic).toString())
+          ))
+        }
+      }
+    )
+  }
+
+  private def updateConfigForm(clusterName: String, ti: TopicIdentity) = {
+    kafkaManager.getClusterConfig(clusterName).map { errorOrConfig =>
+      errorOrConfig.map { clusterConfig =>
+        val defaultConfigMap = clusterConfig.version match {
+          case Kafka_0_8_1_1 => TopicConfigs.configNames(Kafka_0_8_1_1).map(n => (n,TConfig(n,None))).toMap
+          case Kafka_0_8_2_0 => TopicConfigs.configNames(Kafka_0_8_2_0).map(n => (n,TConfig(n,None))).toMap
+        }
+        val combinedMap = defaultConfigMap ++ ti.config.toMap.map(tpl => tpl._1 -> TConfig(tpl._1,Option(tpl._2)))
+        defaultUpdateConfigForm.fill(UpdateTopicConfig(ti.topic,combinedMap.toList.map(_._2),ti.configReadVersion))
+      }
+    }
+  }
+
+  def updateConfig(clusterName: String, topic: String) = Action.async { implicit request =>
+    val errorOrFormFuture = kafkaManager.getTopicIdentity(clusterName, topic).flatMap { errorOrTopicIdentity =>
+      errorOrTopicIdentity.fold( e => Future.successful(-\/(e)) ,{ topicIdentity =>
+        updateConfigForm(clusterName, topicIdentity)
+      })
+    }
+    errorOrFormFuture.map { errorOrForm =>
+      Ok(views.html.topic.updateConfig(clusterName, topic, errorOrForm))
+    }
+  }
+
+  def handleUpdateConfig(clusterName: String, topic: String) = Action.async { implicit request =>
+    defaultUpdateConfigForm.bindFromRequest.fold(
+      formWithErrors => Future.successful(BadRequest(views.html.topic.updateConfig(clusterName, topic,\/-(formWithErrors)))),
+      updateTopicConfig => {
+        val props = new Properties()
+        updateTopicConfig.configs.filter(_.value.isDefined).foreach(c => props.setProperty(c.name,c.value.get))
+        kafkaManager.updateTopicConfig(clusterName,updateTopicConfig.topic,props,updateTopicConfig.readVersion).map { errorOrSuccess =>
+          Ok(views.html.common.resultOfCommand(
+            views.html.navigation.clusterMenu(clusterName,"Topic","Topic View",Menus.clusterMenus(clusterName)),
+            models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View",clusterName, topic,"Update Config"),
+            errorOrSuccess,
+            "Update Config",
+            FollowLink("Go to topic view.",routes.Topic.topic(clusterName, updateTopicConfig.topic).toString()),
+            FollowLink("Try again.",routes.Topic.updateConfig(clusterName, topic).toString())
+          ))
+        }
+      }
+    )
+  }
 }

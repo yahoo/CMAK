@@ -21,8 +21,8 @@
         @b3.text(createTopicForm("partitions"), '_label -> "Partitions", 'placeholder -> "8")
         @b3.text(createTopicForm("replication"), '_label -> "Replication Factor", 'placeholder -> "3")
         @helper.repeat(createTopicForm("configs"), min = 1) { configsForm =>
-        @b3.hidden(configsForm("name").name, configsForm("name").value.getOrElse(""))
-        @b3.text(configsForm("value"), '_label -> configsForm("name").value.getOrElse(""))
+            @b3.hidden(configsForm("name").name, configsForm("name").value.getOrElse(""))
+            @b3.text(configsForm("value"), '_label -> configsForm("name").value.getOrElse(""))
         }
         @b3.submit('class -> "submit-button btn btn-primary"){ Create }
         <a href="@routes.Topic.topics(cluster)" class="cancel-button btn btn-default" role="button">Cancel</a>

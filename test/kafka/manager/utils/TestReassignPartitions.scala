@@ -9,6 +9,7 @@ import java.util.Properties
 import kafka.manager.ActorModel._
 import kafka.manager.{Kafka_0_8_2_0, TopicIdentity}
 import kafka.manager.utils.zero81._
+import org.apache.zookeeper.data.Stat
 
 /**
  * @author hiral
@@ -40,9 +41,11 @@ class TestReassignPartitions extends CuratorAwareTest {
 
   private[this] def getTopicIdentity(topic: String): TopicIdentity = {
     produceWithCurator { curator =>
-      val json : String = curator.getData.forPath(ZkUtils.getTopicPath(topic))
-      val configJson : String = curator.getData.forPath(ZkUtils.getTopicConfigPath(topic))
-      val td: TopicDescription = TopicDescription(topic,json,None,Option(configJson),false)
+      val stat = new Stat
+      val json : String = curator.getData.storingStatIn(stat).forPath(ZkUtils.getTopicPath(topic))
+      val configStat = new Stat
+      val configJson : String = curator.getData.storingStatIn(configStat).forPath(ZkUtils.getTopicConfigPath(topic))
+      val td: TopicDescription = TopicDescription(topic,(stat.getVersion,json),None,Option((configStat.getVersion,configJson)),false)
       TopicIdentity.from(brokerList.size,td)
     }
   }
