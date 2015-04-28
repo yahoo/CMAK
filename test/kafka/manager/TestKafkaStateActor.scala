@@ -75,7 +75,7 @@ class TestKafkaStateActor extends KafkaServerInTest {
   test("get broker list") {
     withKafkaStateActor(KSGetBrokers) { result: BrokerList =>
       result.list foreach println
-      val brokerIdentityList : IndexedSeq[BrokerIdentity] = result.list.map(BrokerIdentity.from)
+      val brokerIdentityList : IndexedSeq[BrokerIdentity] = result.list
       brokerIdentityList foreach println
     }
   }

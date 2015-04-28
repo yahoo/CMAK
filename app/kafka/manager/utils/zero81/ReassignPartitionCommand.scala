@@ -18,7 +18,7 @@
 package kafka.manager.utils.zero81
 
 import kafka.manager.utils._
-import kafka.manager.{TopicIdentity, TopicPartitionIdentity}
+import kafka.manager.ActorModel.{TopicPartitionIdentity, TopicIdentity}
 import org.apache.curator.framework.CuratorFramework
 import org.apache.zookeeper.KeeperException.NodeExistsException
 import org.slf4j.LoggerFactory

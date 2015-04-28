@@ -13,7 +13,7 @@ import scala.util.Try
  * @author hiral
  */
 import ActorModel._
-class BrokerViewCacheActor(kafkaStateActorPath: ActorPath, updatePeriod: FiniteDuration = 10 seconds) extends BaseActor {
+class BrokerViewCacheActor(kafkaStateActorPath: ActorPath, clusterConfig: ClusterConfig, updatePeriod: FiniteDuration = 10 seconds) extends BaseActor {
 
   private[this] var cancellable : Option[Cancellable] = None
 
@@ -23,7 +23,7 @@ class BrokerViewCacheActor(kafkaStateActorPath: ActorPath, updatePeriod: FiniteD
 
   private[this] var brokerListOption : Option[BrokerList] = None
 
-  private[this] var brokerTopicMetrics : Map[(Int, String), BrokerMetrics] = Map.empty
+  private[this] var topicMetrics: Map[String, Map[Int, BrokerMetrics]] = Map.empty
 
   private[this] var brokerMetrics : Map[Int, BrokerMetrics] = Map.empty
 
@@ -57,8 +57,8 @@ class BrokerViewCacheActor(kafkaStateActorPath: ActorPath, updatePeriod: FiniteD
       case BVGetView(id) =>
         sender ! brokerTopicPartitions.get(id)
 
-      case BVGetTopicMetrics(id, topic) =>
-        sender ! brokerTopicMetrics.get((id, topic))
+      case BVGetTopicMetrics(topic) =>
+        sender ! topicMetrics.get(topic).map(m => m.values.foldLeft(BrokerMetrics.DEFAULT)((acc,bm) => acc + bm))
 
       case any: Any => log.warning("Received unknown message: {}", any)
     }
@@ -85,24 +85,47 @@ class BrokerViewCacheActor(kafkaStateActorPath: ActorPath, updatePeriod: FiniteD
     } {
       val topicIdentity : IndexedSeq[TopicIdentity] = topicDescriptions.descriptions.map(TopicIdentity.from(brokerList.list.size,_,None))
       val topicPartitionByBroker = topicIdentity.flatMap(ti => ti.partitionsByBroker.map(btp => (ti,btp.id,btp.partitions))).groupBy(_._2)
-      // TODO Read the option in the cluster config to know if JMX metrics is on/off
-      brokerTopicMetrics = topicPartitionByBroker.flatMap {
-        case (brokerId, topicPartitions) =>
-          val brokerInfoOpt = brokerList.list.find(_.id == brokerId)
-          brokerInfoOpt.map {
-            broker =>
-              topicPartitions.map {
-                case (topic, id, partitions) =>
-                  ((brokerId, topic.topic), getBrokerMetrics(broker, Some(topic.topic)))
-              }.toMap
-          }
-      }.flatten.toMap
-      brokerMetrics = brokerList.list.map {
-        broker =>
-          val brokerIdentity = BrokerIdentity.from(broker)
-          val brokerMetrics = getBrokerMetrics(brokerIdentity)
-          (brokerIdentity.id, brokerMetrics)
-      }.toMap
+
+      if (clusterConfig.jmxEnabled) {
+        val brokerLookup = brokerList.list.map(bi => bi.id -> bi).toMap
+        val topicMetricsByBroker = topicPartitionByBroker.flatMap {
+          case (brokerId, topicPartitions) =>
+            val brokerInfoOpt = brokerLookup.get(brokerId)
+            brokerInfoOpt.map {
+              broker =>
+                val tryResult = KafkaJMX.doWithConnection(broker.host, broker.jmxPort) {
+                  mbsc =>
+                    topicPartitions.map {
+                      case (topic, id, partitions) =>
+                        ((brokerId, topic.topic), KafkaMetrics.getBrokerMetrics(mbsc, Option(topic.topic)))
+                    }
+                }
+                tryResult match {
+                  case scala.util.Failure(t) =>
+                    log.error(s"Failed to get broker metrics $broker",t)
+                    topicPartitions.map {
+                      case (topic, id, partitions) =>
+                        ((brokerId, topic.topic), BrokerMetrics.DEFAULT)
+                    }
+                  case scala.util.Success(bm) => bm
+                }
+            }
+        }.flatten
+        val groupedByTopic = topicMetricsByBroker.groupBy(_._1._2)
+        topicMetrics = groupedByTopic.mapValues { metricList =>
+            metricList.map(m => m._1._1 -> m._2).toMap
+        }
+        
+        brokerMetrics = brokerList.list.map {
+          broker =>
+            KafkaJMX.doWithConnection(broker.host, broker.jmxPort) {
+              mbsc =>
+                val brokerMetrics = KafkaMetrics.getBrokerMetrics(mbsc)
+                (broker.id, brokerMetrics)
+            }.toOption.getOrElse(broker.id -> BrokerMetrics.DEFAULT)
+        }.toMap
+      }
+      
       brokerTopicPartitions = topicPartitionByBroker.map {
         case (brokerId, topicPartitions) =>
           val topicPartitionsMap : Map[TopicIdentity, IndexedSeq[Int]] = topicPartitions.map {
@@ -111,39 +134,6 @@ class BrokerViewCacheActor(kafkaStateActorPath: ActorPath, updatePeriod: FiniteD
           }.toMap
           (brokerId, BVView(topicPartitionsMap, brokerMetrics.get(brokerId)))
       }
-    }
-  }
-
-  private [this] def getBrokerMetrics(brokerIdentity: BrokerIdentity, topic: Option[String] = None) = {
-    if (brokerIdentity.jmxPort != -1) {
-      KafkaJMX.connect(brokerIdentity.host, brokerIdentity.jmxPort).map {
-        mbsc =>
-          BrokerMetrics(
-            KafkaMetrics.getBytesInPerSec(mbsc, topic),
-            KafkaMetrics.getBytesOutPerSec(mbsc, topic),
-            KafkaMetrics.getBytesRejectedPerSec(mbsc, topic),
-            KafkaMetrics.getFailedFetchRequestsPerSec(mbsc, topic),
-            KafkaMetrics.getFailedProduceRequestsPerSec(mbsc, topic),
-            KafkaMetrics.getMessagesInPerSec(mbsc, topic))
-      }.getOrElse {
-        // Unable to connect to JMX server
-        BrokerMetrics(
-          RateMetric(0, 0, 0, 0, 0),
-          RateMetric(0, 0, 0, 0, 0),
-          RateMetric(0, 0, 0, 0, 0),
-          RateMetric(0, 0, 0, 0, 0),
-          RateMetric(0, 0, 0, 0, 0),
-          RateMetric(0, 0, 0, 0, 0))
-      }
-    } else {
-      // JMX Port is not configured
-      BrokerMetrics(
-        RateMetric(0, 0, 0, 0, 0),
-        RateMetric(0, 0, 0, 0, 0),
-        RateMetric(0, 0, 0, 0, 0),
-        RateMetric(0, 0, 0, 0, 0),
-        RateMetric(0, 0, 0, 0, 0),
-        RateMetric(0, 0, 0, 0, 0))
     }
   }
 }

@@ -7,8 +7,9 @@ package controllers
 
 import java.util.Properties
 
+import kafka.manager.ActorModel.TopicIdentity
 import kafka.manager.utils.TopicConfigs
-import kafka.manager.{TopicIdentity, ApiError, Kafka_0_8_2_0, Kafka_0_8_1_1}
+import kafka.manager.{ApiError, Kafka_0_8_2_0, Kafka_0_8_1_1}
 import models.FollowLink
 import models.form._
 import models.navigation.Menus

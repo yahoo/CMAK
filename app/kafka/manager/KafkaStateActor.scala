@@ -236,8 +236,17 @@ class KafkaStateActor(curator: CuratorFramework, deleteSupported: Boolean) exten
 
       case KSGetBrokers =>
         val data: mutable.Buffer[ChildData] = brokersPathCache.getCurrentData.asScala
-        val result: IndexedSeq[BrokerInfo] = data.map { cd =>
-          BrokerInfo(nodeFromPath(cd.getPath).toInt, asString(cd.getData))
+        val result: IndexedSeq[BrokerIdentity] = data.map { cd =>
+          BrokerIdentity.from(nodeFromPath(cd.getPath).toInt, asString(cd.getData))
+        }.filter { v =>
+          v match {
+            case scalaz.Failure(nel) =>
+              log.error(s"Failed to parse broker config $nel")
+              false
+            case _ => true
+          }
+        }.collect { 
+          case scalaz.Success(bi) => bi
         }.toIndexedSeq.sortBy(_.id)
         sender ! BrokerList(result)
 

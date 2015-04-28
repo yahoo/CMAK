@@ -3,15 +3,32 @@ package kafka.manager
 import javax.management._
 import javax.management.remote.{JMXConnectorFactory, JMXServiceURL}
 
-import scala.util.Try
+import kafka.manager.ActorModel.BrokerMetrics
+import org.slf4j.LoggerFactory
+
+import scala.util.{Failure, Try}
 
 object KafkaJMX {
+  
+  private[this] lazy val logger = LoggerFactory.getLogger(this.getClass)
 
-  def connect(jmxHost: String, jmxPort: Int): Try[MBeanServerConnection] = {
-    Try {
-      val url = new JMXServiceURL(s"service:jmx:rmi:///jndi/rmi://$jmxHost:$jmxPort/jmxrmi")
+  def doWithConnection[T](jmxHost: String, jmxPort: Int)(fn: MBeanServerConnection => T) : Try[T] = {
+    val urlString = s"service:jmx:rmi:///jndi/rmi://$jmxHost:$jmxPort/jmxrmi"
+    val url = new JMXServiceURL(urlString)
+    try {
+      require(jmxPort > 0, "No jmx port but jmx polling enabled!")
       val jmxc = JMXConnectorFactory.connect(url, null)
-      jmxc.getMBeanServerConnection
+      try {
+        Try {
+          fn(jmxc.getMBeanServerConnection)
+        }
+      } finally {
+        jmxc.close()
+      }
+    } catch {
+      case e: Exception =>
+        logger.error(s"Failed to connect to $urlString",e)
+        Failure(e)
     }
   }
 }
@@ -19,31 +36,31 @@ object KafkaJMX {
 object KafkaMetrics {
 
   def getBytesInPerSec(mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
-    getBrokerTopicRateMetrics(mbsc, "BytesInPerSec", topicOption)
+    getBrokerTopicMeterMetrics(mbsc, "BytesInPerSec", topicOption)
   }
 
   def getBytesOutPerSec(mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
-    getBrokerTopicRateMetrics(mbsc, "BytesOutPerSec", topicOption)
+    getBrokerTopicMeterMetrics(mbsc, "BytesOutPerSec", topicOption)
   }
 
   def getBytesRejectedPerSec(mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
-    getBrokerTopicRateMetrics(mbsc, "BytesRejectedPerSec", topicOption)
+    getBrokerTopicMeterMetrics(mbsc, "BytesRejectedPerSec", topicOption)
   }
 
   def getFailedFetchRequestsPerSec(mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
-    getBrokerTopicRateMetrics(mbsc, "FailedFetchRequestsPerSec", topicOption)
+    getBrokerTopicMeterMetrics(mbsc, "FailedFetchRequestsPerSec", topicOption)
   }
 
   def getFailedProduceRequestsPerSec(mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
-    getBrokerTopicRateMetrics(mbsc, "FailedProduceRequestsPerSec", topicOption)
+    getBrokerTopicMeterMetrics(mbsc, "FailedProduceRequestsPerSec", topicOption)
   }
 
   def getMessagesInPerSec(mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
-    getBrokerTopicRateMetrics(mbsc, "MessagesInPerSec", topicOption)
+    getBrokerTopicMeterMetrics(mbsc, "MessagesInPerSec", topicOption)
   }
 
-  private def getBrokerTopicRateMetrics(mbsc: MBeanServerConnection, metricName: String, topicOption: Option[String]) = {
-    getRateMetric(mbsc, getObjectName(metricName, topicOption))
+  private def getBrokerTopicMeterMetrics(mbsc: MBeanServerConnection, metricName: String, topicOption: Option[String]) = {
+    getMeterMetric(mbsc, getObjectName(metricName, topicOption))
   }
 
   private def getObjectName(name: String, topicOption: Option[String] = None) = {
@@ -51,21 +68,41 @@ object KafkaMetrics {
     new ObjectName(s"kafka.server:type=BrokerTopicMetrics,name=$name$topicProp")
   }
 
-  private def getRateMetric(mbsc: MBeanServerConnection, name:ObjectName) = {
+  /* Gauge, Value : 0 */
+  private val replicaFetcherManagerMinFetchRate = new ObjectName(
+    "kafka.server:type=ReplicaFetcherManager,name=MinFetchRate,clientId=Replica")
+
+  /* Gauge, Value : 0 */
+  private val replicaFetcherManagerMaxLag = new ObjectName(
+    "kafka.server:type=ReplicaFetcherManager,name=MaxLag,clientId=Replica")
+  
+  /* Gauge, Value : 0 */
+  private val kafkaControllerActiveControllerCount = new ObjectName(
+    "kafka.controller:type=KafkaController,name=ActiveControllerCount")
+  
+  /* Gauge, Value : 0 */
+  private val kafkaControllerOfflinePartitionsCount = new ObjectName(
+    "kafka.controller:type=KafkaController,name=OfflinePartitionsCount")
+
+  /* Timer*/
+  private val logFlushStats = new ObjectName(
+    "kafka.log:type=LogFlushStats,name=LogFlushRateAndTimeMs")
+  
+  private def getMeterMetric(mbsc: MBeanServerConnection, name:ObjectName) = {
     import scala.collection.JavaConverters._
     try {
       val attributeList = mbsc.getAttributes(name, Array("Count", "FifteenMinuteRate", "FiveMinuteRate", "OneMinuteRate", "MeanRate"))
       val attributes = attributeList.asList().asScala.toSeq
-      RateMetric(getLongValue(attributes, "Count"),
+      MeterMetric(getLongValue(attributes, "Count"),
         getDoubleValue(attributes, "FifteenMinuteRate"),
         getDoubleValue(attributes, "FiveMinuteRate"),
         getDoubleValue(attributes, "OneMinuteRate"),
         getDoubleValue(attributes, "MeanRate"))
     } catch {
-        case _: InstanceNotFoundException => RateMetric(0,0,0,0,0)
+        case _: InstanceNotFoundException => MeterMetric(0,0,0,0,0)
       }
   }
-
+  
   private def getLongValue(attributes: Seq[Attribute], name: String) = {
     attributes.find(_.getName == name).map(_.getValue.asInstanceOf[Long]).getOrElse(0L)
   }
@@ -73,31 +110,54 @@ object KafkaMetrics {
   private def getDoubleValue(attributes: Seq[Attribute], name: String) = {
     attributes.find(_.getName == name).map(_.getValue.asInstanceOf[Double]).getOrElse(0D)
   }
+
+  def getBrokerMetrics(mbsc: MBeanServerConnection, topic: Option[String] = None) : BrokerMetrics = {
+    BrokerMetrics(
+      KafkaMetrics.getBytesInPerSec(mbsc, topic),
+      KafkaMetrics.getBytesOutPerSec(mbsc, topic),
+      KafkaMetrics.getBytesRejectedPerSec(mbsc, topic),
+      KafkaMetrics.getFailedFetchRequestsPerSec(mbsc, topic),
+      KafkaMetrics.getFailedProduceRequestsPerSec(mbsc, topic),
+      KafkaMetrics.getMessagesInPerSec(mbsc, topic))
+  }
 }
 
-case class RateMetric(count: Long,
+case class GaugeMetric(value: Double)
+
+case class MeterMetric(count: Long,
                       fifteenMinuteRate: Double,
                       fiveMinuteRate: Double,
                       oneMinuteRate: Double,
                       meanRate: Double) {
 
-  val UNIT = Array[Char]('k', 'm', 'b', 't')
-
   def formatFifteenMinuteRate = {
-    rateFormat(fifteenMinuteRate, 0)
+    FormatMetric.rateFormat(fifteenMinuteRate, 0)
   }
 
   def formatFiveMinuteRate = {
-    rateFormat(fiveMinuteRate, 0)
+    FormatMetric.rateFormat(fiveMinuteRate, 0)
   }
 
   def formatOneMinuteRate = {
-    rateFormat(oneMinuteRate, 0)
+    FormatMetric.rateFormat(oneMinuteRate, 0)
   }
 
   def formatMeanRate = {
-    rateFormat(meanRate, 0)
+    FormatMetric.rateFormat(meanRate, 0)
   }
+
+  def +(o: MeterMetric) : MeterMetric = {
+    MeterMetric(
+      o.count + count, 
+      o.fifteenMinuteRate + fifteenMinuteRate, 
+      o.fiveMinuteRate + fiveMinuteRate, 
+      o.oneMinuteRate + oneMinuteRate, 
+      o.meanRate + meanRate)
+  }
+}
+
+object FormatMetric {
+  private[this] val UNIT = Array[Char]('k', 'm', 'b', 't')
 
   // See: http://stackoverflow.com/a/4753866
   def rateFormat(rate: Double, iteration: Int): String = {

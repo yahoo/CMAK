@@ -146,15 +146,15 @@ class KafkaManager(akkaConfig: Config) {
     }
   }
 
-  def addCluster(clusterName: String, version: String, zkHosts: String) : Future[ApiError \/ Unit] = {
-    val cc = ClusterConfig(clusterName, version, zkHosts)
+  def addCluster(clusterName: String, version: String, zkHosts: String, jmxEnabled: Boolean) : Future[ApiError \/ Unit] = {
+    val cc = ClusterConfig(clusterName, version, zkHosts, jmxEnabled = jmxEnabled)
     tryWithKafkaManagerActor(KMAddCluster(cc)) { result: KMCommandResult =>
       result.result.get
     }
   }
 
-  def updateCluster(clusterName: String, version: String, zkHosts: String) : Future[ApiError \/ Unit] = {
-    val cc = ClusterConfig(clusterName, version, zkHosts)
+  def updateCluster(clusterName: String, version: String, zkHosts: String, jmxEnabled: Boolean) : Future[ApiError \/ Unit] = {
+    val cc = ClusterConfig(clusterName, version, zkHosts, jmxEnabled = jmxEnabled)
     tryWithKafkaManagerActor(KMUpdateCluster(cc)) { result: KMCommandResult =>
       result.result.get
     }
@@ -198,7 +198,7 @@ class KafkaManager(akkaConfig: Config) {
 
   def getBrokerList(clusterName: String) : Future[ApiError \/ IndexedSeq[BrokerIdentity]] = {
     tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName,KSGetBrokers)) { brokerList: BrokerList =>
-      brokerList.list.map(BrokerIdentity.from)
+      brokerList.list
     }
   }
 
@@ -220,41 +220,29 @@ class KafkaManager(akkaConfig: Config) {
   }
 
   def getTopicIdentity(clusterName: String, topic: String) : Future[ApiError \/ TopicIdentity] = {
-    val futureDescription = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName,KSGetTopicDescription(topic)))(identity[Option[TopicDescription]])
+    val futureCMTopicIdentity = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName,CMGetTopicIdentity(topic)))(identity[Option[CMTopicIdentity]])
     implicit val ec = apiExecutionContext
-    futureDescription.flatMap[ApiError \/ TopicIdentity] { errOrTD =>
-      errOrTD.fold(
+    futureCMTopicIdentity.map[ApiError \/ TopicIdentity] { errOrTD =>
+      errOrTD.fold[ApiError \/ TopicIdentity](
       { err: ApiError =>
-        Future.successful(-\/[ApiError](err))
-      }, { tdOption: Option[TopicDescription] =>
-        tdOption.fold {
-          Future.successful[ApiError \/ TopicIdentity](-\/(ApiError(s"Topic not found $topic for cluster $clusterName")))
-        } { td =>
-          val futureBrokerList = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, KSGetBrokers))(identity[BrokerList])
-          futureBrokerList.flatMap[ApiError \/ TopicIdentity] { errOrBL =>
-            errOrBL.fold(
-            { err: ApiError =>
-              Future.successful(-\/[ApiError](err))
-            }, { brokerList: BrokerList =>
-              // TODO Retrieve metrics for all brokers
-              val brokerId = brokerList.list.head.id.toInt
-              getTopicMetrics(clusterName, brokerId, topic).map { errOrMetrics =>
-                errOrMetrics.fold(
-                { err: ApiError =>
-                  -\/[ApiError](err)
-                }, { metricsOption: Option[BrokerMetrics] =>
-                  \/-(TopicIdentity.from(brokerList, td, metricsOption))
-                })
-              }
-            })
+        -\/[ApiError](err)
+      }, { tiOption: Option[CMTopicIdentity] =>
+        tiOption.fold[ApiError \/ TopicIdentity] {
+          -\/(ApiError(s"Topic not found $topic for cluster $clusterName"))
+        } { cmTopicIdentity =>
+          cmTopicIdentity.topicIdentity match {
+            case scala.util.Failure(t) =>
+              -\/[ApiError](t)
+            case scala.util.Success(ti) =>
+              \/-(ti)
           }
         }
       })
     }
   }
 
-  def getTopicMetrics(clusterName: String, brokerId: Int, topic: String) : Future[ApiError \/ Option[BrokerMetrics]] = {
-    tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName,BVGetTopicMetrics(brokerId, topic))) { brokerMetrics: Option[BrokerMetrics] =>
+  def getTopicMetrics(clusterName: String, topic: String) : Future[ApiError \/ Option[BrokerMetrics]] = {
+    tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName,BVGetTopicMetrics(topic))) { brokerMetrics: Option[BrokerMetrics] =>
       brokerMetrics
     }
   }

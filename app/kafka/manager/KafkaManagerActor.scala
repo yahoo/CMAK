@@ -76,18 +76,18 @@ object ClusterConfig {
     require(zkHosts.length > 0, "cluster zk hosts is illegal, can't be empty!")
   }
 
-  def apply(name: String, version : String, zkHosts: String, zkMaxRetry: Int = 100) : ClusterConfig = {
+  def apply(name: String, version : String, zkHosts: String, zkMaxRetry: Int = 100, jmxEnabled: Boolean) : ClusterConfig = {
     val kafkaVersion = KafkaVersion(version)
     //validate cluster name
     validateName(name)
     //validate zk hosts
     validateZkHosts(zkHosts)
     val cleanZkHosts = zkHosts.replaceAll(" ","").toLowerCase
-    new ClusterConfig(name.toLowerCase, CuratorConfig(cleanZkHosts, zkMaxRetry), true, kafkaVersion)
+    new ClusterConfig(name.toLowerCase, CuratorConfig(cleanZkHosts, zkMaxRetry), true, kafkaVersion, jmxEnabled)
   }
 
-  def customUnapply(cc: ClusterConfig) : Option[(String, String, String, Int)] = {
-    Some((cc.name, cc.version.toString, cc.curatorConfig.zkConnect, cc.curatorConfig.zkMaxRetry))
+  def customUnapply(cc: ClusterConfig) : Option[(String, String, String, Int, Boolean)] = {
+    Some((cc.name, cc.version.toString, cc.curatorConfig.zkConnect, cc.curatorConfig.zkMaxRetry, cc.jmxEnabled))
   }
 
   import scalaz.{Failure,Success}
@@ -117,6 +117,7 @@ object ClusterConfig {
       :: ("curatorConfig" -> toJSON(config.curatorConfig))
       :: ("enabled" -> toJSON(config.enabled))
       :: ("kafkaVersion" -> toJSON(config.version.toString))
+      :: ("jmxEnabled" -> toJSON(config.jmxEnabled))
       :: Nil)
     compact(render(json)).getBytes(StandardCharsets.UTF_8)
   }
@@ -130,7 +131,8 @@ object ClusterConfig {
         (name:String,curatorConfig:CuratorConfig,enabled:Boolean) =>
           val versionString = field[String]("kafkaVersion")(json)
           val version = versionString.map(KafkaVersion.apply).getOrElse(Kafka_0_8_1_1)
-          ClusterConfig.apply(name,curatorConfig,enabled,version)
+          val jmxEnabled = field[Boolean]("jmxEnabled")(json)
+          ClusterConfig.apply(name,curatorConfig,enabled,version,jmxEnabled.getOrElse(false))
       }
 
       result match {
@@ -145,7 +147,7 @@ object ClusterConfig {
 
 }
 
-case class ClusterConfig (name: String, curatorConfig : CuratorConfig, enabled: Boolean, version: KafkaVersion)
+case class ClusterConfig (name: String, curatorConfig : CuratorConfig, enabled: Boolean, version: KafkaVersion, jmxEnabled: Boolean)
 
 object KafkaManagerActor {
   val ZkRoot : String = "/kafka-manager"
@@ -170,11 +172,14 @@ case class KafkaManagerActorConfig(curatorConfig: CuratorConfig,
                                    deleteClusterUpdatePeriod: FiniteDuration = 10 seconds,
                                    deletionBatchSize : Int = 2)
 class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
-  extends CuratorAwareActor(kafkaManagerConfig.curatorConfig) with BaseZkPath {
+  extends BaseQueryCommandActor with CuratorAwareActor with BaseZkPath {
 
   //this is for baze zk path trait
-  override val baseZkPath : String = kafkaManagerConfig.baseZkPath
+  override def baseZkPath : String = kafkaManagerConfig.baseZkPath
 
+  //this is for curator aware actor
+  override def curatorConfig: CuratorConfig = kafkaManagerConfig.curatorConfig
+  
   private[this] val baseClusterZkPath = zkPath("clusters")
   private[this] val configsZkPath = zkPath("configs")
   private[this] val deleteClustersZkPath = zkPath("deleteClusters")
@@ -328,21 +333,37 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
     }
   }
 
-  override def processActorRequest(request: ActorRequest): Unit = {
+  
+  override def processQueryRequest(request: QueryRequest): Unit = {
     request match {
       case KMGetActiveClusters =>
         sender ! KMQueryResult(clusterConfigMap.values.filter(_.enabled).toIndexedSeq)
 
       case KMGetAllClusters =>
-        sender ! KMClusterList(clusterConfigMap.values.toIndexedSeq,pendingClusterConfigMap.values.toIndexedSeq)
+        sender ! KMClusterList(clusterConfigMap.values.toIndexedSeq, pendingClusterConfigMap.values.toIndexedSeq)
 
       case KMGetClusterConfig(name) =>
-        sender ! KMClusterConfigResult( Try {
+        sender ! KMClusterConfigResult(Try {
           val cc = clusterConfigMap.get(name)
           require(cc.isDefined, s"Unknown cluster : $name")
           cc.get
         })
 
+      case KMClusterQueryRequest(clusterName, request) =>
+        clusterManagerMap.get(clusterName).fold[Unit] {
+          sender ! ActorErrorResponse(s"Unknown cluster : $clusterName")
+        } {
+          clusterManagerPath:ActorPath =>
+            context.actorSelection(clusterManagerPath).forward(request)
+        }
+        
+      case any: Any => log.warning("Received unknown message: {}", any)
+    }
+    
+  }
+
+  override def processCommandRequest(request: CommandRequest): Unit = {
+    request match {
       case KMAddCluster(clusterConfig) =>
         modify {
           val data: Array[Byte] = ClusterConfig.serialize(clusterConfig)
@@ -431,14 +452,6 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
             val deleteZkPath = getDeleteClusterZkPath(existingConfig.name)
             curator.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(deleteZkPath)
           }
-        }
-
-      case KMClusterQueryRequest(clusterName, request) =>
-        clusterManagerMap.get(clusterName).fold[Unit] {
-          sender ! ActorErrorResponse(s"Unknown cluster : $clusterName")
-        } {
-          clusterManagerPath:ActorPath =>
-            context.actorSelection(clusterManagerPath).forward(request)
         }
 
       case KMClusterCommandRequest(clusterName, request) =>

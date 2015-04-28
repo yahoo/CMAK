@@ -56,10 +56,13 @@ case class ClusterManagerActorConfig(pinnedDispatcherName: String,
                                 mutexTimeoutMillis: Int = 4000)
 
 class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
-  extends CuratorAwareActor(cmConfig.curatorConfig) with BaseZkPath {
+  extends BaseQueryCommandActor with CuratorAwareActor with BaseZkPath {
 
   //this is from base zk path trait
-  override val baseZkPath : String = cmConfig.baseZkPath
+  override def baseZkPath : String = cmConfig.baseZkPath
+
+  //this is for curator aware actor
+  override def curatorConfig: CuratorConfig = cmConfig.curatorConfig
 
   val longRunningExecutor = new ThreadPoolExecutor(
     cmConfig.threadPoolSize, cmConfig.threadPoolSize,0L,TimeUnit.MILLISECONDS,new LinkedBlockingQueue[Runnable](cmConfig.maxQueueSize))
@@ -86,7 +89,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
   private[this] val ksProps = Props(classOf[KafkaStateActor],sharedClusterCurator, adminUtils.isDeleteSupported)
   private[this] val kafkaStateActor : ActorPath = context.actorOf(ksProps.withDispatcher(cmConfig.pinnedDispatcherName),"kafka-state").path
 
-  private[this] val bvcProps = Props(classOf[BrokerViewCacheActor],kafkaStateActor,cmConfig.updatePeriod)
+  private[this] val bvcProps = Props(classOf[BrokerViewCacheActor],kafkaStateActor,cmConfig.clusterConfig,cmConfig.updatePeriod)
   private[this] val brokerViewCacheActor : ActorPath = context.actorOf(bvcProps,"broker-view").path
 
   private[this] val kcProps = {
@@ -130,14 +133,13 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
     super.postStop()
   }
 
-
   override def processActorResponse(response: ActorResponse): Unit = {
     response match {
       case any: Any => log.warning("Received unknown message: {}", any)
     }
   }
 
-  override def processActorRequest(request: ActorRequest): Unit = {
+  override def processQueryRequest(request: QueryRequest): Unit = {
     request match {
       case ksRequest: KSRequest =>
         context.actorSelection(kafkaStateActor).forward(ksRequest)
@@ -152,9 +154,33 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         val result = for {
           bl <- eventualBrokerList
           tl <- eventualTopicList
-        } yield CMView(tl.list.size, bl.list.size,cmConfig.clusterConfig)
+        } yield CMView(tl.list.size, bl.list.size, cmConfig.clusterConfig)
         result pipeTo sender
 
+      case CMGetTopicIdentity(topic) =>
+        implicit val ec = context.dispatcher
+        val eventualBrokerList = withKafkaStateActor(KSGetBrokers)(identity[BrokerList])
+        val eventualTopicMetrics : Future[Option[BrokerMetrics]] = {
+          if(cmConfig.clusterConfig.jmxEnabled) {
+            withBrokerViewCacheActor(BVGetTopicMetrics(topic))(identity[Option[BrokerMetrics]])
+          } else {
+            Future.successful(None)
+          }
+        }
+        val eventualTopicDescription = withKafkaStateActor(KSGetTopicDescription(topic))(identity[Option[TopicDescription]])
+        val result: Future[Option[CMTopicIdentity]] = for {
+          bl <- eventualBrokerList
+          tm <- eventualTopicMetrics
+          tdO <- eventualTopicDescription
+        } yield tdO.map( td => CMTopicIdentity(Try(TopicIdentity.from(bl,td,tm))))
+        result pipeTo sender
+
+      case any: Any => log.warning("Received unknown message: {}", any)
+    }
+  }
+
+  override def processCommandRequest(request: CommandRequest): Unit = {
+    request match {
       case CMShutdown =>
         log.info(s"Shutting down cluster manager ${cmConfig.clusterConfig.name}")
         context.children.foreach(context.stop)

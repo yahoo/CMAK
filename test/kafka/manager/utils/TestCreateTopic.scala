@@ -7,8 +7,8 @@ package kafka.manager.utils
 import java.util.Properties
 
 import TopicErrors._
-import kafka.manager.ActorModel.TopicDescription
-import kafka.manager.{Kafka_0_8_2_0, TopicIdentity}
+import kafka.manager.ActorModel.{TopicIdentity, TopicDescription}
+import kafka.manager.Kafka_0_8_2_0
 import org.apache.zookeeper.data.Stat
 
 /**
