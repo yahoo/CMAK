@@ -102,7 +102,7 @@ class BrokerViewCacheActor(kafkaStateActorPath: ActorPath, clusterConfig: Cluste
                 }
                 tryResult match {
                   case scala.util.Failure(t) =>
-                    log.error(s"Failed to get broker metrics $broker",t)
+                    log.error(s"Failed to get topic metrics for broker $broker",t)
                     topicPartitions.map {
                       case (topic, id, partitions) =>
                         ((brokerId, topic.topic), BrokerMetrics.DEFAULT)
@@ -115,14 +115,22 @@ class BrokerViewCacheActor(kafkaStateActorPath: ActorPath, clusterConfig: Cluste
         topicMetrics = groupedByTopic.mapValues { metricList =>
             metricList.map(m => m._1._1 -> m._2).toMap
         }
-        
+
         brokerMetrics = brokerList.list.map {
           broker =>
-            KafkaJMX.doWithConnection(broker.host, broker.jmxPort) {
+            val tryResult = KafkaJMX.doWithConnection(broker.host, broker.jmxPort) {
               mbsc =>
                 val brokerMetrics = KafkaMetrics.getBrokerMetrics(mbsc)
                 (broker.id, brokerMetrics)
-            }.toOption.getOrElse(broker.id -> BrokerMetrics.DEFAULT)
+            }
+
+            tryResult match {
+              case scala.util.Failure(t) =>
+                log.error(s"Failed to get broker metrics for $broker",t)
+                broker.id -> BrokerMetrics.DEFAULT
+              case scala.util.Success(bm) => bm
+            }
+
         }.toMap
       }
       
