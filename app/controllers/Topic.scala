@@ -103,7 +103,7 @@ object Topic extends Controller{
   }
 
   def topics(c: String) = Action.async {
-    kafkaManager.getTopicList(c).map { errorOrTopicList =>
+    kafkaManager.getTopicListWithMoreInfo(c).map { errorOrTopicList =>
       Ok(views.html.topic.topicList(c,errorOrTopicList))
     }
   }

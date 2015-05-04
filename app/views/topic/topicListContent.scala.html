@@ -2,7 +2,7 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@(cluster: String, topics: IndexedSeq[(String,Boolean)])
+@(cluster: String, topics: IndexedSeq[(kafka.manager.ActorModel.TopicIdentity,Boolean)])
 
 @getDeletedLevel(deleted: Boolean) = {
     @deleted match {
@@ -10,10 +10,27 @@
         case i => {}
     }
 }
+
+@getBrokersSpreadLevel(percentage: Int) = {
+    @percentage match {
+        case i if i > 50 && i<=75 => {warning}
+        case i if i <=  50 => {danger}
+        case i => {}
+    }
+}
+
 <table class="table">
+    <thead>
+    <tr><th>Topic</th><th># Partitions</th><th># Brokers</th><th>Brokers Spread %</th></tr>
+    </thead>
     <tbody>
-    @for( (topic, deleted) <- topics) {
-      <tr><td class="@getDeletedLevel(deleted)"><a href="@routes.Topic.topic(cluster,topic)">@topic</a></td></tr>
+    @for( (topicIdentity, deleted) <- topics) {
+      <tr>
+          <td class="@getDeletedLevel(deleted)"><a href="@routes.Topic.topic(cluster,topicIdentity.topic)">@topicIdentity.topic</a></td>
+          <td>@topicIdentity.partitions</td>
+          <td>@topicIdentity.numBrokers</td>
+          <td class="@getBrokersSpreadLevel(topicIdentity.brokersSpreadPercentage)">@topicIdentity.brokersSpreadPercentage</td>
+      </tr>
     }
     </tbody>
 </table>

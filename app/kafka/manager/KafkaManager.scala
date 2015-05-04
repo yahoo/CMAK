@@ -196,6 +196,25 @@ class KafkaManager(akkaConfig: Config) {
     tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName,KSGetTopics))(identity[TopicList])
   }
 
+  def getTopicListWithMoreInfo(clusterName: String) : Future[ApiError \/ TopicListWithMoreInfo] = {
+    val futureTopicIdentities = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName,BVGetTopicIdentities))(identity[IndexedSeq[TopicIdentity]])
+    val futureTopicList = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName,KSGetTopics))(identity[TopicList])
+
+    implicit val ec = apiExecutionContext
+    futureTopicIdentities.flatMap[ApiError \/ TopicListWithMoreInfo] { errOrTi =>
+      errOrTi.fold(
+      { err: ApiError =>
+        Future.successful(-\/[ApiError](err))
+      }, { ti: IndexedSeq[TopicIdentity] =>
+        val futureTopicList = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName,KSGetTopics))(identity[TopicList])
+        futureTopicList.map{
+          case -\/(e) => -\/(e)
+          case \/-(tl) => \/-(TopicListWithMoreInfo(ti.filter(i => tl.list.contains(i.topic)), tl.deleteSet))
+        }
+      })
+    }
+  }
+
   def getBrokerList(clusterName: String) : Future[ApiError \/ IndexedSeq[BrokerIdentity]] = {
     tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName,KSGetBrokers)) { brokerList: BrokerList =>
       brokerList.list

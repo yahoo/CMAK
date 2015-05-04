@@ -32,7 +32,9 @@ object ActorModel {
   sealed trait BVRequest extends QueryRequest
 
   case object BVForceUpdate extends CommandRequest
+  case object BVGetTopicIdentities extends BVRequest
   case class BVGetView(id: Int) extends BVRequest
+  case class BVTopicIdentities(topicIdentities: IndexedSeq[TopicIdentity]) extends QueryResponse
   case class BVGetTopicMetrics(topic: String) extends BVRequest
   case class BVView(topicPartitions: Map[TopicIdentity, IndexedSeq[Int]], metrics: Option[BrokerMetrics] = None) extends QueryResponse
 
@@ -116,6 +118,7 @@ object ActorModel {
   case class KSGetBrokerState(id: String) extends  KSRequest
 
   case class TopicList(list: IndexedSeq[String], deleteSet: Set[String]) extends QueryResponse
+  case class TopicListWithMoreInfo(list: IndexedSeq[TopicIdentity], deleteSet: Set[String]) extends QueryResponse
   case class TopicConfig(topic: String, config: Option[(Int,String)]) extends QueryResponse
 
   case class TopicDescription(topic: String,
