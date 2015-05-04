@@ -14,7 +14,9 @@ import scala.util.Try
  * @author hiral
  */
 case class CuratorConfig(zkConnect: String, zkMaxRetry: Int = 100, baseSleepTimeMs : Int = 100, maxSleepTimeMs: Int = 1000)
-abstract class CuratorAwareActor(curatorConfig: CuratorConfig) extends BaseActor {
+trait CuratorAwareActor extends BaseActor {
+  
+  protected def curatorConfig: CuratorConfig
 
   protected[this] val curator : CuratorFramework = getCurator(curatorConfig)
   log.info("Starting curator...")
@@ -38,7 +40,7 @@ abstract class CuratorAwareActor(curatorConfig: CuratorConfig) extends BaseActor
 trait BaseZkPath {
   this : CuratorAwareActor =>
 
-  val baseZkPath : String
+  protected def baseZkPath : String
 
   protected def zkPath(path: String): String = {
     require(path.nonEmpty, "path must be nonempty")

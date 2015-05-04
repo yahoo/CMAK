@@ -4,7 +4,8 @@
 *@
 @import scalaz.{\/}
 @(cluster:String,
-  topic: String, errorOrTopicIdentity: kafka.manager.ApiError \/ kafka.manager.TopicIdentity
+  topic: String,
+  errorOrTopicIdentity: kafka.manager.ApiError \/ kafka.manager.ActorModel.TopicIdentity
 )
 
 @theMenu = {

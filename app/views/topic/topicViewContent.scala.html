@@ -3,7 +3,7 @@
 * See accompanying LICENSE file.
 *@
 @import b3.vertical.fieldConstructor
-@(cluster:String,topic: String, topicIdentity: kafka.manager.TopicIdentity)
+@(cluster:String,topic: String, topicIdentity: kafka.manager.ActorModel.TopicIdentity)
 
 @getUnderReplicatedLevel(percentage: Int) = {
     @percentage match {
@@ -126,6 +126,10 @@
                     </tbody>
                 </table>
                 }
+            </div>
+            <div class="panel panel-default">
+                <div class="panel-heading"><h4>Metrics</h4></div>
+                @views.html.common.brokerMetrics(topicIdentity.metrics)
             </div>
         </div>
         <div class="col-md-7">

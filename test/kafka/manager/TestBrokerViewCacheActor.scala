@@ -37,11 +37,12 @@ class TestBrokerViewCacheActor extends KafkaServerInTest {
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
+    val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false)
     val props = Props(classOf[KafkaStateActor],sharedCurator, true)
 
     kafkaStateActor = Some(system.actorOf(props.withDispatcher("pinned-dispatcher"),"ksa"))
 
-    val bvcProps = Props(classOf[BrokerViewCacheActor],kafkaStateActor.get.path, FiniteDuration(10, SECONDS))
+    val bvcProps = Props(classOf[BrokerViewCacheActor],kafkaStateActor.get.path, clusterConfig, FiniteDuration(10, SECONDS))
 
     brokerViewCacheActor = Some(system.actorOf(bvcProps,"broker-view"))
 

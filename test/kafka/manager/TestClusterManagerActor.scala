@@ -39,7 +39,7 @@ class TestClusterManagerActor extends CuratorAwareTest {
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath)
+    val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false)
     val curatorConfig = CuratorConfig(testServer.getConnectString)
     val config = ClusterManagerActorConfig("pinned-dispatcher","/kafka-manager/clusters/dev",curatorConfig,clusterConfig,FiniteDuration(1,SECONDS))
     val props = Props(classOf[ClusterManagerActor],config)
@@ -102,7 +102,7 @@ class TestClusterManagerActor extends CuratorAwareTest {
   test("get broker list") {
     withClusterManagerActor(KSGetBrokers) { result: BrokerList =>
       result.list foreach println
-      val brokerIdentityList : IndexedSeq[BrokerIdentity] = result.list.map(BrokerIdentity.from)
+      val brokerIdentityList : IndexedSeq[BrokerIdentity] = result.list
       brokerIdentityList foreach println
     }
   }
@@ -115,7 +115,7 @@ class TestClusterManagerActor extends CuratorAwareTest {
       descriptions foreach println
 
       withClusterManagerActor(KSGetBrokers) { brokerList: BrokerList =>
-        val topicIdentityList : IndexedSeq[TopicIdentity] = descriptions.flatten.map(td => TopicIdentity.from(brokerList,td))
+        val topicIdentityList : IndexedSeq[TopicIdentity] = descriptions.flatten.map(td => TopicIdentity.from(brokerList,td, None))
         topicIdentityList foreach println
       }
     }

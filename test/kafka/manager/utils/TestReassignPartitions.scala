@@ -7,7 +7,7 @@ package kafka.manager.utils
 import java.util.Properties
 
 import kafka.manager.ActorModel._
-import kafka.manager.{Kafka_0_8_2_0, TopicIdentity}
+import kafka.manager.Kafka_0_8_2_0
 import kafka.manager.utils.zero81._
 import org.apache.zookeeper.data.Stat
 
@@ -46,7 +46,7 @@ class TestReassignPartitions extends CuratorAwareTest {
       val configStat = new Stat
       val configJson : String = curator.getData.storingStatIn(configStat).forPath(ZkUtils.getTopicConfigPath(topic))
       val td: TopicDescription = TopicDescription(topic,(stat.getVersion,json),None,Option((configStat.getVersion,configJson)),false)
-      TopicIdentity.from(brokerList.size,td)
+      TopicIdentity.from(brokerList.size,td,None)
     }
   }
 

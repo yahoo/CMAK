@@ -19,7 +19,7 @@ package kafka.manager.utils
 
 import java.util.Properties
 
-import kafka.manager.{TopicIdentity, Kafka_0_8_2_0, KafkaVersion}
+import kafka.manager.{Kafka_0_8_2_0, KafkaVersion}
 import org.apache.curator.framework.CuratorFramework
 import org.apache.zookeeper.CreateMode
 import org.apache.zookeeper.KeeperException.NodeExistsException
