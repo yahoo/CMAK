@@ -89,15 +89,19 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
   private[this] val ksProps = Props(classOf[KafkaStateActor],sharedClusterCurator, adminUtils.isDeleteSupported)
   private[this] val kafkaStateActor : ActorPath = context.actorOf(ksProps.withDispatcher(cmConfig.pinnedDispatcherName),"kafka-state").path
 
-  private[this] val bvcProps = Props(classOf[BrokerViewCacheActor],kafkaStateActor,cmConfig.clusterConfig,cmConfig.updatePeriod)
+  private[this] val bvConfig = BrokerViewCacheActorConfig(
+    kafkaStateActor, 
+    cmConfig.clusterConfig, 
+    LongRunningPoolConfig(Runtime.getRuntime.availableProcessors(), 1000),
+    cmConfig.updatePeriod)
+  private[this] val bvcProps = Props(classOf[BrokerViewCacheActor],bvConfig)
   private[this] val brokerViewCacheActor : ActorPath = context.actorOf(bvcProps,"broker-view").path
 
   private[this] val kcProps = {
     val kcaConfig = KafkaCommandActorConfig(
       sharedClusterCurator,
-      cmConfig.threadPoolSize,
-      cmConfig.maxQueueSize,
-      cmConfig.askTimeoutMillis, 
+      LongRunningPoolConfig(cmConfig.threadPoolSize, cmConfig.maxQueueSize),
+      cmConfig.askTimeoutMillis,
       cmConfig.clusterConfig.version)
     Props(classOf[KafkaCommandActor],kcaConfig)
   }
@@ -135,7 +139,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
 
   override def processActorResponse(response: ActorResponse): Unit = {
     response match {
-      case any: Any => log.warning("Received unknown message: {}", any)
+      case any: Any => log.warning("cma : processActorResponse : Received unknown message: {}", any)
     }
   }
 
@@ -175,7 +179,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         } yield tdO.map( td => CMTopicIdentity(Try(TopicIdentity.from(bl,td,tm))))
         result pipeTo sender
 
-      case any: Any => log.warning("Received unknown message: {}", any)
+      case any: Any => log.warning("cma : processQueryResponse : Received unknown message: {}", any)
     }
   }
 
@@ -340,7 +344,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           }
         } pipeTo sender()
 
-      case any: Any => log.warning("Received unknown message: {}", any)
+      case any: Any => log.warning("cma : processCommandRequest : Received unknown message: {}", any)
     }
   }
 
