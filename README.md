@@ -17,6 +17,7 @@ It supports the following :
  - Batch run reassignment of partition for multiple topics
  - Add partitions to existing topic
  - Update config for existing topic
+ - Optionally enable JMX polling for broker level and topic level metrics.
 
 Cluster Management
 
