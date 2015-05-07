@@ -118,7 +118,6 @@ object ActorModel {
   case class KSGetBrokerState(id: String) extends  KSRequest
 
   case class TopicList(list: IndexedSeq[String], deleteSet: Set[String]) extends QueryResponse
-  case class TopicListWithMoreInfo(list: IndexedSeq[TopicIdentity], deleteSet: Set[String]) extends QueryResponse
   case class TopicConfig(topic: String, config: Option[(Int,String)]) extends QueryResponse
 
   case class TopicDescription(topic: String,

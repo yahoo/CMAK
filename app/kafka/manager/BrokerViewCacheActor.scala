@@ -19,7 +19,7 @@ class BrokerViewCacheActor(kafkaStateActorPath: ActorPath, clusterConfig: Cluste
 
   private[this] var brokerTopicPartitions : Map[Int, BVView] = Map.empty
 
-  private[this] var topicIdentities : IndexedSeq[TopicIdentity] = IndexedSeq.empty
+  private[this] var topicIdentities : Map[String, TopicIdentity] = Map.empty
 
   private[this] var topicDescriptionsOption : Option[TopicDescriptions] = None
 
@@ -89,7 +89,7 @@ class BrokerViewCacheActor(kafkaStateActorPath: ActorPath, clusterConfig: Cluste
       topicDescriptions <- topicDescriptionsOption
     } {
       val topicIdentity : IndexedSeq[TopicIdentity] = topicDescriptions.descriptions.map(TopicIdentity.from(brokerList.list.size,_,None))
-      topicIdentities = topicIdentity
+      topicIdentities = topicIdentity.map(ti => (ti.topic, ti)).toMap
       val topicPartitionByBroker = topicIdentity.flatMap(ti => ti.partitionsByBroker.map(btp => (ti,btp.id,btp.partitions))).groupBy(_._2)
 
       if (clusterConfig.jmxEnabled) {

@@ -2,7 +2,7 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@(cluster: String, topics: IndexedSeq[(kafka.manager.ActorModel.TopicIdentity,Boolean)])
+@(cluster: String, topics: IndexedSeq[((String, Option[kafka.manager.ActorModel.TopicIdentity]),Boolean)])
 
 @getDeletedLevel(deleted: Boolean) = {
     @deleted match {
@@ -19,17 +19,38 @@
     }
 }
 
+@getNumPartitions(topicIdentity: Option[kafka.manager.ActorModel.TopicIdentity]) = {
+    @topicIdentity match {
+        case Some(ti) => {@ti.partitions}
+        case None => {}
+    }
+}
+
+@getNumBrokers(topicIdentity: Option[kafka.manager.ActorModel.TopicIdentity]) = {
+    @topicIdentity match {
+        case Some(ti) => {@ti.topicBrokers}
+        case None => {}
+    }
+}
+
+@getBrokersSpreadPercentage(topicIdentity: Option[kafka.manager.ActorModel.TopicIdentity]) = {
+    @topicIdentity match {
+    case Some(ti) => {@ti.brokersSpreadPercentage}
+    case None => {}
+    }
+}
+
 <table class="table">
     <thead>
     <tr><th>Topic</th><th># Partitions</th><th># Brokers</th><th>Brokers Spread %</th></tr>
     </thead>
     <tbody>
-    @for( (topicIdentity, deleted) <- topics) {
+    @for( ((topic, topicIdentity), deleted) <- topics) {
       <tr>
-          <td class="@getDeletedLevel(deleted)"><a href="@routes.Topic.topic(cluster,topicIdentity.topic)">@topicIdentity.topic</a></td>
-          <td>@topicIdentity.partitions</td>
-          <td>@topicIdentity.numBrokers</td>
-          <td class="@getBrokersSpreadLevel(topicIdentity.brokersSpreadPercentage)">@topicIdentity.brokersSpreadPercentage</td>
+          <td class="@getDeletedLevel(deleted)"><a href="@routes.Topic.topic(cluster,topic)">@topic</a></td>
+          @topicIdentity.map{ ti => <td>@ti.partitions</td>}.getOrElse{<td> </td>}
+          @topicIdentity.map{ ti => <td>@ti.topicBrokers</td>}.getOrElse{<td> </td>}
+          @topicIdentity.map{ ti => <td class="@getBrokersSpreadLevel(ti.brokersSpreadPercentage)">@ti.brokersSpreadPercentage</td>}.getOrElse{<td> </td>}
       </tr>
     }
     </tbody>

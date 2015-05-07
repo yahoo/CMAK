@@ -3,7 +3,7 @@
 * See accompanying LICENSE file.
 *@
 @import scalaz.{\/}
-@(cluster:String, errorOrTopics: kafka.manager.ApiError \/ kafka.manager.ActorModel.TopicListWithMoreInfo)
+@(cluster:String, errorOrTopics: kafka.manager.ApiError \/ kafka.manager.TopicListWithMoreInfo)
 
 @theMenu = {
     @views.html.navigation.clusterMenu(cluster,"Topic","List",models.navigation.Menus.clusterMenus(cluster))
@@ -34,7 +34,7 @@
             <div class="panel-heading"><h3>Topics</h3></div>
             @errorOrTopics.fold( 
                 views.html.errors.onApiError(_),
-                tl => views.html.topic.topicListContent(cluster,tl.list.map(t => (t, tl.deleteSet(t.topic)))))
+                tl => views.html.topic.topicListContent(cluster,tl.list.map(t => (t, tl.deleteSet(t._1)))))
         </div>
     </div>
 }
