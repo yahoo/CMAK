@@ -538,7 +538,8 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
     Try {
       if(newConfig.curatorConfig.zkConnect == currentConfig.curatorConfig.zkConnect
         && newConfig.enabled == currentConfig.enabled
-        && newConfig.version == currentConfig.version) {
+        && newConfig.version == currentConfig.version
+        && newConfig.jmxEnabled == currentConfig.jmxEnabled) {
         //nothing changed
         false
       } else {
