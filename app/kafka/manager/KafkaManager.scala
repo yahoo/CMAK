@@ -22,7 +22,7 @@ import scala.util.{Success, Failure, Try}
 /**
  * @author hiral
  */
-case class TopicListWithMoreInfo(list: IndexedSeq[(String, Option[TopicIdentity])], deleteSet: Set[String])
+case class TopicListWithMoreInfo(list: IndexedSeq[(String, Option[TopicIdentity])], deleteSet: Set[String], underReassignments: IndexedSeq[String])
 case class ApiError(msg: String)
 object ApiError {
   private[this] val log : Logger = LoggerFactory.getLogger(classOf[ApiError])
@@ -215,29 +215,37 @@ class KafkaManager(akkaConfig: Config)
   }
 
   def getTopicListWithMoreInfo(clusterName: String): Future[ApiError \/ TopicListWithMoreInfo] = {
-    val futureTopicIdentities = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, BVGetTopicIdentities))(
-      identity[Map[String, TopicIdentity]]
-    )
+    val futureTopicIdentities = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, BVGetTopicIdentities))(identity[Map[String, TopicIdentity]])
     val futureTopicList = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, KSGetTopics))(identity[TopicList])
-
+    val futureTopicsReasgn = getTopicsUnderReassignment(clusterName)
     implicit val ec = apiExecutionContext
-    futureTopicIdentities.flatMap[ApiError \/ TopicListWithMoreInfo] { errOrTi =>
-      errOrTi.fold(
-      { err: ApiError =>
-        Future.successful(-\/[ApiError](err))
-      }, { ti: Map[String, TopicIdentity] =>
-        val futureTopicList = tryWithKafkaManagerActor(
-          KMClusterQueryRequest(
-            clusterName,
-            KSGetTopics
-          )
-        )(identity[TopicList])
-        futureTopicList.map {
-          case -\/(e) => -\/(e)
-          case \/-(tl) => \/-(TopicListWithMoreInfo(tl.list.map(t => (t, ti.get(t))), tl.deleteSet))
-        }
+    for {
+      errOrTi <- futureTopicIdentities
+      errOrTl <- futureTopicList
+      errOrRap <- futureTopicsReasgn
+    } yield {
+      for {
+        ti <- errOrTi
+        tl <- errOrTl
+        rap <- errOrRap
+      } yield {
+        TopicListWithMoreInfo(tl.list.map(t => (t, ti.get(t))), tl.deleteSet, rap)
       }
-      )
+
+    }
+  }
+
+  def getTopicsUnderReassignment(clusterName: String): Future[ApiError \/ IndexedSeq[String]] = {
+    val futureReassignments = getReassignPartitions(clusterName)
+    implicit val ec = apiExecutionContext
+    futureReassignments.map {
+      case -\/(e) => -\/(e)
+      case \/-(rap) =>
+        \/-(rap.map { asgn =>
+          asgn.endTime.map(_ => IndexedSeq()).getOrElse{
+            asgn.partitionsToBeReassigned.map { case (t, s) => t.topic}.toSet.toIndexedSeq
+          }
+        }.getOrElse{IndexedSeq()})
     }
   }
 

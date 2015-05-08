@@ -2,7 +2,7 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@(cluster: String, topics: IndexedSeq[((String, Option[kafka.manager.ActorModel.TopicIdentity]),Boolean)])
+@(cluster: String, topics: IndexedSeq[((String, Option[kafka.manager.ActorModel.TopicIdentity]),Boolean)], topicsUnderReassignment: IndexedSeq[String])
 
 @getDeletedLevel(deleted: Boolean) = {
     @deleted match {
@@ -16,27 +16,6 @@
         case i if i > 50 && i<=75 => {warning}
         case i if i <=  50 => {danger}
         case i => {}
-    }
-}
-
-@getNumPartitions(topicIdentity: Option[kafka.manager.ActorModel.TopicIdentity]) = {
-    @topicIdentity match {
-        case Some(ti) => {@ti.partitions}
-        case None => {}
-    }
-}
-
-@getNumBrokers(topicIdentity: Option[kafka.manager.ActorModel.TopicIdentity]) = {
-    @topicIdentity match {
-        case Some(ti) => {@ti.topicBrokers}
-        case None => {}
-    }
-}
-
-@getBrokersSpreadPercentage(topicIdentity: Option[kafka.manager.ActorModel.TopicIdentity]) = {
-    @topicIdentity match {
-    case Some(ti) => {@ti.brokersSpreadPercentage}
-    case None => {}
     }
 }
 

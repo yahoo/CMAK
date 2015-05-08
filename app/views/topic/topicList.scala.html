@@ -34,7 +34,7 @@
             <div class="panel-heading"><h3>Topics</h3></div>
             @errorOrTopics.fold( 
                 views.html.errors.onApiError(_),
-                tl => views.html.topic.topicListContent(cluster,tl.list.map(t => (t, tl.deleteSet(t._1)))))
+                tl => views.html.topic.topicListContent(cluster,tl.list.map(t => (t, tl.deleteSet(t._1))), tl.underReassignments))
         </div>
     </div>
 }
