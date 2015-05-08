@@ -19,13 +19,17 @@
     }
 }
 
+@getReassignmentStatus(topic: String) = {
+    @if(topicsUnderReassignment.contains(topic)) {under-reassignment} else {}
+}
+
 <table class="table">
     <thead>
     <tr><th>Topic</th><th># Partitions</th><th># Brokers</th><th>Brokers Spread %</th></tr>
     </thead>
     <tbody>
     @for( ((topic, topicIdentity), deleted) <- topics) {
-      <tr>
+      <tr class="@getReassignmentStatus(topic)">
           <td class="@getDeletedLevel(deleted)"><a href="@routes.Topic.topic(cluster,topic)">@topic</a></td>
           @topicIdentity.map{ ti => <td>@ti.partitions</td>}.getOrElse{<td> </td>}
           @topicIdentity.map{ ti => <td>@ti.topicBrokers</td>}.getOrElse{<td> </td>}
