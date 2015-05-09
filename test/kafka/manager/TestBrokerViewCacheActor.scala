@@ -42,7 +42,8 @@ class TestBrokerViewCacheActor extends KafkaServerInTest {
 
     kafkaStateActor = Some(system.actorOf(props.withDispatcher("pinned-dispatcher"),"ksa"))
 
-    val bvcProps = Props(classOf[BrokerViewCacheActor],kafkaStateActor.get.path, clusterConfig, FiniteDuration(10, SECONDS))
+    val bvConfig = BrokerViewCacheActorConfig(kafkaStateActor.get.path, clusterConfig, LongRunningPoolConfig(2,100), FiniteDuration(10, SECONDS))
+    val bvcProps = Props(classOf[BrokerViewCacheActor],bvConfig)
 
     brokerViewCacheActor = Some(system.actorOf(bvcProps,"broker-view"))
 

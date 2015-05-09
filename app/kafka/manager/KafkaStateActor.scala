@@ -178,7 +178,7 @@ class KafkaStateActor(curator: CuratorFramework, deleteSupported: Boolean) exten
 
   override def processActorResponse(response: ActorResponse): Unit = {
     response match {
-      case any: Any => log.warning("Received unknown message: {}", any)
+      case any: Any => log.warning("ksa : processActorResponse : Received unknown message: {}", any.toString)
     }
   }
   
@@ -256,7 +256,7 @@ class KafkaStateActor(curator: CuratorFramework, deleteSupported: Boolean) exten
       case KSGetReassignPartition =>
         sender ! reassignPartitions
 
-      case any: Any => log.warning("Received unknown message: {}", any)
+      case any: Any => log.warning("ksa : processQueryRequest : Received unknown message: {}", any.toString)
     }
   }
 
@@ -308,7 +308,7 @@ class KafkaStateActor(curator: CuratorFramework, deleteSupported: Boolean) exten
             reassignPartitions = Some(existing.copy(endTime = Some(getDateTime(millis))))
           }
         }
-      case any: Any => log.warning("Received unknown message: {}", any)
+      case any: Any => log.warning("ksa : processCommandRequest : Received unknown message: {}", any.toString)
     }
   }
 

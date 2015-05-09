@@ -16,7 +16,7 @@ abstract class BaseQueryActor extends BaseActor {
     request match  {
       case queryRequest: QueryRequest =>
         processQueryRequest(queryRequest)
-      case any: Any => log.warning("Received unknown message: {}", any)
+      case any: Any => log.warning("bqa : processActorRequest : Received unknown message: {}", any)
     }
   }
 

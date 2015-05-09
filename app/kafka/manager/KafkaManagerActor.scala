@@ -329,7 +329,7 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
 
   override def processActorResponse(response: ActorResponse): Unit = {
     response match {
-      case any: Any => log.warning("Received unknown message: {}", any)
+      case any: Any => log.warning("kma : processActorResponse : Received unknown message: {}", any)
     }
   }
 
@@ -357,7 +357,7 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
             context.actorSelection(clusterManagerPath).forward(request)
         }
         
-      case any: Any => log.warning("Received unknown message: {}", any)
+      case any: Any => log.warning("kma : processQueryRequest : Received unknown message: {}", any)
     }
     
   }
@@ -473,7 +473,7 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
         context.children.foreach(context.stop)
         shutdown = true
 
-      case any: Any => log.warning("Received unknown message: {}", any)
+      case any: Any => log.warning("kma : processCommandRequest : Received unknown message: {}", any)
     }
   }
 

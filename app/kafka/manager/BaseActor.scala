@@ -24,7 +24,7 @@ abstract class BaseActor extends Actor with ActorLogging {
       processActorRequest(request)
     case response: ActorResponse=>
       processActorResponse(response)
-    case any: Any => log.warning("Received unknown message: {}", any)
+    case any: Any => log.warning(s"ba : Received unknown message: ${any.getClass.getSimpleName}")
   }
 
   def processActorRequest(request: ActorRequest): Unit

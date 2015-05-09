@@ -5,7 +5,9 @@
 
 package kafka.manager
 
-import akka.actor.{Cancellable, ActorPath}
+import akka.actor.{ActorRef, Cancellable, ActorPath}
+import scala.collection.mutable
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.util.Try
 
@@ -13,11 +15,13 @@ import scala.util.Try
  * @author hiral
  */
 import ActorModel._
-class BrokerViewCacheActor(kafkaStateActorPath: ActorPath, clusterConfig: ClusterConfig, updatePeriod: FiniteDuration = 10 seconds) extends BaseActor {
+case class BrokerViewCacheActorConfig(kafkaStateActorPath: ActorPath, 
+                                      clusterConfig: ClusterConfig, 
+                                      longRunningPoolConfig: LongRunningPoolConfig, 
+                                      updatePeriod: FiniteDuration = 10 seconds)
+class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunningPoolActor {
 
   private[this] var cancellable : Option[Cancellable] = None
-
-  private[this] var brokerTopicPartitions : Map[Int, BVView] = Map.empty
 
   private[this] var topicIdentities : Map[String, TopicIdentity] = Map.empty
 
@@ -25,16 +29,19 @@ class BrokerViewCacheActor(kafkaStateActorPath: ActorPath, clusterConfig: Cluste
 
   private[this] var brokerListOption : Option[BrokerList] = None
 
-  private[this] var topicMetrics: Map[String, Map[Int, BrokerMetrics]] = Map.empty
+  private[this] val brokerTopicPartitions : mutable.Map[Int, BVView] = new mutable.HashMap[Int, BVView]
 
-  private[this] var brokerMetrics : Map[Int, BrokerMetrics] = Map.empty
+  private[this] val topicMetrics: mutable.Map[String, mutable.Map[Int, BrokerMetrics]] =
+    new mutable.HashMap[String, mutable.Map[Int, BrokerMetrics]]()
 
+  private[this] val brokerMetrics : mutable.Map[Int, BrokerMetrics] = new mutable.HashMap[Int, BrokerMetrics]
+  
   override def preStart() = {
     log.info("Started actor %s".format(self.path))
-    log.info("Scheduling updater for %s".format(updatePeriod))
+    log.info("Scheduling updater for %s".format(config.updatePeriod))
     cancellable = Some(
       context.system.scheduler.schedule(0 seconds,
-        updatePeriod,
+        config.updatePeriod,
         self,
         BVForceUpdate)(context.system.dispatcher,self)
     )
@@ -47,14 +54,20 @@ class BrokerViewCacheActor(kafkaStateActorPath: ActorPath, clusterConfig: Cluste
     Try(cancellable.map(_.cancel()))
   }
 
+  override protected def longRunningPoolConfig: LongRunningPoolConfig = config.longRunningPoolConfig
+
+  override protected def longRunningQueueFull(): Unit = {
+    log.error("Long running pool queue full, skipping!")
+  }
+
   override def processActorRequest(request: ActorRequest): Unit = {
     request match {
       case BVForceUpdate =>
         log.info("Updating broker view...")
         //ask for topic descriptions
         val lastUpdateMillisOption: Option[Long] = topicDescriptionsOption.map(_.lastUpdateMillis)
-        context.actorSelection(kafkaStateActorPath).tell(KSGetAllTopicDescriptions(lastUpdateMillisOption), self)
-        context.actorSelection(kafkaStateActorPath).tell(KSGetBrokers, self)
+        context.actorSelection(config.kafkaStateActorPath).tell(KSGetAllTopicDescriptions(lastUpdateMillisOption), self)
+        context.actorSelection(config.kafkaStateActorPath).tell(KSGetBrokers, self)
 
       case BVGetView(id) =>
         sender ! brokerTopicPartitions.get(id)
@@ -65,7 +78,23 @@ class BrokerViewCacheActor(kafkaStateActorPath: ActorPath, clusterConfig: Cluste
       case BVGetTopicIdentities =>
         sender ! topicIdentities
 
-      case any: Any => log.warning("Received unknown message: {}", any)
+      case BVUpdateTopicMetricsForBroker(id, metrics) =>
+        metrics.foreach {
+          case (topic, bm) =>
+            val tm = topicMetrics.getOrElse(topic, new mutable.HashMap[Int, BrokerMetrics])
+            tm.put(id, bm)
+            topicMetrics.put(topic, tm)
+        }
+        
+      case BVUpdateBrokerMetrics(id, metrics) =>
+        brokerMetrics.put(id, metrics)
+        for {
+          bv <- brokerTopicPartitions.get(id)
+        } {
+          brokerTopicPartitions.put(id, bv.copy(metrics = Option(metrics)))
+        }
+
+      case any: Any => log.warning("bvca : processActorRequest : Received unknown message: {}", any)
     }
   }
 
@@ -79,7 +108,7 @@ class BrokerViewCacheActor(kafkaStateActorPath: ActorPath, clusterConfig: Cluste
         brokerListOption = Some(bl)
         updateView()
 
-      case any: Any => log.warning("Received unknown message: {}", any)
+      case any: Any => log.warning("bvca : processActorResponse : Received unknown message: {}", any)
     }
   }
 
@@ -92,61 +121,66 @@ class BrokerViewCacheActor(kafkaStateActorPath: ActorPath, clusterConfig: Cluste
       topicIdentities = topicIdentity.map(ti => (ti.topic, ti)).toMap
       val topicPartitionByBroker = topicIdentity.flatMap(ti => ti.partitionsByBroker.map(btp => (ti,btp.id,btp.partitions))).groupBy(_._2)
 
-      if (clusterConfig.jmxEnabled) {
+      if (config.clusterConfig.jmxEnabled) {
+        implicit val ec = longRunningExecutionContext
         val brokerLookup = brokerList.list.map(bi => bi.id -> bi).toMap
-        val topicMetricsByBroker = topicPartitionByBroker.flatMap {
+        topicPartitionByBroker.foreach {
           case (brokerId, topicPartitions) =>
             val brokerInfoOpt = brokerLookup.get(brokerId)
-            brokerInfoOpt.map {
+            brokerInfoOpt.foreach {
               broker =>
-                val tryResult = KafkaJMX.doWithConnection(broker.host, broker.jmxPort) {
-                  mbsc =>
-                    topicPartitions.map {
-                      case (topic, id, partitions) =>
-                        ((brokerId, topic.topic), KafkaMetrics.getBrokerMetrics(mbsc, Option(topic.topic)))
+                longRunning {
+                  Future {
+                    val tryResult = KafkaJMX.doWithConnection(broker.host, broker.jmxPort) {
+                      mbsc =>
+                        topicPartitions.map {
+                          case (topic, id, partitions) =>
+                            (topic.topic, KafkaMetrics.getBrokerMetrics(mbsc, Option(topic.topic)))
+                        }
                     }
-                }
-                tryResult match {
-                  case scala.util.Failure(t) =>
-                    log.error(s"Failed to get topic metrics for broker $broker",t)
-                    topicPartitions.map {
-                      case (topic, id, partitions) =>
-                        ((brokerId, topic.topic), BrokerMetrics.DEFAULT)
+                    val result = tryResult match {
+                      case scala.util.Failure(t) =>
+                        log.error(s"Failed to get topic metrics for broker $broker", t)
+                        topicPartitions.map {
+                          case (topic, id, partitions) =>
+                            (topic.topic, BrokerMetrics.DEFAULT)
+                        }
+                      case scala.util.Success(bm) => bm
                     }
-                  case scala.util.Success(bm) => bm
+                    self.tell(BVUpdateTopicMetricsForBroker(broker.id,result), ActorRef.noSender)
+                  }
                 }
             }
-        }.flatten
-        val groupedByTopic = topicMetricsByBroker.groupBy(_._1._2)
-        topicMetrics = groupedByTopic.mapValues { metricList =>
-            metricList.map(m => m._1._1 -> m._2).toMap
         }
 
-        brokerMetrics = brokerList.list.map {
+        brokerList.list.foreach {
           broker =>
-            val tryResult = KafkaJMX.doWithConnection(broker.host, broker.jmxPort) {
-              mbsc =>
-                val brokerMetrics = KafkaMetrics.getBrokerMetrics(mbsc)
-                (broker.id, brokerMetrics)
-            }
+            longRunning {
+              Future {
+                val tryResult = KafkaJMX.doWithConnection(broker.host, broker.jmxPort) {
+                  mbsc =>
+                    KafkaMetrics.getBrokerMetrics(mbsc)
+                }
 
-            tryResult match {
-              case scala.util.Failure(t) =>
-                log.error(s"Failed to get broker metrics for $broker",t)
-                broker.id -> BrokerMetrics.DEFAULT
-              case scala.util.Success(bm) => bm
+                val result = tryResult match {
+                  case scala.util.Failure(t) =>
+                    log.error(s"Failed to get broker metrics for $broker", t)
+                    BrokerMetrics.DEFAULT
+                  case scala.util.Success(bm) => bm
+                }
+                self.tell(BVUpdateBrokerMetrics(broker.id,result), ActorRef.noSender)
+              }
             }
-
-        }.toMap
+        }
       }
       
-      brokerTopicPartitions = topicPartitionByBroker.map {
+      topicPartitionByBroker.foreach {
         case (brokerId, topicPartitions) =>
           val topicPartitionsMap : Map[TopicIdentity, IndexedSeq[Int]] = topicPartitions.map {
             case (topic, id, partitions) =>
               (topic, partitions)
           }.toMap
-          (brokerId, BVView(topicPartitionsMap, brokerMetrics.get(brokerId)))
+          brokerTopicPartitions.put(brokerId,BVView(topicPartitionsMap, brokerMetrics.get(brokerId)))
       }
     }
   }

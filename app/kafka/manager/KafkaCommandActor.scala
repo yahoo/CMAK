@@ -23,23 +23,18 @@ import scala.util.{Failure, Try}
 
 import ActorModel._
 
-case class KafkaCommandActorConfig(curator: CuratorFramework,
-                                   threadPoolSize: Int = 2,
-                                   maxQueueSize: Int = 100,
+case class KafkaCommandActorConfig(curator: CuratorFramework, 
+                                   longRunningPoolConfig: LongRunningPoolConfig,
                                    askTimeoutMillis: Long = 400, 
                                    version: KafkaVersion)
-class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extends BaseCommandActor {
+class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extends BaseCommandActor with LongRunningPoolActor {
 
-  private[this] val longRunningExecutor = new ThreadPoolExecutor(
-    kafkaCommandActorConfig.threadPoolSize, kafkaCommandActorConfig.threadPoolSize,0L,TimeUnit.MILLISECONDS,new LinkedBlockingQueue[Runnable](kafkaCommandActorConfig.maxQueueSize))
-  private[this] val longRunningExecutionContext = ExecutionContext.fromExecutor(longRunningExecutor)
-
-  private[this] val askTimeout: Timeout = kafkaCommandActorConfig.askTimeoutMillis.milliseconds
+  //private[this] val askTimeout: Timeout = kafkaCommandActorConfig.askTimeoutMillis.milliseconds
 
   private[this] val adminUtils = new AdminUtils(kafkaCommandActorConfig.version)
 
   private[this] val reassignPartitionCommand = new ReassignPartitionCommand(adminUtils)
-
+  
   @scala.throws[Exception](classOf[Exception])
   override def preStart() = {
     log.info("Started actor %s".format(self.path))
@@ -59,18 +54,15 @@ class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extend
     super.postStop()
   }
 
-  private[this] def longRunning(fn: => Future[KCCommandResult])(implicit ec: ExecutionContext) : Unit = {
-    if(longRunningExecutor.getQueue.remainingCapacity() == 0) {
-      sender ! KCCommandResult(Try(throw new UnsupportedOperationException("Long running executor blocking queue is full!")))
-    } else {
-      fn pipeTo sender
-    }
-  }
+  override protected def longRunningPoolConfig: LongRunningPoolConfig = kafkaCommandActorConfig.longRunningPoolConfig
 
+  override protected def longRunningQueueFull(): Unit = {
+    sender ! KCCommandResult(Try(throw new UnsupportedOperationException("Long running executor blocking queue is full!")))
+  }
 
   override def processActorResponse(response: ActorResponse): Unit = {
     response match {
-      case any: Any => log.warning("Received unknown message: {}", any)
+      case any: Any => log.warning("kca : processActorResponse : Received unknown message: {}", any)
     }
   }
 
@@ -137,7 +129,7 @@ class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extend
             )
           }
         }
-      case any: Any => log.warning("Received unknown message: {}", any)
+      case any: Any => log.warning("kca : processCommandRequest : Received unknown message: {}", any)
     }
   }
 }
