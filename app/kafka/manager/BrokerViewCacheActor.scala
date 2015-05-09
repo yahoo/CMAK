@@ -19,6 +19,8 @@ class BrokerViewCacheActor(kafkaStateActorPath: ActorPath, clusterConfig: Cluste
 
   private[this] var brokerTopicPartitions : Map[Int, BVView] = Map.empty
 
+  private[this] var topicIdentities : Map[String, TopicIdentity] = Map.empty
+
   private[this] var topicDescriptionsOption : Option[TopicDescriptions] = None
 
   private[this] var brokerListOption : Option[BrokerList] = None
@@ -60,6 +62,9 @@ class BrokerViewCacheActor(kafkaStateActorPath: ActorPath, clusterConfig: Cluste
       case BVGetTopicMetrics(topic) =>
         sender ! topicMetrics.get(topic).map(m => m.values.foldLeft(BrokerMetrics.DEFAULT)((acc,bm) => acc + bm))
 
+      case BVGetTopicIdentities =>
+        sender ! topicIdentities
+
       case any: Any => log.warning("Received unknown message: {}", any)
     }
   }
@@ -84,6 +89,7 @@ class BrokerViewCacheActor(kafkaStateActorPath: ActorPath, clusterConfig: Cluste
       topicDescriptions <- topicDescriptionsOption
     } {
       val topicIdentity : IndexedSeq[TopicIdentity] = topicDescriptions.descriptions.map(TopicIdentity.from(brokerList.list.size,_,None))
+      topicIdentities = topicIdentity.map(ti => (ti.topic, ti)).toMap
       val topicPartitionByBroker = topicIdentity.flatMap(ti => ti.partitionsByBroker.map(btp => (ti,btp.id,btp.partitions))).groupBy(_._2)
 
       if (clusterConfig.jmxEnabled) {

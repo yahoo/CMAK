@@ -32,6 +32,7 @@ object ActorModel {
   sealed trait BVRequest extends QueryRequest
 
   case object BVForceUpdate extends CommandRequest
+  case object BVGetTopicIdentities extends BVRequest
   case class BVGetView(id: Int) extends BVRequest
   case class BVGetTopicMetrics(topic: String) extends BVRequest
   case class BVView(topicPartitions: Map[TopicIdentity, IndexedSeq[Int]], metrics: Option[BrokerMetrics] = None) extends QueryResponse
