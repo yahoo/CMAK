@@ -231,7 +231,6 @@ class KafkaManager(akkaConfig: Config)
       } yield {
         TopicListWithMoreInfo(tl.list.map(t => (t, ti.get(t))), tl.deleteSet, rap)
       }
-
     }
   }
 
