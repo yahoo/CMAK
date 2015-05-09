@@ -5,7 +5,7 @@
 name := """kafka-manager"""
 
 /* For packaging purposes, -SNAPSHOT MUST contain a digit */
-version := "1.2.1"
+version := "1.2.2"
 
 scalaVersion := "2.11.5"
 
@@ -18,22 +18,22 @@ assemblyMergeStrategy in assembly := {
 }
 
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-actor" % "2.3.7",
+  "com.typesafe.akka" %% "akka-actor" % "2.3.10",
   "org.webjars" %% "webjars-play" % "2.3.0-2",
-  "org.webjars" % "bootstrap" % "3.3.1",
-  "org.webjars" % "jquery" % "2.1.1",
-  "org.webjars" % "backbonejs" % "1.1.2-2",
-  "org.webjars" % "underscorejs" % "1.7.0",
-  "org.webjars" % "dustjs-linkedin" % "2.4.0-1",
-  "org.apache.curator" % "curator-framework" % "2.7.0" exclude("log4j","log4j") force(),
-  "org.apache.curator" % "curator-recipes" % "2.7.0" exclude("log4j","log4j") force(),
+  "org.webjars" % "bootstrap" % "3.3.4",
+  "org.webjars" % "jquery" % "2.1.4",
+  "org.webjars" % "backbonejs" % "1.1.2-4",
+  "org.webjars" % "underscorejs" % "1.8.3",
+  "org.webjars" % "dustjs-linkedin" % "2.6.1",
+  "org.apache.curator" % "curator-framework" % "2.7.1" exclude("log4j","log4j") force(),
+  "org.apache.curator" % "curator-recipes" % "2.7.1" exclude("log4j","log4j") force(),
   "org.json4s" %% "json4s-jackson" % "3.2.11",
   "org.json4s" %% "json4s-scalaz" % "3.2.11",
   "org.slf4j" % "log4j-over-slf4j" % "1.7.7",
   "com.adrianhurt" %% "play-bootstrap3" % "0.4",
-  "org.apache.kafka" %% "kafka" % "0.8.2.0" % "test",
+  "org.apache.kafka" %% "kafka" % "0.8.2.1" % "test",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
-  "org.apache.curator" % "curator-test" % "2.7.0" % "test" force()
+  "org.apache.curator" % "curator-test" % "2.7.1" % "test" force()
 )
 
 net.virtualvoid.sbt.graph.Plugin.graphSettings

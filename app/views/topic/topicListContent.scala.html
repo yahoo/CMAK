@@ -20,7 +20,7 @@
 }
 
 @getReassignmentStatus(topic: String) = {
-    @if(topicsUnderReassignment.contains(topic)) {under-reassignment} else {}
+    @if(topicsUnderReassignment.contains(topic)) {glow-red} else {}
 }
 
 <table class="table">
