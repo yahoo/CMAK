@@ -97,7 +97,7 @@ object ReassignPartitions extends Controller{
   def confirmAssignment(c: String, t: String) = Action.async {
     kafkaManager.getBrokerList(c).map { errorOrSuccess =>
       Ok(views.html.topic.confirmAssignment(
-        c, t, errorOrSuccess.map(l => generateAssignmentsForm.fill(GenerateAssignment(l.map(BrokerSelect.from))))
+        c, t, errorOrSuccess.map(l => generateAssignmentsForm.fill(GenerateAssignment(l.list.map(BrokerSelect.from))))
       ))
     }
   }
@@ -111,7 +111,7 @@ object ReassignPartitions extends Controller{
       }, { tL: TopicList =>
         kafkaManager.getBrokerList(c).map { errorOrSuccess =>
           Ok(views.html.topic.confirmMultipleAssignments(
-            c, errorOrSuccess.map(l => generateMultipleAssignmentsForm.fill(GenerateMultipleAssignments(tL.list.map(TopicSelect.from), l.map(BrokerSelect.from))))
+            c, errorOrSuccess.map(l => generateMultipleAssignmentsForm.fill(GenerateMultipleAssignments(tL.list.map(TopicSelect.from), l.list.map(BrokerSelect.from))))
           ))
         }
       }

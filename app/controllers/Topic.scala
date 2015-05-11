@@ -167,7 +167,7 @@ object Topic extends Controller{
       errorOrTopicIdentity.fold( e => Future.successful(-\/(e)),{ topicIdentity =>
         kafkaManager.getBrokerList(clusterName).map { errorOrBrokerList =>
           errorOrBrokerList.map { bl =>
-            defaultAddPartitionsForm.fill(AddTopicPartitions(topic,bl.map(bi => BrokerSelect.from(bi)),topicIdentity.partitions,topicIdentity.readVersion))
+            defaultAddPartitionsForm.fill(AddTopicPartitions(topic,bl.list.map(bi => BrokerSelect.from(bi)),topicIdentity.partitions,topicIdentity.readVersion))
           }
         }
       })
