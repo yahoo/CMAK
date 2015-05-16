@@ -25,9 +25,21 @@ Cluster Management
 
 ***
 
+Topic List
+
+![topic](/img/topic-list.png)
+
+***
+
 Topic View
 
 ![topic](/img/topic.png)
+
+***
+
+Broker List
+
+![topic](/img/broker-list.png)
 
 ***
 

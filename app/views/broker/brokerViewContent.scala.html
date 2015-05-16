@@ -4,29 +4,46 @@
 *@
 @(cluster: String, brokerId: Int, brokerView :kafka.manager.ActorModel.BVView)
 
-        <table class="table">
-            <thead>
-            <tr><th>Topic</th><th>Replication</th><th>Total Partitions</th><th>Partitions on Broker</th><th>Partitions</th><th>Skewed?</th></tr>
-            </thead>
-            <tbody>
-            @for((ti,bp) <- brokerView.topicPartitions) {
-            <tr>
-                <td><a href="@routes.Topic.topic(cluster,ti.topic)">@ti.topic</a></td>
-                <td>@ti.replicationFactor</td>
-                <td>@ti.partitions</td>
-                <td>@bp.size</td>
-                <td>@bp.mkString("(",",",")")</td>
-                <td>@ti.partitionsByBroker.find(_.id == brokerId).map(_.isSkewed).getOrElse("Unknown")</td>
-            </tr>
-            }
-            </tbody>
-        </table>
         <div class="row">
+            <div class="col-md-7">
+                <div class="panel panel-default">
+                    <div class="panel-heading"><h4>Summary</h4></div>
+                    <table class="table">
+                        <tbody>
+                        <tr><td># of Topics</td><td>@brokerView.numTopics</td></tr>
+                        <tr><td># of Partitions</td><td>@brokerView.numPartitions</td></tr>
+                        <tr><td>% of Messages</td><td>@brokerView.stats.map(_.perMessages)</td></tr>
+                        <tr><td>% of Incoming</td><td>@brokerView.stats.map(_.perIncoming)</td></tr>
+                        <tr><td>% of Outgoing</td><td>@brokerView.stats.map(_.perOutgoing)</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
             <div class="col-md-5">
                 <div class="panel panel-default">
                     <div class="panel-heading"><h4>Metrics</h4></div>
                     @views.html.common.brokerMetrics(brokerView.metrics)
                 </div>
             </div>
+        </div>
+        <div class="panel panel-default">
+            <div class="panel-heading"><h4>Per Topic Detail</h4></div>
+            <table class="table">
+                <thead>
+                <tr><th>Topic</th><th>Replication</th><th>Total Partitions</th><th>Partitions on Broker</th><th>Partitions</th><th>Skewed?</th></tr>
+                </thead>
+                <tbody>
+                @for((ti,bp) <- brokerView.topicPartitions) {
+                <tr>
+                    <td><a href="@routes.Topic.topic(cluster,ti.topic)">@ti.topic</a></td>
+                    <td>@ti.replicationFactor</td>
+                    <td>@ti.partitions</td>
+                    <td>@bp.size</td>
+                    <td>@bp.mkString("(",",",")")</td>
+                    <td>@ti.partitionsByBroker.find(_.id == brokerId).map(_.isSkewed).getOrElse("Unknown")</td>
+                </tr>
+                }
+                </tbody>
+            </table>
         </div>
 

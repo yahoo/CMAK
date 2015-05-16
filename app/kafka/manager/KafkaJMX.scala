@@ -11,13 +11,24 @@ import scala.util.{Failure, Try}
 object KafkaJMX {
   
   private[this] lazy val logger = LoggerFactory.getLogger(this.getClass)
+  
+  private[this] val jmxConnectorProperties : java.util.Map[String, _] = {
+    import scala.collection.JavaConverters._
+    Map(
+      "jmx.remote.x.request.waiting.timeout" -> "3000",
+      "jmx.remote.x.notification.fetch.timeout" -> "3000",
+      "sun.rmi.transport.connectionTimeout" -> "3000",
+      "sun.rmi.transport.tcp.handshakeTimeout" -> "3000",
+      "sun.rmi.transport.tcp.responseTimeout" -> "3000"
+    ).asJava
+  }
 
   def doWithConnection[T](jmxHost: String, jmxPort: Int)(fn: MBeanServerConnection => T) : Try[T] = {
     val urlString = s"service:jmx:rmi:///jndi/rmi://$jmxHost:$jmxPort/jmxrmi"
     val url = new JMXServiceURL(urlString)
     try {
       require(jmxPort > 0, "No jmx port but jmx polling enabled!")
-      val jmxc = JMXConnectorFactory.connect(url, null)
+      val jmxc = JMXConnectorFactory.connect(url, jmxConnectorProperties)
       try {
         Try {
           fn(jmxc.getMBeanServerConnection)

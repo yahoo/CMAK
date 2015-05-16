@@ -35,7 +35,13 @@ object ActorModel {
   case object BVGetTopicIdentities extends BVRequest
   case class BVGetView(id: Int) extends BVRequest
   case class BVGetTopicMetrics(topic: String) extends BVRequest
-  case class BVView(topicPartitions: Map[TopicIdentity, IndexedSeq[Int]], metrics: Option[BrokerMetrics] = None) extends QueryResponse
+  case object BVGetBrokerMetrics extends BVRequest
+  case class BVView(topicPartitions: Map[TopicIdentity, IndexedSeq[Int]], 
+                    metrics: Option[BrokerMetrics] = None, 
+                    stats: Option[BrokerClusterStats] = None) extends QueryResponse {
+    def numTopics : Int = topicPartitions.size
+    def numPartitions : Int = topicPartitions.values.foldLeft(0)((acc,i) => acc + i.size)
+  }
   case class BVUpdateTopicMetricsForBroker(id: Int, metrics: IndexedSeq[(String,BrokerMetrics)]) extends CommandRequest
   case class BVUpdateBrokerMetrics(id: Int, metric: BrokerMetrics) extends CommandRequest
 
@@ -328,4 +334,6 @@ object ActorModel {
       MeterMetric(0, 0, 0, 0, 0),
       MeterMetric(0, 0, 0, 0, 0))
   }
+  
+  case class BrokerClusterStats(perMessages: BigDecimal, perIncoming: BigDecimal, perOutgoing: BigDecimal)
 }
