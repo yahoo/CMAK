@@ -3,7 +3,7 @@
 * See accompanying LICENSE file.
 *@
 @import scalaz.{\/}
-@(cluster:String, errorOrTopics: kafka.manager.ApiError \/ kafka.manager.TopicListWithMoreInfo)
+@(cluster:String, errorOrTopics: kafka.manager.ApiError \/ kafka.manager.TopicListExtended)
 
 @theMenu = {
     @views.html.navigation.clusterMenu(cluster,"Topic","List",models.navigation.Menus.clusterMenus(cluster))
