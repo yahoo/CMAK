@@ -19,13 +19,29 @@
     }
 }
 
+@getBrokersSkewLevel(percentage: Int) = {
+@percentage match {
+    case i if i > 0 && i<=33 => {warning}
+    case i if i >=  66 => {danger}
+    case i => {}
+}
+}
+
+@getUnderReplicatedLevel(percentage: Int) = {
+@percentage match {
+    case i if i > 0 && i<=33 => {warning}
+    case i if i >=  66 => {danger}
+    case i => {}
+}
+}
+
 @getReassignmentStatus(topic: String) = {
     @if(topicsUnderReassignment.contains(topic)) {glow-red} else {}
 }
 
-<table class="table">
+<table class="table" id="topics-table">
     <thead>
-    <tr><th>Topic</th><th># Partitions</th><th># Brokers</th><th>Brokers Spread %</th></tr>
+    <tr><th>Topic</th><th># Partitions</th><th># Brokers</th><th>Brokers Spread %</th><th>Brokers Skew %</th><th># Replica Factor</th><th>Under Replicated %</th><th>Preferred Replicas %</th></tr>
     </thead>
     <tbody>
     @for( ((topic, topicIdentity), deleted) <- topics) {
@@ -34,7 +50,18 @@
           @topicIdentity.map{ ti => <td>@ti.partitions</td>}.getOrElse{<td> </td>}
           @topicIdentity.map{ ti => <td>@ti.topicBrokers</td>}.getOrElse{<td> </td>}
           @topicIdentity.map{ ti => <td class="@getBrokersSpreadLevel(ti.brokersSpreadPercentage)">@ti.brokersSpreadPercentage</td>}.getOrElse{<td> </td>}
+          @topicIdentity.map{ ti => <td class="@getBrokersSkewLevel(ti.brokersSkewPercentage)">@ti.brokersSkewPercentage</td>}.getOrElse{<td> </td>}
+          @topicIdentity.map{ ti => <td>@ti.replicationFactor</td>}.getOrElse{<td> </td>}
+          @topicIdentity.map{ ti => <td class="@getUnderReplicatedLevel(ti.underReplicatedPercentage)">@ti.underReplicatedPercentage</td>}.getOrElse{<td> </td>}
+          @topicIdentity.map{ ti => <td>@ti.preferredReplicasPercentage</td>}.getOrElse{<td> </td>}
       </tr>
     }
     </tbody>
 </table>
+
+
+<script>
+    $(document).ready(function() {
+        $('#topics-table').DataTable();
+    } );
+</script>
