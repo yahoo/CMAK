@@ -9,10 +9,19 @@
     @views.html.navigation.clusterMenu(cluster,"Topic","List",models.navigation.Menus.clusterMenus(cluster))
 }
 
+@topicScripts = {
+    <script ype="text/javascript">
+    $(document).ready(function() {
+        $('#topics-table').DataTable();
+    } );
+    </script>
+}
+
 @main(
     "Topic List",
     menu = theMenu,
-    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Topics",cluster))) {
+    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Topics",cluster)),
+    scripts=topicScripts) {
     <div class="col-md-12">
         <div class="panel panel-default">
             <div class="panel-heading"><h4>Operations</h4></div>

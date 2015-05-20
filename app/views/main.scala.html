@@ -2,7 +2,7 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@(title: String, menu: Html, breadcrumbs: Html = Html(""))(content: Html)
+@(title: String, menu: Html, breadcrumbs: Html = Html(""), scripts: Html = Html(""))(content: Html)
 
 <!DOCTYPE html>
 <html>
@@ -41,10 +41,7 @@
     function checkBoxSelect(idPrefix, booleanValue) {
         $("[id^="+idPrefix+"]").prop("checked",booleanValue);
     }
-    $(document).ready(function() {
-    $('#topics-table').DataTable();
-    } );
 </script>
-
+@scripts
 </body>
 </html>
