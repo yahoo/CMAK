@@ -41,7 +41,7 @@
 
 <table class="table" id="topics-table">
     <thead>
-    <tr><th>Topic</th><th># Partitions</th><th># Brokers</th><th>Brokers Spread %</th><th>Brokers Skew %</th><th># Replica Factor</th><th>Under Replicated %</th><th>Preferred Replicas %</th></tr>
+    <tr><th>Topic</th><th># Partitions</th><th># Brokers</th><th>Brokers Spread %</th><th>Brokers Skew %</th><th># Replicas</th><th>Under Replicated %</th></tr>
     </thead>
     <tbody>
     @for( ((topic, topicIdentity), deleted) <- topics) {
@@ -53,7 +53,6 @@
           @topicIdentity.map{ ti => <td class="@getBrokersSkewLevel(ti.brokersSkewPercentage)">@ti.brokersSkewPercentage</td>}.getOrElse{<td> </td>}
           @topicIdentity.map{ ti => <td>@ti.replicationFactor</td>}.getOrElse{<td> </td>}
           @topicIdentity.map{ ti => <td class="@getUnderReplicatedLevel(ti.underReplicatedPercentage)">@ti.underReplicatedPercentage</td>}.getOrElse{<td> </td>}
-          @topicIdentity.map{ ti => <td>@ti.preferredReplicasPercentage</td>}.getOrElse{<td> </td>}
       </tr>
     }
     </tbody>
