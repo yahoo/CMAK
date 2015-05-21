@@ -83,7 +83,7 @@ object ClusterConfig {
     //validate zk hosts
     validateZkHosts(zkHosts)
     val cleanZkHosts = zkHosts.replaceAll(" ","")
-    new ClusterConfig(name, CuratorConfig(cleanZkHosts, zkMaxRetry), true, kafkaVersion, jmxEnabled)
+    new ClusterConfig(name.toLowerCase, CuratorConfig(cleanZkHosts, zkMaxRetry), true, kafkaVersion, jmxEnabled)
   }
 
   def customUnapply(cc: ClusterConfig) : Option[(String, String, String, Int, Boolean)] = {

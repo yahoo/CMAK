@@ -24,6 +24,14 @@ class TestClusterConfig extends FunSuite with Matchers {
     }
   }
 
+  test("case insensitive name") {
+    assert(ClusterConfig("QA","0.8.1.1","localhost:2181", jmxEnabled = false).name === "qa")
+  }
+
+  test("case sensitive zk hosts") {
+    assert(ClusterConfig("QA","0.8.1.1","LOCALHOST:2181", jmxEnabled = false).curatorConfig.zkConnect != "localhost:2181")
+  }
+
   test("serialize and deserialize") {
     val cc = ClusterConfig("qa","0.8.2.0","localhost:2181", jmxEnabled = true)
     val serialize: String = ClusterConfig.serialize(cc)
