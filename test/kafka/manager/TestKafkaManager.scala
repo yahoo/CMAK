@@ -91,7 +91,7 @@ class TestKafkaManager extends CuratorAwareTest {
     val future = kafkaManager.getBrokerList("dev")
     val result = Await.result(future,duration)
     assert(result.isRight === true)
-    assert(result.toOption.get.nonEmpty === true)
+    assert(result.toOption.get.list.nonEmpty === true)
   }
 
   test("get topic identity") {
