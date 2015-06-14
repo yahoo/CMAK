@@ -9,7 +9,7 @@ import java.util.Properties
 
 import kafka.manager.ActorModel.TopicIdentity
 import kafka.manager.utils.TopicConfigs
-import kafka.manager.{ApiError, Kafka_0_8_2_0, Kafka_0_8_1_1}
+import kafka.manager.{Kafka_0_8_2_1, ApiError, Kafka_0_8_2_0, Kafka_0_8_1_1}
 import models.FollowLink
 import models.form._
 import models.navigation.Menus
@@ -42,7 +42,8 @@ object Topic extends Controller{
   
   val kafka_0_8_1_1_Default = CreateTopic("",1,1,TopicConfigs.configNames(Kafka_0_8_1_1).map(n => TConfig(n,None)).toList)
   val kafka_0_8_2_0_Default = CreateTopic("",1,1,TopicConfigs.configNames(Kafka_0_8_2_0).map(n => TConfig(n,None)).toList)
-  
+  val kafka_0_8_2_1_Default = CreateTopic("",1,1,TopicConfigs.configNames(Kafka_0_8_2_1).map(n => TConfig(n,None)).toList)
+
   val defaultCreateForm = Form(
     mapping(
       "topic" -> nonEmptyText.verifying(maxLength(250), validateName),
@@ -97,13 +98,14 @@ object Topic extends Controller{
         clusterConfig.version match {
           case Kafka_0_8_1_1 => defaultCreateForm.fill(kafka_0_8_1_1_Default)
           case Kafka_0_8_2_0 => defaultCreateForm.fill(kafka_0_8_2_0_Default)
+          case Kafka_0_8_2_1 => defaultCreateForm.fill(kafka_0_8_2_1_Default)
         }
       }
     }
   }
 
   def topics(c: String) = Action.async {
-    kafkaManager.getTopicListWithMoreInfo(c).map { errorOrTopicList =>
+    kafkaManager.getTopicListExtended(c).map { errorOrTopicList =>
       Ok(views.html.topic.topicList(c,errorOrTopicList))
     }
   }
@@ -201,6 +203,7 @@ object Topic extends Controller{
         val defaultConfigMap = clusterConfig.version match {
           case Kafka_0_8_1_1 => TopicConfigs.configNames(Kafka_0_8_1_1).map(n => (n,TConfig(n,None))).toMap
           case Kafka_0_8_2_0 => TopicConfigs.configNames(Kafka_0_8_2_0).map(n => (n,TConfig(n,None))).toMap
+          case Kafka_0_8_2_1 => TopicConfigs.configNames(Kafka_0_8_2_1).map(n => (n,TConfig(n,None))).toMap
         }
         val combinedMap = defaultConfigMap ++ ti.config.toMap.map(tpl => tpl._1 -> TConfig(tpl._1,Option(tpl._2)))
         defaultUpdateConfigForm.fill(UpdateTopicConfig(ti.topic,combinedMap.toList.map(_._2),ti.configReadVersion))

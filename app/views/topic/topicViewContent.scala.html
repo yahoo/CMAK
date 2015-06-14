@@ -63,6 +63,16 @@
         case false => {}
     }
 }
+        
+@renderTopicMetrics = {
+    @if(topicIdentity.clusterConfig.jmxEnabled) {
+        @views.html.common.brokerMetrics(topicIdentity.metrics)
+    } else {
+        <div class="alert alert-info" role="alert">
+            Please enable JMX polling <a href="@routes.Cluster.updateCluster(cluster)" class="alert-link">here</a>.
+        </div>
+    }
+}
 
     <div class="row">
         <div class="col-md-5">
@@ -129,7 +139,7 @@
             </div>
             <div class="panel panel-default">
                 <div class="panel-heading"><h4>Metrics</h4></div>
-                @views.html.common.brokerMetrics(topicIdentity.metrics)
+                @renderTopicMetrics
             </div>
         </div>
         <div class="col-md-7">

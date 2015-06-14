@@ -22,6 +22,10 @@ trait LongRunningPoolActor extends BaseActor {
   protected def longRunningPoolConfig: LongRunningPoolConfig
   
   protected def longRunningQueueFull(): Unit
+  
+  protected def hasCapacityFor(taskCount: Int): Boolean = {
+    longRunningExecutor.getQueue.remainingCapacity() >= taskCount
+  }
 
   @scala.throws[Exception](classOf[Exception])
   override def postStop(): Unit = {
