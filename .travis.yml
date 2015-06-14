@@ -2,4 +2,7 @@ language: scala
 install: true
 script: "./sbt clean test"
 scala:
-- 2.11.5
+  - 2.11.5
+#script: sbt clean coverage assembly
+#after_success:
+#  - sbt coverageReport coveralls
