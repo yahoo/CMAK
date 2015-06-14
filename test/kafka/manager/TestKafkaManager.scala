@@ -246,7 +246,7 @@ class TestKafkaManager extends CuratorAwareTest {
   }
 
   test("enable cluster") {
-    val future = kafkaManager.disableCluster("dev")
+    val future = kafkaManager.enableCluster("dev")
     val result = Await.result(future,duration)
     assert(result.isRight === true)
     Thread.sleep(3000)
