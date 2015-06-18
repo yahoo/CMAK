@@ -168,7 +168,8 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
                       mbsc =>
                         topicPartitions.map {
                           case (topic, id, partitions) =>
-                            (topic.topic, KafkaMetrics.getBrokerMetrics(mbsc, Option(topic.topic)))
+                            (topic.topic, 
+                              KafkaMetrics.getBrokerMetrics(config.clusterConfig.version, mbsc, Option(topic.topic)))
                         }
                     }
                     val result = tryResult match {
@@ -192,7 +193,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
               Future {
                 val tryResult = KafkaJMX.doWithConnection(broker.host, broker.jmxPort) {
                   mbsc =>
-                    KafkaMetrics.getBrokerMetrics(mbsc)
+                    KafkaMetrics.getBrokerMetrics(config.clusterConfig.version, mbsc)
                 }
 
                 val result = tryResult match {

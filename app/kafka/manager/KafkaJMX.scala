@@ -46,37 +46,51 @@ object KafkaJMX {
 
 object KafkaMetrics {
 
-  def getBytesInPerSec(mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
-    getBrokerTopicMeterMetrics(mbsc, "BytesInPerSec", topicOption)
+  def getBytesInPerSec(kafkaVersion: KafkaVersion, mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
+    getBrokerTopicMeterMetrics(kafkaVersion, mbsc, "BytesInPerSec", topicOption)
   }
 
-  def getBytesOutPerSec(mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
-    getBrokerTopicMeterMetrics(mbsc, "BytesOutPerSec", topicOption)
+  def getBytesOutPerSec(kafkaVersion: KafkaVersion, mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
+    getBrokerTopicMeterMetrics(kafkaVersion, mbsc, "BytesOutPerSec", topicOption)
   }
 
-  def getBytesRejectedPerSec(mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
-    getBrokerTopicMeterMetrics(mbsc, "BytesRejectedPerSec", topicOption)
+  def getBytesRejectedPerSec(kafkaVersion: KafkaVersion, mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
+    getBrokerTopicMeterMetrics(kafkaVersion, mbsc, "BytesRejectedPerSec", topicOption)
   }
 
-  def getFailedFetchRequestsPerSec(mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
-    getBrokerTopicMeterMetrics(mbsc, "FailedFetchRequestsPerSec", topicOption)
+  def getFailedFetchRequestsPerSec(kafkaVersion: KafkaVersion, mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
+    getBrokerTopicMeterMetrics(kafkaVersion, mbsc, "FailedFetchRequestsPerSec", topicOption)
   }
 
-  def getFailedProduceRequestsPerSec(mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
-    getBrokerTopicMeterMetrics(mbsc, "FailedProduceRequestsPerSec", topicOption)
+  def getFailedProduceRequestsPerSec(kafkaVersion: KafkaVersion, mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
+    getBrokerTopicMeterMetrics(kafkaVersion, mbsc, "FailedProduceRequestsPerSec", topicOption)
   }
 
-  def getMessagesInPerSec(mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
-    getBrokerTopicMeterMetrics(mbsc, "MessagesInPerSec", topicOption)
+  def getMessagesInPerSec(kafkaVersion: KafkaVersion, mbsc: MBeanServerConnection, topicOption: Option[String] = None) = {
+    getBrokerTopicMeterMetrics(kafkaVersion, mbsc, "MessagesInPerSec", topicOption)
   }
 
-  private def getBrokerTopicMeterMetrics(mbsc: MBeanServerConnection, metricName: String, topicOption: Option[String]) = {
-    getMeterMetric(mbsc, getObjectName(metricName, topicOption))
+  private def getBrokerTopicMeterMetrics(kafkaVersion: KafkaVersion, mbsc: MBeanServerConnection, metricName: String, topicOption: Option[String]) = {
+    getMeterMetric(mbsc, getObjectName(kafkaVersion, metricName, topicOption))
+  }
+  
+  private def getSep(kafkaVersion: KafkaVersion) : String = {
+    kafkaVersion match {
+      case Kafka_0_8_1_1 => "\""
+      case _ => ""
+    }
   }
 
-  private def getObjectName(name: String, topicOption: Option[String] = None) = {
-    val topicProp = topicOption.map(topic => s",topic=$topic").getOrElse("")
-    new ObjectName(s"kafka.server:type=BrokerTopicMetrics,name=$name$topicProp")
+  def getObjectName(kafkaVersion: KafkaVersion, name: String, topicOption: Option[String] = None) = {
+    val sep = getSep(kafkaVersion)
+    val topicAndName = kafkaVersion match {
+      case Kafka_0_8_1_1 => 
+        topicOption.map( topic => s"${sep}$topic-$name${sep}").getOrElse(s"${sep}AllTopics$name${sep}")
+      case _ =>
+        val topicProp = topicOption.map(topic => s",topic=$topic").getOrElse("")
+        s"$name$topicProp"
+    }
+    new ObjectName(s"${sep}kafka.server${sep}:type=${sep}BrokerTopicMetrics${sep},name=$topicAndName")
   }
 
   /* Gauge, Value : 0 */
@@ -122,14 +136,14 @@ object KafkaMetrics {
     attributes.find(_.getName == name).map(_.getValue.asInstanceOf[Double]).getOrElse(0D)
   }
 
-  def getBrokerMetrics(mbsc: MBeanServerConnection, topic: Option[String] = None) : BrokerMetrics = {
+  def getBrokerMetrics(kafkaVersion: KafkaVersion, mbsc: MBeanServerConnection, topic: Option[String] = None) : BrokerMetrics = {
     BrokerMetrics(
-      KafkaMetrics.getBytesInPerSec(mbsc, topic),
-      KafkaMetrics.getBytesOutPerSec(mbsc, topic),
-      KafkaMetrics.getBytesRejectedPerSec(mbsc, topic),
-      KafkaMetrics.getFailedFetchRequestsPerSec(mbsc, topic),
-      KafkaMetrics.getFailedProduceRequestsPerSec(mbsc, topic),
-      KafkaMetrics.getMessagesInPerSec(mbsc, topic))
+      KafkaMetrics.getBytesInPerSec(kafkaVersion, mbsc, topic),
+      KafkaMetrics.getBytesOutPerSec(kafkaVersion, mbsc, topic),
+      KafkaMetrics.getBytesRejectedPerSec(kafkaVersion, mbsc, topic),
+      KafkaMetrics.getFailedFetchRequestsPerSec(kafkaVersion, mbsc, topic),
+      KafkaMetrics.getFailedProduceRequestsPerSec(kafkaVersion, mbsc, topic),
+      KafkaMetrics.getMessagesInPerSec(kafkaVersion, mbsc, topic))
   }
 }
 
