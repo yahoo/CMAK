@@ -77,7 +77,7 @@ object TopicErrors {
   def ReplicationGreaterThanNumBrokers(rf: Int, nb: Int) = new ReplicationGreaterThanNumBrokers(rf,nb)
   val InconsistentPartitionReplicas = new InconsistentPartitionReplicas
   def TopicAlreadyExists(topic: String) = new TopicAlreadyExists(topic)
-  def DuplicateReplicAssignment(topic: String, part: Int, replicas: Seq[Int]) = new DuplicateReplicaAssignment(topic,part,replicas)
+  def DuplicateReplicaAssignment(topic: String, part: Int, replicas: Seq[Int]) = new DuplicateReplicaAssignment(topic,part,replicas)
   def CannotAddZeroPartitions(topic: String, currentPartitions: Int, newPartitions:Int) = new CannotAddZeroPartitions(topic,currentPartitions,newPartitions)
   def FailedToAddNewPartitions(topic: String, newPartitions:Int, found: Int) = new FailedToAddNewPartitions(topic,newPartitions,found)
   def TopicDoesNotExist(topic: String) = new TopicDoesNotExist(topic)
