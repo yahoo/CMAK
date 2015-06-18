@@ -1,7 +1,8 @@
-package controllers
+package controllers.api
 
-import play.api.mvc._
+import controllers.KafkaManagerContext
 import play.api.libs.json._
+import play.api.mvc._
 
 object KafkaHealthCheck extends Controller {
 
