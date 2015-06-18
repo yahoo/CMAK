@@ -61,7 +61,7 @@ object ZkUtils {
 
   /**
    * Update the value of a persistent node with the given path and data.
-   * create parrent directory if necessary. Never throw NodeExistException.
+   * create parent directory if necessary. Never throw NodeExistException.
    * Return the updated path zkVersion
    */
   def updatePersistentPath(curator: CuratorFramework, path: String, ba: Array[Byte], version: Int = -1) = {
