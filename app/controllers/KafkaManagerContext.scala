@@ -15,7 +15,7 @@ object KafkaManagerContext {
   import play.api.Play.current
 
   private[this] val kafkaManager : KafkaManager = new KafkaManager(play.api.Play.configuration.underlying)
-  def getKafkaManger : KafkaManager = kafkaManager
+  def getKafkaManager : KafkaManager = kafkaManager
   def shutdown() : Unit = {
     kafkaManager.shutdown()
   }

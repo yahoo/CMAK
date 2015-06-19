@@ -24,7 +24,7 @@ import scalaz.{\/-, -\/}
 object ReassignPartitions extends Controller{
   import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
-  private[this] val kafkaManager = KafkaManagerContext.getKafkaManger
+  private[this] val kafkaManager = KafkaManagerContext.getKafkaManager
 
   val validateOperation : Constraint[String] = Constraint("validate operation value") {
     case "confirm" => Valid

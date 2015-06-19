@@ -16,7 +16,7 @@ object GlobalKafkaManager extends GlobalSettings {
 
   override def beforeStart(app: Application): Unit = {
     Logger.info("Init kafka manager...")
-    KafkaManagerContext.getKafkaManger
+    KafkaManagerContext.getKafkaManager
     Thread.sleep(5000)
   }
 
