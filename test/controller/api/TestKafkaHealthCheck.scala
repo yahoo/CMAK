@@ -26,7 +26,7 @@ class TestKafkaHealthCheck extends CuratorAwareTest with KafkaServerInTest {
   override protected def beforeAll() : Unit = {
     super.beforeAll()
     lazy val app : FakeApplication = {
-      FakeApplication()
+      FakeApplication(additionalConfiguration = Map("kafka-manager.zkhosts" -> kafkaServerZkPath))
     }
     Play.start(app)
     createCluster()
