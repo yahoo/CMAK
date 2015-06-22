@@ -14,7 +14,7 @@ object Application extends Controller {
 
   import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
-  private[this] val kafkaManager = KafkaManagerContext.getKafkaManger
+  private[this] val kafkaManager = KafkaManagerContext.getKafkaManager
 
   def index = Action.async {
     kafkaManager.getClusterList.map { errorOrClusterList =>
