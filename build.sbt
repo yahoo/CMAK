@@ -79,6 +79,6 @@ rpmLicense := Some("Apache")
 
 /* End RPM Settings */
 
-
+parallelExecution in Test := false
 
 
