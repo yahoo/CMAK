@@ -36,8 +36,8 @@ object ActorModel {
   case class BVGetView(id: Int) extends BVRequest
   case class BVGetTopicMetrics(topic: String) extends BVRequest
   case object BVGetBrokerMetrics extends BVRequest
-  case class BVView(topicPartitions: Map[TopicIdentity, IndexedSeq[Int]], 
-                    metrics: Option[BrokerMetrics] = None, 
+  case class BVView(topicPartitions: Map[TopicIdentity, IndexedSeq[Int]], clusterConfig: ClusterConfig,
+                    metrics: Option[BrokerMetrics] = None,
                     stats: Option[BrokerClusterStats] = None) extends QueryResponse {
     def numTopics : Int = topicPartitions.size
     def numPartitions : Int = topicPartitions.values.foldLeft(0)((acc,i) => acc + i.size)
@@ -134,7 +134,7 @@ object ActorModel {
                               deleteSupported: Boolean) extends  QueryResponse
   case class TopicDescriptions(descriptions: IndexedSeq[TopicDescription], lastUpdateMillis: Long) extends QueryResponse
 
-  case class BrokerList(list: IndexedSeq[BrokerIdentity]) extends QueryResponse
+  case class BrokerList(list: IndexedSeq[BrokerIdentity], clusterConfig: ClusterConfig) extends QueryResponse
 
   case class PreferredReplicaElection(startTime: DateTime, topicAndPartition: Set[TopicAndPartition], endTime: Option[DateTime]) extends QueryResponse
   case class ReassignPartitions(startTime: DateTime, partitionsToBeReassigned: Map[TopicAndPartition, Seq[Int]], endTime: Option[DateTime]) extends QueryResponse
@@ -200,7 +200,8 @@ object ActorModel {
                            numBrokers: Int,
                            configReadVersion: Int,
                            config: List[(String,String)],
-                           deleteSupported: Boolean,
+                           deleteSupported: Boolean, 
+                           clusterConfig: ClusterConfig,
                            metrics: Option[BrokerMetrics] = None) {
 
     val replicationFactor : Int = partitionsIdentity.head._2.replicas.size
@@ -248,7 +249,7 @@ object ActorModel {
     import org.json4s.scalaz.JsonScalaz._
     import scala.language.reflectiveCalls
     
-    implicit def from(brokers: Int,td: TopicDescription, tm: Option[BrokerMetrics]) : TopicIdentity = {
+    implicit def from(brokers: Int,td: TopicDescription, tm: Option[BrokerMetrics], clusterConfig: ClusterConfig) : TopicIdentity = {
       val descJson = parse(td.description._2)
       //val partMap = (descJson \ "partitions").as[Map[String,Seq[Int]]]
       val partMap = field[Map[String,List[Int]]]("partitions")(descJson).fold({ e =>
@@ -276,11 +277,11 @@ object ActorModel {
             (-1,Map.empty[String, String])
         }
       }
-      TopicIdentity(td.topic,td.description._1,partMap.size,tpi,brokers,config._1,config._2.toList,td.deleteSupported, tm)
+      TopicIdentity(td.topic,td.description._1,partMap.size,tpi,brokers,config._1,config._2.toList,td.deleteSupported, clusterConfig, tm)
     }
 
-    implicit def from(bl: BrokerList,td: TopicDescription, tm: Option[BrokerMetrics]) : TopicIdentity = {
-      from(bl.list.size, td, tm)
+    implicit def from(bl: BrokerList,td: TopicDescription, tm: Option[BrokerMetrics], clusterConfig: ClusterConfig) : TopicIdentity = {
+      from(bl.list.size, td, tm, clusterConfig)
     }
 
     implicit def reassignReplicas(currentTopicIdentity: TopicIdentity,
@@ -302,6 +303,7 @@ object ActorModel {
           currentTopicIdentity.configReadVersion,
           currentTopicIdentity.config,
           currentTopicIdentity.deleteSupported,
+          currentTopicIdentity.clusterConfig,
           currentTopicIdentity.metrics)
       }
     }

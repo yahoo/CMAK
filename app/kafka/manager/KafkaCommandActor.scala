@@ -49,8 +49,6 @@ class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extend
 
   @scala.throws[Exception](classOf[Exception])
   override def postStop(): Unit = {
-    log.info("Shutting down long running executor...")
-    Try(longRunningExecutor.shutdown())
     super.postStop()
   }
 
@@ -75,7 +73,7 @@ class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extend
             val result : KCCommandResult = KCCommandResult(Failure(new UnsupportedOperationException(
               s"Delete topic not supported for kafka version ${kafkaCommandActorConfig.version}")))
             sender ! result
-          case Kafka_0_8_2_0 =>
+          case Kafka_0_8_2_0 | Kafka_0_8_2_1 =>
             longRunning {
               Future {
                 KCCommandResult(Try {

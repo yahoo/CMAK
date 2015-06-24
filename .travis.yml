@@ -1,5 +1,9 @@
 language: scala
+sudo: false
+jdk: oraclejdk8
 install: true
-script: "./sbt clean test"
+script: "./sbt clean coverage assembly"
 scala:
-- 2.11.5
+  - 2.11.5
+#after_success:
+#  - sbt coverageReport coveralls

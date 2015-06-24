@@ -1,3 +1,8 @@
+/**
+ * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+ * See accompanying LICENSE file.
+ */
+
 package kafka.manager
 
 import java.util.concurrent.{LinkedBlockingQueue, TimeUnit, ThreadPoolExecutor}
@@ -22,6 +27,10 @@ trait LongRunningPoolActor extends BaseActor {
   protected def longRunningPoolConfig: LongRunningPoolConfig
   
   protected def longRunningQueueFull(): Unit
+  
+  protected def hasCapacityFor(taskCount: Int): Boolean = {
+    longRunningExecutor.getQueue.remainingCapacity() >= taskCount
+  }
 
   @scala.throws[Exception](classOf[Exception])
   override def postStop(): Unit = {
