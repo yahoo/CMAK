@@ -1,0 +1,71 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import scalaz.{\/}
+@import b3.vertical.fieldConstructor
+@import kafka.manager.ActorModel.{TopicIdentity}
+@(cluster: String,
+  topicsList: IndexedSeq[(String, Option[TopicIdentity])],
+  brokersCount: Int
+)
+
+@theMenu = {
+@views.html.navigation.clusterMenu(cluster,"Topic","Manual Partition Assignments",models.navigation.Menus.clusterMenus(cluster))
+}
+
+@replicaSelection(topic: String, partition: Int, replica: Int, curBroker: Int) = {
+<select name="@topic-@partition-@replica" id="@topic-@partition-@replica">
+    @for(broker <- 0 until brokersCount) {
+        <option value="@broker" @if(broker == curBroker){selected}>Broker @broker</option>
+    }
+</select>
+}
+
+@partitionsAssignmentsPane = {
+<div class="panel panel-default">
+    <div class="panel-heading"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>Manual Partition Assignments</h3></div>
+    <div class="panel-body assignment-pane">
+        @topicsList.map {
+        case (topic, Some(topicIdentity)) => {
+        <div class="assignment-cell">
+            <h3>@topic</h3>
+            <table>
+                @topicIdentity.partitionsIdentity.map { case (partition, topicPartitionIdentity) =>
+                <tr>
+                    <th>Partition @partition</th>
+                    <td>
+                        Replica 0: @replicaSelection(
+                        topic, partition, 0, topicPartitionIdentity.replicas.head
+                        )
+                    </td>
+                </tr>
+                @for(r <- 1 until topicPartitionIdentity.replicas.size) {
+                <tr><td></td><td>
+                    Replica @r: @replicaSelection(
+                    topic, partition, r, topicPartitionIdentity.replicas(r)
+                    )
+                </td><td></td></tr>
+                }
+                }
+            </table>
+        </div>
+        }
+        case (topic, None) => {}
+        }
+    </div>
+</div>
+}
+
+@brokersInfoPane = {
+}
+
+@main(
+  "Manual Multiple Assignment",
+  menu = theMenu,
+  breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Topics",cluster))) {
+<div class="col-md-8 un-pad-me">
+    @partitionsAssignmentsPane
+    @brokersInfoPane
+</div>
+}

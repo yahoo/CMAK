@@ -5,8 +5,8 @@
 
 package controllers
 
-import kafka.manager.ActorModel.TopicList
-import kafka.manager.ApiError
+import kafka.manager.ActorModel.{CMView, TopicList}
+import kafka.manager.{ApiError, TopicListExtended}
 import models.navigation.Menus
 import models.{navigation, FollowLink}
 import models.form._
@@ -114,6 +114,29 @@ object ReassignPartitions extends Controller{
             c, errorOrSuccess.map(l => generateMultipleAssignmentsForm.fill(GenerateMultipleAssignments(tL.list.map(TopicSelect.from), l.list.map(BrokerSelect.from))))
           ))
         }
+      }
+      )
+    }
+  }
+
+  def manualMultipleAssignments(c: String): Action[AnyContent] = Action.async {
+    val topicList = kafkaManager.getTopicListExtended(c)
+    topicList.flatMap { errOrTL =>
+      errOrTL.fold(
+      { err: ApiError =>
+        Future.successful( Ok(views.html.topic.confirmMultipleAssignments( c, -\/(err) )))
+      },
+      { tL: TopicListExtended =>
+          kafkaManager.getClusterView(c).flatMap { errOrCV =>
+            errOrCV.fold(
+            {err: ApiError =>
+              Future.successful( Ok(views.html.topic.confirmMultipleAssignments( c, -\/(err) )))
+            },
+            { cV: CMView =>
+              Future { Ok(views.html.topic.manualMultipleAssignments( c, tL.list, cV.brokersCount )) }
+            }
+            )
+          }
       }
       )
     }
