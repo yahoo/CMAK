@@ -21,7 +21,9 @@ import scala.util.{Success, Failure, Try}
 import ActorModel._
 import kafka.manager.utils._
 import scala.collection.JavaConverters._
-class KafkaStateActor(curator: CuratorFramework, deleteSupported: Boolean) extends BaseQueryCommandActor {
+class KafkaStateActor(curator: CuratorFramework, 
+                      deleteSupported: Boolean, 
+                      clusterConfig: ClusterConfig) extends BaseQueryCommandActor {
 
   // e.g. /brokers/topics/analytics_content/partitions/0/state
   private[this] val topicsTreeCache = new TreeCache(curator,ZkUtils.BrokerTopicsPath)
@@ -248,7 +250,7 @@ class KafkaStateActor(curator: CuratorFramework, deleteSupported: Boolean) exten
         }.collect { 
           case scalaz.Success(bi) => bi
         }.toIndexedSeq.sortBy(_.id)
-        sender ! BrokerList(result)
+        sender ! BrokerList(result, clusterConfig)
 
       case KSGetPreferredLeaderElection =>
         sender ! preferredLeaderElection

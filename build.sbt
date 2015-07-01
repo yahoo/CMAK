@@ -5,7 +5,7 @@
 name := """kafka-manager"""
 
 /* For packaging purposes, -SNAPSHOT MUST contain a digit */
-version := "1.2.4"
+version := "1.2.5"
 
 scalaVersion := "2.11.5"
 
@@ -45,6 +45,8 @@ pipelineStages := Seq(digest, gzip)
 includeFilter in (Assets, LessKeys.less) := "*.less"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
+
+ScoverageSbtPlugin.ScoverageKeys.coverageExcludedPackages := "<empty>;controllers.*;views.*;models.*"
 
 /*
  * Allow packaging as part of the build

@@ -222,14 +222,15 @@ class TestKafkaManager extends CuratorAwareTest {
   }
 
   test("update cluster zkhost") {
-    val future = kafkaManager.updateCluster("dev","0.8.1.1",testServer.getConnectString, jmxEnabled = false)
+    val future = kafkaManager.updateCluster("dev","0.8.2.0",testServer.getConnectString, jmxEnabled = false)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
 
     val future2 = kafkaManager.getClusterList
     val result2 = Await.result(future2,duration)
     assert(result2.isRight === true)
-    assert(result2.toOption.get.pending.nonEmpty === true)
+    assert((result2.toOption.get.pending.nonEmpty === true) ||
+           (result2.toOption.get.active.find(c => c.name == "dev").get.curatorConfig.zkConnect === testServer.getConnectString))
     Thread.sleep(3000)
   }
 
@@ -241,12 +242,13 @@ class TestKafkaManager extends CuratorAwareTest {
     val future2 = kafkaManager.getClusterList
     val result2 = Await.result(future2,duration)
     assert(result2.isRight === true)
-    assert(result2.toOption.get.pending.nonEmpty === true)
+    assert((result2.toOption.get.pending.nonEmpty === true) ||
+           (result2.toOption.get.active.find(c => c.name == "dev").get.enabled === false))
     Thread.sleep(3000)
   }
 
   test("enable cluster") {
-    val future = kafkaManager.disableCluster("dev")
+    val future = kafkaManager.enableCluster("dev")
     val result = Await.result(future,duration)
     assert(result.isRight === true)
     Thread.sleep(3000)
@@ -260,7 +262,8 @@ class TestKafkaManager extends CuratorAwareTest {
     val future2 = kafkaManager.getClusterList
     val result2 = Await.result(future2,duration)
     assert(result2.isRight === true)
-    assert(result2.toOption.get.pending.nonEmpty === true)
+    assert((result2.toOption.get.pending.nonEmpty === true) ||
+           (result2.toOption.get.active.find(c => c.name == "dev").get.version === Kafka_0_8_1_1))
     Thread.sleep(5000)
   }
 

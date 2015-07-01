@@ -23,7 +23,7 @@ import scala.util.{Success, Failure, Try}
  * @author hiral
  */
 case class TopicListExtended(list: IndexedSeq[(String, Option[TopicIdentity])], deleteSet: Set[String], underReassignments: IndexedSeq[String])
-case class BrokerListExtended(list: IndexedSeq[BrokerIdentity], metrics: Map[Int,BrokerMetrics], combinedMetric: Option[BrokerMetrics])
+case class BrokerListExtended(list: IndexedSeq[BrokerIdentity], metrics: Map[Int,BrokerMetrics], combinedMetric: Option[BrokerMetrics], clusterConfig: ClusterConfig)
 case class ApiError(msg: String)
 object ApiError {
   private[this] val log : Logger = LoggerFactory.getLogger(classOf[ApiError])
@@ -352,7 +352,7 @@ class KafkaManager(akkaConfig: Config)
     tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, KSGetTopics))(identity[TopicList])
   }
 
-  def getTopicListWithMoreInfo(clusterName: String): Future[ApiError \/ TopicListExtended] = {
+  def getTopicListExtended(clusterName: String): Future[ApiError \/ TopicListExtended] = {
     val futureTopicIdentities = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, BVGetTopicIdentities))(identity[Map[String, TopicIdentity]])
     val futureTopicList = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, KSGetTopics))(identity[TopicList])
     val futureTopicsReasgn = getTopicsUnderReassignment(clusterName)
@@ -404,7 +404,8 @@ class KafkaManager(akkaConfig: Config)
             BrokerListExtended(
               bl.list, 
               bm, 
-              if(bm.isEmpty) None else Option(bm.values.foldLeft(BrokerMetrics.DEFAULT)((acc, m) => acc + m))
+              if(bm.isEmpty) None else Option(bm.values.foldLeft(BrokerMetrics.DEFAULT)((acc, m) => acc + m)),
+              bl.clusterConfig
             ))
         }
       })
