@@ -34,6 +34,7 @@ object ActorModel {
   case object BVForceUpdate extends CommandRequest
   case object BVGetTopicIdentities extends BVRequest
   case class BVGetView(id: Int) extends BVRequest
+  case object BVGetViews extends BVRequest
   case class BVGetTopicMetrics(topic: String) extends BVRequest
   case object BVGetBrokerMetrics extends BVRequest
   case class BVView(topicPartitions: Map[TopicIdentity, IndexedSeq[Int]], clusterConfig: ClusterConfig,

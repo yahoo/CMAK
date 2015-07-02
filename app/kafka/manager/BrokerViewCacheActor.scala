@@ -65,6 +65,38 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
     log.error("Long running pool queue full, skipping!")
   }
 
+  private def allBrokerViews(): Seq[BVView] = {
+    var bvs = mutable.MutableList[BVView]()
+    for (key <- brokerTopicPartitions.keySet.toSeq.sorted) {
+      val bv = brokerTopicPartitions.get(key).map { bv =>
+        val bcs = for {
+          metrics <- bv.metrics
+          cbm <- combinedBrokerMetric
+        } yield {
+            val perMessages = if(cbm.messagesInPerSec.oneMinuteRate > 0) {
+              BigDecimal(metrics.messagesInPerSec.oneMinuteRate / cbm.messagesInPerSec.oneMinuteRate * 100D).setScale(3, BigDecimal.RoundingMode.HALF_UP)
+            } else ZERO
+            val perIncoming = if(cbm.bytesInPerSec.oneMinuteRate > 0) {
+              BigDecimal(metrics.bytesInPerSec.oneMinuteRate / cbm.bytesInPerSec.oneMinuteRate * 100D).setScale(3, BigDecimal.RoundingMode.HALF_UP)
+            } else ZERO
+            val perOutgoing = if(cbm.bytesOutPerSec.oneMinuteRate > 0) {
+              BigDecimal(metrics.bytesOutPerSec.oneMinuteRate / cbm.bytesOutPerSec.oneMinuteRate * 100D).setScale(3, BigDecimal.RoundingMode.HALF_UP)
+            } else ZERO
+            BrokerClusterStats(perMessages, perIncoming, perOutgoing)
+          }
+        if(bcs.isDefined) {
+          bv.copy(stats=bcs)
+        } else {
+          bv
+        }
+      }
+      if (bv.isDefined) {
+        bvs += bv.get
+      }
+    }
+    bvs.asInstanceOf[Seq[BVView]]
+  }
+
   override def processActorRequest(request: ActorRequest): Unit = {
     request match {
       case BVForceUpdate =>
@@ -73,6 +105,10 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
         val lastUpdateMillisOption: Option[Long] = topicDescriptionsOption.map(_.lastUpdateMillis)
         context.actorSelection(config.kafkaStateActorPath).tell(KSGetAllTopicDescriptions(lastUpdateMillisOption), self)
         context.actorSelection(config.kafkaStateActorPath).tell(KSGetBrokers, self)
+
+      case BVGetViews =>
+        sender ! allBrokerViews()
+
 
       case BVGetView(id) =>
         sender ! brokerTopicPartitions.get(id).map { bv =>

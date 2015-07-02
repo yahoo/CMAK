@@ -14,6 +14,7 @@ import com.typesafe.config.{ConfigFactory, Config}
 import kafka.manager.ActorModel._
 import org.slf4j.{LoggerFactory, Logger}
 
+import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
@@ -410,6 +411,17 @@ class KafkaManager(akkaConfig: Config)
         }
       })
     }
+  }
+
+  def getBrokersView(clusterName: String): Future[\/[ApiError, Seq[BVView]]] = {
+    implicit val ec = apiExecutionContext
+
+    tryWithKafkaManagerActor(
+      KMClusterQueryRequest(
+        clusterName,
+        BVGetViews
+      )
+    )(identity[Seq[BVView]])
   }
 
   def getBrokerView(clusterName: String, brokerId: Int): Future[ApiError \/ BVView] = {
