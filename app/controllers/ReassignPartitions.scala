@@ -5,8 +5,8 @@
 
 package controllers
 
-import kafka.manager.ActorModel.{CMView, TopicList}
-import kafka.manager.{ApiError, TopicListExtended}
+import kafka.manager.ActorModel.{BVView, CMView, TopicList}
+import kafka.manager.{BrokerListExtended, ApiError, TopicListExtended}
 import models.navigation.Menus
 import models.{navigation, FollowLink}
 import models.form._
@@ -16,7 +16,7 @@ import play.api.data.validation.{Valid, Invalid, Constraint}
 import play.api.mvc._
 
 import scala.concurrent.Future
-import scalaz.{\/-, -\/}
+import scalaz.{\/, \/-, -\/}
 
 /**
  * @author hiral
@@ -121,19 +121,29 @@ object ReassignPartitions extends Controller{
 
   def manualMultipleAssignments(c: String): Action[AnyContent] = Action.async {
     val topicList = kafkaManager.getTopicListExtended(c)
+    val brokersViews = kafkaManager.getBrokersView(c)
+
     topicList.flatMap { errOrTL =>
       errOrTL.fold(
       { err: ApiError =>
         Future.successful( Ok(views.html.topic.confirmMultipleAssignments( c, -\/(err) )))
       },
-      { tL: TopicListExtended =>
-          kafkaManager.getClusterView(c).flatMap { errOrCV =>
+      { topics: TopicListExtended =>
+          kafkaManager.getBrokerList(c).flatMap { errOrCV =>
             errOrCV.fold(
             {err: ApiError =>
               Future.successful( Ok(views.html.topic.confirmMultipleAssignments( c, -\/(err) )))
             },
-            { cV: CMView =>
-              Future { Ok(views.html.topic.manualMultipleAssignments( c, tL.list, cV.brokersCount )) }
+            { brokers: BrokerListExtended => {
+                brokersViews.flatMap { errorOrBVs =>
+                  errorOrBVs.fold (
+                  {err: ApiError => Future.successful( Ok(views.html.topic.confirmMultipleAssignments( c, -\/(err) )))},
+                  {bVs: Seq[BVView] => Future {
+                    Ok(views.html.topic.manualMultipleAssignments( c, topics.list, brokers , bVs))
+                  }}
+                  )
+                }
+              }
             }
             )
           }

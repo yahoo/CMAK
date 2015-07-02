@@ -2,12 +2,16 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
+
 @import scalaz.{\/}
 @import b3.vertical.fieldConstructor
-@import kafka.manager.ActorModel.{TopicIdentity}
+@import kafka.manager.ActorModel.{TopicIdentity, BVView}
+@import kafka.manager.{BrokerListExtended}
+
 @(cluster: String,
   topicsList: IndexedSeq[(String, Option[TopicIdentity])],
-  brokersCount: Int
+  brokers: BrokerListExtended,
+  brokersViews: Seq[BVView]
 )
 
 @theMenu = {
@@ -16,7 +20,7 @@
 
 @replicaSelection(topic: String, partition: Int, replica: Int, curBroker: Int) = {
 <select name="@topic-@partition-@replica" id="@topic-@partition-@replica">
-    @for(broker <- 0 until brokersCount) {
+    @for(broker <- 0 until brokers.list.size) {
         <option value="@broker" @if(broker == curBroker){selected}>Broker @broker</option>
     }
 </select>
@@ -58,14 +62,19 @@
 }
 
 @brokersInfoPane = {
+    @views.html.common.shortBrokerMetrics(brokersViews)
 }
 
 @main(
   "Manual Multiple Assignment",
   menu = theMenu,
   breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Topics",cluster))) {
-<div class="col-md-8 un-pad-me">
-    @partitionsAssignmentsPane
-    @brokersInfoPane
+<div class="row">
+    <div class="col-md-8">
+        @partitionsAssignmentsPane
+    </div>
+    <div class="col-md-4">
+        @brokersInfoPane
+    </div>
 </div>
 }
