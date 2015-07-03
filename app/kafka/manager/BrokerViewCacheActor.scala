@@ -179,6 +179,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
   }
 
   private[this] def updateView(): Unit = {
+    var nBrokers: Int = 0
     for {
       brokerList <- brokerListOption
       topicDescriptions <- topicDescriptionsOption
@@ -223,6 +224,8 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
             }
         }
 
+        nBrokers = brokerList.list.size
+
         brokerList.list.foreach {
           broker =>
             longRunning {
@@ -245,15 +248,25 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
       } else if(config.clusterConfig.jmxEnabled) {
         log.warning("Not scheduling update of JMX for all brokers, not enough capacity!")
       }
-      
+
+      var brokersWithTopics = mutable.MutableList[Int]()
+
       topicPartitionByBroker.foreach {
         case (brokerId, topicPartitions) =>
+          brokersWithTopics += brokerId
           val topicPartitionsMap : Map[TopicIdentity, IndexedSeq[Int]] = topicPartitions.map {
             case (topic, id, partitions) =>
               (topic, partitions)
           }.toMap
           brokerTopicPartitions.put(
             brokerId,BVView(topicPartitionsMap, config.clusterConfig, brokerMetrics.get(brokerId)))
+      }
+      for (i <- 0 until nBrokers) {
+        if (!brokersWithTopics.contains(i)) {
+          brokerTopicPartitions.put(
+            i, BVView(Map[TopicIdentity, IndexedSeq[Int]](), config.clusterConfig, brokerMetrics.get(i))
+          )
+        }
       }
     }
   }
