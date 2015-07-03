@@ -7,55 +7,70 @@
 @import b3.vertical.fieldConstructor
 @import kafka.manager.ActorModel.{TopicIdentity, BVView}
 @import kafka.manager.{BrokerListExtended}
+@import kafka.manager.utils._
+@import helper._
+@import models.form._
 
 @(cluster: String,
-  topicsList: IndexedSeq[(String, Option[TopicIdentity])],
+  assignForm: Form[List[(String, List[(Int,List[Int])])]],
   brokers: BrokerListExtended,
-  brokersViews: Seq[BVView]
+  brokersViews: Seq[BVView],
+  formErrors: Seq[FormError]
 )
 
 @theMenu = {
 @views.html.navigation.clusterMenu(cluster,"Topic","Manual Partition Assignments",models.navigation.Menus.clusterMenus(cluster))
 }
 
-@replicaSelection(topic: String, partition: Int, replica: Int, curBroker: Int) = {
-<select name="@topic-@partition-@replica" id="@topic-@partition-@replica">
-    @for(broker <- 0 until brokers.list.size) {
-        <option value="@broker" @if(broker == curBroker){selected}>Broker @broker</option>
-    }
-</select>
+@replicaSelection(brokerField: Field) = {
+    <select name="@brokerField.name">
+        @for(idx <- 0 until brokers.list.size) {
+            <option value="@idx" @if(idx == brokerField.value.get.toInt){selected}>Broker @idx</option>
+        }
+    </select>
 }
 
 @partitionsAssignmentsPane = {
 <div class="panel panel-default">
-    <div class="panel-heading"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>Manual Partition Assignments</h3></div>
+    <div class="panel-heading">
+        <h3>
+            <button type="button" class="btn btn-link" onclick="goBack()">
+                <span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span>
+            </button>
+            Manual Partition Assignments
+            <button class="btn btn-primary float-right" type="submit">Save Partition Assignment</button>
+        </h3>
+    </div>
     <div class="panel-body assignment-pane">
-        @topicsList.map {
-        case (topic, Some(topicIdentity)) => {
+        @repeat(assignForm("topics")) { partitionAssignment =>
         <div class="assignment-cell">
-            <h3>@topic</h3>
+            <h3>
+            <input type="text" class="borderless center-text"
+                   name='@partitionAssignment("topic").name'
+                   value='@partitionAssignment("topic").value.get' readonly/>
+            </h3>
             <table>
-                @topicIdentity.partitionsIdentity.map { case (partition, topicPartitionIdentity) =>
-                <tr>
-                    <th>Partition @partition</th>
-                    <td>
-                        Replica 0: @replicaSelection(
-                        topic, partition, 0, topicPartitionIdentity.replicas.head
-                        )
-                    </td>
-                </tr>
-                @for(r <- 1 until topicPartitionIdentity.replicas.size) {
-                <tr><td></td><td>
-                    Replica @r: @replicaSelection(
-                    topic, partition, r, topicPartitionIdentity.replicas(r)
-                    )
-                </td><td></td></tr>
-                }
+                @repeat(partitionAssignment("assignments")) { assignment =>
+                    @if(assignment("partition").value.isDefined) {
+                        @repeatWithIndex(assignment("brokers")) { (broker, index) =>
+                                @if(index == 0) {
+                                    <tr>
+                                    <th>Partition
+                                        <input type="number" class="borderless"
+                                           name='@assignment("partition").name'
+                                           value='@assignment("partition").value.get'
+                                           readonly>
+                                    </th>
+                                    </tr>
+                                }
+                            <tr>
+                                <td>Replica @index: @replicaSelection(broker)</td>
+                            </tr>
+                        }
+                    }
                 }
             </table>
         </div>
-        }
-        case (topic, None) => {}
         }
     </div>
 </div>
@@ -71,10 +86,20 @@
   breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Topics",cluster))) {
 <div class="row">
     <div class="col-md-8">
-        @partitionsAssignmentsPane
+        @if(brokers != null) {
+            @helper.form(action = routes.ReassignPartitions.handleManualAssignment(cluster)) {
+                @partitionsAssignmentsPane
+            }
+        } else {
+            @assignForm.toString
+            <br/><br/><br/><br/><br/>
+            @formErrors.toString
+        }
     </div>
     <div class="col-md-4">
-        @brokersInfoPane
+        @if(brokers != null) {
+            @brokersInfoPane
+        }
     </div>
 </div>
 }

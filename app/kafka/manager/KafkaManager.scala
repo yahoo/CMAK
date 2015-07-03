@@ -218,6 +218,28 @@ class KafkaManager(akkaConfig: Config)
     }
   }
 
+  def manualPartitionAssignments( clusterName: String,
+                                  assignments: List[(String, List[(Int, List[Int])])]) = {
+    implicit val ec = apiExecutionContext
+    val results = tryWithKafkaManagerActor(
+      KMClusterCommandRequest (
+        clusterName,
+        CMManualPartitionAssignments(assignments)
+      )
+    ) { result: CMCommandResults =>
+      val errors = result.result.collect { case Failure(t) => ApiError(t.getMessage)}
+      if (errors.isEmpty)
+        \/-({})
+      else
+        -\/(errors)
+    }
+
+    results.map {
+      case -\/(e) => -\/(IndexedSeq(e))
+      case \/-(lst) => lst
+    }
+  }
+
   def generatePartitionAssignments(
                                     clusterName: String,
                                     topics: Set[String],
