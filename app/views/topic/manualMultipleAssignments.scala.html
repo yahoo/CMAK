@@ -44,28 +44,31 @@
     <div class="panel-body assignment-pane">
         @repeat(assignForm("topics")) { partitionAssignment =>
         <div class="assignment-cell">
-            <h3>
-            <input type="text" class="borderless center-text"
+            <h4>
+            <input type="text" class="borderless" style="display:none"
                    name='@partitionAssignment("topic").name'
                    value='@partitionAssignment("topic").value.get' readonly/>
-            </h3>
+            @partitionAssignment("topic").value.get
+            </h4>
             <table>
                 @repeat(partitionAssignment("assignments")) { assignment =>
                     @if(assignment("partition").value.isDefined) {
                         @repeatWithIndex(assignment("brokers")) { (broker, index) =>
-                                @if(index == 0) {
-                                    <tr>
-                                    <th>Partition
-                                        <input type="number" class="borderless"
-                                           name='@assignment("partition").name'
-                                           value='@assignment("partition").value.get'
-                                           readonly>
-                                    </th>
-                                    </tr>
-                                }
-                            <tr>
-                                <td>Replica @index: @replicaSelection(broker)</td>
-                            </tr>
+                            <div class="partition-cell">
+                                    @if(index == 0) {
+                                        <tr>
+                                        <th>Partition
+                                            <input type="number" class="borderless"
+                                               name='@assignment("partition").name'
+                                               value='@assignment("partition").value.get'
+                                               readonly>
+                                        </th>
+                                        </tr>
+                                    }
+                                <tr>
+                                    <td>Replica @index: @replicaSelection(broker)</td>
+                                </tr>
+                            </div>
                         }
                     }
                 }
