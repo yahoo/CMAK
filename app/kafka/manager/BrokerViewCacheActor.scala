@@ -174,7 +174,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
                     }
                     val result = tryResult match {
                       case scala.util.Failure(t) =>
-                        log.error(s"Failed to get topic metrics for broker $broker", t)
+                        log.error(t, s"Failed to get topic metrics for broker $broker")
                         topicPartitions.map {
                           case (topic, id, partitions) =>
                             (topic.topic, BrokerMetrics.DEFAULT)
@@ -198,7 +198,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
 
                 val result = tryResult match {
                   case scala.util.Failure(t) =>
-                    log.error(s"Failed to get broker metrics for $broker", t)
+                    log.error(t, s"Failed to get broker metrics for $broker")
                     BrokerMetrics.DEFAULT
                   case scala.util.Success(bm) => bm
                 }

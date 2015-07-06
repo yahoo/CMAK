@@ -50,12 +50,15 @@ class TestKafkaHealthCheck extends CuratorAwareTest with KafkaServerInTest {
 
   private[this] def createCluster() = {
     val future = KafkaManagerContext.getKafkaManager.addCluster(testClusterName,"0.8.2.0",kafkaServerZkPath, jmxEnabled = false)
-    Await.result(future,duration)
+    val result = Await.result(future,duration)
+    result.toEither.left.foreach(apiError => sys.error(apiError.msg))
+    Thread.sleep(3000)
   }
 
   private[this] def createTopic() = {
     val future = KafkaManagerContext.getKafkaManager.createTopic(testClusterName,testTopicName,4,1)
-    Await.result(future,duration)
+    val result = Await.result(future,duration)
+    result.toEither.left.foreach(apiError => sys.error(apiError.msg))
   }
 
   private[this] def deleteTopic() = {
