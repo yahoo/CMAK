@@ -5,7 +5,7 @@
 
 package controllers
 
-import kafka.manager.ActorModel.{TopicPartitionIdentity, BVView, CMView, TopicList}
+import kafka.manager.ActorModel._
 import kafka.manager.{BrokerListExtended, ApiError, TopicListExtended}
 import models.navigation.Menus
 import models.{navigation, FollowLink}
@@ -189,39 +189,35 @@ object ReassignPartitions extends Controller{
       }) forall { b => b }
     }
 
+    def responseScreen(title: String, errorOrResult: \/[IndexedSeq[ApiError], Unit]) = {
+      Ok(views.html.common.resultsOfCommand(
+        views.html.navigation.clusterMenu(c, title, "", Menus.clusterMenus(c)),
+        models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Manual Reassignment View", c, "", title),
+        errorOrResult,
+        title,
+        FollowLink("Go to topic list.", routes.Topic.topics(c).toString()),
+        FollowLink("Try again.", routes.Topic.topics(c).toString())
+      ))
+    }
+
     manualReassignmentForm.bindFromRequest.fold (
       errors => kafkaManager.getClusterList.map { errorOrClusterList =>
-        Ok(views.html.common.resultsOfCommand(
-          views.html.navigation.clusterMenu(c, "Manual Reassign Partitions Failure", "", Menus.clusterMenus(c)),
-          models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View", c, "", "Failed Manual Partition Assignments"),
-          -\/(IndexedSeq(ApiError("There is something really wrong with your submitted data!"))),
-          s"Manual Partition Assignments Failure",
-          FollowLink("Go to topic list.", routes.Topic.topics(c).toString()),
-          FollowLink("Try again.", routes.Topic.topics(c).toString())
-        ))
+        responseScreen(
+          "Manual Reassign Partitions Failure",
+          -\/(IndexedSeq(ApiError("There is something really wrong with your submitted data!")))
+        )
       },
-      (assignment: List[(String, List[(Int, List[Int])])]) => {
+      assignment => {
         if (validateAssignment(assignment)) {
           kafkaManager.manualPartitionAssignments(c, assignment).map { errorOrClusterList =>
-            Ok(views.html.common.resultsOfCommand(
-              views.html.navigation.clusterMenu(c, "Reassign Partitions", "", Menus.clusterMenus(c)),
-              models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View", c, "", "Manual Partition Assignments"),
-              errorOrClusterList,
-              s"Manual Partition Assignments",
-              FollowLink("Go to topic list.", routes.Topic.topics(c).toString()),
-              FollowLink("Try again.", routes.Topic.topics(c).toString())
-            ))
+            responseScreen("Manual Partitions Reassignment Successful", errorOrClusterList)
           }
         } else {
           Future {
-            Ok(views.html.common.resultsOfCommand(
-              views.html.navigation.clusterMenu(c, "Manual Reassign Partitions Failure", "", Menus.clusterMenus(c)),
-              models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View", c, "", "Failed Manual Partition Assignments"),
-              -\/(IndexedSeq(ApiError("You cannot (or at least should not) assign two replicas of the same partition to the same broker!!"))),
-              s"Manual Partition Assignments Failure",
-              FollowLink("Go to topic list.", routes.Topic.topics(c).toString()),
-              FollowLink("Try again.", routes.Topic.topics(c).toString())
-            ))
+            responseScreen(
+              "Manual Partitions Reassignment Failure",
+              -\/(IndexedSeq(ApiError("You cannot (or at least should not) assign two replicas of the same partition to the same broker!!")))
+            )
           }
         }
       }

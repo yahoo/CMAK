@@ -50,11 +50,11 @@
                    value='@partitionAssignment("topic").value.get' readonly/>
             @partitionAssignment("topic").value.get
             </h4>
-            <table>
                 @repeat(partitionAssignment("assignments")) { assignment =>
                     @if(assignment("partition").value.isDefined) {
+                        <div class="partition-cell">
+                        <table>
                         @repeatWithIndex(assignment("brokers")) { (broker, index) =>
-                            <div class="partition-cell">
                                     @if(index == 0) {
                                         <tr>
                                         <th>Partition
@@ -68,11 +68,11 @@
                                     <tr><td>
                                     Replica @index: @replicaSelection(broker)
                                     </td></tr>
-                            </div>
                         }
+                        </table>
+                        </div>
                     }
                 }
-                </table>
         </div>
         }
     </div>
