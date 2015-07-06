@@ -316,7 +316,8 @@ object ActorModel {
                            bytesRejectedPerSec: MeterMetric,
                            failedFetchRequestsPerSec: MeterMetric,
                            failedProduceRequestsPerSec: MeterMetric,
-                           messagesInPerSec: MeterMetric) {
+                           messagesInPerSec: MeterMetric,
+                           oSystemMetrics: OSMetric) {
     def +(o: BrokerMetrics) : BrokerMetrics = {
       BrokerMetrics(
         o.bytesInPerSec + bytesInPerSec,
@@ -324,7 +325,8 @@ object ActorModel {
         o.bytesRejectedPerSec + bytesRejectedPerSec,
         o.failedFetchRequestsPerSec + failedFetchRequestsPerSec,
         o.failedProduceRequestsPerSec + failedProduceRequestsPerSec,
-        o.messagesInPerSec + messagesInPerSec)
+        o.messagesInPerSec + messagesInPerSec,
+        oSystemMetrics)
     }
 
   }
@@ -336,7 +338,8 @@ object ActorModel {
       MeterMetric(0, 0, 0, 0, 0),
       MeterMetric(0, 0, 0, 0, 0),
       MeterMetric(0, 0, 0, 0, 0),
-      MeterMetric(0, 0, 0, 0, 0))
+      MeterMetric(0, 0, 0, 0, 0),
+      OSMetric(0L, 0L, 0D, 0D))
   }
   
   case class BrokerClusterStats(perMessages: BigDecimal, perIncoming: BigDecimal, perOutgoing: BigDecimal)

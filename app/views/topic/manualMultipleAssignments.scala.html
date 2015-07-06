@@ -81,8 +81,12 @@
 
 @brokersInfoPane = {
     @for(idx <- 0 until brokersViews.size) {
-        <h4 class="alert alert-info">Broker @idx</h4>
-        @views.html.common.brokerMetrics(brokersViews(idx).metrics)
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h4>Broker @idx</h4>
+            </div>
+            @views.html.common.expandedBrokerMetrics(brokersViews(idx).metrics)
+        </div>
     }
 }
 

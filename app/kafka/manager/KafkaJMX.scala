@@ -117,6 +117,27 @@ object KafkaMetrics {
   /* Timer*/
   private val logFlushStats = new ObjectName(
     "kafka.log:type=LogFlushStats,name=LogFlushRateAndTimeMs")
+
+  /* Operating System */
+  private val operatingSystemObjectName = new ObjectName("java.lang:type=OperatingSystem")
+
+  private def getOSMetric(mbsc: MBeanServerConnection) = {
+    import scala.collection.JavaConverters._
+    try {
+      val attributes = mbsc.getAttributes(
+        operatingSystemObjectName,
+        Array("FreePhysicalMemorySize", "FreeSwapSpaceSize", "ProcessCpuLoad", "SystemCpuLoad")
+      ).asList().asScala.toSeq
+      OSMetric(
+        getLongValue(attributes, "FreePhysicalMemorySize"),
+        getLongValue(attributes, "FreeSwapSpaceSize"),
+        getDoubleValue(attributes, "ProcessCpuLoad"),
+        getDoubleValue(attributes, "SystemCpuload")
+      )
+    } catch {
+      case _: InstanceNotFoundException => OSMetric(0L, 0L, 0D, 0D)
+    }
+  }
   
   private def getMeterMetric(mbsc: MBeanServerConnection, name:ObjectName) = {
     import scala.collection.JavaConverters._
@@ -148,11 +169,34 @@ object KafkaMetrics {
       KafkaMetrics.getBytesRejectedPerSec(kafkaVersion, mbsc, topic),
       KafkaMetrics.getFailedFetchRequestsPerSec(kafkaVersion, mbsc, topic),
       KafkaMetrics.getFailedProduceRequestsPerSec(kafkaVersion, mbsc, topic),
-      KafkaMetrics.getMessagesInPerSec(kafkaVersion, mbsc, topic))
+      KafkaMetrics.getMessagesInPerSec(kafkaVersion, mbsc, topic),
+      KafkaMetrics.getOSMetric(mbsc))
   }
 }
 
 case class GaugeMetric(value: Double)
+
+case class OSMetric(freePhysicalMemorySize: Double,
+                     freeSwapSpaceSize: Double,
+                     processCpuLoad: Double,
+                     systemCpuLoad: Double) {
+
+  def formatFreePhysicalMemory = {
+    FormatMetric.rateFormat(freePhysicalMemorySize.toDouble, 0)
+  }
+
+  def formatFreeSwapSpace = {
+    FormatMetric.rateFormat(freeSwapSpaceSize.toDouble, 0)
+  }
+
+  def formatProcessCpuLoad = {
+    FormatMetric.rateFormat(processCpuLoad, 0)
+  }
+
+  def formatSystemCpuLoad = {
+    FormatMetric.rateFormat(systemCpuLoad, 0)
+  }
+}
 
 case class MeterMetric(count: Long,
                       fifteenMinuteRate: Double,
