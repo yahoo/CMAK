@@ -130,7 +130,7 @@ class AdminUtils(version: KafkaVersion) {
       checkCondition(curator.checkExists().forPath(topicPath) == null,TopicErrors.TopicAlreadyExists(topic))
     }
     partitionReplicaAssignment.foreach {
-      case (part,reps) => checkCondition(reps.size == reps.toSet.size, TopicErrors.DuplicateReplicAssignment(topic,part,reps))
+      case (part,reps) => checkCondition(reps.size == reps.toSet.size, TopicErrors.DuplicateReplicaAssignment(topic,part,reps))
     }
 
     // write out the config on create, not update, if there is any, this isn't transactional with the partition assignments
