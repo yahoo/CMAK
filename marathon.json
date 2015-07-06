@@ -1,0 +1,39 @@
+{
+  "id": "/kafka-manager",
+  "cpus": 0.5,
+  "mem": 256.0,
+  "instances": 1,
+  "container": {
+    "type": "DOCKER",
+    "docker": {
+      "image": "stealthly/kafkamanager",
+      "forcePullImage": true,
+      "network": "BRIDGE",
+      "portMappings": [
+        {
+          "containerPort": 9000,
+          "hostPort": 0,
+          "protocol": "tcp"
+        }
+      ],
+      "privileged": false,
+      "parameters": [
+        { "key": "tty", "value": "true" }
+      ]
+    },
+    "volumes": []
+  },
+  "env": {
+    "APPLICATION_SECRET": "letmein"
+  },
+  "healthChecks": [
+    {
+      "protocol": "HTTP",
+      "portIndex": 0,
+      "path": "/",
+      "gracePeriodSeconds": 10,
+      "intervalSeconds": 30,
+      "maxConsecutiveFailures": 3
+    }
+  ]
+}
