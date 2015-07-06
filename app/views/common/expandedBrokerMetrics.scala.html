@@ -1,71 +1,67 @@
 @(brokerMetrics: Option[kafka.manager.ActorModel.BrokerMetrics])
 <table class="table">
-    <thead>
     <tr>
         <th>Rate</th>
         <th>Mean</th>
     </tr>
-    </thead>
-    <tbody>
-    <tr>
+    <tr class="metric-row" name="messages in sec">
         <td>Messages in /sec</td>
         <td>
             <span class="badge">@brokerMetrics.map(_.messagesInPerSec.formatMeanRate)</span>
         </td>
     <tr>
-    <tr>
+    <tr class="metric-row" name="bytes in sec">
         <td>Bytes in /sec</td>
         <td>
             <span class="badge">@brokerMetrics.map(_.bytesInPerSec.formatMeanRate)</span>
         </td>
     <tr>
-    <tr>
+    <tr class="metric-row" name="bytes out sec">
         <td>Bytes out /sec</td>
         <td>
             <span class="badge">@brokerMetrics.map(_.bytesOutPerSec.formatMeanRate)</span>
         </td>
     <tr>
-    <tr>
+    <tr class="metric-row" name="bytes rejected sec">
         <td>Bytes rejected /sec</td>
         <td>
             <span class="badge">@brokerMetrics.map(_.bytesRejectedPerSec.formatMeanRate)</span>
         </td>
     <tr>
-    <tr>
+    <tr class="metric-row" name="failed fetch request sec">
         <td>Failed fetch request /sec</td>
         <td>
             <span class="badge">@brokerMetrics.map(_.failedFetchRequestsPerSec.formatMeanRate)</span>
         </td>
     <tr>
-    <tr>
+    <tr class="metric-row" name="failed produce request">
         <td>Failed produce request /sec</td>
         <td>
             <span class="badge">@brokerMetrics.map(_.failedProduceRequestsPerSec.formatMeanRate)</span>
         </td>
     <tr>
-    <tr>
+    <tr class="metric-row" name="free physical memory size">
         <td>Free Physical Memory Size</td>
         <td>
             <span class="badge">@brokerMetrics.map(_.oSystemMetrics.formatFreePhysicalMemory)</span>
         </td>
     <tr>
-    <tr>
+    <tr class="metric-row" name="free swap space size">
         <td>Free Swap Space Size</td>
         <td>
             <span class="badge">@brokerMetrics.map(_.oSystemMetrics.formatFreeSwapSpace)</span>
         </td>
     <tr>
-    <tr>
+    <tr class="metric-row" name="process cpu load">
         <td>Process CPU Load</td>
         <td>
             <span class="badge">@brokerMetrics.map(_.oSystemMetrics.formatProcessCpuLoad)</span>
         </td>
     <tr>
-    <tr>
+    <tr class="metric-row" name="system cpu load">
         <td>System CPU Load</td>
         <td>
             <span class="badge">@brokerMetrics.map(_.oSystemMetrics.formatSystemCpuLoad)</span>
         </td>
     <tr>
-    </tbody>
 </table>

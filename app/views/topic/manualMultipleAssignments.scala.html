@@ -30,56 +30,86 @@
     </select>
 }
 
-@partitionsAssignmentsPane = {
-<div class="panel panel-default">
-    <div class="panel-heading">
-        <h3>
+@topHeading = {
+<div class="panel-heading">
+    <div class="row">
+        <h3 class="col-md-8">
             <button type="button" class="btn btn-link" onclick="goBack()">
                 <span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span>
             </button>
             Manual Partition Assignments
-            <button class="btn btn-primary float-right" type="submit">Save Partition Assignment</button>
         </h3>
-    </div>
-    <div class="panel-body assignment-pane">
-        @repeat(assignForm("topics")) { partitionAssignment =>
-        <div class="assignment-cell">
-            <h4>
-            <input type="text" class="borderless" style="display:none"
-                   name='@partitionAssignment("topic").name'
-                   value='@partitionAssignment("topic").value.get' readonly/>
-            @partitionAssignment("topic").value.get
-            </h4>
-                @repeat(partitionAssignment("assignments")) { assignment =>
-                    @if(assignment("partition").value.isDefined) {
-                        <div class="partition-cell">
-                        <table>
-                        @repeatWithIndex(assignment("brokers")) { (broker, index) =>
-                                    @if(index == 0) {
-                                        <tr>
-                                        <th>Partition
-                                            <input type="number" class="borderless"
-                                               name='@assignment("partition").name'
-                                               value='@assignment("partition").value.get'
-                                               readonly>
-                                        </th>
-                                        </tr>
-                                    }
-                                    <tr><td>
-                                    Replica @index: @replicaSelection(broker)
-                                    </td></tr>
-                        }
-                        </table>
-                        </div>
-                    }
-                }
+        <div class="btn-group-vertical col-md-4" role="group" aria-label="...">
+            <button type="button" class="btn btn-sm btn-default">
+                <span class="glyphicon glyphicon-flash"></span>
+                Suggest Partition Assignment
+            </button>
+            <button class="btn btn-sm btn-primary" type="submit">
+                <span class="glyphicon glyphicon-floppy-disk"></span>
+                Save Partition Assignment
+            </button>
         </div>
-        }
     </div>
 </div>
 }
 
+@middleHeading = {
+<div class="panel-body btn-group-xs sub-heading">
+    <input type="text" placeholder="Type to filter topics"
+           id="cell-selector" onkeyup="selectBySubname('#cell-selector', 'assignment-cell', 'block')"/>
+</div>
+}
+
+@mainBody = {
+<div class="panel-body assignment-pane">
+    @repeat(assignForm("topics")) { partitionAssignment =>
+    <div class="assignment-cell" name='@partitionAssignment("topic").value.get'>
+        <h4>
+            <input type="text" class="borderless" style="display:none"
+                   name='@partitionAssignment("topic").name'
+                   value='@partitionAssignment("topic").value.get' readonly/>
+            @partitionAssignment("topic").value.get
+        </h4>
+        @repeat(partitionAssignment("assignments")) { assignment =>
+        @if(assignment("partition").value.isDefined) {
+        <div class="partition-cell">
+            <table>
+                @repeatWithIndex(assignment("brokers")) { (broker, index) =>
+                @if(index == 0) {
+                <tr>
+                    <th>Partition
+                        <input type="number" class="borderless"
+                               name='@assignment("partition").name'
+                               value='@assignment("partition").value.get'
+                               readonly>
+                    </th>
+                </tr>
+                }
+                <tr><td>
+                    Replica @index: @replicaSelection(broker)
+                </td></tr>
+                }
+            </table>
+        </div>
+        }
+        }
+    </div>
+    }
+</div>
+
+}
+
+@partitionsAssignmentsPane = {
+<div class="panel panel-default">
+    @topHeading
+    @middleHeading
+    @mainBody
+</div>
+}
+
 @brokersInfoPane = {
+    <input type="text" placeholder="Type to filter metrics"
+           id="selectMetrics" onkeyup="selectBySubname('#selectMetrics', 'metric-row', '')"/>
     @for(idx <- 0 until brokersViews.size) {
         <div class="panel panel-default">
             <div class="panel-heading">
@@ -96,7 +126,7 @@
   breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Topics",cluster))) {
 <div class="row">
     <div class="col-md-8">
-        @if(brokers != null) {
+        @if(true) {
             @helper.form(action = routes.ReassignPartitions.handleManualAssignment(cluster)) {
                 @partitionsAssignmentsPane
             }
