@@ -32,7 +32,7 @@ class TestKafkaManager extends CuratorAwareTest {
 
   private[this] val kafkaManager : KafkaManager = new KafkaManager(config)
 
-  private[this] val duration = FiniteDuration(10,SECONDS)
+  private[this] val duration = FiniteDuration(30,SECONDS)
   private[this] val createTopicName = "km-unit-test"
 
   override protected def beforeAll() : Unit = {
