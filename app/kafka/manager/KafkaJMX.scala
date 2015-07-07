@@ -126,16 +126,14 @@ object KafkaMetrics {
     try {
       val attributes = mbsc.getAttributes(
         operatingSystemObjectName,
-        Array("FreePhysicalMemorySize", "FreeSwapSpaceSize", "ProcessCpuLoad", "SystemCpuLoad")
+        Array("ProcessCpuLoad", "SystemCpuLoad")
       ).asList().asScala.toSeq
       OSMetric(
-        getLongValue(attributes, "FreePhysicalMemorySize"),
-        getLongValue(attributes, "FreeSwapSpaceSize"),
         getDoubleValue(attributes, "ProcessCpuLoad"),
         getDoubleValue(attributes, "SystemCpuload")
       )
     } catch {
-      case _: InstanceNotFoundException => OSMetric(0L, 0L, 0D, 0D)
+      case _: InstanceNotFoundException => OSMetric(0D, 0D)
     }
   }
   
@@ -176,18 +174,8 @@ object KafkaMetrics {
 
 case class GaugeMetric(value: Double)
 
-case class OSMetric(freePhysicalMemorySize: Double,
-                     freeSwapSpaceSize: Double,
-                     processCpuLoad: Double,
-                     systemCpuLoad: Double) {
-
-  def formatFreePhysicalMemory = {
-    FormatMetric.rateFormat(freePhysicalMemorySize.toDouble, 0)
-  }
-
-  def formatFreeSwapSpace = {
-    FormatMetric.rateFormat(freeSwapSpaceSize.toDouble, 0)
-  }
+case class OSMetric(processCpuLoad: Double,
+                    systemCpuLoad: Double) {
 
   def formatProcessCpuLoad = {
     FormatMetric.rateFormat(processCpuLoad, 0)

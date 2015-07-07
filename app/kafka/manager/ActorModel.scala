@@ -339,7 +339,7 @@ object ActorModel {
       MeterMetric(0, 0, 0, 0, 0),
       MeterMetric(0, 0, 0, 0, 0),
       MeterMetric(0, 0, 0, 0, 0),
-      OSMetric(0L, 0L, 0D, 0D))
+      OSMetric(0D, 0D))
   }
   
   case class BrokerClusterStats(perMessages: BigDecimal, perIncoming: BigDecimal, perOutgoing: BigDecimal)

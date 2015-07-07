@@ -3,11 +3,15 @@
     <tr>
         <th>Rate</th>
         <th>Mean</th>
+        <th>15&nbsp;min</th>
     </tr>
     <tr class="metric-row" name="messages in sec">
         <td>Messages in /sec</td>
         <td>
             <span class="badge">@brokerMetrics.map(_.messagesInPerSec.formatMeanRate)</span>
+        </td>
+        <td>
+            <span class="badge">@brokerMetrics.map(_.messagesInPerSec.formatFifteenMinuteRate)</span>
         </td>
     <tr>
     <tr class="metric-row" name="bytes in sec">
@@ -15,11 +19,17 @@
         <td>
             <span class="badge">@brokerMetrics.map(_.bytesInPerSec.formatMeanRate)</span>
         </td>
+        <td>
+            <span class="badge">@brokerMetrics.map(_.bytesInPerSec.formatFifteenMinuteRate)</span>
+        </td>
     <tr>
     <tr class="metric-row" name="bytes out sec">
         <td>Bytes out /sec</td>
         <td>
             <span class="badge">@brokerMetrics.map(_.bytesOutPerSec.formatMeanRate)</span>
+        </td>
+        <td>
+            <span class="badge">@brokerMetrics.map(_.bytesOutPerSec.formatFifteenMinuteRate)</span>
         </td>
     <tr>
     <tr class="metric-row" name="bytes rejected sec">
@@ -27,11 +37,17 @@
         <td>
             <span class="badge">@brokerMetrics.map(_.bytesRejectedPerSec.formatMeanRate)</span>
         </td>
+        <td>
+            <span class="badge">@brokerMetrics.map(_.bytesRejectedPerSec.formatFifteenMinuteRate)</span>
+        </td>
     <tr>
     <tr class="metric-row" name="failed fetch request sec">
         <td>Failed fetch request /sec</td>
         <td>
             <span class="badge">@brokerMetrics.map(_.failedFetchRequestsPerSec.formatMeanRate)</span>
+        </td>
+        <td>
+            <span class="badge">@brokerMetrics.map(_.failedFetchRequestsPerSec.formatFifteenMinuteRate)</span>
         </td>
     <tr>
     <tr class="metric-row" name="failed produce request">
@@ -39,17 +55,8 @@
         <td>
             <span class="badge">@brokerMetrics.map(_.failedProduceRequestsPerSec.formatMeanRate)</span>
         </td>
-    <tr>
-    <tr class="metric-row" name="free physical memory size">
-        <td>Free Physical Memory Size</td>
         <td>
-            <span class="badge">@brokerMetrics.map(_.oSystemMetrics.formatFreePhysicalMemory)</span>
-        </td>
-    <tr>
-    <tr class="metric-row" name="free swap space size">
-        <td>Free Swap Space Size</td>
-        <td>
-            <span class="badge">@brokerMetrics.map(_.oSystemMetrics.formatFreeSwapSpace)</span>
+            <span class="badge">@brokerMetrics.map(_.failedProduceRequestsPerSec.formatFifteenMinuteRate)</span>
         </td>
     <tr>
     <tr class="metric-row" name="process cpu load">
@@ -57,11 +64,13 @@
         <td>
             <span class="badge">@brokerMetrics.map(_.oSystemMetrics.formatProcessCpuLoad)</span>
         </td>
+        <td></td>
     <tr>
     <tr class="metric-row" name="system cpu load">
         <td>System CPU Load</td>
         <td>
             <span class="badge">@brokerMetrics.map(_.oSystemMetrics.formatSystemCpuLoad)</span>
         </td>
+        <td></td>
     <tr>
 </table>
