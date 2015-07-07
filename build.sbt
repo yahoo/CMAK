@@ -17,6 +17,10 @@ assemblyMergeStrategy in assembly := {
   case other => (assemblyMergeStrategy in assembly).value(other)
 }
 
+// Disable tests during assembly
+test in assembly := {}
+
+
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.3.10",
   "org.webjars" %% "webjars-play" % "2.3.0-2",
