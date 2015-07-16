@@ -18,6 +18,7 @@ import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex
 import org.apache.zookeeper.CreateMode
 import kafka.manager.utils.{AdminUtils, TopicAndPartition}
 
+import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
@@ -183,6 +184,22 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
     }
   }
 
+  private def updateAssignmentInZk(topic: String, assignment: Map[Int, Seq[Int]]) = {
+    implicit val ec = longRunningExecutionContext
+
+    Try {
+      val topicZkPath = zkPathFrom(baseTopicsZkPath, topic)
+      val data = serializeAssignments(assignment)
+      Option(clusterManagerTopicsPathCache.getCurrentData(topicZkPath)).fold[Unit] {
+        log.info(s"Creating and saving generated data $topicZkPath")
+        curator.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(topicZkPath, data)
+      } { _ =>
+        log.info(s"Updating generated data $topicZkPath")
+        curator.setData().forPath(topicZkPath, data)
+      }
+    }
+  }
+
   override def processCommandRequest(request: CommandRequest): Unit = {
     request match {
       case CMShutdown =>
@@ -275,22 +292,23 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
             ti.replicationFactor)))
         }
 
-        val result = generated.map { list =>
+        val result: Future[IndexedSeq[Try[Unit]]] = generated.map { list =>
           modify {
             list.map { case (topic, assignments: Map[Int, Seq[Int]]) =>
-              Try {
-                val topicZkPath = zkPathFrom(baseTopicsZkPath, topic)
-                val data = serializeAssignments(assignments)
-                Option(clusterManagerTopicsPathCache.getCurrentData(topicZkPath)).fold[Unit] {
-                  log.info(s"Creating and saving generated data $topicZkPath")
-                  curator.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(topicZkPath, data)
-                } { _ =>
-                  log.info(s"Updating generated data $topicZkPath")
-                  curator.setData().forPath(topicZkPath, data)
-                }
-              }
+              updateAssignmentInZk(topic, assignments)
             }
           }
+        }
+        result.map(CMCommandResults.apply) pipeTo sender()
+
+      case CMManualPartitionAssignments(assignments) =>
+        implicit val ec = longRunningExecutionContext
+        val result = Future {
+          modify {
+            assignments.map { case (topic, assignment) =>
+              updateAssignmentInZk(topic, assignment.toMap)
+            }
+          } toIndexedSeq
         }
         result.map(CMCommandResults.apply) pipeTo sender()
 

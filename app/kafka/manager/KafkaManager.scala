@@ -14,6 +14,7 @@ import com.typesafe.config.{ConfigFactory, Config}
 import kafka.manager.ActorModel._
 import org.slf4j.{LoggerFactory, Logger}
 
+import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
@@ -217,6 +218,28 @@ class KafkaManager(akkaConfig: Config)
     }
   }
 
+  def manualPartitionAssignments( clusterName: String,
+                                  assignments: List[(String, List[(Int, List[Int])])]) = {
+    implicit val ec = apiExecutionContext
+    val results = tryWithKafkaManagerActor(
+      KMClusterCommandRequest (
+        clusterName,
+        CMManualPartitionAssignments(assignments)
+      )
+    ) { result: CMCommandResults =>
+      val errors = result.result.collect { case Failure(t) => ApiError(t.getMessage)}
+      if (errors.isEmpty)
+        \/-({})
+      else
+        -\/(errors)
+    }
+
+    results.map {
+      case -\/(e) => -\/(IndexedSeq(e))
+      case \/-(lst) => lst
+    }
+  }
+
   def generatePartitionAssignments(
                                     clusterName: String,
                                     topics: Set[String],
@@ -410,6 +433,17 @@ class KafkaManager(akkaConfig: Config)
         }
       })
     }
+  }
+
+  def getBrokersView(clusterName: String): Future[\/[ApiError, Seq[BVView]]] = {
+    implicit val ec = apiExecutionContext
+
+    tryWithKafkaManagerActor(
+      KMClusterQueryRequest(
+        clusterName,
+        BVGetViews
+      )
+    )(identity[Seq[BVView]])
   }
 
   def getBrokerView(clusterName: String, brokerId: Int): Future[ApiError \/ BVView] = {

@@ -142,4 +142,10 @@ class TestKafkaManagerActor extends CuratorAwareTest {
       result.list.nonEmpty
     }
   }
+
+  test("get all broker views") {
+    withKafkaManagerActor(KMClusterQueryRequest("dev", BVGetViews)) {
+      result: Seq[BVView] => result.nonEmpty
+    }
+  }
 }
