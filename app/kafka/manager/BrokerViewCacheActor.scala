@@ -39,6 +39,8 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
     new mutable.HashMap[String, mutable.Map[Int, BrokerMetrics]]()
   
   private[this] var combinedBrokerMetric : Option[BrokerMetrics] = None
+
+  private[this] val EMPTY_BVVIEW = BVView(Map.empty, config.clusterConfig, Option(BrokerMetrics.DEFAULT))
   
   override def preStart() = {
     log.info("Started actor %s".format(self.path))
@@ -137,11 +139,9 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
       case BVUpdateBrokerMetrics(id, metrics) =>
         brokerMetrics += (id -> metrics)
         combinedBrokerMetric = Option(brokerMetrics.values.foldLeft(BrokerMetrics.DEFAULT)((acc, m) => acc + m))
-        for {
-          bv <- brokerTopicPartitions.get(id)
-        } {
-          brokerTopicPartitions.put(id, bv.copy(metrics = Option(metrics)))
-        }
+
+        val updatedBVView = brokerTopicPartitions.getOrElse(id, EMPTY_BVVIEW).copy(metrics = Option(metrics))
+        brokerTopicPartitions.put(id, updatedBVView)
 
       case any: Any => log.warning("bvca : processActorRequest : Received unknown message: {}", any)
     }
@@ -162,7 +162,6 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
   }
 
   private[this] def updateView(): Unit = {
-    var nBrokers: Int = 0
     for {
       brokerList <- brokerListOption
       topicDescriptions <- topicDescriptionsOption
@@ -207,8 +206,6 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
             }
         }
 
-        nBrokers = brokerList.list.size
-
         brokerList.list.foreach {
           broker =>
             longRunning {
@@ -232,24 +229,14 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
         log.warning("Not scheduling update of JMX for all brokers, not enough capacity!")
       }
 
-      var brokersWithTopics = mutable.MutableList[Int]()
-
       topicPartitionByBroker.foreach {
         case (brokerId, topicPartitions) =>
-          brokersWithTopics += brokerId
           val topicPartitionsMap : Map[TopicIdentity, IndexedSeq[Int]] = topicPartitions.map {
             case (topic, id, partitions) =>
               (topic, partitions)
           }.toMap
           brokerTopicPartitions.put(
             brokerId,BVView(topicPartitionsMap, config.clusterConfig, brokerMetrics.get(brokerId)))
-      }
-      for (i <- 0 until nBrokers) {
-        if (!brokersWithTopics.contains(i)) {
-          brokerTopicPartitions.put(
-            i, BVView(Map[TopicIdentity, IndexedSeq[Int]](), config.clusterConfig, brokerMetrics.get(i))
-          )
-        }
       }
     }
   }
