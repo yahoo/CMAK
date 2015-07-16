@@ -184,6 +184,22 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
     }
   }
 
+  private def updateAssignmentInZk(topic: String, assignment: Map[Int, Seq[Int]]) = {
+    implicit val ec = longRunningExecutionContext
+
+    Try {
+      val topicZkPath = zkPathFrom(baseTopicsZkPath, topic)
+      val data = serializeAssignments(assignment)
+      Option(clusterManagerTopicsPathCache.getCurrentData(topicZkPath)).fold[Unit] {
+        log.info(s"Creating and saving generated data $topicZkPath")
+        curator.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(topicZkPath, data)
+      } { _ =>
+        log.info(s"Updating generated data $topicZkPath")
+        curator.setData().forPath(topicZkPath, data)
+      }
+    }
+  }
+
   override def processCommandRequest(request: CommandRequest): Unit = {
     request match {
       case CMShutdown =>
@@ -279,17 +295,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         val result: Future[IndexedSeq[Try[Unit]]] = generated.map { list =>
           modify {
             list.map { case (topic, assignments: Map[Int, Seq[Int]]) =>
-              Try {
-                val topicZkPath = zkPathFrom(baseTopicsZkPath, topic)
-                val data = serializeAssignments(assignments)
-                Option(clusterManagerTopicsPathCache.getCurrentData(topicZkPath)).fold[Unit] {
-                  log.info(s"Creating and saving generated data $topicZkPath")
-                  curator.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(topicZkPath, data)
-                } { _ =>
-                  log.info(s"Updating generated data $topicZkPath")
-                  curator.setData().forPath(topicZkPath, data)
-                }
-              }
+              updateAssignmentInZk(topic, assignments)
             }
           }
         }
@@ -300,17 +306,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         val result = Future {
           modify {
             assignments.map { case (topic, assignment) =>
-              Try {
-                val topicZkPath = zkPathFrom(baseTopicsZkPath, topic)
-                val data = serializeAssignments(assignment.toMap)
-                Option(clusterManagerTopicsPathCache.getCurrentData(topicZkPath)).fold[Unit] {
-                  log.info(s"Creating and saving generated data $topicZkPath")
-                  curator.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(topicZkPath, data)
-                } { _ =>
-                  log.info(s"Updating generated data $topicZkPath")
-                  curator.setData().forPath(topicZkPath, data)
-                }
-              }
+              updateAssignmentInZk(topic, assignment.toMap)
             }
           } toIndexedSeq
         }
