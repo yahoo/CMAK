@@ -191,8 +191,7 @@ class AdminUtils(version: KafkaVersion) {
                     newNumPartitions: Int,
                     partitionReplicaList : Map[Int, Seq[Int]],
                     brokerList: Seq[Int], 
-                    readVersion: Int
-                     ) {
+                    readVersion: Int) {
     
     /*
     import collection.JavaConverters._
@@ -207,7 +206,7 @@ class AdminUtils(version: KafkaVersion) {
     
     val brokerListSorted: Seq[Int] = brokerList.sorted
     val currentNumPartitions: Int = partitionReplicaList.size
-    
+
     checkCondition(currentNumPartitions > 0,
       TopicErrors.PartitionsGreaterThanZero)
     
@@ -236,6 +235,18 @@ class AdminUtils(version: KafkaVersion) {
       TopicErrors.FailedToAddNewPartitions(topic, newNumPartitions, newPartitionsReplicaList.size))
     
     createOrUpdateTopicPartitionAssignmentPathInZK(curator, topic, newPartitionsReplicaList, update=true, readVersion=readVersion)
+  }
+
+  /* Add partitions to multiple topics. After this operation, all topics will have the same number of partitions */
+  def addPartitionsToTopics(curator: CuratorFramework,
+                            topicAndReplicaList: Seq[(String, Map[Int, Seq[Int]])],
+                            newNumPartitions: Int,
+                            brokerList: Seq[Int],
+                            readVersions: Map[String,Int]) {
+    // topicAndReplicaList is sorted by number of partitions each topic has in order not to start adding partitions if any of requests doesn't work with newNumPartitions
+    for ((topic, replicaList) <- topicAndReplicaList) {
+      addPartitions(curator, topic, newNumPartitions, replicaList, brokerList, readVersions.getOrElse(topic,-1))
+    }
   }
 
   /**

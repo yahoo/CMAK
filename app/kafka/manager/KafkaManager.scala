@@ -11,6 +11,7 @@ import java.util.concurrent.{LinkedBlockingQueue, TimeUnit, ThreadPoolExecutor}
 import akka.actor.{ActorPath, ActorSystem, Props}
 import akka.util.Timeout
 import com.typesafe.config.{ConfigFactory, Config}
+import controllers.Topic
 import kafka.manager.ActorModel._
 import org.slf4j.{LoggerFactory, Logger}
 
@@ -292,6 +293,34 @@ class KafkaManager(akkaConfig: Config)
           KMClusterCommandRequest(
             clusterName,
             CMAddTopicPartitions(topic, brokers, partitions, partitionReplicaList, readVersion)
+          )
+        ) {
+          result: Future[CMCommandResult] =>
+            result.map(cmr => toDisjunction(cmr.result))
+        }
+      }
+      )
+    }
+  }
+
+  def addMultipleTopicsPartitions(
+                              clusterName: String,
+                              topics: Seq[String],
+                              brokers: Seq[Int],
+                              partitions: Int,
+                              readVersions: Map[String, Int]
+                              ): Future[ApiError \/ Unit] =
+  {
+    implicit val ec = apiExecutionContext
+    getTopicListExtended(clusterName).flatMap { tleOrError =>
+      tleOrError.fold(
+      e => Future.successful(-\/(e)), { tle =>
+        // add partitions to only topics with topic identity
+        val topicsAndReplicas = Topic.topicListSortedByNumPartitions(tle).filter(t => topics.contains(t._1) && t._2.nonEmpty).map{ case (t,i) => (t, i.get.partitionsIdentity.mapValues(_.replicas)) }
+        withKafkaManagerActor(
+          KMClusterCommandRequest(
+            clusterName,
+            CMAddMultipleTopicPartitions(topicsAndReplicas, brokers, partitions, readVersions)
           )
         ) {
           result: Future[CMCommandResult] =>
