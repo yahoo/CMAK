@@ -118,8 +118,7 @@ object ReassignPartitions extends Controller{
   }
 
   def confirmMultipleAssignments(c: String) = Action.async {
-    val topicList = kafkaManager.getTopicList(c)
-    topicList.flatMap { errOrTL =>
+    kafkaManager.getTopicList(c).flatMap { errOrTL =>
       errOrTL.fold(
       { err: ApiError =>
         Future.successful( Ok(views.html.topic.confirmMultipleAssignments( c, -\/(err) )))
