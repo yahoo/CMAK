@@ -37,7 +37,10 @@
     <tr>
         <td>
             @b3.text(addMultipleTopicsPartitionsForm("partitions"), '_label -> "Partitions", 'placeholder -> "8")
-            @b3.hidden(addMultipleTopicsPartitionsForm("readVersion").name,addMultipleTopicsPartitionsForm("readVersion").value.getOrElse(-1))
+            @helper.repeat(addMultipleTopicsPartitionsForm("readVersions"), min = 1) { readVersionForm =>
+            @b3.hidden(readVersionForm("topic").name,readVersionForm("topic").value.getOrElse(""))
+            @b3.hidden(readVersionForm("version").name,readVersionForm("version").value.getOrElse(-1))
+            }
             <button type="button" class="btn btn-default" onClick="checkBoxSelect('topics',true);">
                 <b>Select All</b>
             </button>
