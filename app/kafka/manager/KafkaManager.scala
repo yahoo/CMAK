@@ -316,11 +316,11 @@ class KafkaManager(akkaConfig: Config)
       tleOrError.fold(
       e => Future.successful(-\/(e)), { tle =>
         // add partitions to only topics with topic identity
-        val topicsAndReplicas = Topic.topicListSortedByNumPartitions(tle).filter(t => topics.contains(t._1) && t._2.nonEmpty).map{ case (t,i) => (t, i.get.partitionsIdentity.mapValues(_.replicas)) }
+        val topicsAndReplicas = topicListSortedByNumPartitions(tle).filter(t => topics.contains(t._1) && t._2.nonEmpty).map{ case (t,i) => (t, i.get.partitionsIdentity.mapValues(_.replicas)) }
         withKafkaManagerActor(
           KMClusterCommandRequest(
             clusterName,
-            CMAddMultipleTopicPartitions(topicsAndReplicas, brokers, partitions, readVersions)
+            CMAddMultipleTopicsPartitions(topicsAndReplicas, brokers, partitions, readVersions)
           )
         ) {
           result: Future[CMCommandResult] =>
@@ -516,5 +516,18 @@ class KafkaManager(akkaConfig: Config)
         KSGetReassignPartition
       )
     )(identity[Option[ReassignPartitions]])
+  }
+
+  def topicListSortedByNumPartitions(tle: TopicListExtended): Seq[(String, Option[TopicIdentity])] = {
+    def partition(tiOption: Option[TopicIdentity]): Int = {
+      tiOption match {
+        case Some(ti) => ti.partitions
+        case None => 0
+      }
+    }
+    val sortedByNumPartition = tle.list.sortWith{ (leftE, rightE) =>
+      partition(leftE._2) > partition(rightE._2)
+    }
+    sortedByNumPartition
   }
 }

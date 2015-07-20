@@ -209,7 +209,7 @@ object Topic extends Controller{
       errorOrTle.fold( e => Future.successful(-\/(e)),{ topicListExtended =>
         kafkaManager.getBrokerList(clusterName).map { errorOrBrokerList =>
           errorOrBrokerList.map { bl =>
-            val tl = topicListSortedByNumPartitions(topicListExtended)
+            val tl = kafkaManager.topicListSortedByNumPartitions(topicListExtended)
             val topics = tl.map(t => t._1).map(t => TopicSelect.from(t))
             // default value is the largest number of partitions among existing topics with topic identity
             val partitions = tl.head._2.map(_.partitions).getOrElse(0)
@@ -306,18 +306,5 @@ object Topic extends Controller{
         }
       }
     )
-  }
-
-  def topicListSortedByNumPartitions(tle: TopicListExtended): Seq[(String, Option[TopicIdentity])] = {
-    def partition(tiOption: Option[TopicIdentity]): Int = {
-      tiOption match {
-        case Some(ti) => ti.partitions
-        case None => 0
-      }
-    }
-    val sortedByNumPartition = tle.list.sortWith{ (leftE, rightE) =>
-      partition(leftE._2) > partition(rightE._2)
-    }
-    sortedByNumPartition
   }
 }

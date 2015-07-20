@@ -59,10 +59,10 @@ object ActorModel {
                                   partitions: Int,
                                   partitionReplicaList: Map[Int, Seq[Int]],
                                   readVersion: Int) extends CommandRequest
-  case class CMAddMultipleTopicPartitions(topicsAndReplicas: Seq[(String, Map[Int, Seq[Int]])],
-                                          brokers: Seq[Int],
-                                          partitions: Int,
-                                          readVersions: Map[String,Int]) extends CommandRequest
+  case class CMAddMultipleTopicsPartitions(topicsAndReplicas: Seq[(String, Map[Int, Seq[Int]])],
+                                           brokers: Seq[Int],
+                                           partitions: Int,
+                                           readVersions: Map[String,Int]) extends CommandRequest
   case class CMUpdateTopicConfig(topic: String, config: Properties, readVersion: Int) extends CommandRequest
   case class CMDeleteTopic(topic: String) extends CommandRequest
   case class CMRunPreferredLeaderElection(topics: Set[String]) extends CommandRequest
