@@ -243,6 +243,9 @@ class AdminUtils(version: KafkaVersion) {
                             newNumPartitions: Int,
                             brokerList: Seq[Int],
                             readVersions: Map[String,Int]) {
+    val topicsWithoutReadVersion = topicAndReplicaList.map(x=>x._1).filter{t => !readVersions.contains(t)}
+    checkCondition(topicsWithoutReadVersion.isEmpty, TopicErrors.NoReadVersionFound(topicsWithoutReadVersion.mkString(", ")))
+
     // topicAndReplicaList is sorted by number of partitions each topic has in order not to start adding partitions if any of requests doesn't work with newNumPartitions
     for ((topic, replicaList) <- topicAndReplicaList) {
       addPartitions(curator, topic, newNumPartitions, replicaList, brokerList, readVersions.getOrElse(topic,-1))
