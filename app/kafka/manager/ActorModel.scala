@@ -33,6 +33,7 @@ object ActorModel {
 
   case object BVForceUpdate extends CommandRequest
   case object BVGetTopicIdentities extends BVRequest
+  case object BVGetLogkafkaIdentities extends BVRequest
   case class BVGetView(id: Int) extends BVRequest
   case object BVGetViews extends BVRequest
   case class BVGetTopicMetrics(topic: String) extends BVRequest
@@ -67,6 +68,16 @@ object ActorModel {
   case class CMGeneratePartitionAssignments(topics: Set[String], brokers: Seq[Int]) extends CommandRequest
   case class CMManualPartitionAssignments(assignments: List[(String, List[(Int, List[Int])])]) extends CommandRequest
 
+  case class CMGetLogkafkaIdentity(hostname: String) extends QueryRequest
+  case class CMLogkafkaIdentity(logkafkaIdentity: Try[LogkafkaIdentity]) extends QueryResponse
+  case class CMCreateLogkafka(hostname: String,
+                              log_path: String,
+                              config: Properties = new Properties
+                              ) extends CommandRequest
+  case class CMUpdateLogkafkaConfig(hostname: String, 
+                                    log_path: String, 
+                                    config: Properties) extends CommandRequest
+  case class CMDeleteLogkafka(hostname: String, log_path: String) extends CommandRequest
 
   case class CMCommandResult(result: Try[Unit]) extends CommandResponse
   case class CMCommandResults(result: IndexedSeq[Try[Unit]]) extends CommandResponse
@@ -86,6 +97,18 @@ object ActorModel {
   case class KCPreferredReplicaLeaderElection(topicAndPartition: Set[TopicAndPartition]) extends CommandRequest
   case class KCReassignPartition(currentTopicIdentity: Map[String, TopicIdentity],
                                generatedTopicIdentity: Map[String, TopicIdentity]) extends CommandRequest
+
+  case class KCCreateLogkafka(hostname: String,
+                              log_path: String,
+                              config: Properties,
+                              logkafkaConfig: Option[LogkafkaConfig]) extends CommandRequest
+  case class KCDeleteLogkafka(hostname: String, 
+                              log_path: String, 
+                              logkafkaConfig: Option[LogkafkaConfig]) extends CommandRequest
+  case class KCUpdateLogkafkaConfig(hostname: String,
+                                    log_path: String,
+                                    config: Properties,
+                                    logkafkaConfig: Option[LogkafkaConfig]) extends CommandRequest
 
   case class KCCommandResult(result: Try[Unit]) extends CommandResponse
 
@@ -126,6 +149,14 @@ object ActorModel {
   case object KSGetBrokers extends KSRequest
   case class KSGetBrokerState(id: String) extends  KSRequest
 
+  case object KSGetLogkafkaHostnames extends KSRequest
+  case class KSGetLogkafkaConfig(hostname: String) extends KSRequest
+  case class KSGetLogkafkaClient(hostname: String) extends KSRequest
+  case class KSGetLogkafkaConfigs(hostnames: Set[String]) extends KSRequest
+  case class KSGetLogkafkaClients(hostnames: Set[String]) extends KSRequest
+  case class KSGetAllLogkafkaConfigs(lastUpdateMillis: Option[Long]= None) extends KSRequest
+  case class KSGetAllLogkafkaClients(lastUpdateMillis: Option[Long]= None) extends KSRequest
+
   case class TopicList(list: IndexedSeq[String], deleteSet: Set[String]) extends QueryResponse
   case class TopicConfig(topic: String, config: Option[(Int,String)]) extends QueryResponse
 
@@ -140,6 +171,12 @@ object ActorModel {
 
   case class PreferredReplicaElection(startTime: DateTime, topicAndPartition: Set[TopicAndPartition], endTime: Option[DateTime]) extends QueryResponse
   case class ReassignPartitions(startTime: DateTime, partitionsToBeReassigned: Map[TopicAndPartition, Seq[Int]], endTime: Option[DateTime]) extends QueryResponse
+
+  case class LogkafkaHostnameList(list: IndexedSeq[String], deleteSet: Set[String]) extends QueryResponse
+  case class LogkafkaConfig(hostname: String, config: Option[String]) extends QueryResponse
+  case class LogkafkaClient(hostname: String, client: Option[String]) extends QueryResponse
+  case class LogkafkaConfigs(configs: IndexedSeq[LogkafkaConfig], lastUpdateMillis: Long) extends QueryResponse
+  case class LogkafkaClients(clients: IndexedSeq[LogkafkaClient], lastUpdateMillis: Long) extends QueryResponse
 
   case object DCUpdateState extends CommandRequest
 
@@ -308,6 +345,39 @@ object ActorModel {
           currentTopicIdentity.clusterConfig,
           currentTopicIdentity.metrics)
       }
+    }
+  }
+
+  case class LogkafkaIdentity(hostname: String,
+                          active: Boolean,
+                          deleteSupported: Boolean = true,
+                          identityMap: Map[String, (Option[Map[String, String]], Option[Map[String, String]])]) {
+  }
+
+  object LogkafkaIdentity {
+
+    lazy val logger = LoggerFactory.getLogger(this.getClass)
+    
+    implicit def from(hostname: String, lcg: Option[LogkafkaConfig], lct: Option[LogkafkaClient]) : LogkafkaIdentity = {
+      val configJsonStr = lcg match {
+          case Some(l) => l.config.getOrElse[String]("{}")
+          case None => "{}"
+      }
+
+      val configMap: Map[String, Map[String, String]] = utils.Logkafka.parseJsonStr(hostname, configJsonStr) 
+
+      val clientJsonStr = lct match {
+          case Some(l) => l.client.getOrElse[String]("{}")
+          case None => "{}"
+      }
+
+      val clientMap: Map[String, Map[String, String]]  = utils.Logkafka.parseJsonStr(hostname, clientJsonStr) 
+
+      val hostnameSet = configMap.keySet ++ clientMap.keySet
+      val identitySet = if (!hostnameSet.isEmpty) {
+            hostnameSet map { l => l -> ((if(!configMap.isEmpty) configMap.get(l) else None, if(!clientMap.isEmpty) clientMap.get(l) else None)) }
+        } else { Set() }
+      LogkafkaIdentity(hostname, lct.isDefined, true, identitySet.toMap)
     }
   }
 

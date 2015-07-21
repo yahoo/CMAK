@@ -25,6 +25,7 @@ import scala.util.{Success, Failure, Try}
  */
 case class TopicListExtended(list: IndexedSeq[(String, Option[TopicIdentity])], deleteSet: Set[String], underReassignments: IndexedSeq[String])
 case class BrokerListExtended(list: IndexedSeq[BrokerIdentity], metrics: Map[Int,BrokerMetrics], combinedMetric: Option[BrokerMetrics], clusterConfig: ClusterConfig)
+case class LogkafkaListExtended(list: IndexedSeq[(String, Option[LogkafkaIdentity])], deleteSet: Set[String])
 case class ApiError(msg: String)
 object ApiError {
   private[this] val log : Logger = LoggerFactory.getLogger(classOf[ApiError])
@@ -356,6 +357,52 @@ class KafkaManager(akkaConfig: Config)
     }
   }
 
+  def createLogkafka(
+                   clusterName: String,
+                   hostname: String,
+                   log_path: String,
+                   config: Properties = new Properties
+                   ): Future[ApiError \/ Unit] =
+  {
+    implicit val ec = apiExecutionContext
+    withKafkaManagerActor(KMClusterCommandRequest(clusterName, CMCreateLogkafka(hostname, log_path, config))) {
+      result: Future[CMCommandResult] =>
+        result.map(cmr => toDisjunction(cmr.result))
+    }
+  }
+
+  def updateLogkafkaConfig(
+                         clusterName: String,
+                         hostname: String,
+                         log_path: String,
+                         config: Properties
+                         ): Future[ApiError \/ Unit] =
+  {
+    implicit val ec = apiExecutionContext
+    withKafkaManagerActor(
+      KMClusterCommandRequest(
+        clusterName,
+        CMUpdateLogkafkaConfig(hostname, log_path, config)
+      )
+    ) {
+      result: Future[CMCommandResult] =>
+        result.map(cmr => toDisjunction(cmr.result))
+    }
+  }
+
+  def deleteLogkafka(
+                   clusterName: String,
+                   hostname: String,
+                   log_path: String
+                   ): Future[ApiError \/ Unit] =
+  {
+    implicit val ec = apiExecutionContext
+    withKafkaManagerActor(KMClusterCommandRequest(clusterName, CMDeleteLogkafka(hostname, log_path))) {
+      result: Future[CMCommandResult] =>
+        result.map(cmr => toDisjunction(cmr.result))
+    }
+  }
+
   //--------------------Queries--------------------------
   def getClusterConfig(clusterName: String): Future[ApiError \/ ClusterConfig] = {
     tryWithKafkaManagerActor(KMGetClusterConfig(clusterName)) { result: KMClusterConfigResult =>
@@ -521,5 +568,47 @@ class KafkaManager(akkaConfig: Config)
         KSGetReassignPartition
       )
     )(identity[Option[ReassignPartitions]])
+  }
+
+  def getLogkafkaListExtended(clusterName: String): Future[ApiError \/ LogkafkaListExtended] = {
+    val futureLogkafkaIdentities = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, BVGetLogkafkaIdentities))(identity[Map[String, LogkafkaIdentity]])
+    val futureLogkafkaList = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, KSGetLogkafkaHostnames))(identity[LogkafkaHostnameList])
+    implicit val ec = apiExecutionContext
+    for {
+      errOrLi <- futureLogkafkaIdentities
+      errOrLl <- futureLogkafkaList
+    } yield {
+      for {
+        li <- errOrLi
+        ll <- errOrLl
+      } yield {
+        LogkafkaListExtended(ll.list.map(l => (l, li.get(l))), ll.deleteSet)
+      }
+    }
+  }
+
+  def getLogkafkaIdentity(clusterName: String, hostname: String): Future[ApiError \/ LogkafkaIdentity] = {
+    val futureCMLogkafkaIdentity = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, CMGetLogkafkaIdentity(hostname)))(
+      identity[Option[CMLogkafkaIdentity]]
+    )
+    implicit val ec = apiExecutionContext
+    futureCMLogkafkaIdentity.map[ApiError \/ LogkafkaIdentity] { errOrLI =>
+      errOrLI.fold[ApiError \/ LogkafkaIdentity](
+      { err: ApiError =>
+        -\/[ApiError](err)
+      }, { liOption: Option[CMLogkafkaIdentity] =>
+        liOption.fold[ApiError \/ LogkafkaIdentity] {
+          -\/(ApiError(s"Logkafka not found $hostname for cluster $clusterName"))
+        } { cmLogkafkaIdentity =>
+          cmLogkafkaIdentity.logkafkaIdentity match {
+            case scala.util.Failure(l) =>
+              -\/[ApiError](l)
+            case scala.util.Success(li) =>
+              \/-(li)
+          }
+        }
+      }
+      )
+    }
   }
 }

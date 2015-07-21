@@ -127,6 +127,37 @@ class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extend
             )
           }
         }
+      case KCDeleteLogkafka(hostname, log_path, logkafkaConfig) =>
+        kafkaCommandActorConfig.version match {
+          case Kafka_0_8_1_1 =>
+            val result : KCCommandResult = KCCommandResult(Failure(new UnsupportedOperationException(
+              s"Delete topic not supported for kafka version ${kafkaCommandActorConfig.version}")))
+            sender ! result
+          case Kafka_0_8_2_0 | Kafka_0_8_2_1 =>
+            longRunning {
+              Future {
+                KCCommandResult(Try {
+                  adminUtils.deleteLogkafka(kafkaCommandActorConfig.curator, hostname, log_path, logkafkaConfig)
+                })
+              }
+            }
+        }
+      case KCCreateLogkafka(hostname, log_path, config, logkafkaConfig) =>
+        longRunning {
+          Future {
+            KCCommandResult(Try {
+              adminUtils.createLogkafka(kafkaCommandActorConfig.curator, hostname, log_path, config, logkafkaConfig)
+            })
+          }
+        }
+      case KCUpdateLogkafkaConfig(hostname, log_path, config, logkafkaConfig) =>
+        longRunning {
+          Future {
+            KCCommandResult(Try {
+              adminUtils.changeLogkafkaConfig(kafkaCommandActorConfig.curator, hostname, log_path, config, logkafkaConfig)
+            })
+          }
+        }
       case any: Any => log.warning("kca : processCommandRequest : Received unknown message: {}", any)
     }
   }

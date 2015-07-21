@@ -39,12 +39,46 @@ class KafkaStateActor(curator: CuratorFramework,
   @volatile
   private[this] var topicsTreeCacheLastUpdateMillis : Long = System.currentTimeMillis()
 
+  private[this] val logkafkaConfigTreeCache = new TreeCache(curator,ZkUtils.LogkafkaConfigPath)
+
+  private[this] val logkafkaClientTreeCache = new TreeCache(curator,ZkUtils.LogkafkaClientPath)
+
+  @volatile
+  private[this] var logkafkaConfigTreeCacheLastUpdateMillis : Long = System.currentTimeMillis()
+
+  @volatile
+  private[this] var logkafkaClientTreeCacheLastUpdateMillis : Long = System.currentTimeMillis()
+
   private[this] val topicsTreeCacheListener = new TreeCacheListener {
     override def childEvent(client: CuratorFramework, event: TreeCacheEvent): Unit = {
       event.getType match {
         case TreeCacheEvent.Type.INITIALIZED | TreeCacheEvent.Type.NODE_ADDED |
              TreeCacheEvent.Type.NODE_REMOVED | TreeCacheEvent.Type.NODE_UPDATED =>
           topicsTreeCacheLastUpdateMillis = System.currentTimeMillis()
+        case _ =>
+          //do nothing
+      }
+    }
+  }
+
+  private[this] val logkafkaConfigTreeCacheListener = new TreeCacheListener {
+    override def childEvent(client: CuratorFramework, event: TreeCacheEvent): Unit = {
+      event.getType match {
+        case TreeCacheEvent.Type.INITIALIZED | TreeCacheEvent.Type.NODE_ADDED |
+             TreeCacheEvent.Type.NODE_REMOVED | TreeCacheEvent.Type.NODE_UPDATED =>
+          logkafkaConfigTreeCacheLastUpdateMillis = System.currentTimeMillis()
+        case _ =>
+          //do nothing
+      }
+    }
+  }
+
+  private[this] val logkafkaClientTreeCacheListener = new TreeCacheListener {
+    override def childEvent(client: CuratorFramework, event: TreeCacheEvent): Unit = {
+      event.getType match {
+        case TreeCacheEvent.Type.INITIALIZED | TreeCacheEvent.Type.NODE_ADDED |
+             TreeCacheEvent.Type.NODE_REMOVED | TreeCacheEvent.Type.NODE_UPDATED =>
+          logkafkaClientTreeCacheLastUpdateMillis = System.currentTimeMillis()
         case _ =>
           //do nothing
       }
@@ -123,9 +157,17 @@ class KafkaStateActor(curator: CuratorFramework,
     adminPathCache.start(StartMode.BUILD_INITIAL_CACHE)
     log.info("Starting delete topics path cache...")
     deleteTopicsPathCache.start(StartMode.BUILD_INITIAL_CACHE)
+    log.info("Starting logkafka config tree cache...")
+    logkafkaConfigTreeCache.start()
+    log.info("Starting logkafka client tree cache...")
+    logkafkaClientTreeCache.start()
 
     log.info("Adding topics tree cache listener...")
     topicsTreeCache.getListenable.addListener(topicsTreeCacheListener)
+    log.info("Adding logkafka config tree cache listener...")
+    logkafkaConfigTreeCache.getListenable.addListener(logkafkaConfigTreeCacheListener)
+    log.info("Adding logkafka client tree cache listener...")
+    logkafkaClientTreeCache.getListenable.addListener(logkafkaClientTreeCacheListener)
     log.info("Adding admin path cache listener...")
     adminPathCache.getListenable.addListener(adminPathCacheListener)
   }
@@ -146,6 +188,10 @@ class KafkaStateActor(curator: CuratorFramework,
     Try(adminPathCache.getListenable.removeListener(adminPathCacheListener))
     log.info("Removing topics tree cache listener...")
     Try(topicsTreeCache.getListenable.removeListener(topicsTreeCacheListener))
+    log.info("Removing logkafka config tree cache listener...")
+    Try(logkafkaConfigTreeCache.getListenable.removeListener(logkafkaConfigTreeCacheListener))
+    log.info("Removing logkafka client tree cache listener...")
+    Try(logkafkaClientTreeCache.getListenable.removeListener(logkafkaClientTreeCacheListener))
 
     log.info("Shutting down delete topics path cache...")
     Try(deleteTopicsPathCache.close())
@@ -157,6 +203,10 @@ class KafkaStateActor(curator: CuratorFramework,
     Try(topicsConfigPathCache.close())
     log.info("Shutting down topics tree cache...")
     Try(topicsTreeCache.close())
+    log.info("Shutting down logkafka config tree cache...")
+    Try(logkafkaConfigTreeCache.close())
+    log.info("Shutting down logkafka client tree cache...")
+    Try(logkafkaClientTreeCache.close())
 
     super.postStop()
   }
@@ -178,6 +228,18 @@ class KafkaStateActor(curator: CuratorFramework,
     } yield TopicDescription(topic, description, Option(states),config, deleteSupported)
   }
 
+  def getLogkafkaConfig(hostname: String) : Option[LogkafkaConfig] = {
+      for {
+        config <- getLogkafkaConfigString(hostname)
+      } yield LogkafkaConfig(hostname, Some(config))
+  }
+
+  def getLogkafkaClient(hostname: String) : Option[LogkafkaClient] = {
+      for {
+        client <- getLogkafkaClientString(hostname)
+      } yield LogkafkaClient(hostname, Some(client))
+  }
+
   override def processActorResponse(response: ActorResponse): Unit = {
     response match {
       case any: Any => log.warning("ksa : processActorResponse : Received unknown message: {}", any.toString)
@@ -188,6 +250,16 @@ class KafkaStateActor(curator: CuratorFramework,
     val data: mutable.Buffer[ChildData] = topicsConfigPathCache.getCurrentData.asScala
     val result: Option[ChildData] = data.find(p => p.getPath.endsWith(topic))
     result.map(cd => (cd.getStat.getVersion,asString(cd.getData)))
+  }
+
+  private[this] def getLogkafkaConfigString(hostname: String) : Option[String] = {
+    val hostnamePath = "%s/%s".format(ZkUtils.LogkafkaConfigPath,hostname)
+    Option(logkafkaConfigTreeCache.getCurrentData(hostnamePath)).map( childData => asString(childData.getData))
+  }
+
+  private[this] def getLogkafkaClientString(hostname: String) : Option[String] = {
+    val hostnamePath = "%s/%s".format(ZkUtils.LogkafkaClientPath,hostname)
+    Option(logkafkaClientTreeCache.getCurrentData(hostnamePath)).map( childData => asString(childData.getData))
   }
 
   override def processQueryRequest(request: QueryRequest): Unit = {
@@ -258,6 +330,54 @@ class KafkaStateActor(curator: CuratorFramework,
       case KSGetReassignPartition =>
         sender ! reassignPartitions
 
+      case KSGetLogkafkaHostnames =>
+        val deleteSet: Set[String] = Set.empty
+        withLogkafkaConfigTreeCache { cache =>
+          cache.getCurrentChildren(ZkUtils.LogkafkaConfigPath)
+        }.fold {
+          sender ! LogkafkaHostnameList(IndexedSeq.empty, deleteSet)
+        } { data: java.util.Map[String, ChildData] =>
+          sender ! LogkafkaHostnameList(data.asScala.map(kv => kv._1).toIndexedSeq, deleteSet)
+        }
+
+      case KSGetLogkafkaConfig(hostname) =>
+        sender ! getLogkafkaConfig(hostname)
+
+      case KSGetLogkafkaClient(hostname) =>
+        sender ! getLogkafkaClient(hostname)
+
+      case KSGetLogkafkaConfigs(hostnames) =>
+        sender ! LogkafkaConfigs(hostnames.toIndexedSeq.map(getLogkafkaConfig).flatten, logkafkaConfigTreeCacheLastUpdateMillis)
+
+      case KSGetLogkafkaClients(hostnames) =>
+        sender ! LogkafkaClients(hostnames.toIndexedSeq.map(getLogkafkaClient).flatten, logkafkaClientTreeCacheLastUpdateMillis)
+
+      case KSGetAllLogkafkaConfigs(lastUpdateMillisOption) =>
+        val lastUpdateMillis = lastUpdateMillisOption.getOrElse(0L)
+        if (logkafkaConfigTreeCacheLastUpdateMillis > lastUpdateMillis) {
+          //we have option here since there may be no logkafka configs at all!
+          withLogkafkaConfigTreeCache {  cache: TreeCache =>
+            cache.getCurrentChildren(ZkUtils.LogkafkaConfigPath)
+          }.fold {
+            sender ! LogkafkaConfigs(IndexedSeq.empty, logkafkaConfigTreeCacheLastUpdateMillis)
+          } { data: java.util.Map[String, ChildData] =>
+            sender ! LogkafkaConfigs(data.asScala.keys.toIndexedSeq.map(getLogkafkaConfig).flatten, logkafkaConfigTreeCacheLastUpdateMillis)
+          }
+        } // else no updates to send
+
+      case KSGetAllLogkafkaClients(lastUpdateMillisOption) =>
+        val lastUpdateMillis = lastUpdateMillisOption.getOrElse(0L)
+        if (logkafkaClientTreeCacheLastUpdateMillis > lastUpdateMillis) {
+          //we have option here since there may be no logkafka clients at all!
+          withLogkafkaClientTreeCache {  cache: TreeCache =>
+            cache.getCurrentChildren(ZkUtils.LogkafkaClientPath)
+          }.fold {
+            sender ! LogkafkaClients(IndexedSeq.empty, logkafkaClientTreeCacheLastUpdateMillis)
+          } { data: java.util.Map[String, ChildData] =>
+            sender ! LogkafkaClients(data.asScala.keys.toIndexedSeq.map(getLogkafkaClient).flatten, logkafkaClientTreeCacheLastUpdateMillis)
+          }
+        } // else no updates to send
+
       case any: Any => log.warning("ksa : processQueryRequest : Received unknown message: {}", any.toString)
     }
   }
@@ -327,6 +447,14 @@ class KafkaStateActor(curator: CuratorFramework,
 
   private[this] def withTopicsTreeCache[T](fn: TreeCache => T) : Option[T] = {
     Option(fn(topicsTreeCache))
+  }
+
+  private[this] def withLogkafkaConfigTreeCache[T](fn: TreeCache => T) : Option[T] = {
+    Option(fn(logkafkaConfigTreeCache))
+  }
+
+  private[this] def withLogkafkaClientTreeCache[T](fn: TreeCache => T) : Option[T] = {
+    Option(fn(logkafkaClientTreeCache))
   }
 
 }

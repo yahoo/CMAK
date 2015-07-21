@@ -22,7 +22,11 @@ object Menus {
       "Create".clusterRouteMenuItem(cluster)),
       None),
     "Preferred Replica Election".clusterMenu(cluster),
-    "Reassign Partitions".clusterMenu(cluster)
+    "Reassign Partitions".clusterMenu(cluster),
+    Menu("Logkafka",IndexedSeq(
+      "List Logkafka".clusterRouteMenuItem(cluster),
+      "Create Logkafka".clusterRouteMenuItem(cluster)),
+      None)
   )
 
   def indexMenu : IndexedSeq[Menu] = IndexedSeq(

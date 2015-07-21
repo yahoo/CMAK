@@ -34,6 +34,8 @@ object ZkUtils {
   val BrokerTopicsPath = "/brokers/topics"
   val TopicConfigPath = "/config/topics"
   val TopicConfigChangesPath = "/config/changes"
+  val LogkafkaConfigPath = "/logkafka/config"
+  val LogkafkaClientPath = "/logkafka/client"
   val ControllerPath = "/controller"
   val ControllerEpochPath = "/controller_epoch"
   val ReassignPartitionsPath = "/admin/reassign_partitions"
@@ -54,6 +56,12 @@ object ZkUtils {
 
   def getDeleteTopicPath(topic: String): String =
     DeleteTopicsPath + "/" + topic
+
+  def getLogkafkaConfigPath(hostname: String): String =
+    LogkafkaConfigPath + "/" + hostname 
+
+  def getLogkafkaClientPath(hostname: String): String =
+    LogkafkaClientPath + "/" + hostname 
 
   implicit def serializeString(str: String): Array[Byte] = {
     str.getBytes(StandardCharsets.UTF_8)

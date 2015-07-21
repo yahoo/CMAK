@@ -26,12 +26,19 @@ object QuickRoutes {
     "List" -> controllers.routes.Topic.topics,
     "Create" -> controllers.routes.Topic.createTopic,
     "Preferred Replica Election" -> controllers.routes.PreferredReplicaElection.preferredReplicaElection,
-    "Reassign Partitions" -> controllers.routes.ReassignPartitions.reassignPartitions
+    "Reassign Partitions" -> controllers.routes.ReassignPartitions.reassignPartitions,
+    "Logkafkas" -> controllers.routes.Logkafka.logkafkas,
+    "List Logkafka" -> controllers.routes.Logkafka.logkafkas,
+    "Create Logkafka" -> controllers.routes.Logkafka.createLogkafka
   )
   val topicRoutes : Map[String, (String, String) => Call] = Map(
     "Topic View" -> controllers.routes.Topic.topic,
     "Add Partitions" -> controllers.routes.Topic.addPartitions,
     "Update Config" -> controllers.routes.Topic.addPartitions
+  )
+  val logkafkaRoutes : Map[String, (String, String, String) => Call] = Map(
+    "Logkafka View" -> controllers.routes.Logkafka.logkafka,
+    "Update Config" -> controllers.routes.Logkafka.updateConfig
   )
 
   implicit class BaseRoute(s: String) {
@@ -70,6 +77,16 @@ object QuickRoutes {
     }
     def topicRoute(c: String, t: String): Call = {
       topicRoutes(s)(c,t)
+    }
+  }
+
+  implicit class LogkafkaRoute(s: String) {
+    def logkafkaRouteMenuItem(c: String, h: String, l:String): (String, Call) = {
+      s -> logkafkaRoutes(s)(c,h,l)
+    }
+    def logkafkaRoute(c: String, hl: String): Call = {
+      val hlArray = hl.split("\\?")
+      logkafkaRoutes(s)(c,hlArray(0),hlArray(1))
     }
   }
 }

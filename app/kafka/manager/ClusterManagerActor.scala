@@ -180,6 +180,16 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         } yield tdO.map( td => CMTopicIdentity(Try(TopicIdentity.from(bl,td,tm,cmConfig.clusterConfig))))
         result pipeTo sender
 
+      case CMGetLogkafkaIdentity(hostname) =>
+        implicit val ec = context.dispatcher
+        val eventualLogkafkaConfig= withKafkaStateActor(KSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
+        val eventualLogkafkaClient= withKafkaStateActor(KSGetLogkafkaClient(hostname))(identity[Option[LogkafkaClient]])
+        val result: Future[Option[CMLogkafkaIdentity]] = for {
+          lcg <- eventualLogkafkaConfig
+          lct <- eventualLogkafkaClient
+        } yield Some(CMLogkafkaIdentity(Try(LogkafkaIdentity.from(hostname,lcg,lct))))
+        result pipeTo sender
+
       case any: Any => log.warning("cma : processQueryResponse : Received unknown message: {}", any)
     }
   }
@@ -365,6 +375,40 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           withKafkaCommandActor(KCReassignPartition(topicsMap, reassignmentsMap)) { kcResponse: KCCommandResult =>
             CMCommandResults(failures ++ IndexedSeq(kcResponse.result))
           }
+        } pipeTo sender()
+
+      case CMDeleteLogkafka(hostname, log_path) =>
+        implicit val ec = longRunningExecutionContext
+        val eventualLogkafkaConfig = withKafkaStateActor(KSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
+        eventualLogkafkaConfig.map { logkafkaConfigOption =>
+          logkafkaConfigOption.fold {
+            Future.successful(CMCommandResult(Failure(new IllegalArgumentException(s"Hostname doesn't exists : $hostname"))))
+          } { td =>
+            withKafkaCommandActor(KCDeleteLogkafka(hostname, log_path, logkafkaConfigOption)) {
+              kcResponse: KCCommandResult =>
+                CMCommandResult(kcResponse.result)
+            }
+          }
+        } pipeTo sender()
+
+      case CMCreateLogkafka(hostname, log_path, config) =>
+        implicit val ec = longRunningExecutionContext
+        val eventualLogkafkaConfig = withKafkaStateActor(KSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
+        eventualLogkafkaConfig.map { logkafkaConfigOption =>
+            withKafkaCommandActor(KCCreateLogkafka(hostname, log_path, config, logkafkaConfigOption)) {
+              kcResponse: KCCommandResult =>
+                CMCommandResult(kcResponse.result)
+            }
+        } pipeTo sender()
+
+      case CMUpdateLogkafkaConfig(hostname, log_path, config) =>
+        implicit val ec = longRunningExecutionContext
+        val eventualLogkafkaConfig = withKafkaStateActor(KSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
+        eventualLogkafkaConfig.map { logkafkaConfigOption =>
+            withKafkaCommandActor(KCUpdateLogkafkaConfig(hostname, log_path, config, logkafkaConfigOption)) {
+              kcResponse: KCCommandResult =>
+                CMCommandResult(kcResponse.result)
+            }
         } pipeTo sender()
 
       case any: Any => log.warning("cma : processCommandRequest : Received unknown message: {}", any)
