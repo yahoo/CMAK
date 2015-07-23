@@ -90,6 +90,9 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
   private[this] val ksProps = Props(classOf[KafkaStateActor],sharedClusterCurator, adminUtils.isDeleteSupported, cmConfig.clusterConfig)
   private[this] val kafkaStateActor : ActorPath = context.actorOf(ksProps.withDispatcher(cmConfig.pinnedDispatcherName),"kafka-state").path
 
+  private[this] val lksProps = Props(classOf[LogkafkaStateActor],sharedClusterCurator, adminUtils.isDeleteSupported, cmConfig.clusterConfig)
+  private[this] val logkafkaStateActor : ActorPath = context.actorOf(lksProps.withDispatcher(cmConfig.pinnedDispatcherName),"logkafka-state").path
+
   private[this] val bvConfig = BrokerViewCacheActorConfig(
     kafkaStateActor, 
     cmConfig.clusterConfig, 
@@ -97,6 +100,14 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
     cmConfig.updatePeriod)
   private[this] val bvcProps = Props(classOf[BrokerViewCacheActor],bvConfig)
   private[this] val brokerViewCacheActor : ActorPath = context.actorOf(bvcProps,"broker-view").path
+
+  private[this] val lkvConfig = LogkafkaViewCacheActorConfig(
+    logkafkaStateActor, 
+    cmConfig.clusterConfig, 
+    LongRunningPoolConfig(Runtime.getRuntime.availableProcessors(), 1000),
+    cmConfig.updatePeriod)
+  private[this] val lkvcProps = Props(classOf[LogkafkaViewCacheActor],lkvConfig)
+  private[this] val logkafkaViewCacheActor : ActorPath = context.actorOf(lkvcProps,"logkafka-view").path
 
   private[this] val kcProps = {
     val kcaConfig = KafkaCommandActorConfig(
@@ -149,8 +160,14 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
       case ksRequest: KSRequest =>
         context.actorSelection(kafkaStateActor).forward(ksRequest)
 
+      case lksRequest: LKSRequest =>
+        context.actorSelection(logkafkaStateActor).forward(lksRequest)
+
       case bvRequest: BVRequest =>
         context.actorSelection(brokerViewCacheActor).forward(bvRequest)
+
+      case lkvRequest: LKVRequest =>
+        context.actorSelection(logkafkaViewCacheActor).forward(lkvRequest)
 
       case CMGetView =>
         implicit val ec = context.dispatcher
@@ -182,8 +199,8 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
 
       case CMGetLogkafkaIdentity(hostname) =>
         implicit val ec = context.dispatcher
-        val eventualLogkafkaConfig= withKafkaStateActor(KSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
-        val eventualLogkafkaClient= withKafkaStateActor(KSGetLogkafkaClient(hostname))(identity[Option[LogkafkaClient]])
+        val eventualLogkafkaConfig= withLogkafkaStateActor(LKSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
+        val eventualLogkafkaClient= withLogkafkaStateActor(LKSGetLogkafkaClient(hostname))(identity[Option[LogkafkaClient]])
         val result: Future[Option[CMLogkafkaIdentity]] = for {
           lcg <- eventualLogkafkaConfig
           lct <- eventualLogkafkaClient
@@ -379,7 +396,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
 
       case CMDeleteLogkafka(hostname, log_path) =>
         implicit val ec = longRunningExecutionContext
-        val eventualLogkafkaConfig = withKafkaStateActor(KSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
+        val eventualLogkafkaConfig = withLogkafkaStateActor(LKSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
         eventualLogkafkaConfig.map { logkafkaConfigOption =>
           logkafkaConfigOption.fold {
             Future.successful(CMCommandResult(Failure(new IllegalArgumentException(s"Hostname doesn't exists : $hostname"))))
@@ -393,7 +410,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
 
       case CMCreateLogkafka(hostname, log_path, config) =>
         implicit val ec = longRunningExecutionContext
-        val eventualLogkafkaConfig = withKafkaStateActor(KSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
+        val eventualLogkafkaConfig = withLogkafkaStateActor(LKSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
         eventualLogkafkaConfig.map { logkafkaConfigOption =>
             withKafkaCommandActor(KCCreateLogkafka(hostname, log_path, config, logkafkaConfigOption)) {
               kcResponse: KCCommandResult =>
@@ -403,7 +420,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
 
       case CMUpdateLogkafkaConfig(hostname, log_path, config) =>
         implicit val ec = longRunningExecutionContext
-        val eventualLogkafkaConfig = withKafkaStateActor(KSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
+        val eventualLogkafkaConfig = withLogkafkaStateActor(LKSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
         eventualLogkafkaConfig.map { logkafkaConfigOption =>
             withKafkaCommandActor(KCUpdateLogkafkaConfig(hostname, log_path, config, logkafkaConfigOption)) {
               kcResponse: KCCommandResult =>
@@ -420,9 +437,19 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
     context.actorSelection(kafkaStateActor).ask(msg).mapTo[Output].map(fn)
   }
 
+  private[this]  def withLogkafkaStateActor[Input,Output,FOutput]
+  (msg: Input)(fn: Output => FOutput)(implicit tag: ClassTag[Output], ec: ExecutionContext) : Future[FOutput] = {
+    context.actorSelection(logkafkaStateActor).ask(msg).mapTo[Output].map(fn)
+  }
+
   private[this] def withBrokerViewCacheActor[Input,Output,FOutput]
   (msg: Input)(fn: Output => FOutput)(implicit tag: ClassTag[Output], ec: ExecutionContext) : Future[FOutput] = {
     context.actorSelection(brokerViewCacheActor).ask(msg).mapTo[Output].map(fn)
+  }
+
+  private[this] def withLogkafkaViewCacheActor[Input,Output,FOutput]
+  (msg: Input)(fn: Output => FOutput)(implicit tag: ClassTag[Output], ec: ExecutionContext) : Future[FOutput] = {
+    context.actorSelection(logkafkaViewCacheActor).ask(msg).mapTo[Output].map(fn)
   }
 
   private[this] def withKafkaCommandActor[Input,Output,FOutput]

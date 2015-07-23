@@ -67,7 +67,8 @@ object Cluster extends Controller {
       "kafkaVersion" -> nonEmptyText.verifying(validateKafkaVersion),
       "zkHosts" -> nonEmptyText.verifying(validateZkHosts),
       "zkMaxRetry" -> ignored(100 : Int),
-      "jmxEnabled" -> boolean
+      "jmxEnabled" -> boolean,
+      "logkafkaEnabled" -> boolean
     )(ClusterConfig.apply)(ClusterConfig.customUnapply)
   )
 
@@ -78,7 +79,8 @@ object Cluster extends Controller {
       "kafkaVersion" -> nonEmptyText.verifying(validateKafkaVersion),
       "zkHosts" -> nonEmptyText.verifying(validateZkHosts),
       "zkMaxRetry" -> ignored(100 : Int),
-      "jmxEnabled" -> boolean
+      "jmxEnabled" -> boolean,
+      "logkafkaEnabled" -> boolean
     )(ClusterOperation.apply)(ClusterOperation.customUnapply)
   )
 
@@ -89,7 +91,7 @@ object Cluster extends Controller {
   def updateCluster(c: String) = Action.async { implicit request =>
     kafkaManager.getClusterConfig(c).map { errorOrClusterConfig =>
       Ok(views.html.cluster.updateCluster(c,errorOrClusterConfig.map { cc =>
-        updateForm.fill(ClusterOperation.apply(Update.toString,cc.name,cc.version.toString,cc.curatorConfig.zkConnect,cc.curatorConfig.zkMaxRetry,cc.jmxEnabled))
+        updateForm.fill(ClusterOperation.apply(Update.toString,cc.name,cc.version.toString,cc.curatorConfig.zkConnect,cc.curatorConfig.zkMaxRetry,cc.jmxEnabled,cc.logkafkaEnabled))
       }))
     }
   }
@@ -98,7 +100,7 @@ object Cluster extends Controller {
     clusterConfigForm.bindFromRequest.fold(
       formWithErrors => Future.successful(BadRequest(views.html.cluster.addCluster(formWithErrors))),
       clusterConfig => {
-        kafkaManager.addCluster(clusterConfig.name, clusterConfig.version.toString, clusterConfig.curatorConfig.zkConnect, clusterConfig.jmxEnabled).map { errorOrSuccess =>
+        kafkaManager.addCluster(clusterConfig.name, clusterConfig.version.toString, clusterConfig.curatorConfig.zkConnect, clusterConfig.jmxEnabled, clusterConfig.logkafkaEnabled).map { errorOrSuccess =>
           Ok(views.html.common.resultOfCommand(
             views.html.navigation.defaultMenu(),
             models.navigation.BreadCrumbs.withView("Add Cluster"),
@@ -154,7 +156,8 @@ object Cluster extends Controller {
             clusterOperation.clusterConfig.name,
             clusterOperation.clusterConfig.version.toString,
             clusterOperation.clusterConfig.curatorConfig.zkConnect,
-            clusterOperation.clusterConfig.jmxEnabled
+            clusterOperation.clusterConfig.jmxEnabled,
+            clusterOperation.clusterConfig.logkafkaEnabled
           ).map { errorOrSuccess =>
             Ok(views.html.common.resultOfCommand(
               views.html.navigation.defaultMenu(),

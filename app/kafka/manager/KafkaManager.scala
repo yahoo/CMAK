@@ -171,19 +171,19 @@ class KafkaManager(akkaConfig: Config)
   }
 
   //--------------------Commands--------------------------
-  def addCluster(clusterName: String, version: String, zkHosts: String, jmxEnabled: Boolean): Future[ApiError \/
+  def addCluster(clusterName: String, version: String, zkHosts: String, jmxEnabled: Boolean, logkafkaEnabled: Boolean = false): Future[ApiError \/
     Unit] =
   {
-    val cc = ClusterConfig(clusterName, version, zkHosts, jmxEnabled = jmxEnabled)
+    val cc = ClusterConfig(clusterName, version, zkHosts, jmxEnabled = jmxEnabled, logkafkaEnabled = logkafkaEnabled)
     tryWithKafkaManagerActor(KMAddCluster(cc)) { result: KMCommandResult =>
       result.result.get
     }
   }
 
-  def updateCluster(clusterName: String, version: String, zkHosts: String, jmxEnabled: Boolean): Future[ApiError \/
+  def updateCluster(clusterName: String, version: String, zkHosts: String, jmxEnabled: Boolean, logkafkaEnabled: Boolean = false): Future[ApiError \/
     Unit] =
   {
-    val cc = ClusterConfig(clusterName, version, zkHosts, jmxEnabled = jmxEnabled)
+    val cc = ClusterConfig(clusterName, version, zkHosts, jmxEnabled = jmxEnabled, logkafkaEnabled = logkafkaEnabled)
     tryWithKafkaManagerActor(KMUpdateCluster(cc)) { result: KMCommandResult =>
       result.result.get
     }
@@ -571,8 +571,8 @@ class KafkaManager(akkaConfig: Config)
   }
 
   def getLogkafkaListExtended(clusterName: String): Future[ApiError \/ LogkafkaListExtended] = {
-    val futureLogkafkaIdentities = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, BVGetLogkafkaIdentities))(identity[Map[String, LogkafkaIdentity]])
-    val futureLogkafkaList = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, KSGetLogkafkaHostnames))(identity[LogkafkaHostnameList])
+    val futureLogkafkaIdentities = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, LKVGetLogkafkaIdentities))(identity[Map[String, LogkafkaIdentity]])
+    val futureLogkafkaList = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, LKSGetLogkafkaHostnames))(identity[LogkafkaHostnameList])
     implicit val ec = apiExecutionContext
     for {
       errOrLi <- futureLogkafkaIdentities

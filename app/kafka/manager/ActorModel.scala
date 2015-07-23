@@ -33,7 +33,6 @@ object ActorModel {
 
   case object BVForceUpdate extends CommandRequest
   case object BVGetTopicIdentities extends BVRequest
-  case object BVGetLogkafkaIdentities extends BVRequest
   case class BVGetView(id: Int) extends BVRequest
   case object BVGetViews extends BVRequest
   case class BVGetTopicMetrics(topic: String) extends BVRequest
@@ -46,6 +45,11 @@ object ActorModel {
   }
   case class BVUpdateTopicMetricsForBroker(id: Int, metrics: IndexedSeq[(String,BrokerMetrics)]) extends CommandRequest
   case class BVUpdateBrokerMetrics(id: Int, metric: BrokerMetrics) extends CommandRequest
+
+  sealed trait LKVRequest extends QueryRequest
+
+  case object LKVForceUpdate extends CommandRequest
+  case object LKVGetLogkafkaIdentities extends LKVRequest
 
   case object CMGetView extends QueryRequest
   case class CMGetTopicIdentity(topic: String) extends QueryRequest
@@ -149,13 +153,14 @@ object ActorModel {
   case object KSGetBrokers extends KSRequest
   case class KSGetBrokerState(id: String) extends  KSRequest
 
-  case object KSGetLogkafkaHostnames extends KSRequest
-  case class KSGetLogkafkaConfig(hostname: String) extends KSRequest
-  case class KSGetLogkafkaClient(hostname: String) extends KSRequest
-  case class KSGetLogkafkaConfigs(hostnames: Set[String]) extends KSRequest
-  case class KSGetLogkafkaClients(hostnames: Set[String]) extends KSRequest
-  case class KSGetAllLogkafkaConfigs(lastUpdateMillis: Option[Long]= None) extends KSRequest
-  case class KSGetAllLogkafkaClients(lastUpdateMillis: Option[Long]= None) extends KSRequest
+  sealed trait LKSRequest extends QueryRequest
+  case object LKSGetLogkafkaHostnames extends LKSRequest
+  case class LKSGetLogkafkaConfig(hostname: String) extends LKSRequest
+  case class LKSGetLogkafkaClient(hostname: String) extends LKSRequest
+  case class LKSGetLogkafkaConfigs(hostnames: Set[String]) extends LKSRequest
+  case class LKSGetLogkafkaClients(hostnames: Set[String]) extends LKSRequest
+  case class LKSGetAllLogkafkaConfigs(lastUpdateMillis: Option[Long]= None) extends LKSRequest
+  case class LKSGetAllLogkafkaClients(lastUpdateMillis: Option[Long]= None) extends LKSRequest
 
   case class TopicList(list: IndexedSeq[String], deleteSet: Set[String]) extends QueryResponse
   case class TopicConfig(topic: String, config: Option[(Int,String)]) extends QueryResponse

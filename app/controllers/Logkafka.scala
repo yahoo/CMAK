@@ -170,9 +170,19 @@ object Logkafka extends Controller{
           case Kafka_0_8_2_0 => LogkafkaNewConfigs.configNames(Kafka_0_8_2_0).map(n => (n,LKConfig(n,None))).toMap
           case Kafka_0_8_2_1 => LogkafkaNewConfigs.configNames(Kafka_0_8_2_1).map(n => (n,LKConfig(n,None))).toMap
         }
-        val config: Map[String, String] = li.identityMap.get(log_path).get._1.get
-        val combinedMap = defaultConfigMap ++ config.map(tpl => tpl._1 -> LKConfig(tpl._1,Option(tpl._2)))
-        defaultUpdateConfigForm.fill(UpdateLogkafkaConfig(li.hostname,log_path,combinedMap.toList.map(_._2)))
+        val identityOption = li.identityMap.get(log_path)
+        if (identityOption.isDefined) {
+          val configOption = identityOption.get._1
+          if (configOption.isDefined) {
+            val config: Map[String, String] = configOption.get
+            val combinedMap = defaultConfigMap ++ config.map(tpl => tpl._1 -> LKConfig(tpl._1,Option(tpl._2)))
+            defaultUpdateConfigForm.fill(UpdateLogkafkaConfig(li.hostname,log_path,combinedMap.toList.map(_._2)))
+          } else {
+            defaultUpdateConfigForm.fill(UpdateLogkafkaConfig(li.hostname,log_path,List(LKConfig("",None))))
+          }
+        } else {
+          defaultUpdateConfigForm.fill(UpdateLogkafkaConfig(li.hostname,log_path,List(LKConfig("",None))))
+        }
       }
     }
   }

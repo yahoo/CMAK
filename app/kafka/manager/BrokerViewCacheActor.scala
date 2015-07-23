@@ -40,12 +40,6 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
   
   private[this] var combinedBrokerMetric : Option[BrokerMetrics] = None
 
-  private[this] var logkafkaIdentities : Map[String, LogkafkaIdentity] = Map.empty
-
-  private[this] var logkafkaConfigsOption : Option[LogkafkaConfigs] = None
-
-  private[this] var logkafkaClientsOption : Option[LogkafkaClients] = None
-
   private[this] val EMPTY_BVVIEW = BVView(Map.empty, config.clusterConfig, Option(BrokerMetrics.DEFAULT))
   
   override def preStart() = {
@@ -115,8 +109,6 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
         val lastUpdateMillisOption: Option[Long] = topicDescriptionsOption.map(_.lastUpdateMillis)
         context.actorSelection(config.kafkaStateActorPath).tell(KSGetAllTopicDescriptions(lastUpdateMillisOption), self)
         context.actorSelection(config.kafkaStateActorPath).tell(KSGetBrokers, self)
-        context.actorSelection(config.kafkaStateActorPath).tell(KSGetAllLogkafkaConfigs(lastUpdateMillisOption), self)
-        context.actorSelection(config.kafkaStateActorPath).tell(KSGetAllLogkafkaClients(lastUpdateMillisOption), self)
 
       case BVGetViews =>
         sender ! allBrokerViews()
@@ -135,9 +127,6 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
 
       case BVGetTopicIdentities =>
         sender ! topicIdentities
-
-      case BVGetLogkafkaIdentities =>
-        sender ! logkafkaIdentities
 
       case BVUpdateTopicMetricsForBroker(id, metrics) =>
         metrics.foreach {
@@ -166,14 +155,6 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
 
       case bl: BrokerList =>
         brokerListOption = Some(bl)
-        updateView()
-
-      case lcg: LogkafkaConfigs =>
-        logkafkaConfigsOption = Some(lcg)
-        updateView()
-
-      case lct: LogkafkaClients =>
-        logkafkaClientsOption = Some(lct)
         updateView()
 
       case any: Any => log.warning("bvca : processActorResponse : Received unknown message: {}", any)
@@ -257,16 +238,6 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
           brokerTopicPartitions.put(
             brokerId,BVView(topicPartitionsMap, config.clusterConfig, brokerMetrics.get(brokerId)))
       }
-    }
-
-    for {
-      logkafkaConfigs <- logkafkaConfigsOption
-      logkafkaClients <- logkafkaClientsOption
-    } {
-      val lcgMap = Map(logkafkaConfigs.configs map { a => a.hostname -> a }: _*)
-      val lctMap = Map(logkafkaClients.clients map { a => a.hostname -> a }: _*)
-      logkafkaIdentities = lcgMap.map (kv =>
-        kv._1 -> LogkafkaIdentity.from(kv._1, Some(kv._2), lctMap.get(kv._1)))
     }
   }
 }
