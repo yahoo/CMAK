@@ -113,7 +113,7 @@ class LogkafkaStateActor(curator: CuratorFramework,
 
   override def processActorResponse(response: ActorResponse): Unit = {
     response match {
-      case any: Any => log.warning("ksa : processActorResponse : Received unknown message: {}", any.toString)
+      case any: Any => log.warning("lksa : processActorResponse : Received unknown message: {}", any.toString)
     }
   }
   
@@ -177,13 +177,13 @@ class LogkafkaStateActor(curator: CuratorFramework,
           }
         } // else no updates to send
 
-      case any: Any => log.warning("ksa : processQueryRequest : Received unknown message: {}", any.toString)
+      case any: Any => log.warning("lksa : processQueryRequest : Received unknown message: {}", any.toString)
     }
   }
 
   override def processCommandRequest(request: CommandRequest): Unit = {
     request match {
-      case any: Any => log.warning("ksa : processCommandRequest : Received unknown message: {}", any.toString)
+      case any: Any => log.warning("lksa : processCommandRequest : Received unknown message: {}", any.toString)
     }
   }
 

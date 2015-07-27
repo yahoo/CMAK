@@ -102,19 +102,21 @@ object ActorModel {
   case class KCReassignPartition(currentTopicIdentity: Map[String, TopicIdentity],
                                generatedTopicIdentity: Map[String, TopicIdentity]) extends CommandRequest
 
-  case class KCCreateLogkafka(hostname: String,
+  case class KCCommandResult(result: Try[Unit]) extends CommandResponse
+
+  case class LKCCreateLogkafka(hostname: String,
                               log_path: String,
                               config: Properties,
                               logkafkaConfig: Option[LogkafkaConfig]) extends CommandRequest
-  case class KCDeleteLogkafka(hostname: String, 
+  case class LKCDeleteLogkafka(hostname: String, 
                               log_path: String, 
                               logkafkaConfig: Option[LogkafkaConfig]) extends CommandRequest
-  case class KCUpdateLogkafkaConfig(hostname: String,
+  case class LKCUpdateLogkafkaConfig(hostname: String,
                                     log_path: String,
                                     config: Properties,
                                     logkafkaConfig: Option[LogkafkaConfig]) extends CommandRequest
 
-  case class KCCommandResult(result: Try[Unit]) extends CommandResponse
+  case class LKCCommandResult(result: Try[Unit]) extends CommandResponse
 
   case object KMGetActiveClusters extends QueryRequest
   case object KMGetAllClusters extends QueryRequest

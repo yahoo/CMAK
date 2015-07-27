@@ -119,6 +119,16 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
   }
   private[this] val kafkaCommandActor : ActorPath = context.actorOf(kcProps,"kafka-command").path
 
+  private[this] val lkcProps = {
+    val lkcaConfig = LogkafkaCommandActorConfig(
+      sharedClusterCurator,
+      LongRunningPoolConfig(cmConfig.threadPoolSize, cmConfig.maxQueueSize),
+      cmConfig.askTimeoutMillis,
+      cmConfig.clusterConfig.version)
+    Props(classOf[LogkafkaCommandActor],lkcaConfig)
+  }
+  private[this] val logkafkaCommandActor : ActorPath = context.actorOf(lkcProps,"logkafka-command").path
+
   private[this] implicit val timeout: Timeout = FiniteDuration(cmConfig.askTimeoutMillis,MILLISECONDS)
 
   private[this] val clusterManagerTopicsPathCache = new PathChildrenCache(curator,baseTopicsZkPath,true)
@@ -401,9 +411,9 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           logkafkaConfigOption.fold {
             Future.successful(CMCommandResult(Failure(new IllegalArgumentException(s"Hostname doesn't exists : $hostname"))))
           } { td =>
-            withKafkaCommandActor(KCDeleteLogkafka(hostname, log_path, logkafkaConfigOption)) {
-              kcResponse: KCCommandResult =>
-                CMCommandResult(kcResponse.result)
+            withLogkafkaCommandActor(LKCDeleteLogkafka(hostname, log_path, logkafkaConfigOption)) {
+              lkcResponse: LKCCommandResult =>
+                CMCommandResult(lkcResponse.result)
             }
           }
         } pipeTo sender()
@@ -412,9 +422,9 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         implicit val ec = longRunningExecutionContext
         val eventualLogkafkaConfig = withLogkafkaStateActor(LKSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
         eventualLogkafkaConfig.map { logkafkaConfigOption =>
-            withKafkaCommandActor(KCCreateLogkafka(hostname, log_path, config, logkafkaConfigOption)) {
-              kcResponse: KCCommandResult =>
-                CMCommandResult(kcResponse.result)
+            withLogkafkaCommandActor(LKCCreateLogkafka(hostname, log_path, config, logkafkaConfigOption)) {
+              lkcResponse: LKCCommandResult =>
+                CMCommandResult(lkcResponse.result)
             }
         } pipeTo sender()
 
@@ -422,9 +432,9 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         implicit val ec = longRunningExecutionContext
         val eventualLogkafkaConfig = withLogkafkaStateActor(LKSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
         eventualLogkafkaConfig.map { logkafkaConfigOption =>
-            withKafkaCommandActor(KCUpdateLogkafkaConfig(hostname, log_path, config, logkafkaConfigOption)) {
-              kcResponse: KCCommandResult =>
-                CMCommandResult(kcResponse.result)
+            withLogkafkaCommandActor(LKCUpdateLogkafkaConfig(hostname, log_path, config, logkafkaConfigOption)) {
+              lkcResponse: LKCCommandResult =>
+                CMCommandResult(lkcResponse.result)
             }
         } pipeTo sender()
 
@@ -455,6 +465,11 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
   private[this] def withKafkaCommandActor[Input,Output,FOutput]
   (msg: Input)(fn: Output => FOutput)(implicit tag: ClassTag[Output], ec: ExecutionContext) : Future[FOutput] = {
     context.actorSelection(kafkaCommandActor).ask(msg).mapTo[Output].map(fn)
+  }
+
+  private[this] def withLogkafkaCommandActor[Input,Output,FOutput]
+  (msg: Input)(fn: Output => FOutput)(implicit tag: ClassTag[Output], ec: ExecutionContext) : Future[FOutput] = {
+    context.actorSelection(logkafkaCommandActor).ask(msg).mapTo[Output].map(fn)
   }
 
   private[this] def modify[T](fn: => T): T = {
