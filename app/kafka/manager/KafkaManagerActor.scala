@@ -16,6 +16,7 @@ import org.apache.curator.framework.recipes.cache.{PathChildrenCacheEvent, PathC
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex
 import org.apache.zookeeper.CreateMode
+import scheduler.kafka.manager.{SchedulerManagerActorConfig, SchedulerManagerActor}
 
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{Future, ExecutionContext}
@@ -154,6 +155,81 @@ object ClusterConfig {
 
 case class ClusterConfig (name: String, curatorConfig : CuratorConfig, enabled: Boolean, version: KafkaVersion, jmxEnabled: Boolean)
 
+object SchedulerConfig {
+
+  def apply(name: String, version : String, apiUrl: String, zkHosts: String, zkMaxRetry: Int = 100, jmxEnabled: Boolean) : SchedulerConfig = {
+    val kafkaVersion = KafkaVersion(version)
+    //validate scheduler name
+    ClusterConfig.validateName(name)
+    //validate zk hosts
+    ClusterConfig.validateZkHosts(zkHosts)
+    val cleanZkHosts = zkHosts.replaceAll(" ","")
+    new SchedulerConfig(name, apiUrl, CuratorConfig(cleanZkHosts, zkMaxRetry), true, kafkaVersion, jmxEnabled)
+  }
+
+  def customUnapply(sc: SchedulerConfig) : Option[(String, String, String, String, Int, Boolean)] = {
+    Some((sc.name, sc.version.toString, sc.apiUrl, sc.curatorConfig.zkConnect, sc.curatorConfig.zkMaxRetry, sc.jmxEnabled))
+  }
+
+  import scalaz.{Failure, Success}
+  import scalaz.syntax.applicative._
+  import org.json4s._
+  import org.json4s.jackson.JsonMethods._
+  import org.json4s.jackson.Serialization
+  import org.json4s.scalaz.JsonScalaz._
+  import scala.language.reflectiveCalls
+
+  implicit val formats = Serialization.formats(FullTypeHints(List(classOf[SchedulerConfig])))
+
+  implicit def curatorConfigJSONW: JSONW[CuratorConfig] = new JSONW[CuratorConfig] {
+    def write(a: CuratorConfig) =
+      makeObj(("zkConnect" -> toJSON(a.zkConnect))
+        :: ("zkMaxRetry" -> toJSON(a.zkMaxRetry))
+        :: ("baseSleepTimeMs" -> toJSON(a.baseSleepTimeMs))
+        :: ("maxSleepTimeMs" -> toJSON(a.maxSleepTimeMs))
+        :: Nil)
+  }
+
+  implicit def curatorConfigJSONR: JSONR[CuratorConfig] = CuratorConfig.applyJSON(
+    field[String]("zkConnect"), field[Int]("zkMaxRetry"), field[Int]("baseSleepTimeMs"), field[Int]("maxSleepTimeMs"))
+
+  def serialize(config: SchedulerConfig): Array[Byte] = {
+    val json = makeObj(
+      ("name" -> toJSON(config.name))
+      :: ("apiUrl" -> toJSON(config.apiUrl))
+      :: ("curatorConfig" -> toJSON(config.curatorConfig))
+      :: ("enabled" -> toJSON(config.enabled))
+      :: ("kafkaVersion" -> toJSON(config.version.toString))
+      :: ("jmxEnabled" -> toJSON(config.jmxEnabled))
+      :: Nil)
+    compact(render(json)).getBytes(StandardCharsets.UTF_8)
+  }
+
+  def deserialize(ba: Array[Byte]): Try[SchedulerConfig] = {
+    Try {
+      val json = parse(kafka.manager.utils.deserializeString(ba))
+
+      val result = (field[String]("name")(json) |@| field[String]("apiUrl")(json) |@| field[CuratorConfig]("curatorConfig")(json) |@| field[Boolean]("enabled")(json)) {
+        (name: String, apiUrl: String, curatorConfig: CuratorConfig, enabled: Boolean) =>
+          val versionString = field[String]("kafkaVersion")(json)
+          val version = versionString.map(KafkaVersion.apply).getOrElse(Kafka_0_8_1_1)
+          val jmxEnabled = field[Boolean]("jmxEnabled")(json)
+          SchedulerConfig(name, apiUrl, curatorConfig, enabled, version, jmxEnabled.getOrElse(false))
+      }
+
+      result match {
+        case Failure(nel) =>
+          throw new IllegalArgumentException(nel.toString())
+        case Success(schedulerConfig) =>
+          schedulerConfig
+      }
+
+    }
+  }
+}
+
+case class SchedulerConfig (name: String, apiUrl: String, curatorConfig : CuratorConfig, enabled: Boolean, version: KafkaVersion, jmxEnabled: Boolean)
+
 object KafkaManagerActor {
   val ZkRoot : String = "/kafka-manager"
 
@@ -187,6 +263,7 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
   
   private[this] val baseClusterZkPath = zkPath("clusters")
   private[this] val configsZkPath = zkPath("configs")
+  private[this] val schedulersZkPath = zkPath("schedulers")
   private[this] val deleteClustersZkPath = zkPath("deleteClusters")
 
   log.info(s"zk=${kafkaManagerConfig.curatorConfig.zkConnect}")
@@ -218,6 +295,8 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
   private[this] val longRunningExecutionContext = ExecutionContext.fromExecutor(longRunningExecutor)
 
   private[this] val kafkaManagerPathCache = new PathChildrenCache(curator,configsZkPath,true)
+
+  private[this] val schedulersPathCache = new PathChildrenCache(curator,schedulersZkPath,true)
 
   private[this] val mutex = new InterProcessSemaphoreMutex(curator, zkPath("mutex"))
 
@@ -259,6 +338,10 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
   private[this] var clusterConfigMap : Map[String,ClusterConfig] = Map.empty
   private[this] var pendingClusterConfigMap : Map[String,ClusterConfig] = Map.empty
 
+  private[this] var schedulerManagerMap : Map[String,ActorPath] = Map.empty
+  private[this] var schedulerConfigMap : Map[String,SchedulerConfig] = Map.empty
+  private[this] var pendingSchedulerConfigMap : Map[String,SchedulerConfig] = Map.empty
+
   private[this] def modify(fn: => Any) : Unit = {
     if(longRunningExecutor.getQueue.remainingCapacity() == 0) {
       Future.successful(KMCommandResult(Try(throw new UnsupportedOperationException("Long running executor blocking queue is full!"))))
@@ -293,9 +376,11 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
 
     log.info("Starting kafka manager path cache...")
     kafkaManagerPathCache.start(StartMode.BUILD_INITIAL_CACHE)
+    schedulersPathCache.start(StartMode.BUILD_INITIAL_CACHE)
 
     log.info("Adding kafka manager path cache listener...")
     kafkaManagerPathCache.getListenable.addListener(pathCacheListener)
+    schedulersPathCache.getListenable.addListener(pathCacheListener)
 
     implicit val ec = longRunningExecutionContext
     //schedule periodic forced update
@@ -319,12 +404,14 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
 
     log.info("Removing kafka manager path cache listener...")
     Try(kafkaManagerPathCache.getListenable.removeListener(pathCacheListener))
+    Try(schedulersPathCache.getListenable.removeListener(pathCacheListener))
 
     log.info("Shutting down long running executor...")
     Try(longRunningExecutor.shutdown())
 
     log.info("Shutting down kafka manager path cache...")
     Try(kafkaManagerPathCache.close())
+    Try(schedulersPathCache.close())
 
     log.info("Shutting down delete clusters path cache...")
     Try(deleteClustersPathCache.close())
@@ -361,7 +448,26 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
           clusterManagerPath:ActorPath =>
             context.actorSelection(clusterManagerPath).forward(request)
         }
-        
+
+      case KMGetAllSchedulers =>
+        sender ! KMSchedulerList(schedulerConfigMap.values.toIndexedSeq, pendingSchedulerConfigMap.values.toIndexedSeq)
+
+      case KMGetSchedulerConfig(name) =>
+        sender ! KMSchedulerConfigResult(Try {
+          val sc = schedulerConfigMap.get(name)
+          require(sc.isDefined, s"Unknown scheduler : $name")
+          sc.get
+        })
+
+
+      case KMSchedulerQueryRequest(schedulerName, request) =>
+        schedulerManagerMap.get(schedulerName).fold[Unit] {
+          sender ! ActorErrorResponse(s"Unknown scheduler : $schedulerName")
+        } {
+          schedulerManagerPath: ActorPath =>
+            context.actorSelection(schedulerManagerPath).forward(request)
+        }
+
       case any: Any => log.warning("kma : processQueryRequest : Received unknown message: {}", any)
     }
     
@@ -378,6 +484,15 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
           require(deleteClustersPathCache.getCurrentData(getDeleteClusterZkPath(clusterConfig.name)) == null,
             s"Cluster is marked for deletion : ${clusterConfig.name}")
           log.debug(s"Creating new config node $zkpath")
+          curator.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(zkpath, data)
+        }
+
+      case KMAddScheduler(schedulerConfig) =>
+        modify {
+          val data: Array[Byte] = SchedulerConfig.serialize(schedulerConfig)
+          val zkpath: String = getSchedulersZkPath(schedulerConfig)
+          require(schedulersPathCache.getCurrentData(zkpath) == null,
+            s"Scheduler already exists : ${schedulerConfig.name}")
           curator.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(zkpath, data)
         }
 
@@ -467,6 +582,14 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
             context.actorSelection(clusterManagerPath).forward(request)
         }
 
+      case KMSchedulerCommandRequest(schedulerName, request) =>
+        schedulerManagerMap.get(schedulerName).fold[Unit] {
+          sender ! ActorErrorResponse(s"Unknown scheduler : $schedulerName")
+        } {
+          schedulerManagerPath:ActorPath =>
+            context.actorSelection(schedulerManagerPath).forward(request)
+        }
+
       case KMUpdateState =>
         updateState()
 
@@ -488,6 +611,10 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
 
   private[this] def getConfigsZkPath(clusterConfig: ClusterConfig) : String = {
     zkPathFrom(configsZkPath,clusterConfig.name)
+  }
+
+  private[this] def getSchedulersZkPath(schedulerConfig: SchedulerConfig) : String = {
+    zkPathFrom(schedulersZkPath,schedulerConfig.name)
   }
 
   private[this] def getClusterZkPath(clusterConfig: ClusterConfig) : String = {
@@ -539,6 +666,31 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
     }
   }
 
+  private[this] def addScheduler(config: SchedulerConfig): Try[Boolean] = {
+    Try {
+      if(!config.enabled) {
+        log.info("Not adding scheduler manager for disabled scheduler : {}", config.name)
+        schedulerConfigMap += (config.name -> config)
+        pendingSchedulerConfigMap -= config.name
+        false
+      } else {
+        log.info("Adding new scheduler manager for scheduler : {}", config.name)
+        val schedulerManagerConfig = SchedulerManagerActorConfig(
+          kafkaManagerConfig.pinnedDispatcherName,
+          getSchedulersZkPath(config),
+          kafkaManagerConfig.curatorConfig,
+          config,
+          kafkaManagerConfig.brokerViewUpdatePeriod)
+        val props = Props(classOf[SchedulerManagerActor], schedulerManagerConfig)
+        val newSchedulerManager = context.actorOf(props, config.name).path
+        schedulerConfigMap += (config.name -> config)
+        schedulerManagerMap += (config.name -> newSchedulerManager)
+        pendingSchedulerConfigMap -= config.name
+        true
+      }
+    }
+  }
+
   private[this] def updateCluster(currentConfig: ClusterConfig, newConfig: ClusterConfig): Try[Boolean] = {
     Try {
       if(newConfig.curatorConfig.zkConnect == currentConfig.curatorConfig.zkConnect
@@ -558,6 +710,10 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
     }
   }
 
+  private[this] def updateScheduler(currentConfig: SchedulerConfig, newConfig: SchedulerConfig): Try[Boolean] = {
+    Try(true)
+  }
+
   private[this] def updateState(): Unit = {
     log.info("Updating internal state...")
     val result = Try {
@@ -567,6 +723,15 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
             log.error("Failed to deserialize cluster config",t)
           case Success(newConfig) =>
             clusterConfigMap.get(newConfig.name).fold(addCluster(newConfig))(updateCluster(_,newConfig))
+        }
+      }
+
+      schedulersPathCache.getCurrentData.asScala.foreach { data =>
+        SchedulerConfig.deserialize(data.getData) match {
+          case Failure(t) =>
+            log.error("Failed to deserialize scheduler config",t)
+          case Success(newScheduler) =>
+            schedulerConfigMap.get(newScheduler.name).fold(addScheduler(newScheduler))(updateScheduler(_,newScheduler))
         }
       }
     }

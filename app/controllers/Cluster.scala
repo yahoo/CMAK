@@ -5,7 +5,7 @@
 
 package controllers
 
-import kafka.manager.{KafkaVersion, ApiError, ClusterConfig}
+import kafka.manager.{SchedulerConfig, KafkaVersion, ApiError, ClusterConfig}
 import models.FollowLink
 import models.form._
 import play.api.data.Form
@@ -71,6 +71,17 @@ object Cluster extends Controller {
     )(ClusterConfig.apply)(ClusterConfig.customUnapply)
   )
 
+  val schedulerConfigForm = Form(
+    mapping(
+      "name" -> nonEmptyText.verifying(maxLength(250), validateName),
+      "kafkaVersion" -> nonEmptyText.verifying(validateKafkaVersion),
+      "apiUrl" -> nonEmptyText.verifying(validateZkHosts),
+      "zkHosts" -> nonEmptyText.verifying(validateZkHosts),
+      "zkMaxRetry" -> ignored(100 : Int),
+      "jmxEnabled" -> boolean
+    )(SchedulerConfig.apply)(SchedulerConfig.customUnapply)
+  )
+
   val updateForm = Form(
     mapping(
       "operation" -> nonEmptyText.verifying(validateOperation),
@@ -84,6 +95,10 @@ object Cluster extends Controller {
 
   def addCluster = Action.async { implicit request =>
     Future.successful(Ok(views.html.cluster.addCluster(clusterConfigForm)))
+  }
+
+  def addScheduler = Action.async { implicit request =>
+    Future.successful(Ok(scheduler.views.html.scheduler.addScheduler(schedulerConfigForm)))
   }
 
   def updateCluster(c: String) = Action.async { implicit request =>
@@ -106,6 +121,24 @@ object Cluster extends Controller {
             "Add Cluster",
             FollowLink("Go to cluster view.",routes.Application.cluster(clusterConfig.name).toString()),
             FollowLink("Try again.",routes.Cluster.addCluster().toString())
+          ))
+        }
+      }
+    )
+  }
+
+  def handleAddScheduler = Action.async { implicit request =>
+    schedulerConfigForm.bindFromRequest.fold(
+      formWithErrors => Future.successful(BadRequest(scheduler.views.html.scheduler.addScheduler(formWithErrors))),
+      schedulerConfig => {
+        kafkaManager.addScheduler(schedulerConfig.name, schedulerConfig.version.toString, schedulerConfig.apiUrl, schedulerConfig.curatorConfig.zkConnect, jmxEnabled = true).map { errorOrSuccess =>
+          Ok(views.html.common.resultOfCommand(
+            views.html.navigation.defaultMenu(),
+            models.navigation.BreadCrumbs.withView("Add Scheduler"),
+            errorOrSuccess,
+            "Add Scheduler",
+            FollowLink("Go to scheduler view.",scheduler.controllers.routes.SchedulerApplication.getScheduler(schedulerConfig.name).toString()),
+            FollowLink("Try again.",routes.Cluster.addScheduler().toString())
           ))
         }
       }

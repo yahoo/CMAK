@@ -1,0 +1,101 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import b3.vertical.fieldConstructor
+@(schedulerName: String, brokerId: Int, brokerView :kafka.manager.ActorModel.SchedulerBrokerIdentity)
+
+@renderBrokerMetrics = {
+    @if(brokerView.schedulerConfig.jmxEnabled) {
+        @views.html.common.brokerMetrics(brokerView.metrics)
+    } else {
+        <div class="alert alert-info" role="alert">
+            Please enable JMX polling <a href="@routes.Cluster.updateCluster(schedulerName)" class="alert-link">here</a>.
+        </div>
+    }
+}
+
+        <div class="row">
+            <div class="col-md-7">
+                <div class="panel panel-default">
+                    <div class="panel-heading"><h4>Summary</h4></div>
+                    <table class="table">
+                        <tbody>
+                        <tr><td>Status</td><td>@brokerView.state</td></tr>
+                        <tr><td>CPUs</td><td>@brokerView.cpus</td></tr>
+                        <tr><td>Memory</td><td>@brokerView.mem</td></tr>
+                        <tr><td>Heap</td><td>@brokerView.heap</td></tr>
+                        <tr><td>Constraints</td><td>@brokerView.constraintsDesc</td></tr>
+                        <tr><td>Options</td><td>@brokerView.optionsDesc</td></tr>
+                        <tr><td>Log4j Options</td><td>@brokerView.log4jOptionsDesc</td></tr>
+                        <tr><td>Jvm Options</td><td>@brokerView.jvmOptions</td></tr>
+                        <tr><td># of Topics</td><td>@brokerView.numTopics</td></tr>
+                        <tr><td># of Partitions</td><td>@brokerView.numPartitions</td></tr>
+                        @if(brokerView.schedulerConfig.jmxEnabled) {
+                        <tr><td>% of Messages</td><td>@brokerView.stats.map(_.perMessages)</td></tr>
+                        <tr><td>% of Incoming</td><td>@brokerView.stats.map(_.perIncoming)</td></tr>
+                        <tr><td>% of Outgoing</td><td>@brokerView.stats.map(_.perOutgoing)</td></tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+                <div class="panel panel-default">
+                    <div class="panel-heading"><h4>Metrics</h4></div>
+                    @renderBrokerMetrics
+                </div>
+            </div>
+            <div class="col-md-5">
+                <div class="panel panel-default">
+                    <div class="panel-heading"><h4>Operations</h4></div>
+                    <table class="table">
+                        <tbody>
+                        <tr>
+                            @if(brokerView.active) {
+                                    @b3.form(scheduler.controllers.routes.Broker.handleStopBroker(schedulerName, brokerId)) {
+                                    <fieldset>
+                                        @b3.submit('class -> "btn btn-primary btn-block"){ Stop Broker }
+                                    </fieldset>
+                                    }
+                             } else {
+                                @b3.form(scheduler.controllers.routes.Broker.handleStartBroker(schedulerName, brokerId)) {
+                                    <fieldset>
+                                        @b3.submit('class -> "btn btn-primary btn-block"){ Start Broker }
+                                    </fieldset>
+                                    }
+                                @b3.form(scheduler.controllers.routes.Broker.handleRemoveBroker(schedulerName, brokerId)) {
+                                    <fieldset>
+                                        @b3.submit('class -> "btn btn-primary btn-block"){ Remove Broker }
+                                    </fieldset>
+                                    }
+                                <a href="@scheduler.controllers.routes.Broker.updateBroker(schedulerName, brokerId)" class="submit-button btn btn-primary" role="button">Update Broker</a>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="panel panel-default">
+                    <div class="panel-heading"><h4>Per Topic Detail</h4></div>
+                    <table class="table">
+                        <thead>
+                        <tr><th>Topic</th><th>Replication</th><th>Total Partitions</th><th>Partitions on Broker</th><th>Partitions</th><th>Skewed?</th></tr>
+                        </thead>
+                        <tbody>
+                        @for((ti,bp) <- brokerView.topicPartitions) {
+                        <tr>
+                            <td><a href="@routes.Topic.topic(schedulerName,ti.topic)">@ti.topic</a></td>
+                            <td>@ti.replicationFactor</td>
+                            <td>@ti.partitions</td>
+                            <td>@bp.size</td>
+                            <td>@bp.mkString("(",",",")")</td>
+                            <td>@ti.partitionsByBroker.find(_.id == brokerId).map(_.isSkewed).getOrElse("Unknown")</td>
+                        </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+

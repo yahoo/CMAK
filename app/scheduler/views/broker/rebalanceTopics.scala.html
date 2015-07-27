@@ -1,0 +1,46 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+
+@import helper._
+@import b3.vertical.fieldConstructor
+@import scheduler.controllers.routes
+@import scalaz.{\/}
+@(schedulerName: String, errorOrForm: kafka.manager.ApiError \/ Form[scheduler.models.form.RebalanceTopics])(implicit request: RequestHeader)
+
+@theMenu = {
+@views.html.navigation.schedulerMenu(schedulerName,"Rebalance Topics","",models.navigation.Menus.schedulerMenus(schedulerName))
+}
+
+@renderForm(rebalanceForm: Form[scheduler.models.form.RebalanceTopics]) = {
+<div class="panel-body">
+    @b3.form(routes.RebalanceTopics.handleRebalance(schedulerName)) {
+    <table class="table">
+        <tbody>
+        <tr>
+            <td>
+                @b3.text(rebalanceForm("ids"), '_label -> "IDs", 'placeholder -> "", 'autofocus -> true )
+                @b3.text(rebalanceForm("topics"), '_label -> "Topics", 'placeholder -> "")
+                @b3.submit('class -> "submit-button btn btn-primary"){ Submit }
+                <a href="@routes.SchedulerApplication.brokers(schedulerName)" class="cancel-button btn btn-default" role="button">Cancel</a>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+    }
+</div>
+}
+
+@main(
+"Rebalance Topics",
+menu = theMenu,
+breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Rebalance Topics",schedulerName))) {
+<div class="col-md-6 un-pad-me">
+    <div class="panel panel-default">
+        <div class="panel-heading"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>Rebalance</h3></div>
+        @errorOrForm.fold( views.html.errors.onApiError(_), renderForm(_))
+    </div>
+</div>
+}
+

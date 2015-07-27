@@ -3,7 +3,8 @@
 * See accompanying LICENSE file.
 *@
 @import scalaz.{\/}
-@(errorOrClusters: kafka.manager.ApiError \/ kafka.manager.ActorModel.KMClusterList)
+@(errorOrClusters: kafka.manager.ApiError \/ kafka.manager.ActorModel.KMClusterList,
+errorOrSchedulers: kafka.manager.ApiError \/ kafka.manager.ActorModel.KMSchedulerList)
 
 @main(
     "Kafka Manager",
@@ -17,6 +18,11 @@
         })
         @errorOrClusters.fold( _ => Html(""), cl => {
             views.html.cluster.pendingClusterList(cl.pending)
+        })
+
+        <div class="panel-heading"><h3>Schedulers</h3></div>
+        @errorOrSchedulers.fold(views.html.errors.onApiError(_), sc => {
+        scheduler.views.html.scheduler.schedulerList(sc.active)
         })
     </div>
 </div>

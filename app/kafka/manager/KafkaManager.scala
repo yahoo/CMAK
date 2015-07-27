@@ -12,6 +12,7 @@ import akka.actor.{ActorPath, ActorSystem, Props}
 import akka.util.Timeout
 import com.typesafe.config.{ConfigFactory, Config}
 import kafka.manager.ActorModel._
+import scheduler.models.form.Failover
 import org.slf4j.{LoggerFactory, Logger}
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -24,6 +25,8 @@ import scala.util.{Success, Failure, Try}
  */
 case class TopicListExtended(list: IndexedSeq[(String, Option[TopicIdentity])], deleteSet: Set[String], underReassignments: IndexedSeq[String])
 case class BrokerListExtended(list: IndexedSeq[BrokerIdentity], metrics: Map[Int,BrokerMetrics], combinedMetric: Option[BrokerMetrics], clusterConfig: ClusterConfig)
+
+case class SchedulerBrokerListExtended(list: Seq[SchedulerBrokerIdentity], metrics: Map[Int,BrokerMetrics], combinedMetric: Option[BrokerMetrics], schedulerConfig: SchedulerConfig)
 case class ApiError(msg: String)
 object ApiError {
   private[this] val log : Logger = LoggerFactory.getLogger(classOf[ApiError])
@@ -487,5 +490,130 @@ class KafkaManager(akkaConfig: Config)
         KSGetReassignPartition
       )
     )(identity[Option[ReassignPartitions]])
+  }
+
+  def addScheduler(schedulerName: String, version: String, apiUrl: String, zkHosts: String, jmxEnabled: Boolean): Future[ApiError \/
+    Unit] =
+  {
+    val sc = SchedulerConfig(schedulerName, apiUrl, CuratorConfig(zkHosts), enabled = true, KafkaVersion(version), jmxEnabled = jmxEnabled)
+
+    tryWithKafkaManagerActor(KMAddScheduler(sc)) { result: KMCommandResult =>
+      result.result.get
+    }
+  }
+
+  def getSchedulerView(schedulerName: String): Future[ApiError \/ SMView] = {
+    tryWithKafkaManagerActor(KMSchedulerQueryRequest(schedulerName, SMGetView))(identity[SMView])
+  }
+
+  def getSchedulerBrokerList(schedulerName: String): Future[ApiError \/ SchedulerBrokerListExtended] = {
+    implicit val ec = apiExecutionContext
+
+    val futureBrokerList = tryWithKafkaManagerActor(KMSchedulerQueryRequest(schedulerName, SchedulerKSGetBrokers))(identity[SchedulerBrokerList])
+    futureBrokerList.map {
+      case \/-(SchedulerBrokerList(identities, config)) =>
+        \/-(SchedulerBrokerListExtended(identities, Map.empty, None, config))
+      case a : -\/[ApiError] =>
+        a
+    }
+  }
+
+  def getSchedulerConfig(schedulerName: String): Future[ApiError \/ SchedulerConfig] = {
+    tryWithKafkaManagerActor(KMGetSchedulerConfig(schedulerName)) { result: KMSchedulerConfigResult =>
+      result.result.get
+    }
+  }
+
+  def getSchedulerList: Future[ApiError \/ KMSchedulerList] = {
+    tryWithKafkaManagerActor(KMGetAllSchedulers)(identity[KMSchedulerList])
+  }
+
+
+  def addBroker(schedulerName:String, id:Int, cpus: Option[Double], mem: Option[Long], heap: Option[Long], port: Option[String],
+                bindAddress: Option[String], constraints: Option[String], options: Option[String],
+                log4jOptions: Option[String], jvmOptions: Option[String], stickinessPeriod: Option[String],
+                failover: Failover): Future[ApiError \/ Unit] =
+  {
+    implicit val ec = apiExecutionContext
+    withKafkaManagerActor(KMSchedulerCommandRequest(schedulerName, SMAddBroker(id, cpus, mem, heap, port, bindAddress,
+      constraints, options, log4jOptions, jvmOptions, stickinessPeriod, failover))) {
+      result: Future[SMCommandResult] =>
+              result.map(cmr => toDisjunction(cmr.result))
+    }
+
+  }
+
+  def updateBroker(schedulerName:String, id:Int, cpus: Option[Double], mem: Option[Long], heap: Option[Long], port: Option[String],
+                bindAddress: Option[String], constraints: Option[String], options: Option[String],
+                log4jOptions: Option[String], jvmOptions: Option[String], stickinessPeriod: Option[String],
+                failover: Failover): Future[ApiError \/ Unit] =
+  {
+    implicit val ec = apiExecutionContext
+    withKafkaManagerActor(KMSchedulerCommandRequest(schedulerName, SMUpdateBroker(id, cpus, mem, heap, port, bindAddress,
+      constraints, options, log4jOptions, jvmOptions, stickinessPeriod, failover))) {
+      result: Future[SMCommandResult] =>
+        result.map(cmr => toDisjunction(cmr.result))
+    }
+
+  }
+
+  def getBrokerIdentity(schedulerName: String, brokerId: Int): Future[ApiError \/ SchedulerBrokerIdentity] = {
+    val futureView = tryWithKafkaManagerActor(
+      KMSchedulerQueryRequest(
+        schedulerName,
+        SMGetBrokerIdentity(brokerId)
+      )
+    )(identity[Option[SchedulerBrokerIdentity]])
+
+    implicit val ec = apiExecutionContext
+    futureView.flatMap[ApiError \/ SchedulerBrokerIdentity] { errOrView =>
+      errOrView.fold(
+      { err: ApiError =>
+        Future.successful(-\/[ApiError](err))
+      }, { viewOption: Option[SchedulerBrokerIdentity] =>
+        viewOption.fold {
+          Future.successful[ApiError \/ SchedulerBrokerIdentity](-\/(ApiError(s"Broker not found $brokerId for scheduler $schedulerName")))
+        } { view =>
+          Future.successful(\/-(view))
+        }
+      }
+      )
+    }
+  }
+
+  def startBroker(schedulerName: String, brokerId: Int): Future[ApiError \/ Unit] =
+  {
+    implicit val ec = apiExecutionContext
+    withKafkaManagerActor(KMSchedulerCommandRequest(schedulerName, SMStartBroker(brokerId))) {
+      result: Future[SMCommandResult] =>
+        result.map(cmr => toDisjunction(cmr.result))
+    }
+  }
+
+  def stopBroker(schedulerName: String, brokerId: Int): Future[ApiError \/ Unit] =
+  {
+    implicit val ec = apiExecutionContext
+    withKafkaManagerActor(KMSchedulerCommandRequest(schedulerName, SMStopBroker(brokerId))) {
+      result: Future[SMCommandResult] =>
+        result.map(cmr => toDisjunction(cmr.result))
+    }
+  }
+
+  def removeBroker(schedulerName: String, brokerId: Int): Future[ApiError \/ Unit] =
+  {
+    implicit val ec = apiExecutionContext
+    withKafkaManagerActor(KMSchedulerCommandRequest(schedulerName, SMRemoveBroker(brokerId))) {
+      result: Future[SMCommandResult] =>
+        result.map(cmr => toDisjunction(cmr.result))
+    }
+  }
+
+  def rebalanceTopics(schedulerName: String, ids: String, topics: Option[String]): Future[ApiError \/ Unit] =
+  {
+    implicit val ec = apiExecutionContext
+    withKafkaManagerActor(KMSchedulerCommandRequest(schedulerName, SMRebalanceTopics(ids, topics))) {
+      result: Future[SMCommandResult] =>
+        result.map(cmr => toDisjunction(cmr.result))
+    }
   }
 }

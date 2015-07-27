@@ -25,10 +25,27 @@ object Menus {
     "Reassign Partitions".clusterMenu(cluster)
   )
 
+  def schedulerMenus(scheduler: String) : IndexedSeq[Menu] = IndexedSeq(
+    Menu("Scheduler",IndexedSeq(
+      "Summary".schedulerRouteMenuItem(scheduler),
+      "List".baseRouteMenuItem,
+      "Add Scheduler".baseRouteMenuItem),
+      None),
+    Menu("Brokers",IndexedSeq(
+      "Add Broker".schedulerRouteMenuItem(scheduler)),
+      None),
+    "Rebalance Topics".schedulerMenu(scheduler)
+  )
+
   def indexMenu : IndexedSeq[Menu] = IndexedSeq(
     Menu("Cluster",IndexedSeq(
       "List".baseRouteMenuItem,
       "Add Cluster".baseRouteMenuItem),
+      None),
+
+      Menu("Scheduler",IndexedSeq(
+      "List".baseRouteMenuItem,
+      "Add Scheduler".baseRouteMenuItem),
       None)
   )
 }

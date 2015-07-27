@@ -17,9 +17,9 @@ object Application extends Controller {
   private[this] val kafkaManager = KafkaManagerContext.getKafkaManager
 
   def index = Action.async {
-    kafkaManager.getClusterList.map { errorOrClusterList =>
-      Ok(views.html.index(errorOrClusterList))
-    }
+    for {errorOrSchedulerList <- kafkaManager.getSchedulerList
+         errorOrClusterList <- kafkaManager.getClusterList
+    } yield Ok(views.html.index(errorOrClusterList, errorOrSchedulerList))
   }
 
   def cluster(c: String) = Action.async {
