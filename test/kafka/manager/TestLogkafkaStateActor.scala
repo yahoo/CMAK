@@ -58,7 +58,7 @@ class TestLogkafkaStateActor extends KafkaServerInTest {
   }
 
   test("get logkafka hostname list") {
-    withLogkafkaStateActor(LKSGetLogkafkaHostnames) { result: TopicList =>
+    withLogkafkaStateActor(LKSGetLogkafkaHostnames) { result: LogkafkaHostnameList =>
       result.list foreach println
     }
   }
