@@ -247,8 +247,11 @@ class AdminUtils(version: KafkaVersion) {
     checkCondition(topicsWithoutReadVersion.isEmpty, TopicErrors.NoReadVersionFound(topicsWithoutReadVersion.mkString(", ")))
 
     // topicAndReplicaList is sorted by number of partitions each topic has in order not to start adding partitions if any of requests doesn't work with newNumPartitions
-    for ((topic, replicaList) <- topicAndReplicaList) {
-      addPartitions(curator, topic, newNumPartitions, replicaList, brokerList, readVersions.getOrElse(topic,-1))
+    for {
+      (topic, replicaList) <- topicAndReplicaList
+      readVersion = readVersions(topic)
+    } {
+      addPartitions(curator, topic, newNumPartitions, replicaList, brokerList, readVersion)
     }
   }
 
