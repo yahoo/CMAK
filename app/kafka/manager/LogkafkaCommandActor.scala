@@ -10,7 +10,7 @@ import java.util.concurrent.{LinkedBlockingQueue, TimeUnit, ThreadPoolExecutor}
 import akka.pattern._
 import akka.util.Timeout
 import org.apache.curator.framework.CuratorFramework
-import kafka.manager.utils.{AdminUtils, ZkUtils}
+import kafka.manager.utils.{LogkafkaAdminUtils, ZkUtils}
 
 import scala.concurrent.{Future, ExecutionContext}
 import scala.concurrent.duration._
@@ -30,7 +30,7 @@ class LogkafkaCommandActor(logkafkaCommandActorConfig: LogkafkaCommandActorConfi
 
   //private[this] val askTimeout: Timeout = logkafkaCommandActorConfig.askTimeoutMillis.milliseconds
 
-  private[this] val adminUtils = new AdminUtils(logkafkaCommandActorConfig.version)
+  private[this] val logkafkaAdminUtils = new LogkafkaAdminUtils(logkafkaCommandActorConfig.version)
 
   @scala.throws[Exception](classOf[Exception])
   override def preStart() = {
@@ -74,7 +74,7 @@ class LogkafkaCommandActor(logkafkaCommandActorConfig: LogkafkaCommandActorConfi
             longRunning {
               Future {
                 LKCCommandResult(Try {
-                  adminUtils.deleteLogkafka(logkafkaCommandActorConfig.curator, hostname, log_path, logkafkaConfig)
+                  logkafkaAdminUtils.deleteLogkafka(logkafkaCommandActorConfig.curator, hostname, log_path, logkafkaConfig)
                 })
               }
             }
@@ -83,7 +83,7 @@ class LogkafkaCommandActor(logkafkaCommandActorConfig: LogkafkaCommandActorConfi
         longRunning {
           Future {
             LKCCommandResult(Try {
-              adminUtils.createLogkafka(logkafkaCommandActorConfig.curator, hostname, log_path, config, logkafkaConfig)
+              logkafkaAdminUtils.createLogkafka(logkafkaCommandActorConfig.curator, hostname, log_path, config, logkafkaConfig)
             })
           }
         }
@@ -91,7 +91,7 @@ class LogkafkaCommandActor(logkafkaCommandActorConfig: LogkafkaCommandActorConfi
         longRunning {
           Future {
             LKCCommandResult(Try {
-              adminUtils.changeLogkafkaConfig(logkafkaCommandActorConfig.curator, hostname, log_path, config, logkafkaConfig)
+              logkafkaAdminUtils.changeLogkafkaConfig(logkafkaCommandActorConfig.curator, hostname, log_path, config, logkafkaConfig)
             })
           }
         }

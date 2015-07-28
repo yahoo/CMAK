@@ -9,7 +9,7 @@ import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.cache._
 import org.apache.curator.framework.CuratorFramework
 import org.joda.time.{DateTimeZone, DateTime}
-import kafka.manager.utils.{ZkUtils}
+import kafka.manager.utils.{LogkafkaZkUtils}
 
 import scala.collection.mutable
 import scala.util.{Success, Failure, Try}
@@ -24,9 +24,9 @@ class LogkafkaStateActor(curator: CuratorFramework,
                       deleteSupported: Boolean, 
                       clusterConfig: ClusterConfig) extends BaseQueryCommandActor {
 
-  private[this] val logkafkaConfigTreeCache = new TreeCache(curator,ZkUtils.LogkafkaConfigPath)
+  private[this] val logkafkaConfigTreeCache = new TreeCache(curator,LogkafkaZkUtils.LogkafkaConfigPath)
 
-  private[this] val logkafkaClientTreeCache = new TreeCache(curator,ZkUtils.LogkafkaClientPath)
+  private[this] val logkafkaClientTreeCache = new TreeCache(curator,LogkafkaZkUtils.LogkafkaClientPath)
 
   @volatile
   private[this] var logkafkaConfigTreeCacheLastUpdateMillis : Long = System.currentTimeMillis()
@@ -118,12 +118,12 @@ class LogkafkaStateActor(curator: CuratorFramework,
   }
   
   private[this] def getLogkafkaConfigString(hostname: String) : Option[String] = {
-    val hostnamePath = "%s/%s".format(ZkUtils.LogkafkaConfigPath,hostname)
+    val hostnamePath = "%s/%s".format(LogkafkaZkUtils.LogkafkaConfigPath,hostname)
     Option(logkafkaConfigTreeCache.getCurrentData(hostnamePath)).map( childData => asString(childData.getData))
   }
 
   private[this] def getLogkafkaClientString(hostname: String) : Option[String] = {
-    val hostnamePath = "%s/%s".format(ZkUtils.LogkafkaClientPath,hostname)
+    val hostnamePath = "%s/%s".format(LogkafkaZkUtils.LogkafkaClientPath,hostname)
     Option(logkafkaClientTreeCache.getCurrentData(hostnamePath)).map( childData => asString(childData.getData))
   }
 
@@ -132,7 +132,7 @@ class LogkafkaStateActor(curator: CuratorFramework,
       case LKSGetLogkafkaHostnames =>
         val deleteSet: Set[String] = Set.empty
         withLogkafkaConfigTreeCache { cache =>
-          cache.getCurrentChildren(ZkUtils.LogkafkaConfigPath)
+          cache.getCurrentChildren(LogkafkaZkUtils.LogkafkaConfigPath)
         }.fold {
           sender ! LogkafkaHostnameList(IndexedSeq.empty, deleteSet)
         } { data: java.util.Map[String, ChildData] =>
@@ -156,7 +156,7 @@ class LogkafkaStateActor(curator: CuratorFramework,
         if (logkafkaConfigTreeCacheLastUpdateMillis > lastUpdateMillis) {
           //we have option here since there may be no logkafka configs at all!
           withLogkafkaConfigTreeCache {  cache: TreeCache =>
-            cache.getCurrentChildren(ZkUtils.LogkafkaConfigPath)
+            cache.getCurrentChildren(LogkafkaZkUtils.LogkafkaConfigPath)
           }.fold {
             sender ! LogkafkaConfigs(IndexedSeq.empty, logkafkaConfigTreeCacheLastUpdateMillis)
           } { data: java.util.Map[String, ChildData] =>
@@ -169,7 +169,7 @@ class LogkafkaStateActor(curator: CuratorFramework,
         if (logkafkaClientTreeCacheLastUpdateMillis > lastUpdateMillis) {
           //we have option here since there may be no logkafka clients at all!
           withLogkafkaClientTreeCache {  cache: TreeCache =>
-            cache.getCurrentChildren(ZkUtils.LogkafkaClientPath)
+            cache.getCurrentChildren(LogkafkaZkUtils.LogkafkaClientPath)
           }.fold {
             sender ! LogkafkaClients(IndexedSeq.empty, logkafkaClientTreeCacheLastUpdateMillis)
           } { data: java.util.Map[String, ChildData] =>
