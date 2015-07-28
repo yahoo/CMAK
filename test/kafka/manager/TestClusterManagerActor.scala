@@ -158,6 +158,39 @@ class TestClusterManagerActor extends CuratorAwareTest {
     }
   }
 
+  test("manual partition assignments for topic") {
+    val assignment = List(
+      ("cm-test",List(
+        (0, List(0)), (1, List(0)), (2, List(0)), (3, List(0)))
+      ),
+      ("cm-unit-test",List(
+        (0, List(0)), (1, List(0)), (2, List(0)), (3, List(0)))
+      )
+    )
+
+    withClusterManagerActor(CMManualPartitionAssignments(assignment)) { cmResults: CMCommandResults =>
+      cmResults.result.foreach { t =>
+        if (t.isFailure) {
+          t.get
+        }
+      }
+    }
+    Thread.sleep(2000)
+    withCurator { curator =>
+      val topics = for {
+        (topic, topicAssignment) <- assignment
+      } yield {
+        topic
+      }
+
+      topics.foreach { topic =>
+        val data =  curator.getData.forPath(s"/kafka-manager/clusters/dev/topics/$topic")
+        assert(data != null)
+        println(s"$topic -> " + ClusterManagerActor.deserializeAssignments(data))
+      }
+    }
+  }
+
   test("run preferred leader election for topic") {
     withClusterManagerActor(KSGetTopics) { result : TopicList =>
       val topicSet = result.list.toSet
