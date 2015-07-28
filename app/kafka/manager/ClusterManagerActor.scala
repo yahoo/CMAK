@@ -18,6 +18,7 @@ import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex
 import org.apache.zookeeper.CreateMode
 import kafka.manager.utils.{AdminUtils, TopicAndPartition}
 
+import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
@@ -183,6 +184,22 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
     }
   }
 
+  private def updateAssignmentInZk(topic: String, assignment: Map[Int, Seq[Int]]) = {
+    implicit val ec = longRunningExecutionContext
+
+    Try {
+      val topicZkPath = zkPathFrom(baseTopicsZkPath, topic)
+      val data = serializeAssignments(assignment)
+      Option(clusterManagerTopicsPathCache.getCurrentData(topicZkPath)).fold[Unit] {
+        log.info(s"Creating and saving generated data $topicZkPath")
+        curator.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(topicZkPath, data)
+      } { _ =>
+        log.info(s"Updating generated data $topicZkPath")
+        curator.setData().forPath(topicZkPath, data)
+      }
+    }
+  }
+
   override def processCommandRequest(request: CommandRequest): Unit = {
     request match {
       case CMShutdown =>
@@ -260,12 +277,17 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         implicit val ec = longRunningExecutionContext
         val eventualBrokerList = withKafkaStateActor(KSGetBrokers)(identity[BrokerList])
         val eventualDescriptions = withKafkaStateActor(KSGetTopicDescriptions(topics))(identity[TopicDescriptions])
+        val eventualReassignPartitions = withKafkaStateActor(KSGetReassignPartition)(identity[Option[ReassignPartitions]])
         val generated: Future[IndexedSeq[(String, Map[Int, Seq[Int]])]] = for {
           bl <- eventualBrokerList
           tds <- eventualDescriptions
+          rp <- eventualReassignPartitions
           tis = tds.descriptions.map(TopicIdentity.from(bl, _, None,cmConfig.clusterConfig))
         } yield {
           bl.list.map(_.id.toInt)
+          // check if any topic undergoing reassignment got selected for reassignment
+          val topicsUndergoingReassignment = getTopicsUnderReassignment(rp, topics)
+          require(topicsUndergoingReassignment.isEmpty, "Topic(s) already undergoing reassignment(s): [%s]".format(topicsUndergoingReassignment.mkString(", ")))
           // check if any nonexistent broker got selected for reassignment
           val nonExistentBrokers = getNonExistentBrokers(bl, brokers)
           require(nonExistentBrokers.isEmpty, "Nonexistent broker(s) selected: [%s]".format(nonExistentBrokers.mkString(", ")))
@@ -275,22 +297,23 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
             ti.replicationFactor)))
         }
 
-        val result = generated.map { list =>
+        val result: Future[IndexedSeq[Try[Unit]]] = generated.map { list =>
           modify {
             list.map { case (topic, assignments: Map[Int, Seq[Int]]) =>
-              Try {
-                val topicZkPath = zkPathFrom(baseTopicsZkPath, topic)
-                val data = serializeAssignments(assignments)
-                Option(clusterManagerTopicsPathCache.getCurrentData(topicZkPath)).fold[Unit] {
-                  log.info(s"Creating and saving generated data $topicZkPath")
-                  curator.create().creatingParentsIfNeeded().withMode(CreateMode.PERSISTENT).forPath(topicZkPath, data)
-                } { _ =>
-                  log.info(s"Updating generated data $topicZkPath")
-                  curator.setData().forPath(topicZkPath, data)
-                }
-              }
+              updateAssignmentInZk(topic, assignments)
             }
           }
+        }
+        result.map(CMCommandResults.apply) pipeTo sender()
+
+      case CMManualPartitionAssignments(assignments) =>
+        implicit val ec = longRunningExecutionContext
+        val result = Future {
+          modify {
+            assignments.map { case (topic, assignment) =>
+              updateAssignmentInZk(topic, assignment.toMap)
+            }
+          } toIndexedSeq
         }
         result.map(CMCommandResults.apply) pipeTo sender()
 
@@ -382,5 +405,14 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
   def getNonExistentBrokers(availableBrokers: BrokerList, assignments: Map[Int, Seq[Int]]): Seq[Int] = {
     val brokersAssigned = assignments.flatMap({ case  (pt, bl) => bl }).toSet.toSeq
     getNonExistentBrokers(availableBrokers, brokersAssigned)
+  }
+
+  def getTopicsUnderReassignment(reassignPartitions: Option[ReassignPartitions], topicsToBeReassigned: Set[String]): Set[String] = {
+    val topicsUnderReassignment = reassignPartitions.map { asgn =>
+      asgn.endTime.map(_ => Set[String]()).getOrElse{
+        asgn.partitionsToBeReassigned.map { case (t,s) => t.topic}.toSet
+      }
+    }.getOrElse(Set[String]())
+    topicsToBeReassigned.intersect(topicsUnderReassignment)
   }
 }

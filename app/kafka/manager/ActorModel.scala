@@ -35,6 +35,7 @@ object ActorModel {
   case object BVForceUpdate extends CommandRequest
   case object BVGetTopicIdentities extends BVRequest
   case class BVGetView(id: Int) extends BVRequest
+  case object BVGetViews extends BVRequest
   case class BVGetTopicMetrics(topic: String) extends BVRequest
   case object BVGetBrokerMetrics extends BVRequest
   case class BVView(topicPartitions: Map[TopicIdentity, IndexedSeq[Int]], clusterConfig: ClusterConfig,
@@ -68,6 +69,7 @@ object ActorModel {
   case class CMRunPreferredLeaderElection(topics: Set[String]) extends CommandRequest
   case class CMRunReassignPartition(topics: Set[String]) extends CommandRequest
   case class CMGeneratePartitionAssignments(topics: Set[String], brokers: Seq[Int]) extends CommandRequest
+  case class CMManualPartitionAssignments(assignments: List[(String, List[(Int, List[Int])])]) extends CommandRequest
 
   case object SMGetView extends QueryRequest
   case class SMView(topicsCount: Int, brokersCount: Int, schedulerConfig: SchedulerConfig) extends QueryResponse
@@ -412,7 +414,8 @@ object ActorModel {
                            bytesRejectedPerSec: MeterMetric,
                            failedFetchRequestsPerSec: MeterMetric,
                            failedProduceRequestsPerSec: MeterMetric,
-                           messagesInPerSec: MeterMetric) {
+                           messagesInPerSec: MeterMetric,
+                           oSystemMetrics: OSMetric) {
     def +(o: BrokerMetrics) : BrokerMetrics = {
       BrokerMetrics(
         o.bytesInPerSec + bytesInPerSec,
@@ -420,7 +423,8 @@ object ActorModel {
         o.bytesRejectedPerSec + bytesRejectedPerSec,
         o.failedFetchRequestsPerSec + failedFetchRequestsPerSec,
         o.failedProduceRequestsPerSec + failedProduceRequestsPerSec,
-        o.messagesInPerSec + messagesInPerSec)
+        o.messagesInPerSec + messagesInPerSec,
+        oSystemMetrics)
     }
 
   }
@@ -432,7 +436,8 @@ object ActorModel {
       MeterMetric(0, 0, 0, 0, 0),
       MeterMetric(0, 0, 0, 0, 0),
       MeterMetric(0, 0, 0, 0, 0),
-      MeterMetric(0, 0, 0, 0, 0))
+      MeterMetric(0, 0, 0, 0, 0),
+      OSMetric(0D, 0D))
   }
   
   case class BrokerClusterStats(perMessages: BigDecimal, perIncoming: BigDecimal, perOutgoing: BigDecimal)

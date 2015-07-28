@@ -5,8 +5,8 @@
 
 package controllers
 
-import kafka.manager.ActorModel.TopicList
-import kafka.manager.ApiError
+import kafka.manager.ActorModel._
+import kafka.manager.{BrokerListExtended, ApiError, TopicListExtended}
 import models.navigation.Menus
 import models.{navigation, FollowLink}
 import models.form._
@@ -16,7 +16,7 @@ import play.api.data.validation.{Valid, Invalid, Constraint}
 import play.api.mvc._
 
 import scala.concurrent.Future
-import scalaz.{\/-, -\/}
+import scalaz.{\/, \/-, -\/}
 
 /**
  * @author hiral
@@ -32,6 +32,7 @@ object ReassignPartitions extends Controller{
     case "generate" => Valid
     case any: Any => Invalid(s"Invalid operation value: $any")
   }
+
 
   val reassignPartitionsForm = Form(
     mapping(
@@ -49,7 +50,21 @@ object ReassignPartitions extends Controller{
       }
     )(RunMultipleAssignments.apply)(RunMultipleAssignments.unapply)
   )
-  
+
+  val manualReassignmentForm: Form[List[(String, List[(Int, List[Int])])]] = Form(
+    "topics" -> list (
+      tuple (
+        "topic" -> text,
+        "assignments" -> list (
+          tuple (
+            "partition" -> number,
+            "brokers" -> list(number)
+          )
+        )
+      )
+    )
+  )
+
   val generateAssignmentsForm = Form(
     mapping(
       "brokers" -> seq {
@@ -103,8 +118,7 @@ object ReassignPartitions extends Controller{
   }
 
   def confirmMultipleAssignments(c: String) = Action.async {
-    val topicList = kafkaManager.getTopicList(c)
-    topicList.flatMap { errOrTL =>
+    kafkaManager.getTopicList(c).flatMap { errOrTL =>
       errOrTL.fold(
       { err: ApiError =>
         Future.successful( Ok(views.html.topic.confirmMultipleAssignments( c, -\/(err) )))
@@ -117,6 +131,96 @@ object ReassignPartitions extends Controller{
       }
       )
     }
+  }
+
+  def manualMultipleAssignments(c: String): Action[AnyContent] = Action.async {
+    val topicList = kafkaManager.getTopicListExtended(c)
+    val brokersViews = kafkaManager.getBrokersView(c)
+
+    def flattenedTopicListExtended(topicListExtended: TopicListExtended) = {
+      topicListExtended.list.map {
+        case (topic, Some(topicIdentity)) =>
+          (topic, topicIdentity.partitionsIdentity.toList.map { case (partition, identity) =>
+            (partition, identity.replicas.toList)
+          })
+        case (topic, None) => (topic, List[(Int, List[Int])]())
+      } toList
+    }
+
+    topicList.flatMap { errOrTL =>
+      errOrTL.fold(
+      { err: ApiError =>
+        Future.successful( Ok(views.html.topic.confirmMultipleAssignments( c, -\/(err) )))
+      },
+      { topics: TopicListExtended =>
+          kafkaManager.getBrokerList(c).flatMap { errOrCV =>
+            errOrCV.fold(
+            {err: ApiError =>
+              Future.successful( Ok(views.html.topic.confirmMultipleAssignments( c, -\/(err) )))
+            },
+            { brokers: BrokerListExtended => {
+                brokersViews.flatMap { errorOrBVs =>
+                  errorOrBVs.fold (
+                  {err: ApiError => Future.successful( Ok(views.html.topic.confirmMultipleAssignments( c, -\/(err) )))},
+                  {bVs: Seq[BVView] => Future {
+                    Ok(views.html.topic.manualMultipleAssignments(
+                      c, manualReassignmentForm.fill(flattenedTopicListExtended(topics)), brokers , bVs, manualReassignmentForm.errors
+                    ))
+                  }}
+                  )
+                }
+              }
+            }
+            )
+          }
+        }
+      )
+    }
+  }
+
+  def handleManualAssignment(c: String) = Action.async { implicit request =>
+    def validateAssignment(assignment: List[(String, List[(Int, List[Int])])]) = {
+      (for {
+        (topic, assign) <- assignment
+        (partition, replicas) <- assign
+      } yield {
+        replicas.size == replicas.toSet.size
+      }) forall { b => b }
+    }
+
+    def responseScreen(title: String, errorOrResult: \/[IndexedSeq[ApiError], Unit]) = {
+      Ok(views.html.common.resultsOfCommand(
+        views.html.navigation.clusterMenu(c, title, "", Menus.clusterMenus(c)),
+        models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Manual Reassignment View", c, "", title),
+        errorOrResult,
+        title,
+        FollowLink("Go to topic list.", routes.Topic.topics(c).toString()),
+        FollowLink("Try again.", routes.Topic.topics(c).toString())
+      ))
+    }
+
+    manualReassignmentForm.bindFromRequest.fold (
+      errors => kafkaManager.getClusterList.map { errorOrClusterList =>
+        responseScreen(
+          "Manual Reassign Partitions Failure",
+          -\/(IndexedSeq(ApiError("There is something really wrong with your submitted data!")))
+        )
+      },
+      assignment => {
+        if (validateAssignment(assignment)) {
+          kafkaManager.manualPartitionAssignments(c, assignment).map { errorOrClusterList =>
+            responseScreen("Manual Partitions Reassignment Successful", errorOrClusterList)
+          }
+        } else {
+          Future {
+            responseScreen(
+              "Manual Partitions Reassignment Failure",
+              -\/(IndexedSeq(ApiError("You cannot (or at least should not) assign two replicas of the same partition to the same broker!!")))
+            )
+          }
+        }
+      }
+    )
   }
 
   def handleGenerateAssignment(c: String, t: String) = Action.async { implicit request =>
