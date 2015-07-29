@@ -390,7 +390,7 @@ class KafkaManager(akkaConfig: Config)
         tl <- errOrTl
         rap <- errOrRap
       } yield {
-        TopicListExtended(tl.list.map(t => (t, ti.get(t))), tl.deleteSet, rap)
+        TopicListExtended(tl.list.map(t => (t, ti.get(t))).sortBy(_._1), tl.deleteSet, rap)
       }
     }
   }

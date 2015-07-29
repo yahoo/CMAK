@@ -184,7 +184,7 @@
             </div>
             <div class="panel panel-default">
                 <div class="panel-heading"><h4>Partitions by Broker</h4></div>
-                <table class="table">
+                <table class="table" style="table-layout: fixed; width: 100%">
                     <thead>
                     <tr><th>Broker</th><th># of Partitions</th><th>Partitions</th><th>Skewed?</th></tr>
                     </thead>
@@ -193,7 +193,7 @@
                     <tr>
                         <td><a href="@routes.Application.broker(cluster,btp.id)">@btp.id</a></td>
                         <td>@btp.partitions.size</td>
-                        <td>@btp.partitions.mkString("(",",",")")</td>
+                        <td style="word-wrap: break-word">@btp.partitions.mkString("(",",",")")</td>
                         <td class="@getBrokerIsSkewedLevel(btp.isSkewed)">
                             @btp.isSkewed
                         </td>
