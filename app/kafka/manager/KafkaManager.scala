@@ -570,6 +570,10 @@ class KafkaManager(akkaConfig: Config)
     )(identity[Option[ReassignPartitions]])
   }
 
+  def getLogkafkaHostnameList(clusterName: String): Future[ApiError \/ LogkafkaHostnameList] = {
+    tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, LKSGetLogkafkaHostnames))(identity[LogkafkaHostnameList])
+  }
+
   def getLogkafkaListExtended(clusterName: String): Future[ApiError \/ LogkafkaListExtended] = {
     val futureLogkafkaIdentities = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, LKVGetLogkafkaIdentities))(identity[Map[String, LogkafkaIdentity]])
     val futureLogkafkaList = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, LKSGetLogkafkaHostnames))(identity[LogkafkaHostnameList])

@@ -34,6 +34,9 @@ class TestKafkaManager extends CuratorAwareTest {
 
   private[this] val duration = FiniteDuration(10,SECONDS)
   private[this] val createTopicName = "km-unit-test"
+  private[this] val createLogkafkaHostname = "km-unit-test-logkafka-hostname"
+  private[this] val createLogkafkaLogPath = "/km-unit-test-logkafka-logpath"
+  private[this] val createLogkafkaTopic = "km-unit-test-logkafka-topic"
 
   override protected def beforeAll() : Unit = {
     super.beforeAll()
@@ -272,6 +275,74 @@ class TestKafkaManager extends CuratorAwareTest {
     val result = Await.result(future,duration)
     assert(result.isLeft === true, result)
     assert(result.swap.toOption.get.msg.contains("not supported"))
+    Thread.sleep(2000)
+  }
+
+  test("update cluster logkafka enabled") {
+    val future = kafkaManager.updateCluster("dev","0.8.2.0",testServer.getConnectString, jmxEnabled = false, logkafkaEnabled = true)
+    val result = Await.result(future,duration)
+    assert(result.isRight === true)
+
+    val future2 = kafkaManager.getClusterList
+    val result2 = Await.result(future2,duration)
+    assert(result2.isRight === true)
+    assert((result2.toOption.get.pending.nonEmpty === true) ||
+           (result2.toOption.get.active.find(c => c.name == "dev").get.logkafkaEnabled === true))
+    Thread.sleep(3000)
+  }
+
+  test("create logkafka") {
+    val config = new Properties()
+    config.put(kafka.manager.utils.logkafka82.LogConfig.TopicProp,createLogkafkaTopic)
+    val future = kafkaManager.createLogkafka("dev",createLogkafkaHostname,createLogkafkaLogPath,config)
+    val result = Await.result(future,duration)
+    assert(result.isRight === true)
+    Thread.sleep(2000)
+  }
+
+  test("get logkafka identity") {
+    val future = kafkaManager.getLogkafkaHostnameList("dev")
+    val result = Await.result(future,duration)
+    assert(result.isRight === true)
+    assert(result.toOption.get.list.nonEmpty === true)
+    result.toOption.get.list.foreach { hostname =>
+      val future2 = kafkaManager.getLogkafkaIdentity("dev",hostname)
+      val result2 = Await.result(future2, duration)
+      assert(result2.isRight === true)
+    }
+  }
+
+  test("update logkafka config") {
+    val liFuture= kafkaManager.getLogkafkaIdentity("dev",createLogkafkaHostname)
+    val liOrError = Await.result(liFuture, duration)
+    assert(liOrError.isRight, "Failed to get logkafka identity!")
+    val li = liOrError.toOption.get
+    val config = new Properties()
+    config.put(kafka.manager.utils.logkafka82.LogConfig.TopicProp,createLogkafkaTopic)
+    config.put(kafka.manager.utils.logkafka82.LogConfig.PartitionProp,"1")
+    val future = kafkaManager.updateLogkafkaConfig("dev",createLogkafkaHostname,createLogkafkaLogPath,config)
+    val result = Await.result(future,duration)
+    assert(result.isRight === true)
+
+    //check new logkafka config
+    {
+      val liFuture= kafkaManager.getLogkafkaIdentity("dev",createLogkafkaHostname)
+      val liOrError = Await.result(liFuture, duration)
+      assert(liOrError.isRight, "Failed to get logkafka identity!")
+      val li = liOrError.toOption.get
+      assert(li.identityMap.get(createLogkafkaLogPath).get._1.get.apply(kafka.manager.utils.logkafka82.LogConfig.PartitionProp) === "1")
+    }
+  }
+
+  test("delete logkafka") {
+    val future = kafkaManager.deleteLogkafka("dev",createLogkafkaHostname,createLogkafkaLogPath)
+    val result = Await.result(future,duration)
+    assert(result.isRight === true, result)
+    val liFuture= kafkaManager.getLogkafkaIdentity("dev",createLogkafkaHostname)
+    val liOrError = Await.result(liFuture, duration)
+    assert(liOrError.isRight, "Failed to get logkafka identity!")
+    val li = liOrError.toOption.get
+    assert(li.identityMap.get(createLogkafkaLogPath) === None)
     Thread.sleep(2000)
   }
 
