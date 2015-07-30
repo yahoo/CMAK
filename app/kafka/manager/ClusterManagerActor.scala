@@ -252,6 +252,27 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           }
         } pipeTo sender()
 
+      case CMAddMultipleTopicsPartitions(topicsAndReplicas, brokers, partitions, readVersions) =>
+        implicit val ec = longRunningExecutionContext
+        val eventualBrokerList = withKafkaStateActor(KSGetBrokers)(identity[BrokerList])
+        val eventualDescriptions = withKafkaStateActor(KSGetTopicDescriptions(topicsAndReplicas.map(x=>x._1).toSet))(identity[TopicDescriptions])
+        eventualDescriptions.map { topicDescriptions =>
+          val topicsWithoutDescription = topicsAndReplicas.map(x=>x._1).filter{t => !topicDescriptions.descriptions.map(td => td.topic).contains(t) }
+          require(topicsWithoutDescription.isEmpty, "Topic(s) don't exist: [%s]".format(topicsWithoutDescription.mkString(", ")))
+          eventualBrokerList.flatMap {
+            bl => {
+              val brokerSet = bl.list.map(_.id).toSet
+              val nonExistentBrokers = getNonExistentBrokers(bl, brokers)
+              require(nonExistentBrokers.isEmpty, "Nonexistent broker(s) selected: [%s]".format(nonExistentBrokers.mkString(", ")))
+              withKafkaCommandActor(KCAddMultipleTopicsPartitions(topicsAndReplicas, brokers.filter(brokerSet.apply), partitions, readVersions))
+              {
+                kcResponse: KCCommandResult =>
+                  CMCommandResult(kcResponse.result)
+              }
+            }
+          }
+        } pipeTo sender()
+
       case CMUpdateTopicConfig(topic, config, readVersion) =>
         implicit val ec = longRunningExecutionContext
         val eventualTopicDescription = withKafkaStateActor(KSGetTopicDescription(topic))(identity[Option[TopicDescription]])

@@ -11,6 +11,7 @@ import java.util.concurrent.{LinkedBlockingQueue, TimeUnit, ThreadPoolExecutor}
 import akka.actor.{ActorPath, ActorSystem, Props}
 import akka.util.Timeout
 import com.typesafe.config.{ConfigFactory, Config}
+import controllers.Topic
 import kafka.manager.ActorModel._
 import org.slf4j.{LoggerFactory, Logger}
 
@@ -325,6 +326,34 @@ class KafkaManager(akkaConfig: Config)
     }
   }
 
+  def addMultipleTopicsPartitions(
+                              clusterName: String,
+                              topics: Seq[String],
+                              brokers: Seq[Int],
+                              partitions: Int,
+                              readVersions: Map[String, Int]
+                              ): Future[ApiError \/ Unit] =
+  {
+    implicit val ec = apiExecutionContext
+    getTopicListExtended(clusterName).flatMap { tleOrError =>
+      tleOrError.fold(
+      e => Future.successful(-\/(e)), { tle =>
+        // add partitions to only topics with topic identity
+        val topicsAndReplicas = topicListSortedByNumPartitions(tle).filter(t => topics.contains(t._1) && t._2.nonEmpty).map{ case (t,i) => (t, i.get.partitionsIdentity.mapValues(_.replicas)) }
+        withKafkaManagerActor(
+          KMClusterCommandRequest(
+            clusterName,
+            CMAddMultipleTopicsPartitions(topicsAndReplicas, brokers, partitions, readVersions)
+          )
+        ) {
+          result: Future[CMCommandResult] =>
+            result.map(cmr => toDisjunction(cmr.result))
+        }
+      }
+      )
+    }
+  }
+
   def updateTopicConfig(
                          clusterName: String,
                          topic: String,
@@ -521,5 +550,18 @@ class KafkaManager(akkaConfig: Config)
         KSGetReassignPartition
       )
     )(identity[Option[ReassignPartitions]])
+  }
+
+  def topicListSortedByNumPartitions(tle: TopicListExtended): Seq[(String, Option[TopicIdentity])] = {
+    def partition(tiOption: Option[TopicIdentity]): Int = {
+      tiOption match {
+        case Some(ti) => ti.partitions
+        case None => 0
+      }
+    }
+    val sortedByNumPartition = tle.list.sortWith{ (leftE, rightE) =>
+      partition(leftE._2) > partition(rightE._2)
+    }
+    sortedByNumPartition
   }
 }

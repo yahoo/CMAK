@@ -99,6 +99,14 @@ class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extend
             })
           }
         }
+      case KCAddMultipleTopicsPartitions(topicsAndReplicas, brokers, partitions, readVersion) =>
+        longRunning {
+          Future {
+            KCCommandResult(Try {
+              adminUtils.addPartitionsToTopics(kafkaCommandActorConfig.curator, topicsAndReplicas, partitions, brokers, readVersion)
+            })
+          }
+        }
       case KCUpdateTopicConfig(topic, config, readVersion) =>
         longRunning {
           Future {

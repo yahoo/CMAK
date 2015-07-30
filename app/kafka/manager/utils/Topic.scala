@@ -66,6 +66,9 @@ object TopicErrors {
   class FailedToAddNewPartitions private[TopicErrors] (topic: String, newPartitions: Int, found: Int) extends UtilError(
     s"Failed to add new partitions topic=$topic, newPartitions=$newPartitions, after adding new partitions to assignment found=$found"
   )
+  class NoReadVersionFound private[TopicErrors] (topics: String) extends UtilError(
+    s"Cannot find read version for topics: $topics while adding new partitions"
+  )
   class TopicDoesNotExist private[TopicErrors] (topic: String) extends UtilError(s"Topic does not exist : $topic")
 
   val TopicNameEmpty = new TopicNameEmpty
@@ -80,6 +83,7 @@ object TopicErrors {
   def DuplicateReplicaAssignment(topic: String, part: Int, replicas: Seq[Int]) = new DuplicateReplicaAssignment(topic,part,replicas)
   def CannotAddZeroPartitions(topic: String, currentPartitions: Int, newPartitions:Int) = new CannotAddZeroPartitions(topic,currentPartitions,newPartitions)
   def FailedToAddNewPartitions(topic: String, newPartitions:Int, found: Int) = new FailedToAddNewPartitions(topic,newPartitions,found)
+  def NoReadVersionFound(topics: String) = new NoReadVersionFound(topics)
   def TopicDoesNotExist(topic: String) = new TopicDoesNotExist(topic)
 }
 
