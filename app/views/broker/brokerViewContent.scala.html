@@ -38,9 +38,34 @@
                 </div>
             </div>
         </div>
+        <div class="row">
+            <div class="col-md-12">
+                <div class="panel panel-default">
+                    <div class="panel-heading"><h4>Messages count</h4></div>
+                    <div class="ct-chart"></div>
+                    <script>
+                        var options = {
+                            axisY: {
+                                type: Chartist.AutoScaleAxis,
+                                low: @brokerView.messagesPerSecCountHistory.map(v => v.head.count - 1).getOrElse(0),
+                                high: @brokerView.messagesPerSecCountHistory.map(v => v.last.count + 1).getOrElse(0),
+                                onlyInteger: true
+                            }
+                        };
+                        var data = {
+                          labels: [@Html(brokerView.messagesPerSecCountHistory.map(_.map(v => s"'${v.date.toString("HH:mm:ss")}'").mkString(",")).getOrElse(""))],
+                          series: [
+                            [@brokerView.messagesPerSecCountHistory.map(_.map(_.count).mkString(","))]
+                          ]
+                        };
+                        new Chartist.Line('.ct-chart', data, options);
+                    </script>
+                </div>
+            </div>
+        </div>
         <div class="panel panel-default">
             <div class="panel-heading"><h4>Per Topic Detail</h4></div>
-            <table class="table">
+            <table class="table" id="broker-table" style="table-layout: fixed; width: 100%">
                 <thead>
                 <tr><th>Topic</th><th>Replication</th><th>Total Partitions</th><th>Partitions on Broker</th><th>Partitions</th><th>Skewed?</th></tr>
                 </thead>
@@ -51,7 +76,7 @@
                     <td>@ti.replicationFactor</td>
                     <td>@ti.partitions</td>
                     <td>@bp.size</td>
-                    <td>@bp.mkString("(",",",")")</td>
+                    <td style="word-wrap: break-word">@bp.mkString("(",",",")")</td>
                     <td>@ti.partitionsByBroker.find(_.id == brokerId).map(_.isSkewed).getOrElse("Unknown")</td>
                 </tr>
                 }
