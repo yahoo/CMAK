@@ -227,7 +227,7 @@ object ActorModel {
 
       brokerPartitionsMap.map {
         case (brokerId, brokerPartitions)=>
-          BrokerTopicPartitions(brokerId, brokerPartitions.toIndexedSeq,
+          BrokerTopicPartitions(brokerId, brokerPartitions.toIndexedSeq.sorted,
             brokerPartitions.size > avgPartitionsPerBroker)
       }.toIndexedSeq.sortBy(_.id)
     }
