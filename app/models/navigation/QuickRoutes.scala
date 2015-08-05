@@ -26,7 +26,8 @@ object QuickRoutes {
     "List" -> controllers.routes.Topic.topics,
     "Create" -> controllers.routes.Topic.createTopic,
     "Preferred Replica Election" -> controllers.routes.PreferredReplicaElection.preferredReplicaElection,
-    "Reassign Partitions" -> controllers.routes.ReassignPartitions.reassignPartitions
+    "Reassign Partitions" -> controllers.routes.ReassignPartitions.reassignPartitions,
+    "Consumers" -> controllers.routes.Consumers.list
   )
   val topicRoutes : Map[String, (String, String) => Call] = Map(
     "Topic View" -> controllers.routes.Topic.topic,

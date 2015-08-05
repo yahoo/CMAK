@@ -62,6 +62,12 @@ object BreadCrumbs {
       "Clusters".baseRouteBreadCrumb,
       BCDynamicNamedLink(identity,"Summary".clusterRoute),
       "Preferred Replica Election".clusterRouteBreadCrumb
+    ),
+    "Consumers" -> IndexedSeq("Clusters".baseRouteBreadCrumb,BCDynamicNamedLink(identity,"Summary".clusterRoute)),
+    "Consumer Details" -> IndexedSeq(
+      "Clusters".baseRouteBreadCrumb,
+      BCDynamicNamedLink(identity,"Summary".clusterRoute),
+      "Consumers".clusterRouteBreadCrumb
     )
   )
 

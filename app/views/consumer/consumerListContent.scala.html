@@ -1,0 +1,28 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+
+@(cluster:String, consumerInfo: controllers.ConsumerClusterInfo)
+@if(consumerInfo.consumerTopicMap.size <= 0){
+  <div class="alert alert-danger">No consumer consuming from the system
+  </div>
+}else{
+ <table class="table">
+    <thead>
+        <tr><td>Consumer Name</td><td>Topic</td><td>Lag</td></tr>
+    </thead>
+    <tbody>
+        @consumerInfo.consumerTopicMap.map { case (key, value) =>
+        @for(topic <- value){
+            <tr>
+            <td>@key</td>
+            <td>@topic</td>
+            <td><a href="@routes.Consumers.details(cluster,topic,key)">Detail</a></td>
+            </tr>
+            }
+        }
+      </tbody>
+ </table>
+}
+

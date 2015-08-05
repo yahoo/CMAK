@@ -1,0 +1,31 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@(cluster: String, consumerDetail: controllers.ConsumerDetail)
+
+<div class="panel panel-default">
+    <div class="panel-heading"><h4>Consumer Detail</h4></div>
+    <table class="table" id="broker-table" style="table-layout: fixed; width: 100%">
+        <thead>
+            <tr><td>Partition ID</td><td>Owner</td><td>Log Size</td><td>Offset</td><td>Lag</td></tr>
+        </thead>
+        <tbody>
+            @for(consumerOffset <- consumerDetail.consumerOffsets){
+                <tr>
+                <td>@consumerOffset.partitionId</td>
+                <td>@consumerOffset.owner</td>
+                <td>@consumerOffset.logSize</td>
+                <td>@consumerOffset.offset</td>
+                <td>@consumerOffset.lag</td>
+                </tr>
+                }
+                <tr>
+                    <td colspan="4"><b>Total Offset</b></td>
+                    <td><b>@consumerDetail.totalOffset</b></td>
+                </tr>
+                </tbody>
+    </table>
+</div>
+
+
