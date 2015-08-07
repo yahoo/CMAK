@@ -13,18 +13,18 @@
 
 @getBrokersSpreadLevel(percentage: Int) = {
     @percentage match {
-        case i if i > 50 && i<=75 => {warning}
-        case i if i <=  50 => {danger}
+        case i if i > 50 && i <= 75 => {warning}
+        case i if i <= 50 => {danger}
         case i => {}
     }
 }
 
 @getBrokersSkewLevel(percentage: Int) = {
-@percentage match {
-    case i if i > 0 && i<=33 => {warning}
-    case i if i >=  66 => {danger}
-    case i => {}
-}
+    @percentage match {
+        case i if i > 0 && i <= 33 => {warning}
+        case i if i >= 34 => {danger}
+        case i => {}
+    }
 }
 
 @getUnderReplicatedLevel(percentage: Int) = {
