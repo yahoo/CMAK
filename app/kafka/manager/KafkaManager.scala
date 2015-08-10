@@ -171,19 +171,19 @@ class KafkaManager(akkaConfig: Config)
   }
 
   //--------------------Commands--------------------------
-  def addCluster(clusterName: String, version: String, zkHosts: String, jmxEnabled: Boolean): Future[ApiError \/
+  def addCluster(clusterName: String, version: String, zkHosts: String, jmxEnabled: Boolean, displaySizeEnabled: Boolean): Future[ApiError \/
     Unit] =
   {
-    val cc = ClusterConfig(clusterName, version, zkHosts, jmxEnabled = jmxEnabled)
+    val cc = ClusterConfig(clusterName, version, zkHosts, jmxEnabled = jmxEnabled, displaySizeEnabled = displaySizeEnabled)
     tryWithKafkaManagerActor(KMAddCluster(cc)) { result: KMCommandResult =>
       result.result.get
     }
   }
 
-  def updateCluster(clusterName: String, version: String, zkHosts: String, jmxEnabled: Boolean): Future[ApiError \/
+  def updateCluster(clusterName: String, version: String, zkHosts: String, jmxEnabled: Boolean, displaySizeEnabled: Boolean): Future[ApiError \/
     Unit] =
   {
-    val cc = ClusterConfig(clusterName, version, zkHosts, jmxEnabled = jmxEnabled)
+    val cc = ClusterConfig(clusterName, version, zkHosts, jmxEnabled = jmxEnabled, displaySizeEnabled = displaySizeEnabled)
     tryWithKafkaManagerActor(KMUpdateCluster(cc)) { result: KMCommandResult =>
       result.result.get
     }
@@ -503,8 +503,8 @@ class KafkaManager(akkaConfig: Config)
       identity[Option[CMTopicIdentity]]
     )
     implicit val ec = apiExecutionContext
-    futureCMTopicIdentity.map[ApiError \/ TopicIdentity] { errOrTD =>
-      errOrTD.fold[ApiError \/ TopicIdentity](
+    futureCMTopicIdentity.map[ApiError \/ TopicIdentity] { errOrTI =>
+      errOrTI.fold[ApiError \/ TopicIdentity](
       { err: ApiError =>
         -\/[ApiError](err)
       }, { tiOption: Option[CMTopicIdentity] =>

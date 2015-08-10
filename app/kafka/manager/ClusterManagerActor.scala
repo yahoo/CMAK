@@ -18,7 +18,7 @@ import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex
 import org.apache.zookeeper.CreateMode
 import kafka.manager.utils.{AdminUtils, TopicAndPartition}
 
-import scala.collection.immutable
+import scala.collection.{mutable, immutable}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
@@ -162,6 +162,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         } yield CMView(tl.list.size, bl.list.size, cmConfig.clusterConfig)
         result pipeTo sender
 
+        // TODO: add topic partition size to TopicIdentity
       case CMGetTopicIdentity(topic) =>
         implicit val ec = context.dispatcher
         val eventualBrokerList = withKafkaStateActor(KSGetBrokers)(identity[BrokerList])
@@ -173,11 +174,13 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           }
         }
         val eventualTopicDescription = withKafkaStateActor(KSGetTopicDescription(topic))(identity[Option[TopicDescription]])
+        val eventualTopicPartitionSizes = withBrokerViewCacheActor(BVGetBrokerTopicPartitionSizes(topic))(identity[Option[Map[Int, Map[Int, Long]]]])
         val result: Future[Option[CMTopicIdentity]] = for {
           bl <- eventualBrokerList
           tm <- eventualTopicMetrics
           tdO <- eventualTopicDescription
-        } yield tdO.map( td => CMTopicIdentity(Try(TopicIdentity.from(bl,td,tm,cmConfig.clusterConfig))))
+          tp <- eventualTopicPartitionSizes
+        } yield tdO.map( td => CMTopicIdentity(Try(TopicIdentity.from(bl,td,tm,tp,cmConfig.clusterConfig))))
         result pipeTo sender
 
       case any: Any => log.warning("cma : processQueryResponse : Received unknown message: {}", any)
@@ -303,7 +306,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           bl <- eventualBrokerList
           tds <- eventualDescriptions
           rp <- eventualReassignPartitions
-          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None,cmConfig.clusterConfig))
+          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, None, cmConfig.clusterConfig))
         } yield {
           bl.list.map(_.id.toInt)
           // check if any topic undergoing reassignment got selected for reassignment
@@ -345,7 +348,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         val preferredLeaderElections = for {
           bl <- eventualBrokerList
           tds <- eventualDescriptions
-          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, cmConfig.clusterConfig))
+          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, None, cmConfig.clusterConfig))
           toElect = tis.map(ti => ti.partitionsIdentity.values.filter(!_.isPreferredLeader).map(tpi => TopicAndPartition(ti.topic, tpi.partNum))).flatten.toSet
         } yield toElect
         preferredLeaderElections.map { toElect =>
@@ -361,7 +364,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         val topicsAndReassignments = for {
           bl <- eventualBrokerList
           tds <- eventualDescriptions
-          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, cmConfig.clusterConfig))
+          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, None, cmConfig.clusterConfig))
         } yield {
           val reassignments = tis.map { ti =>
             val topicZkPath = zkPathFrom(baseTopicsZkPath, ti.topic)

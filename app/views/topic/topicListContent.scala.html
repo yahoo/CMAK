@@ -2,7 +2,11 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@(cluster: String, topics: IndexedSeq[((String, Option[kafka.manager.ActorModel.TopicIdentity]),Boolean)], topicsUnderReassignment: IndexedSeq[String])
+@(cluster: String,
+  topics: IndexedSeq[((String, Option[kafka.manager.ActorModel.TopicIdentity]), Boolean)],
+  topicsUnderReassignment: IndexedSeq[String],
+  displayTopicSize: Boolean
+)
 
 @getDeletedLevel(deleted: Boolean) = {
     @deleted match {
@@ -41,7 +45,18 @@
 
 <table class="table" id="topics-table">
     <thead>
-    <tr><th>Topic</th><th># Partitions</th><th># Brokers</th><th>Brokers Spread %</th><th>Brokers Skew %</th><th># Replicas</th><th>Under Replicated %</th></tr>
+    <tr>
+        <th>Topic</th>
+        <th># Partitions</th>
+        <th># Brokers</th>
+        <th>Brokers Spread %</th>
+        <th>Brokers Skew %</th>
+        <th># Replicas</th>
+        <th>Under Replicated %</th>
+        @if(displayTopicSize){
+        <th>Leader Size</th>
+        }
+    </tr>
     </thead>
     <tbody>
     @for( ((topic, topicIdentity), deleted) <- topics) {
@@ -53,6 +68,9 @@
           @topicIdentity.map{ ti => <td class="@getBrokersSkewLevel(ti.brokersSkewPercentage)">@ti.brokersSkewPercentage</td>}.getOrElse{<td> </td>}
           @topicIdentity.map{ ti => <td>@ti.replicationFactor</td>}.getOrElse{<td> </td>}
           @topicIdentity.map{ ti => <td class="@getUnderReplicatedLevel(ti.underReplicatedPercentage)">@ti.underReplicatedPercentage</td>}.getOrElse{<td> </td>}
+          @if(displayTopicSize){
+          @topicIdentity.map{ ti => <td>@ti.size</td>}.getOrElse{<td> </td>}
+          }
       </tr>
     }
     </tbody>

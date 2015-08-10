@@ -34,7 +34,7 @@ class TestKafkaStateActor extends KafkaServerInTest {
   override val kafkaServerZkPath = broker.getZookeeperConnectionString
   private[this] var kafkaStateActor : Option[ActorRef] = None
   private[this] implicit val timeout: Timeout = 10.seconds
-  private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false)
+  private[this] val defaultClusterConfig = ClusterConfig("test", "0.8.2.0", "localhost:2818", 100, false, false)
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
@@ -89,7 +89,7 @@ class TestKafkaStateActor extends KafkaServerInTest {
       descriptions foreach println
 
       withKafkaStateActor(KSGetBrokers) { brokerList: BrokerList =>
-        val topicIdentityList : IndexedSeq[TopicIdentity] = descriptions.flatten.map(td => TopicIdentity.from(brokerList,td, None, brokerList.clusterConfig))
+        val topicIdentityList : IndexedSeq[TopicIdentity] = descriptions.flatten.map(td => TopicIdentity.from(brokerList,td, None, None, brokerList.clusterConfig))
         topicIdentityList foreach println
       }
     }

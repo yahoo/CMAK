@@ -34,11 +34,11 @@ class TestBrokerViewCacheActor extends KafkaServerInTest {
   private[this] implicit val timeout: Timeout = 10.seconds
 
   private[this] var brokerViewCacheActor : Option[ActorRef] = None
-  private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false)
+  private[this] val defaultClusterConfig = ClusterConfig("test", "0.8.2.0", "localhost:2818", 100, false, false)
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false)
+    val clusterConfig = ClusterConfig("dev", "0.8.2.0", kafkaServerZkPath, jmxEnabled = false, displaySizeEnabled = false)
     val props = Props(classOf[KafkaStateActor],sharedCurator, true, defaultClusterConfig)
 
     kafkaStateActor = Some(system.actorOf(props.withDispatcher("pinned-dispatcher"),"ksa"))

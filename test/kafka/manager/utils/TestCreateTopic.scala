@@ -17,7 +17,7 @@ import org.apache.zookeeper.data.Stat
 class TestCreateTopic extends CuratorAwareTest {
   
   private[this] val adminUtils  = new AdminUtils(Kafka_0_8_2_0)
-  private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false)
+  private[this] val defaultClusterConfig = ClusterConfig("test" ,"0.8.2.0" ,"localhost:2818", 100, false, false)
 
   test("create topic with empty name") {
     checkError[TopicNameEmpty] {
@@ -94,7 +94,7 @@ class TestCreateTopic extends CuratorAwareTest {
       val stat = new Stat()
       val json:String = curator.getData.storingStatIn(stat).forPath(ZkUtils.getTopicPath("mytopic"))
       val configJson : String = curator.getData.forPath(ZkUtils.getTopicConfigPath("mytopic"))
-      val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion(),json),None,Option((-1,configJson)),false),None,defaultClusterConfig)
+      val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion(),json),None,Option((-1,configJson)),false),None,None,defaultClusterConfig)
       assert(td.partitions == 10)
       assert(td.replicationFactor == 3)
     }
@@ -118,7 +118,7 @@ class TestCreateTopic extends CuratorAwareTest {
         val stat = new Stat
         val json:String = curator.getData.storingStatIn(stat).forPath(ZkUtils.getTopicPath("mytopic"))
         val configJson : String = curator.getData.forPath(ZkUtils.getTopicConfigPath("mytopic"))
-        val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion,json),None,Option((-1,configJson)),false),None, defaultClusterConfig)
+        val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion,json),None,Option((-1,configJson)),false),None,None,defaultClusterConfig)
         val numPartitions = td.partitions
         adminUtils.addPartitions(curator, td.topic, numPartitions, td.partitionsIdentity.mapValues(_.replicas.toSeq),brokerList, stat.getVersion)
       }
@@ -132,7 +132,7 @@ class TestCreateTopic extends CuratorAwareTest {
         val stat = new Stat
         val json:String = curator.getData.storingStatIn(stat).forPath(ZkUtils.getTopicPath("mytopic"))
         val configJson : String = curator.getData.forPath(ZkUtils.getTopicConfigPath("mytopic"))
-        val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion,json),None,Option((-1,configJson)),false),None, defaultClusterConfig)
+        val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion,json),None,Option((-1,configJson)),false),None,None,defaultClusterConfig)
         val numPartitions = td.partitions + 2
         adminUtils.addPartitions(curator, td.topic, numPartitions, td.partitionsIdentity.mapValues(_.replicas.toSeq),brokerList,stat.getVersion)
       }
@@ -145,7 +145,7 @@ class TestCreateTopic extends CuratorAwareTest {
       val stat = new Stat
       val json:String = curator.getData.storingStatIn(stat).forPath(ZkUtils.getTopicPath("mytopic"))
       val configJson : String = curator.getData.forPath(ZkUtils.getTopicConfigPath("mytopic"))
-      val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion,json),None,Option((-1,configJson)),false),None, defaultClusterConfig)
+      val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion,json),None,Option((-1,configJson)),false),None,None,defaultClusterConfig)
       val numPartitions = td.partitions + 2
       adminUtils.addPartitions(curator, td.topic, numPartitions, td.partitionsIdentity.mapValues(_.replicas.toSeq),brokerList,stat.getVersion)
 
@@ -153,7 +153,7 @@ class TestCreateTopic extends CuratorAwareTest {
       {
         val json: String = curator.getData.forPath(ZkUtils.getTopicPath("mytopic"))
         val configJson: String = curator.getData.forPath(ZkUtils.getTopicConfigPath("mytopic"))
-        val td = TopicIdentity.from(3, TopicDescription("mytopic", (-1,json), None, Option((-1,configJson)), false),None, defaultClusterConfig)
+        val td = TopicIdentity.from(3, TopicDescription("mytopic", (-1,json), None, Option((-1,configJson)), false),None,None,defaultClusterConfig)
         assert(td.partitions === numPartitions, "Failed to add partitions!")
         assert(td.config.toMap.apply(kafka.manager.utils.zero82.LogConfig.RententionMsProp) === "1800000")
       }
@@ -168,7 +168,7 @@ class TestCreateTopic extends CuratorAwareTest {
       val configStat = new Stat
       val configJson : String = curator.getData.storingStatIn(configStat).forPath(ZkUtils.getTopicConfigPath("mytopic"))
       val configReadVersion = configStat.getVersion
-      val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion,json),None,Option((configReadVersion,configJson)),false),None, defaultClusterConfig)
+      val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion,json),None,Option((configReadVersion,configJson)),false),None,None,defaultClusterConfig)
       val properties = new Properties()
       td.config.foreach { case (k,v) => properties.put(k,v)}
       properties.setProperty(kafka.manager.utils.zero82.LogConfig.RententionMsProp,"3600000")
@@ -179,7 +179,7 @@ class TestCreateTopic extends CuratorAwareTest {
         val json: String = curator.getData.forPath(ZkUtils.getTopicPath("mytopic"))
         val configStat = new Stat
         val configJson : String = curator.getData.storingStatIn(configStat).forPath(ZkUtils.getTopicConfigPath("mytopic"))
-        val td = TopicIdentity.from(3, TopicDescription("mytopic", (-1,json), None, Option((configStat.getVersion,configJson)), false),None, defaultClusterConfig)
+        val td = TopicIdentity.from(3, TopicDescription("mytopic", (-1,json), None, Option((configStat.getVersion,configJson)), false),None,None,defaultClusterConfig)
         assert(td.config.toMap.apply(kafka.manager.utils.zero82.LogConfig.RententionMsProp) === "3600000")
         assert(configReadVersion != configStat.getVersion)
       }

@@ -33,7 +33,8 @@ libraryDependencies ++= Seq(
   "com.adrianhurt" %% "play-bootstrap3" % "0.4",
   "org.apache.kafka" %% "kafka" % "0.8.2.1" % "test",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
-  "org.apache.curator" % "curator-test" % "2.7.1" % "test" force()
+  "org.apache.curator" % "curator-test" % "2.7.1" % "test",
+  "com.yammer.metrics" % "metrics-core" % "2.1.2" force()
 )
 
 net.virtualvoid.sbt.graph.Plugin.graphSettings

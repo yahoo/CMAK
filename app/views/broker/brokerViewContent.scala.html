@@ -67,7 +67,14 @@
             <div class="panel-heading"><h4>Per Topic Detail</h4></div>
             <table class="table" id="broker-table" style="table-layout: fixed; width: 100%">
                 <thead>
-                <tr><th>Topic</th><th>Replication</th><th>Total Partitions</th><th>Partitions on Broker</th><th>Partitions</th><th>Skewed?</th></tr>
+                <tr>
+                    <th>Topic</th>
+                    <th>Replication</th>
+                    <th>Total Partitions</th>
+                    <th>Partitions on Broker</th>
+                    <th>Partitions</th>
+                    <th>Skewed?</th>
+                </tr>
                 </thead>
                 <tbody>
                 @for((ti,bp) <- brokerView.topicPartitions) {

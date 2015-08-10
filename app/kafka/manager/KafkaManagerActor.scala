@@ -81,18 +81,18 @@ object ClusterConfig {
     require(zkHosts.length > 0, "cluster zk hosts is illegal, can't be empty!")
   }
 
-  def apply(name: String, version : String, zkHosts: String, zkMaxRetry: Int = 100, jmxEnabled: Boolean) : ClusterConfig = {
+  def apply(name: String, version : String, zkHosts: String, zkMaxRetry: Int = 100, jmxEnabled: Boolean, displaySizeEnabled: Boolean) : ClusterConfig = {
     val kafkaVersion = KafkaVersion(version)
     //validate cluster name
     validateName(name)
     //validate zk hosts
     validateZkHosts(zkHosts)
     val cleanZkHosts = zkHosts.replaceAll(" ","")
-    new ClusterConfig(name, CuratorConfig(cleanZkHosts, zkMaxRetry), true, kafkaVersion, jmxEnabled)
+    new ClusterConfig(name, CuratorConfig(cleanZkHosts, zkMaxRetry), true, kafkaVersion, jmxEnabled, displaySizeEnabled)
   }
 
-  def customUnapply(cc: ClusterConfig) : Option[(String, String, String, Int, Boolean)] = {
-    Some((cc.name, cc.version.toString, cc.curatorConfig.zkConnect, cc.curatorConfig.zkMaxRetry, cc.jmxEnabled))
+  def customUnapply(cc: ClusterConfig) : Option[(String, String, String, Int, Boolean, Boolean)] = {
+    Some((cc.name, cc.version.toString, cc.curatorConfig.zkConnect, cc.curatorConfig.zkMaxRetry, cc.jmxEnabled, cc.displaySizeEnabled))
   }
 
   import scalaz.{Failure,Success}
@@ -123,6 +123,7 @@ object ClusterConfig {
       :: ("enabled" -> toJSON(config.enabled))
       :: ("kafkaVersion" -> toJSON(config.version.toString))
       :: ("jmxEnabled" -> toJSON(config.jmxEnabled))
+      :: ("displaySizeEnabled" -> toJSON(config.displaySizeEnabled))
       :: Nil)
     compact(render(json)).getBytes(StandardCharsets.UTF_8)
   }
@@ -137,7 +138,8 @@ object ClusterConfig {
           val versionString = field[String]("kafkaVersion")(json)
           val version = versionString.map(KafkaVersion.apply).getOrElse(Kafka_0_8_1_1)
           val jmxEnabled = field[Boolean]("jmxEnabled")(json)
-          ClusterConfig.apply(name,curatorConfig,enabled,version,jmxEnabled.getOrElse(false))
+          val displaySizeEnabled = field[Boolean]("displaySizeEnabled")(json)
+          ClusterConfig.apply(name, curatorConfig, enabled, version, jmxEnabled.getOrElse(false), displaySizeEnabled.getOrElse(false))
       }
 
       result match {
@@ -152,7 +154,7 @@ object ClusterConfig {
 
 }
 
-case class ClusterConfig (name: String, curatorConfig : CuratorConfig, enabled: Boolean, version: KafkaVersion, jmxEnabled: Boolean)
+case class ClusterConfig (name: String, curatorConfig : CuratorConfig, enabled: Boolean, version: KafkaVersion, jmxEnabled: Boolean, displaySizeEnabled: Boolean)
 
 object KafkaManagerActor {
   val ZkRoot : String = "/kafka-manager"
@@ -373,6 +375,8 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
         modify {
           val data: Array[Byte] = ClusterConfig.serialize(clusterConfig)
           val zkpath: String = getConfigsZkPath(clusterConfig)
+          require(!(clusterConfig.displaySizeEnabled && !clusterConfig.jmxEnabled),
+            "Display topic and broker size can only be enabled when JMX is enabled")
           require(kafkaManagerPathCache.getCurrentData(zkpath) == null,
             s"Cluster already exists : ${clusterConfig.name}")
           require(deleteClustersPathCache.getCurrentData(getDeleteClusterZkPath(clusterConfig.name)) == null,
@@ -385,6 +389,8 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
         modify {
           val data: Array[Byte] = ClusterConfig.serialize(clusterConfig)
           val zkpath: String = getConfigsZkPath(clusterConfig)
+          require(!(clusterConfig.displaySizeEnabled && !clusterConfig.jmxEnabled),
+            "Display topic and broker size can only be enabled when JMX is enabled")
           require(deleteClustersPathCache.getCurrentData(getDeleteClusterZkPath(clusterConfig.name)) == null,
             s"Cluster is marked for deletion : ${clusterConfig.name}")
           require(kafkaManagerPathCache.getCurrentData(zkpath) != null,
@@ -544,7 +550,8 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
       if(newConfig.curatorConfig.zkConnect == currentConfig.curatorConfig.zkConnect
         && newConfig.enabled == currentConfig.enabled
         && newConfig.version == currentConfig.version
-        && newConfig.jmxEnabled == currentConfig.jmxEnabled) {
+        && newConfig.jmxEnabled == currentConfig.jmxEnabled
+        && newConfig.displaySizeEnabled == currentConfig.displaySizeEnabled) {
         //nothing changed
         false
       } else {

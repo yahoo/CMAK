@@ -24,7 +24,7 @@ class TestReassignPartitions extends CuratorAwareTest {
 
   private[this] val brokerList = IndexedSeq(1,2,3)
 
-  private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false)
+  private[this] val defaultClusterConfig = ClusterConfig("test", "0.8.2.0", "localhost:2818", 100, false, false)
   
   private[this] def mytopic1 : TopicIdentity = getTopicIdentity("mytopic1")
   private[this] def mytopic2 : TopicIdentity = getTopicIdentity("mytopic2")
@@ -48,7 +48,7 @@ class TestReassignPartitions extends CuratorAwareTest {
       val configStat = new Stat
       val configJson : String = curator.getData.storingStatIn(configStat).forPath(ZkUtils.getTopicConfigPath(topic))
       val td: TopicDescription = TopicDescription(topic,(stat.getVersion,json),None,Option((configStat.getVersion,configJson)),false)
-      TopicIdentity.from(brokerList.size,td,None, defaultClusterConfig)
+      TopicIdentity.from(brokerList.size,td,None,None,defaultClusterConfig)
     }
   }
 

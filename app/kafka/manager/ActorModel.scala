@@ -12,6 +12,7 @@ import kafka.manager.utils.TopicAndPartition
 import org.slf4j.LoggerFactory
 
 import scala.collection.immutable.Queue
+import scala.collection.mutable
 import scala.util.Try
 import scalaz.{NonEmptyList, Validation}
 
@@ -38,7 +39,9 @@ object ActorModel {
   case object BVGetViews extends BVRequest
   case class BVGetTopicMetrics(topic: String) extends BVRequest
   case object BVGetBrokerMetrics extends BVRequest
-  case class BVView(topicPartitions: Map[TopicIdentity, IndexedSeq[Int]], clusterConfig: ClusterConfig,
+  case class BVGetBrokerTopicPartitionSizes(topic: String) extends BVRequest
+  case class BVView(topicPartitions: Map[TopicIdentity, IndexedSeq[Int]],
+                    clusterConfig: ClusterConfig,
                     metrics: Option[BrokerMetrics] = None,
                     messagesPerSecCountHistory: Option[Queue[BrokerMessagesPerSecCount]] = None,
                     stats: Option[BrokerClusterStats] = None) extends QueryResponse {
@@ -47,6 +50,7 @@ object ActorModel {
   }
   case class BVUpdateTopicMetricsForBroker(id: Int, metrics: IndexedSeq[(String,BrokerMetrics)]) extends CommandRequest
   case class BVUpdateBrokerMetrics(id: Int, metric: BrokerMetrics) extends CommandRequest
+  case class BVUpdateBrokerTopicPartitionSizes(id: Int, logInfo: Map[String, Map[Int, LogInfo]]) extends CommandRequest
 
   case object CMGetView extends QueryRequest
   case class CMGetTopicIdentity(topic: String) extends QueryRequest
@@ -171,7 +175,7 @@ object ActorModel {
     }
   }
 
-  case class TopicPartitionIdentity(partNum: Int, leader:Int, isr: Seq[Int], replicas: Seq[Int], isPreferredLeader: Boolean = false, isUnderReplicated: Boolean = false)
+  case class TopicPartitionIdentity(partNum: Int, leader:Int, isr: Seq[Int], replicas: Seq[Int], isPreferredLeader: Boolean = false, isUnderReplicated: Boolean = false, leaderSize: Option[Long] = None, size: Option[String] = None)
   object TopicPartitionIdentity {
     
     lazy val logger = LoggerFactory.getLogger(this.getClass)
@@ -181,7 +185,7 @@ object ActorModel {
     import org.json4s.scalaz.JsonScalaz._
     import scala.language.reflectiveCalls
 
-    implicit def from(partition: Int, state:Option[String], replicas: Seq[Int]) : TopicPartitionIdentity = {
+    implicit def from(partition: Int, state:Option[String], replicas: Seq[Int], brokerSizes: Option[Map[Int, Long]]) : TopicPartitionIdentity = {
       val leaderAndIsr = for {
         json <- state
         parsedJson = parse(json)
@@ -197,7 +201,8 @@ object ActorModel {
           default
         }, {
           case (leader, isr) =>
-            TopicPartitionIdentity(partition, leader, isr, replicas, leader == replicas.head, isr.size != replicas.size)
+            val leaderSize = brokerSizes.getOrElse(Map.empty).get(leader)
+            TopicPartitionIdentity(partition, leader, isr, replicas, leader == replicas.head, isr.size != replicas.size, leaderSize, leaderSize.map(FormatMetric.sizeFormat(_)))
         })
       }
     }
@@ -214,7 +219,8 @@ object ActorModel {
                            config: List[(String,String)],
                            deleteSupported: Boolean, 
                            clusterConfig: ClusterConfig,
-                           metrics: Option[BrokerMetrics] = None) {
+                           metrics: Option[BrokerMetrics] = None,
+                           size: Option[String] = None) {
 
     val replicationFactor : Int = partitionsIdentity.head._2.replicas.size
 
@@ -261,7 +267,11 @@ object ActorModel {
     import org.json4s.scalaz.JsonScalaz._
     import scala.language.reflectiveCalls
     
-    implicit def from(brokers: Int,td: TopicDescription, tm: Option[BrokerMetrics], clusterConfig: ClusterConfig) : TopicIdentity = {
+    implicit def from(brokers: Int,
+                      td: TopicDescription,
+                      tm: Option[BrokerMetrics],
+                      tp: Option[Map[Int, Map[Int, Long]]],
+                      clusterConfig: ClusterConfig) : TopicIdentity = {
       val descJson = parse(td.description._2)
       //val partMap = (descJson \ "partitions").as[Map[String,Seq[Int]]]
       val partMap = field[Map[String,List[Int]]]("partitions")(descJson).fold({ e =>
@@ -270,7 +280,7 @@ object ActorModel {
       }, identity)
       val stateMap = td.partitionState.getOrElse(Map.empty)
       val tpi : Map[Int,TopicPartitionIdentity] = partMap.map { case (part, replicas) =>
-        (part.toInt,TopicPartitionIdentity.from(part.toInt,stateMap.get(part),replicas))
+        (part.toInt,TopicPartitionIdentity.from(part.toInt,stateMap.get(part),replicas,tp.getOrElse(Map.empty).get(part.toInt)))
       }.toMap
       val config : (Int,Map[String, String]) = {
         try {
@@ -289,11 +299,16 @@ object ActorModel {
             (-1,Map.empty[String, String])
         }
       }
-      TopicIdentity(td.topic,td.description._1,partMap.size,tpi,brokers,config._1,config._2.toList,td.deleteSupported, clusterConfig, tm)
+      val size = tpi.flatMap(_._2.leaderSize).reduceLeftOption{ _ + _ }.map(FormatMetric.sizeFormat(_))
+      TopicIdentity(td.topic,td.description._1,partMap.size,tpi,brokers,config._1,config._2.toList,td.deleteSupported, clusterConfig, tm, size)
     }
 
-    implicit def from(bl: BrokerList,td: TopicDescription, tm: Option[BrokerMetrics], clusterConfig: ClusterConfig) : TopicIdentity = {
-      from(bl.list.size, td, tm, clusterConfig)
+    implicit def from(bl: BrokerList,
+                      td: TopicDescription,
+                      tm: Option[BrokerMetrics],
+                      tp: Option[Map[Int, Map[Int, Long]]],
+                      clusterConfig: ClusterConfig) : TopicIdentity = {
+      from(bl.list.size, td, tm, tp, clusterConfig)
     }
 
     implicit def reassignReplicas(currentTopicIdentity: TopicIdentity,
@@ -316,7 +331,8 @@ object ActorModel {
           currentTopicIdentity.config,
           currentTopicIdentity.deleteSupported,
           currentTopicIdentity.clusterConfig,
-          currentTopicIdentity.metrics)
+          currentTopicIdentity.metrics
+        )
       }
     }
   }
@@ -330,7 +346,8 @@ object ActorModel {
                            failedFetchRequestsPerSec: MeterMetric,
                            failedProduceRequestsPerSec: MeterMetric,
                            messagesInPerSec: MeterMetric,
-                           oSystemMetrics: OSMetric) {
+                           oSystemMetrics: OSMetric,
+                           size: SegmentsMetric) {
     def +(o: BrokerMetrics) : BrokerMetrics = {
       BrokerMetrics(
         o.bytesInPerSec + bytesInPerSec,
@@ -339,7 +356,9 @@ object ActorModel {
         o.failedFetchRequestsPerSec + failedFetchRequestsPerSec,
         o.failedProduceRequestsPerSec + failedProduceRequestsPerSec,
         o.messagesInPerSec + messagesInPerSec,
-        oSystemMetrics)
+        oSystemMetrics,
+        o.size + size
+      )
     }
 
   }
@@ -352,7 +371,10 @@ object ActorModel {
       MeterMetric(0, 0, 0, 0, 0),
       MeterMetric(0, 0, 0, 0, 0),
       MeterMetric(0, 0, 0, 0, 0),
-      OSMetric(0D, 0D))
+      OSMetric(0D, 0D),
+      SegmentsMetric(0L)
+    )
+
   }
   
   case class BrokerClusterStats(perMessages: BigDecimal, perIncoming: BigDecimal, perOutgoing: BigDecimal)
