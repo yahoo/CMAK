@@ -202,7 +202,7 @@ object ActorModel {
 
   case object DCUpdateState extends CommandRequest
 
-  case class BrokerIdentity(id: Int, host: String, port: Int, jmxPort: Int)
+  case class BrokerIdentity(id: Int, host: String, port: Int, jmxPort: Int, jmxUser: String, jmxPass: String)
 
   object BrokerIdentity {
     import scalaz.syntax.applicative._
@@ -213,9 +213,9 @@ object ActorModel {
 
     implicit def from(id: Int, config: String): Validation[NonEmptyList[JsonScalaz.Error],BrokerIdentity]= {
       val json = parse(config)
-      (field[String]("host")(json) |@| field[Int]("port")(json) |@| field[Int]("jmx_port")(json))
+      (field[String]("host")(json) |@| field[Int]("port")(json) |@| field[Int]("jmx_port")(json) |@| field[String]("jmx_user")(json) |@| field[String]("jmx_pass")(json))
       {
-        (host: String, port: Int, jmxPort: Int) => BrokerIdentity(id,host, port, jmxPort)
+        (host: String, port: Int, jmxPort: Int, jmxUser: String, jmxPass: String) => BrokerIdentity(id,host, port, jmxPort, jmxUser, jmxPass)
       }
     }
   }
