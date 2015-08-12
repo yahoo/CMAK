@@ -174,7 +174,7 @@ object ClusterConfig {
 
       val result = (field[String]("name")(json) |@| field[CuratorConfig]("curatorConfig")(json) |@| field[Boolean]("enabled")(json) |@| field[String]("jmxUser")(json) |@| field[String]("jmxPass")(json))
       {
-        (name:String,curatorConfig:CuratorConfig,enabled:Boolean) =>
+        (name:String,curatorConfig:CuratorConfig,enabled:Boolean,jmxUser:String,jmxPass:String) =>
           val versionString = field[String]("kafkaVersion")(json)
           val version = versionString.map(KafkaVersion.apply).getOrElse(Kafka_0_8_1_1)
           val jmxEnabled = field[Boolean]("jmxEnabled")(json)
