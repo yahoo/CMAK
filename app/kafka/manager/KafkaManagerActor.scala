@@ -78,6 +78,9 @@ object ClusterConfig {
     }
   }
 
+  def validateJmxUser(jmxUser: String) { }
+  def validateJmxPass(jmxPass: String) { }
+
   def validateZkHosts(zkHosts: String): Unit = {
     require(zkHosts.length > 0, "cluster zk hosts is illegal, can't be empty!")
   }
@@ -87,6 +90,8 @@ object ClusterConfig {
             zkHosts: String,
             zkMaxRetry: Int = 100,
             jmxEnabled: Boolean,
+            jmxUser: String,
+            jmxPass: String,
             pollConsumers: Boolean,
             filterConsumers: Boolean,
             logkafkaEnabled: Boolean = false, 
@@ -97,6 +102,9 @@ object ClusterConfig {
     validateName(name)
     //validate zk hosts
     validateZkHosts(zkHosts)
+    //validate and convert type
+    validateJmxUser(jmxUser)
+    validateJmxPass(jmxPass)
     val cleanZkHosts = zkHosts.replaceAll(" ","")
     new ClusterConfig(
       name, 
@@ -104,6 +112,8 @@ object ClusterConfig {
       true, 
       kafkaVersion, 
       jmxEnabled,
+      jmxUser,
+      jmxPass,
       pollConsumers,
       filterConsumers, 
       logkafkaEnabled, 
@@ -111,8 +121,12 @@ object ClusterConfig {
       displaySizeEnabled)
   }
 
-  def customUnapply(cc: ClusterConfig) : Option[(String, String, String, Int, Boolean, Boolean, Boolean, Boolean, Boolean, Boolean)] = {
-    Some((cc.name, cc.version.toString, cc.curatorConfig.zkConnect, cc.curatorConfig.zkMaxRetry, cc.jmxEnabled, cc.pollConsumers, cc.filterConsumers, cc.logkafkaEnabled, cc.activeOffsetCacheEnabled, cc.displaySizeEnabled))
+  def customUnapply(cc: ClusterConfig) : Option[(
+    String, String, String, Int, Boolean, String, String,
+    Boolean, Boolean, Boolean, Boolean, Boolean)] = {
+    Some((cc.name, cc.version.toString, cc.curatorConfig.zkConnect, cc.curatorConfig.zkMaxRetry,
+      cc.jmxEnabled, cc.jmxUser.toString, cc.jmxPass, cc.pollConsumers, cc.filterConsumers,
+      cc.logkafkaEnabled, cc.activeOffsetCacheEnabled, cc.displaySizeEnabled))
   }
 
   import scalaz.{Failure,Success}
@@ -143,6 +157,8 @@ object ClusterConfig {
       :: ("enabled" -> toJSON(config.enabled))
       :: ("kafkaVersion" -> toJSON(config.version.toString))
       :: ("jmxEnabled" -> toJSON(config.jmxEnabled))
+      :: ("jmxUser" -> toJSON(config.jmxUser.toString))
+      :: ("jmxPass" -> toJSON(config.jmxPass.toString))
       :: ("pollConsumers") -> toJSON(config.pollConsumers)
       :: ("filterConsumers" -> toJSON(config.filterConsumers))
       :: ("logkafkaEnabled" -> toJSON(config.logkafkaEnabled))
@@ -156,12 +172,14 @@ object ClusterConfig {
     Try {
       val json = parse(kafka.manager.utils.deserializeString(ba))
 
-      val result = (field[String]("name")(json) |@| field[CuratorConfig]("curatorConfig")(json) |@| field[Boolean]("enabled")(json))
+      val result = (field[String]("name")(json) |@| field[CuratorConfig]("curatorConfig")(json) |@| field[Boolean]("enabled")(json) |@| field[String]("jmxUser")(json) |@| field[String]("jmxPass")(json))
       {
         (name:String,curatorConfig:CuratorConfig,enabled:Boolean) =>
           val versionString = field[String]("kafkaVersion")(json)
           val version = versionString.map(KafkaVersion.apply).getOrElse(Kafka_0_8_1_1)
           val jmxEnabled = field[Boolean]("jmxEnabled")(json)
+          val jmxUser = field[String]("jmxUser")(json)
+          val jmxPass = field[String]("jmxPass")(json)
           val pollConsumers = field[Boolean]("pollConsumers")(json)
           val filterConsumers = field[Boolean]("filterConsumers")(json)
           val logkafkaEnabled = field[Boolean]("logkafkaEnabled")(json)
@@ -172,6 +190,8 @@ object ClusterConfig {
             curatorConfig,
             enabled,version,
             jmxEnabled.getOrElse(false),
+            jmxUser,
+            jmxPass,
             pollConsumers.getOrElse(false),
             filterConsumers.getOrElse(true),
             logkafkaEnabled.getOrElse(false), 
@@ -198,6 +218,8 @@ case class ClusterConfig (name: String,
                           enabled: Boolean,
                           version: KafkaVersion,
                           jmxEnabled: Boolean,
+                          jmxUser: String,
+                          jmxPass: String,
                           pollConsumers: Boolean,
                           filterConsumers: Boolean,
                           logkafkaEnabled: Boolean,
@@ -613,6 +635,8 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
         && newConfig.enabled == currentConfig.enabled
         && newConfig.version == currentConfig.version
         && newConfig.jmxEnabled == currentConfig.jmxEnabled
+        && newConfig.jmxUser == currentConfig.jmxUser
+        && newConfig.jmxPass == currentConfig.jmxPass
         && newConfig.logkafkaEnabled == currentConfig.logkafkaEnabled
         && newConfig.pollConsumers == currentConfig.pollConsumers
         && newConfig.filterConsumers == currentConfig.filterConsumers

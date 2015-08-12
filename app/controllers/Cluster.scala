@@ -37,6 +37,24 @@ object Cluster extends Controller {
     }
   }
 
+  val validateJmxUser : Constraint[String] = Constraint("validate jmxUser") { jmxUser =>
+    Try {
+      ClusterConfig.validateJmxUser(jmxUser)
+    } match {
+      case Failure(t) => Invalid(t.getMessage)
+      case Success(_) => Valid
+    }
+  }
+
+  val validateJmxPass : Constraint[String] = Constraint("validate jmxPass") { jmxPass =>
+    Try {
+      ClusterConfig.validateJmxPass(jmxPass)
+    } match {
+      case Failure(t) => Invalid(t.getMessage)
+      case Success(_) => Valid
+    }
+  }
+
   val validateZkHosts : Constraint[String] = Constraint("validate zookeeper hosts") { zkHosts =>
     Try {
       ClusterConfig.validateZkHosts(zkHosts)
@@ -70,6 +88,8 @@ object Cluster extends Controller {
       "zkHosts" -> nonEmptyText.verifying(validateZkHosts),
       "zkMaxRetry" -> ignored(100 : Int),
       "jmxEnabled" -> boolean,
+      "jmxUser" -> nonEmptyText.verifying(maxLength(32), validateName),
+      "jmxPass" -> nonEmptyText.verifying(maxLength(32), validateName),
       "pollConsumers" -> boolean,
       "filterConsumers" -> boolean,
       "logkafkaEnabled" -> boolean,
@@ -86,6 +106,8 @@ object Cluster extends Controller {
       "zkHosts" -> nonEmptyText.verifying(validateZkHosts),
       "zkMaxRetry" -> ignored(100 : Int),
       "jmxEnabled" -> boolean,
+      "jmxUser" -> nonEmptyText.verifying(maxLength(32), validateName),
+      "jmxPass" -> nonEmptyText.verifying(maxLength(32), validateName),
       "pollConsumers" -> boolean,
       "filterConsumers" -> boolean,
       "logkafkaEnabled" -> boolean,
@@ -99,7 +121,7 @@ object Cluster extends Controller {
       Ok(views.html.cluster.clusterView(c,errorOrClusterView))
     }
   }
-  
+
   def brokers(c: String) = Action.async {
     kafkaManager.getBrokerList(c).map { errorOrBrokerList =>
       Ok(views.html.broker.brokerList(c,errorOrBrokerList))
@@ -111,7 +133,7 @@ object Cluster extends Controller {
       Ok(views.html.broker.brokerView(c,b,errorOrBrokerView))
     }
   }
-  
+
   def addCluster = Action.async { implicit request =>
     featureGate(KMClusterManagerFeature) {
       Future.successful(Ok(views.html.cluster.addCluster(clusterConfigForm)))
@@ -129,6 +151,8 @@ object Cluster extends Controller {
             cc.curatorConfig.zkConnect,
             cc.curatorConfig.zkMaxRetry,
             cc.jmxEnabled,
+            cc.jmxUser,
+            cc.jmxPass,
             cc.pollConsumers,
             cc.filterConsumers,
             cc.logkafkaEnabled,
@@ -137,7 +161,6 @@ object Cluster extends Controller {
         }))
       }
     }
-      
   }
 
   def handleAddCluster = Action.async { implicit request =>
@@ -149,6 +172,8 @@ object Cluster extends Controller {
             clusterConfig.version.toString,
             clusterConfig.curatorConfig.zkConnect,
             clusterConfig.jmxEnabled,
+            clusterConfig.jmxUser,
+            clusterConfig.jmxPass,
             clusterConfig.pollConsumers,
             clusterConfig.filterConsumers,
             clusterConfig.logkafkaEnabled,
@@ -170,49 +195,50 @@ object Cluster extends Controller {
   }
 
   def handleUpdateCluster(c: String) = Action.async { implicit request =>
-    featureGate(KMClusterManagerFeature) {
-      updateForm.bindFromRequest.fold(
-        formWithErrors => Future.successful(BadRequest(views.html.cluster.updateCluster(c, \/-(formWithErrors)))),
-        clusterOperation => clusterOperation.op match {
-          case Enable =>
-            kafkaManager.enableCluster(c).map { errorOrSuccess =>
-              Ok(views.html.common.resultOfCommand(
-                views.html.navigation.defaultMenu(),
-                models.navigation.BreadCrumbs.withViewAndCluster("Enable Cluster", c),
-                errorOrSuccess,
-                "Enable Cluster",
-                FollowLink("Go to cluster list.", routes.Application.index().toString()),
-                FollowLink("Back to cluster list.", routes.Application.index().toString())
-              ))
-            }
-          case Disable =>
-            kafkaManager.disableCluster(c).map { errorOrSuccess =>
-              Ok(views.html.common.resultOfCommand(
-                views.html.navigation.defaultMenu(),
-                models.navigation.BreadCrumbs.withViewAndCluster("Disable Cluster", c),
-                errorOrSuccess,
-                "Disable Cluster",
-                FollowLink("Back to cluster list.", routes.Application.index().toString()),
-                FollowLink("Back to cluster list.", routes.Application.index().toString())
-              ))
-            }
-          case Delete =>
-            kafkaManager.deleteCluster(c).map { errorOrSuccess =>
-              Ok(views.html.common.resultOfCommand(
-                views.html.navigation.defaultMenu(),
-                models.navigation.BreadCrumbs.withViewAndCluster("Delete Cluster", c),
-                errorOrSuccess,
-                "Delete Cluster",
-                FollowLink("Back to cluster list.", routes.Application.index().toString()),
-                FollowLink("Back to cluster list.", routes.Application.index().toString())
-              ))
-            }
-          case Update =>
-            kafkaManager.updateCluster(
-              clusterOperation.clusterConfig.name,
-              clusterOperation.clusterConfig.version.toString,
-              clusterOperation.clusterConfig.curatorConfig.zkConnect,
-              clusterOperation.clusterConfig.jmxEnabled,
+    updateForm.bindFromRequest.fold(
+      formWithErrors => Future.successful(BadRequest(views.html.cluster.updateCluster(c,\/-(formWithErrors)))),
+      clusterOperation => clusterOperation.op match {
+        case Enable =>
+          kafkaManager.enableCluster(c).map { errorOrSuccess =>
+            Ok(views.html.common.resultOfCommand(
+              views.html.navigation.defaultMenu(),
+              models.navigation.BreadCrumbs.withViewAndCluster("Enable Cluster",c),
+              errorOrSuccess,
+              "Enable Cluster",
+              FollowLink("Go to cluster list.",routes.Application.index().toString()),
+              FollowLink("Back to cluster list.",routes.Application.index().toString())
+            ))
+          }
+        case Disable =>
+          kafkaManager.disableCluster(c).map { errorOrSuccess =>
+            Ok(views.html.common.resultOfCommand(
+              views.html.navigation.defaultMenu(),
+              models.navigation.BreadCrumbs.withViewAndCluster("Disable Cluster",c),
+              errorOrSuccess,
+              "Disable Cluster",
+              FollowLink("Back to cluster list.",routes.Application.index().toString()),
+              FollowLink("Back to cluster list.",routes.Application.index().toString())
+            ))
+          }
+        case Delete =>
+          kafkaManager.deleteCluster(c).map { errorOrSuccess =>
+            Ok(views.html.common.resultOfCommand(
+              views.html.navigation.defaultMenu(),
+              models.navigation.BreadCrumbs.withViewAndCluster("Delete Cluster",c),
+              errorOrSuccess,
+              "Delete Cluster",
+              FollowLink("Back to cluster list.",routes.Application.index().toString()),
+              FollowLink("Back to cluster list.",routes.Application.index().toString())
+            ))
+          }
+        case Update =>
+          kafkaManager.updateCluster(
+            clusterOperation.clusterConfig.name,
+            clusterOperation.clusterConfig.version.toString,
+            clusterOperation.clusterConfig.curatorConfig.zkConnect,
+            clusterOperation.clusterConfig.jmxEnabled,
+            clusterOperation.clusterConfig.jmxUser,
+            clusterOperation.clusterConfig.jmxPass,
               clusterOperation.clusterConfig.pollConsumers,
               clusterOperation.clusterConfig.filterConsumers,
               clusterOperation.clusterConfig.logkafkaEnabled,
