@@ -39,6 +39,7 @@ object KafkaJMX {
           "sun.rmi.transport.connectionTimeout" -> "3000",
           "sun.rmi.transport.tcp.handshakeTimeout" -> "3000",
           "sun.rmi.transport.tcp.responseTimeout" -> "3000",
+          //"com.sun.management.jmxremote.ssl" -> "false",
           JMXConnector.CREDENTIALS -> creds
         ).asJava
       }
