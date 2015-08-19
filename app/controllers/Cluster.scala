@@ -70,6 +70,7 @@ object Cluster extends Controller {
       "zkHosts" -> nonEmptyText.verifying(validateZkHosts),
       "zkMaxRetry" -> ignored(100 : Int),
       "jmxEnabled" -> boolean,
+      "filterConsumers" -> boolean,
       "logkafkaEnabled" -> boolean
     )(ClusterConfig.apply)(ClusterConfig.customUnapply)
   )
@@ -82,6 +83,7 @@ object Cluster extends Controller {
       "zkHosts" -> nonEmptyText.verifying(validateZkHosts),
       "zkMaxRetry" -> ignored(100 : Int),
       "jmxEnabled" -> boolean,
+      "filterConsumers" -> boolean,
       "logkafkaEnabled" -> boolean
     )(ClusterOperation.apply)(ClusterOperation.customUnapply)
   )
@@ -121,6 +123,7 @@ object Cluster extends Controller {
             cc.curatorConfig.zkConnect,
             cc.curatorConfig.zkMaxRetry,
             cc.jmxEnabled,
+            cc.filterConsumers,
             cc.logkafkaEnabled))
         }))
       }
@@ -133,7 +136,7 @@ object Cluster extends Controller {
       clusterConfigForm.bindFromRequest.fold(
         formWithErrors => Future.successful(BadRequest(views.html.cluster.addCluster(formWithErrors))),
         clusterConfig => {
-          kafkaManager.addCluster(clusterConfig.name, clusterConfig.version.toString, clusterConfig.curatorConfig.zkConnect, clusterConfig.jmxEnabled, clusterConfig.logkafkaEnabled).map { errorOrSuccess =>
+          kafkaManager.addCluster(clusterConfig.name, clusterConfig.version.toString, clusterConfig.curatorConfig.zkConnect, clusterConfig.jmxEnabled, clusterConfig.filterConsumers, clusterConfig.logkafkaEnabled).map { errorOrSuccess =>
             Ok(views.html.common.resultOfCommand(
               views.html.navigation.defaultMenu(),
               models.navigation.BreadCrumbs.withView("Add Cluster"),
@@ -192,6 +195,7 @@ object Cluster extends Controller {
               clusterOperation.clusterConfig.version.toString,
               clusterOperation.clusterConfig.curatorConfig.zkConnect,
               clusterOperation.clusterConfig.jmxEnabled,
+              clusterOperation.clusterConfig.filterConsumers,
               clusterOperation.clusterConfig.logkafkaEnabled
             ).map { errorOrSuccess =>
               Ok(views.html.common.resultOfCommand(

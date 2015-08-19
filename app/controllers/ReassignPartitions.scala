@@ -397,7 +397,7 @@ object ReassignPartitions extends Controller{
         ),
         cc =>
           reassignPartitionsForm.bindFromRequest.fold(
-            formWithErrors => Future.successful(BadRequest(views.html.topic.topicView(c, t, -\/(ApiError("Unknown operation!"))))),
+            formWithErrors => Future.successful(BadRequest(views.html.topic.topicView(c, t, -\/(ApiError("Unknown operation!")), None))),
             op => op match {
               case RunAssignment =>
                 implicit val clusterFeatures = cc.clusterFeatures

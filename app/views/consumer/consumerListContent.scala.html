@@ -1,0 +1,41 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@(cluster: String, consumers: IndexedSeq[(String, Option[kafka.manager.ActorModel.ConsumerIdentity])])
+
+@getConsumedTopicSummary(state: kafka.manager.ActorModel.ConsumedTopicState) = {
+    @state.percentageCovered match {
+        case i if i <=  99 => {
+            <span style="background-color: #F2DEDE">
+                (@state.percentageCovered% coverage, @state.totalLag.getOrElse("Lag unavailable") lag)
+            </span>
+        }
+        case i => {(@state.percentageCovered% coverage, @state.totalLag.getOrElse("Lag unavailable") lag)}
+    }
+}
+
+<table class="table" id="consumer-table">
+    <thead>
+    <tr><th>Consumer</th>
+        <th>Topics it consumes from</th>
+    </tr>
+    </thead>
+    <tbody>
+    @for( (consumer, consumerIdentityOpt) <- consumers) {
+        <tr>
+            <td><a href="@routes.Consumer.consumer(cluster,consumer)">@consumer</a></td>
+            <td>
+                @consumerIdentityOpt.fold{
+                    No details available for this consumer at this time
+                }{ a:kafka.manager.ActorModel.ConsumerIdentity =>
+                    @for((topic: String, state: kafka.manager.ActorModel.ConsumedTopicState) <- a.topicMap) {
+                        <a href="@routes.Consumer.consumerAndTopic(cluster,consumer,topic)">@topic</a>:
+                        @getConsumedTopicSummary(state) <br>
+                    }
+                }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

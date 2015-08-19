@@ -58,7 +58,7 @@ class TestKafkaManager extends CuratorAwareTest {
   }
 
   test("add cluster") {
-    val future = kafkaManager.addCluster("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false)
+    val future = kafkaManager.addCluster("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, filterConsumers = true)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
     Thread.sleep(2000)
@@ -273,7 +273,7 @@ class TestKafkaManager extends CuratorAwareTest {
   }
 
   test("update cluster zkhost") {
-    val future = kafkaManager.updateCluster("dev","0.8.2.0",testServer.getConnectString, jmxEnabled = false)
+    val future = kafkaManager.updateCluster("dev","0.8.2.0",testServer.getConnectString, jmxEnabled = false, filterConsumers = true)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
 
@@ -306,7 +306,7 @@ class TestKafkaManager extends CuratorAwareTest {
   }
 
   test("update cluster version") {
-    val future = kafkaManager.updateCluster("dev","0.8.1.1",testServer.getConnectString, jmxEnabled = false)
+    val future = kafkaManager.updateCluster("dev","0.8.1.1",testServer.getConnectString, jmxEnabled = false, filterConsumers = true)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
 
@@ -327,7 +327,7 @@ class TestKafkaManager extends CuratorAwareTest {
   }
 
   test("update cluster logkafka enabled") {
-    val future = kafkaManager.updateCluster("dev","0.8.2.0",testServer.getConnectString, jmxEnabled = false, logkafkaEnabled = true)
+    val future = kafkaManager.updateCluster("dev","0.8.2.0",testServer.getConnectString, jmxEnabled = false, filterConsumers = true, logkafkaEnabled = true)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
 

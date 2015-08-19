@@ -139,8 +139,11 @@ object Topic extends Controller{
   }
 
   def topic(c: String, t: String) = Action.async {
-    kafkaManager.getTopicIdentity(c,t).map { errorOrTopicIdentity =>
-      Ok(views.html.topic.topicView(c,t,errorOrTopicIdentity))
+    val futureErrorOrTopicIdentity = kafkaManager.getTopicIdentity(c,t)
+    val futureErrorOrConsumerList = kafkaManager.getConsumersForTopic(c,t)
+
+    futureErrorOrTopicIdentity.zip(futureErrorOrConsumerList).map {case (errorOrTopicIdentity,errorOrConsumerList) =>
+      Ok(views.html.topic.topicView(c,t,errorOrTopicIdentity,errorOrConsumerList))
     }
   }
 
@@ -197,7 +200,8 @@ object Topic extends Controller{
           BadRequest(views.html.topic.topicView(
             clusterName,
             topic,
-            -\/(ApiError(formWithErrors.error("topic").map(_.toString).getOrElse("Unknown error deleting topic!")))))
+            -\/(ApiError(formWithErrors.error("topic").map(_.toString).getOrElse("Unknown error deleting topic!"))),
+            None))
         ),
         deleteTopic => {
           kafkaManager.deleteTopic(clusterName, deleteTopic.topic).map { errorOrSuccess =>
