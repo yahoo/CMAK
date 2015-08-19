@@ -16,7 +16,8 @@ import org.apache.curator.framework.recipes.cache.PathChildrenCache
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex
 import org.apache.zookeeper.CreateMode
-import kafka.manager.utils.{AdminUtils, TopicAndPartition}
+import kafka.common.TopicAndPartition
+import kafka.manager.utils.AdminUtils
 
 import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
@@ -87,7 +88,12 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
 
   private[this] val adminUtils = new AdminUtils(cmConfig.clusterConfig.version)
 
-  private[this] val ksProps = Props(classOf[KafkaStateActor],sharedClusterCurator, adminUtils.isDeleteSupported, cmConfig.clusterConfig)
+  private[this] val ksConfig = KafkaStateActorConfig(
+    sharedClusterCurator,
+    adminUtils.isDeleteSupported,
+    cmConfig.clusterConfig,
+    LongRunningPoolConfig(Runtime.getRuntime.availableProcessors(), 1000))
+  private[this] val ksProps = Props(classOf[KafkaStateActor],ksConfig)
   private[this] val kafkaStateActor : ActorPath = context.actorOf(ksProps.withDispatcher(cmConfig.pinnedDispatcherName),"kafka-state").path
 
   private[this] val bvConfig = BrokerViewCacheActorConfig(
@@ -178,6 +184,25 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           tm <- eventualTopicMetrics
           tdO <- eventualTopicDescription
         } yield tdO.map( td => CMTopicIdentity(Try(TopicIdentity.from(bl,td,tm,cmConfig.clusterConfig))))
+        result pipeTo sender
+
+      case CMGetConsumerIdentity(consumer) =>
+        implicit val ec = context.dispatcher
+        val eventualConsumerDescription = withKafkaStateActor(KSGetConsumerDescription(consumer))(identity[Option[ConsumerDescription]])
+        val result: Future[Option[CMConsumerIdentity]] = for {
+          cdO <- eventualConsumerDescription
+          ciO = cdO.map( cd => CMConsumerIdentity(Try(ConsumerIdentity.from(cd,cmConfig.clusterConfig))))
+        } yield ciO
+        result pipeTo sender
+
+      case CMGetConsumedTopicState(consumer, topic) =>
+        implicit val ec = context.dispatcher
+        val eventualConsumedTopicDescription = withKafkaStateActor(
+          KSGetConsumedTopicDescription(consumer,topic)
+        )(identity[ConsumedTopicDescription])
+        val result: Future[CMConsumedTopic] = eventualConsumedTopicDescription.map{
+          ctd: ConsumedTopicDescription =>  CMConsumedTopic(Try(ConsumedTopicState.from(ctd)))
+        }
         result pipeTo sender
 
       case any: Any => log.warning("cma : processQueryResponse : Received unknown message: {}", any)

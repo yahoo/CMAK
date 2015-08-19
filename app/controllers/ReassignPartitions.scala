@@ -285,7 +285,7 @@ object ReassignPartitions extends Controller{
 
   def handleOperation(c: String, t: String) = Action.async { implicit request =>
     reassignPartitionsForm.bindFromRequest.fold(
-      formWithErrors => Future.successful(BadRequest(views.html.topic.topicView(c,t,-\/(ApiError("Unknown operation!"))))),
+      formWithErrors => Future.successful(BadRequest(views.html.topic.topicView(c,t,-\/(ApiError("Unknown operation!")),None))),
       op => op match {
         case RunAssignment =>
           kafkaManager.runReassignPartitions(c,Set(t)).map { errorOrSuccess =>

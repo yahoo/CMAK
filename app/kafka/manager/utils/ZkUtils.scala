@@ -19,6 +19,7 @@ package kafka.manager.utils
 
 import java.nio.charset.StandardCharsets
 
+import kafka.common.TopicAndPartition
 import org.apache.curator.framework.CuratorFramework
 import org.apache.zookeeper.CreateMode
 import org.apache.zookeeper.KeeperException.{NodeExistsException, NoNodeException}
