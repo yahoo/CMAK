@@ -49,7 +49,6 @@
             <table class="table">
                 <tbody>
                 <tr>
-                    @if(logkafkaIdentity.deleteSupported) {
                     <td>
                         @b3.form(routes.Logkafka.handleDeleteLogkafka(cluster, hostname, log_path)) {
                         <fieldset>
@@ -59,7 +58,6 @@
                         </fieldset>
                         }
                     </td>
-                    }
                 </tr>
                 <tr>
                     <td>

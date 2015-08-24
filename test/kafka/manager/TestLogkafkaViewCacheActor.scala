@@ -10,6 +10,7 @@ import akka.actor.{ActorRef, ActorSystem, Kill, Props}
 import akka.pattern._
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
+import kafka.manager.features.ClusterFeatures
 import kafka.manager.utils.KafkaServerInTest
 import ActorModel._
 import kafka.test.SeededBroker
@@ -35,15 +36,17 @@ class TestLogkafkaViewCacheActor extends KafkaServerInTest {
 
   private[this] var logkafkaViewCacheActor : Option[ActorRef] = None
   private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false,true)
+  private[this] val defaultClusterContext = ClusterContext(ClusterFeatures.from(defaultClusterConfig), defaultClusterConfig)
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
     val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, logkafkaEnabled = true)
-    val props = Props(classOf[KafkaStateActor],sharedCurator, true, defaultClusterConfig)
+    val clusterContext = ClusterContext(ClusterFeatures.from(clusterConfig), clusterConfig)
+    val props = Props(classOf[KafkaStateActor],sharedCurator, defaultClusterContext)
 
     logkafkaStateActor = Some(system.actorOf(props.withDispatcher("pinned-dispatcher"),"lksa"))
 
-    val lkvConfig = LogkafkaViewCacheActorConfig(logkafkaStateActor.get.path, clusterConfig, LongRunningPoolConfig(2,100), FiniteDuration(10, SECONDS))
+    val lkvConfig = LogkafkaViewCacheActorConfig(logkafkaStateActor.get.path, clusterContext, LongRunningPoolConfig(2,100), FiniteDuration(10, SECONDS))
     val lkvcProps = Props(classOf[LogkafkaViewCacheActor],lkvConfig)
 
     logkafkaViewCacheActor = Some(system.actorOf(lkvcProps,"logkafka-view"))

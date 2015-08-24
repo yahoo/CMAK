@@ -4,10 +4,13 @@
 *@
 @import scalaz.{\/}
 @import b3.vertical.fieldConstructor
-@(cluster:String, errorOrStatus: kafka.manager.ApiError \/ Option[kafka.manager.ActorModel.ReassignPartitions])
+@(cluster:String, errorOrStatus: kafka.manager.ApiError \/ Option[kafka.manager.ActorModel.ReassignPartitions]
+)(implicit af: features.ApplicationFeatures)
 
 @theMenu = {
-@views.html.navigation.clusterMenu(cluster,"Reassign Partitions","",models.navigation.Menus.clusterMenus(cluster))
+@views.html.navigation.clusterMenu(cluster,"Reassign Partitions","",models.navigation.Menus.clusterMenus(cluster)(
+    af,
+    errorOrStatus.toOption.flatten.map(_.clusterContext.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
 }
 
 @renderView(c: String, viewOption: Option[kafka.manager.ActorModel.ReassignPartitions]) = {

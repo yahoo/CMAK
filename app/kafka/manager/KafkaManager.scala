@@ -11,11 +11,9 @@ import java.util.concurrent.{LinkedBlockingQueue, TimeUnit, ThreadPoolExecutor}
 import akka.actor.{ActorPath, ActorSystem, Props}
 import akka.util.Timeout
 import com.typesafe.config.{ConfigFactory, Config}
-import controllers.Topic
 import kafka.manager.ActorModel._
 import org.slf4j.{LoggerFactory, Logger}
 
-import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
@@ -24,8 +22,8 @@ import scala.util.{Success, Failure, Try}
 /**
  * @author hiral
  */
-case class TopicListExtended(list: IndexedSeq[(String, Option[TopicIdentity])], deleteSet: Set[String], underReassignments: IndexedSeq[String])
-case class BrokerListExtended(list: IndexedSeq[BrokerIdentity], metrics: Map[Int,BrokerMetrics], combinedMetric: Option[BrokerMetrics], clusterConfig: ClusterConfig)
+case class TopicListExtended(list: IndexedSeq[(String, Option[TopicIdentity])], deleteSet: Set[String], underReassignments: IndexedSeq[String], clusterContext: ClusterContext)
+case class BrokerListExtended(list: IndexedSeq[BrokerIdentity], metrics: Map[Int,BrokerMetrics], combinedMetric: Option[BrokerMetrics], clusterContext: ClusterContext)
 case class LogkafkaListExtended(list: IndexedSeq[(String, Option[LogkafkaIdentity])], deleteSet: Set[String])
 case class ApiError(msg: String)
 object ApiError {
@@ -208,7 +206,7 @@ class KafkaManager(akkaConfig: Config)
     }
   }
 
-  def runPreferredLeaderElection(clusterName: String, topics: Set[String]): Future[ApiError \/ Unit] = {
+  def runPreferredLeaderElection(clusterName: String, topics: Set[String]): Future[ApiError \/ ClusterContext] = {
     implicit val ec = apiExecutionContext
     withKafkaManagerActor(
       KMClusterCommandRequest(
@@ -291,7 +289,7 @@ class KafkaManager(akkaConfig: Config)
                    partitions: Int,
                    replication: Int,
                    config: Properties = new Properties
-                   ): Future[ApiError \/ Unit] =
+                   ): Future[ApiError \/ ClusterContext] =
   {
     implicit val ec = apiExecutionContext
     withKafkaManagerActor(KMClusterCommandRequest(clusterName, CMCreateTopic(topic, partitions, replication, config))) {
@@ -306,7 +304,7 @@ class KafkaManager(akkaConfig: Config)
                           brokers: Seq[Int],
                           partitions: Int,
                           readVersion: Int
-                          ): Future[ApiError \/ Unit] =
+                          ): Future[ApiError \/ ClusterContext] =
   {
     implicit val ec = apiExecutionContext
     getTopicIdentity(clusterName, topic).flatMap { topicIdentityOrError =>
@@ -333,7 +331,7 @@ class KafkaManager(akkaConfig: Config)
                               brokers: Seq[Int],
                               partitions: Int,
                               readVersions: Map[String, Int]
-                              ): Future[ApiError \/ Unit] =
+                              ): Future[ApiError \/ ClusterContext] =
   {
     implicit val ec = apiExecutionContext
     getTopicListExtended(clusterName).flatMap { tleOrError =>
@@ -360,7 +358,7 @@ class KafkaManager(akkaConfig: Config)
                          topic: String,
                          config: Properties,
                          readVersion: Int
-                         ): Future[ApiError \/ Unit] =
+                         ): Future[ApiError \/ ClusterContext] =
   {
     implicit val ec = apiExecutionContext
     withKafkaManagerActor(
@@ -377,7 +375,7 @@ class KafkaManager(akkaConfig: Config)
   def deleteTopic(
                    clusterName: String,
                    topic: String
-                   ): Future[ApiError \/ Unit] =
+                   ): Future[ApiError \/ ClusterContext] =
   {
     implicit val ec = apiExecutionContext
     withKafkaManagerActor(KMClusterCommandRequest(clusterName, CMDeleteTopic(topic))) {
@@ -391,7 +389,7 @@ class KafkaManager(akkaConfig: Config)
                    hostname: String,
                    log_path: String,
                    config: Properties = new Properties
-                   ): Future[ApiError \/ Unit] =
+                   ): Future[ApiError \/ ClusterContext] =
   {
     implicit val ec = apiExecutionContext
     withKafkaManagerActor(KMClusterCommandRequest(clusterName, CMCreateLogkafka(hostname, log_path, config))) {
@@ -405,7 +403,7 @@ class KafkaManager(akkaConfig: Config)
                          hostname: String,
                          log_path: String,
                          config: Properties
-                         ): Future[ApiError \/ Unit] =
+                         ): Future[ApiError \/ ClusterContext] =
   {
     implicit val ec = apiExecutionContext
     withKafkaManagerActor(
@@ -423,7 +421,7 @@ class KafkaManager(akkaConfig: Config)
                    clusterName: String,
                    hostname: String,
                    log_path: String
-                   ): Future[ApiError \/ Unit] =
+                   ): Future[ApiError \/ ClusterContext] =
   {
     implicit val ec = apiExecutionContext
     withKafkaManagerActor(KMClusterCommandRequest(clusterName, CMDeleteLogkafka(hostname, log_path))) {
@@ -437,6 +435,12 @@ class KafkaManager(akkaConfig: Config)
     tryWithKafkaManagerActor(KMGetClusterConfig(clusterName)) { result: KMClusterConfigResult =>
       result.result.get
     }
+  }
+  
+  def getClusterContext(clusterName: String): Future[ApiError \/ ClusterContext] = {
+    tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, CMGetClusterContext))(
+      identity[ClusterContext]
+    )
   }
 
   def getClusterList: Future[ApiError \/ KMClusterList] = {
@@ -466,7 +470,7 @@ class KafkaManager(akkaConfig: Config)
         tl <- errOrTl
         rap <- errOrRap
       } yield {
-        TopicListExtended(tl.list.map(t => (t, ti.get(t))).sortBy(_._1), tl.deleteSet, rap)
+        TopicListExtended(tl.list.map(t => (t, ti.get(t))).sortBy(_._1), tl.deleteSet, rap, tl.clusterContext)
       }
     }
   }
@@ -504,7 +508,7 @@ class KafkaManager(akkaConfig: Config)
               bl.list, 
               bm, 
               if(bm.isEmpty) None else Option(bm.values.foldLeft(BrokerMetrics.DEFAULT)((acc, m) => acc + m)),
-              bl.clusterConfig
+              bl.clusterContext
             ))
         }
       })

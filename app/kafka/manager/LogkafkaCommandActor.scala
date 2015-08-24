@@ -9,6 +9,7 @@ import java.util.concurrent.{LinkedBlockingQueue, TimeUnit, ThreadPoolExecutor}
 
 import akka.pattern._
 import akka.util.Timeout
+import kafka.manager.features.KMDeleteTopicFeature
 import org.apache.curator.framework.CuratorFramework
 import kafka.manager.utils.{LogkafkaAdminUtils, ZkUtils}
 
@@ -25,12 +26,12 @@ import ActorModel._
 case class LogkafkaCommandActorConfig(curator: CuratorFramework, 
                                    longRunningPoolConfig: LongRunningPoolConfig,
                                    askTimeoutMillis: Long = 400, 
-                                   version: KafkaVersion)
+                                   clusterContext: ClusterContext)
 class LogkafkaCommandActor(logkafkaCommandActorConfig: LogkafkaCommandActorConfig) extends BaseCommandActor with LongRunningPoolActor {
 
   //private[this] val askTimeout: Timeout = logkafkaCommandActorConfig.askTimeoutMillis.milliseconds
 
-  private[this] val logkafkaAdminUtils = new LogkafkaAdminUtils(logkafkaCommandActorConfig.version)
+  private[this] val logkafkaAdminUtils = new LogkafkaAdminUtils(logkafkaCommandActorConfig.clusterContext.config.version)
 
   @scala.throws[Exception](classOf[Exception])
   override def preStart() = {
@@ -65,19 +66,18 @@ class LogkafkaCommandActor(logkafkaCommandActorConfig: LogkafkaCommandActorConfi
     implicit val ec = longRunningExecutionContext
     request match {
       case LKCDeleteLogkafka(hostname, log_path, logkafkaConfig) =>
-        logkafkaCommandActorConfig.version match {
-          case Kafka_0_8_1_1 =>
-            val result : LKCCommandResult = LKCCommandResult(Failure(new UnsupportedOperationException(
-              s"Delete logkafka not supported for kafka version ${logkafkaCommandActorConfig.version}")))
-            sender ! result
-          case Kafka_0_8_2_0 | Kafka_0_8_2_1 =>
-            longRunning {
-              Future {
-                LKCCommandResult(Try {
-                  logkafkaAdminUtils.deleteLogkafka(logkafkaCommandActorConfig.curator, hostname, log_path, logkafkaConfig)
-                })
-              }
+        if(logkafkaCommandActorConfig.clusterContext.clusterFeatures.features(KMDeleteTopicFeature)) {
+          longRunning {
+            Future {
+              LKCCommandResult(Try {
+                logkafkaAdminUtils.deleteLogkafka(logkafkaCommandActorConfig.curator, hostname, log_path, logkafkaConfig)
+              })
             }
+          }
+        } else {
+          val result : LKCCommandResult = LKCCommandResult(Failure(new UnsupportedOperationException(
+            s"Delete logkafka not supported for kafka version ${logkafkaCommandActorConfig.clusterContext.config.version}")))
+          sender ! result
         }
       case LKCCreateLogkafka(hostname, log_path, config, logkafkaConfig) =>
         longRunning {

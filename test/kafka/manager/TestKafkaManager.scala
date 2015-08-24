@@ -7,6 +7,7 @@ package kafka.manager
 import java.util.Properties
 
 import com.typesafe.config.{Config, ConfigFactory}
+import kafka.manager.features.KMDeleteTopicFeature
 import kafka.manager.utils.CuratorAwareTest
 import ActorModel.TopicList
 import kafka.test.SeededBroker
@@ -130,6 +131,13 @@ class TestKafkaManager extends CuratorAwareTest {
     val future = kafkaManager.getClusterConfig("dev")
     val result = Await.result(future,duration)
     assert(result.isRight === true)
+  }
+  
+  test("get cluster context") {
+    val future = kafkaManager.getClusterContext("dev")
+    val result = Await.result(future,duration)
+    assert(result.isRight === true, s"Failed : ${result}")
+    assert(result.toOption.get.clusterFeatures.features(KMDeleteTopicFeature))
   }
 
   test("run preferred leader election") {

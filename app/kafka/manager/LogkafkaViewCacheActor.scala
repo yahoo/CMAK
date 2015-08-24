@@ -6,6 +6,7 @@
 package kafka.manager
 
 import akka.actor.{ActorRef, Cancellable, ActorPath}
+import kafka.manager.features.KMLogKafkaFeature
 import scala.collection.mutable
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -16,7 +17,7 @@ import scala.util.Try
  */
 import ActorModel._
 case class LogkafkaViewCacheActorConfig(logkafkaStateActorPath: ActorPath, 
-                                      clusterConfig: ClusterConfig, 
+                                      clusterContext: ClusterContext,
                                       longRunningPoolConfig: LongRunningPoolConfig, 
                                       updatePeriod: FiniteDuration = 10 seconds)
 class LogkafkaViewCacheActor(config: LogkafkaViewCacheActorConfig) extends LongRunningPoolActor {
@@ -32,7 +33,7 @@ class LogkafkaViewCacheActor(config: LogkafkaViewCacheActorConfig) extends LongR
   private[this] var logkafkaClientsOption : Option[LogkafkaClients] = None
 
   override def preStart() = {
-    if (config.clusterConfig.logkafkaEnabled) {
+    if (config.clusterContext.clusterFeatures.features(KMLogKafkaFeature)) {
       log.info("Started actor %s".format(self.path))
       log.info("Scheduling updater for %s".format(config.updatePeriod))
       cancellable = Some(

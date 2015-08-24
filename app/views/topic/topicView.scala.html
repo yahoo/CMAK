@@ -6,10 +6,12 @@
 @(cluster:String,
   topic: String,
   errorOrTopicIdentity: kafka.manager.ApiError \/ kafka.manager.ActorModel.TopicIdentity
-)
+)(implicit af: features.ApplicationFeatures)
 
 @theMenu = {
-    @views.html.navigation.clusterMenu(cluster,"Topic","",models.navigation.Menus.clusterMenus(cluster))
+    @views.html.navigation.clusterMenu(cluster,"Topic","",models.navigation.Menus.clusterMenus(cluster)(
+        af,
+        errorOrTopicIdentity.toOption.map(_.clusterContext.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
 }
 
 @main(

@@ -6,11 +6,13 @@
 @(cluster:String,
   hostname: String,
   log_path: String,
-  errorOrLogkafkaIdentity: kafka.manager.ApiError \/ kafka.manager.ActorModel.LogkafkaIdentity
-)
+  errorOrLogkafkaIdentity: kafka.manager.ApiError \/ (kafka.manager.ActorModel.LogkafkaIdentity, kafka.manager.ClusterContext)
+)(implicit af: features.ApplicationFeatures)
 
 @theMenu = {
-    @views.html.navigation.clusterMenu(cluster,"Logkafka","",models.navigation.Menus.clusterMenus(cluster))
+    @views.html.navigation.clusterMenu(cluster,"Logkafka","",models.navigation.Menus.clusterMenus(cluster)(
+        af,
+        errorOrLogkafkaIdentity.toOption.map(_._2.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
 }
 
 @main(
@@ -22,7 +24,7 @@
         <div class="panel-heading">
             <h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>@hostname<br/>@log_path</h3>
         </div>
-        @errorOrLogkafkaIdentity.fold(views.html.errors.onApiError(_),views.html.logkafka.logkafkaViewContent(cluster,hostname,log_path,_))
+        @errorOrLogkafkaIdentity.fold(views.html.errors.onApiError(_), t => views.html.logkafka.logkafkaViewContent(cluster,hostname,log_path,t._1))
     </div>
 </div>
 }

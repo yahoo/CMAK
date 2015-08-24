@@ -3,14 +3,17 @@
 * See accompanying LICENSE file.
 *@
 @import scalaz.{\/}
-@(cluster: String, errorOrForm: kafka.manager.ApiError \/ Form[models.form.CreateTopic])(implicit request: RequestHeader)
+@(cluster: String, errorOrForm: kafka.manager.ApiError \/ (Form[models.form.CreateTopic], kafka.manager.ClusterContext)
+)(implicit af: features.ApplicationFeatures)
 
 @import helper._
 @import b3.vertical.fieldConstructor
 @import controllers.routes
 
 @theMenu = {
-    @views.html.navigation.clusterMenu(cluster,"Topic","Create",models.navigation.Menus.clusterMenus(cluster))
+    @views.html.navigation.clusterMenu(cluster,"Topic","Create",models.navigation.Menus.clusterMenus(cluster)(
+        af,
+        errorOrForm.toOption.map(_._2.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
 }
         
 @renderForm(createTopicForm: Form[models.form.CreateTopic]) = {
@@ -46,7 +49,7 @@
     <div class="col-md-6 un-pad-me">
         <div class="panel panel-default">
             <div class="panel-heading"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>Create Topic</h3></div>
-            @errorOrForm.fold( views.html.errors.onApiError(_), renderForm(_))
+            @errorOrForm.fold( views.html.errors.onApiError(_), t => renderForm(t._1))
         </div>
     </div>
 }

@@ -5,24 +5,21 @@
 
 package kafka.manager
 
-import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
+import kafka.manager.features.KMLogKafkaFeature
 import org.apache.curator.framework.recipes.cache._
 import org.apache.curator.framework.CuratorFramework
 import org.joda.time.{DateTimeZone, DateTime}
 import kafka.manager.utils.{LogkafkaZkUtils}
 
-import scala.collection.mutable
 import scala.util.{Success, Failure, Try}
 
 /**
  * @author hiral
  */
 import ActorModel._
-import kafka.manager.utils._
 import scala.collection.JavaConverters._
 class LogkafkaStateActor(curator: CuratorFramework, 
-                      deleteSupported: Boolean, 
-                      clusterConfig: ClusterConfig) extends BaseQueryCommandActor {
+                      clusterContext: ClusterContext) extends BaseQueryCommandActor {
 
   private[this] val logkafkaConfigTreeCache = new TreeCache(curator,LogkafkaZkUtils.LogkafkaConfigPath)
 
@@ -60,7 +57,7 @@ class LogkafkaStateActor(curator: CuratorFramework,
 
   @scala.throws[Exception](classOf[Exception])
   override def preStart() = {
-    if (clusterConfig.logkafkaEnabled) {
+    if (clusterContext.clusterFeatures.features(KMLogKafkaFeature)) {
       log.info("Started actor %s".format(self.path))
       log.info("Starting logkafka config tree cache...")
       logkafkaConfigTreeCache.start()

@@ -11,6 +11,7 @@ import java.util.concurrent.{LinkedBlockingQueue, TimeUnit, ThreadPoolExecutor}
 import akka.pattern._
 import akka.actor.{Props, ActorPath}
 import ActorModel.CMShutdown
+import kafka.manager.features.ClusterFeatures
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.recipes.cache.{PathChildrenCacheEvent, PathChildrenCacheListener, PathChildrenCache}
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
@@ -154,6 +155,7 @@ object ClusterConfig {
 
 }
 
+case class ClusterContext(clusterFeatures: ClusterFeatures, config: ClusterConfig)
 case class ClusterConfig (name: String, curatorConfig : CuratorConfig, enabled: Boolean, version: KafkaVersion, jmxEnabled: Boolean, logkafkaEnabled: Boolean)
 
 object KafkaManagerActor {
