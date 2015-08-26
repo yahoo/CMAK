@@ -52,6 +52,11 @@
             $('.' + selectClass).css("display", display);
         }
     }
+
+    function disableSubmission() {
+        $('[type=submit]').prop('disabled', true);
+        $('[type=submit]').removeAttr('type');
+    }
 </script>
 @scripts
 </body>

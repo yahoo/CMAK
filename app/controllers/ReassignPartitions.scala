@@ -15,6 +15,8 @@ import play.api.data.Forms._
 import play.api.data.validation.{Valid, Invalid, Constraint}
 import play.api.mvc._
 
+import scala.collection.mutable
+
 import scala.concurrent.Future
 import scalaz.{\/, \/-, -\/}
 
@@ -162,9 +164,9 @@ object ReassignPartitions extends Controller{
                 brokersViews.flatMap { errorOrBVs =>
                   errorOrBVs.fold (
                   {err: ApiError => Future.successful( Ok(views.html.topic.confirmMultipleAssignments( c, -\/(err) )))},
-                  {bVs: Seq[BVView] => Future {
+                  {bVs => Future {
                     Ok(views.html.topic.manualMultipleAssignments(
-                      c, manualReassignmentForm.fill(flattenedTopicListExtended(topics)), brokers , bVs, manualReassignmentForm.errors
+                      c, flattenedTopicListExtended(topics), brokers , bVs, manualReassignmentForm.errors
                     ))
                   }}
                   )
@@ -203,7 +205,7 @@ object ReassignPartitions extends Controller{
       errors => kafkaManager.getClusterList.map { errorOrClusterList =>
         responseScreen(
           "Manual Reassign Partitions Failure",
-          -\/(IndexedSeq(ApiError("There is something really wrong with your submitted data!")))
+          -\/(IndexedSeq(ApiError("There is something really wrong with your submitted data!\n\n" + errors.toString)))
         )
       },
       assignment => {

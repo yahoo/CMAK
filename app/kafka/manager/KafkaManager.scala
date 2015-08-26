@@ -464,7 +464,7 @@ class KafkaManager(akkaConfig: Config)
     }
   }
 
-  def getBrokersView(clusterName: String): Future[\/[ApiError, Seq[BVView]]] = {
+  def getBrokersView(clusterName: String): Future[\/[ApiError, mutable.Map[Int, BVView]]] = {
     implicit val ec = apiExecutionContext
 
     tryWithKafkaManagerActor(
@@ -472,7 +472,7 @@ class KafkaManager(akkaConfig: Config)
         clusterName,
         BVGetViews
       )
-    )(identity[Seq[BVView]])
+    )(identity[mutable.Map[Int, BVView]])
   }
 
   def getBrokerView(clusterName: String, brokerId: Int): Future[ApiError \/ BVView] = {

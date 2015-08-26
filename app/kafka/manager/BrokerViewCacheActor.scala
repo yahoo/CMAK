@@ -97,15 +97,15 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
     }
   }
 
-  private def allBrokerViews(): Seq[BVView] = {
-    var bvs = mutable.MutableList[BVView]()
+  private def allBrokerViews(): mutable.Map[Int, BVView] = {
+    var bvs = mutable.Map[Int, BVView]()
     for (key <- brokerTopicPartitions.keySet.toSeq.sorted) {
       val bv = brokerTopicPartitions.get(key).map { bv => produceBViewWithBrokerClusterState(bv, key) }
       if (bv.isDefined) {
-        bvs += bv.get
+        bvs.put(key, bv.get)
       }
     }
-    bvs.asInstanceOf[Seq[BVView]]
+    bvs
   }
 
   override def processActorRequest(request: ActorRequest): Unit = {
