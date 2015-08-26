@@ -91,13 +91,6 @@ class AdminUtils(version: KafkaVersion) {
     (firstReplicaIndex + shift) % nBrokers
   }
   
-  def isDeleteSupported : Boolean = {
-    version match {
-      case Kafka_0_8_2_0 => true
-      case _ => false
-    }
-  }
-
   def deleteTopic(curator: CuratorFramework, topic: String): Unit = {
     checkCondition(topicExists(curator, topic),TopicErrors.TopicDoesNotExist(topic))
     ZkUtils.createPersistentPath(curator,ZkUtils.getDeleteTopicPath(topic))

@@ -36,10 +36,13 @@ class TestClusterManagerActor extends CuratorAwareTest {
   private[this] var clusterManagerActor : Option[ActorRef] = None
   private[this] implicit val timeout: Timeout = 10.seconds
   private[this] val createTopicName = "cm-unit-test"
+  private[this] val createLogkafkaHostname = "km-unit-test-logkafka-hostname"
+  private[this] val createLogkafkaLogPath = "/km-unit-test-logkafka-logpath"
+  private[this] val createLogkafkaTopic = "km-unit-test-logkafka-topic"
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false)
+    val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, logkafkaEnabled = true)
     val curatorConfig = CuratorConfig(testServer.getConnectString)
     val config = ClusterManagerActorConfig("pinned-dispatcher","/kafka-manager/clusters/dev",curatorConfig,clusterConfig,FiniteDuration(1,SECONDS))
     val props = Props(classOf[ClusterManagerActor],config)
@@ -115,7 +118,7 @@ class TestClusterManagerActor extends CuratorAwareTest {
       descriptions foreach println
 
       withClusterManagerActor(KSGetBrokers) { brokerList: BrokerList =>
-        val topicIdentityList : IndexedSeq[TopicIdentity] = descriptions.flatten.map(td => TopicIdentity.from(brokerList,td, None, brokerList.clusterConfig))
+        val topicIdentityList : IndexedSeq[TopicIdentity] = descriptions.flatten.map(td => TopicIdentity.from(brokerList,td, None, brokerList.clusterContext))
         topicIdentityList foreach println
       }
     }
@@ -238,6 +241,56 @@ class TestClusterManagerActor extends CuratorAwareTest {
     Thread.sleep(3000)
     withClusterManagerActor(KSGetTopics) { result: TopicList =>
       assert(!result.list.contains(createTopicName),"Failed to delete topic")
+    }
+  }
+
+  test("create logkafka") {
+    val config = new Properties()
+    config.put(kafka.manager.utils.logkafka82.LogConfig.TopicProp,createLogkafkaTopic)
+    withClusterManagerActor(CMCreateLogkafka(createLogkafkaHostname,createLogkafkaLogPath,config)) { cmResultFuture: Future[CMCommandResult] =>
+      val cmResult = Await.result(cmResultFuture,10 seconds)
+      if(cmResult.result.isFailure) {
+        cmResult.result.get
+      }
+      Thread.sleep(500)
+    }
+
+    withClusterManagerActor(LKSGetLogkafkaHostnames) { result: LogkafkaHostnameList =>
+      assert(result.list.contains(createLogkafkaHostname),"Failed to create logkafka")
+    }
+
+    withClusterManagerActor(CMGetLogkafkaIdentity(createLogkafkaHostname)) { result: Option[CMLogkafkaIdentity] =>
+      assert(result.get.logkafkaIdentity.get.identityMap.contains(createLogkafkaLogPath),"Failed to create logkafka")
+    }
+  }
+
+  test("get logkafka hostname list") {
+    withClusterManagerActor(LKSGetLogkafkaHostnames) { result: LogkafkaHostnameList =>
+      assert(result.list.nonEmpty,"Failed to get logkafka hostname list")
+      result.list foreach println
+    }
+  }
+
+  test("get logkafka config") {
+    withClusterManagerActor(LKSGetLogkafkaHostnames) { result: LogkafkaHostnameList =>
+      val configs = result.list map { hostname =>
+        withClusterManagerActor(LKSGetLogkafkaConfig(hostname)) { logkafkaConfigOption: Option[LogkafkaConfig] => logkafkaConfigOption.get }
+      }
+      configs foreach println
+    }
+  }
+
+  test("delete logkafka") {
+    withClusterManagerActor(CMDeleteLogkafka(createLogkafkaHostname,createLogkafkaLogPath)) { cmResultFuture: Future[CMCommandResult] =>
+      val cmResult = Await.result(cmResultFuture,10 seconds)
+      if(cmResult.result.isFailure) {
+        cmResult.result.get
+      }
+      Thread.sleep(500)
+    }
+
+    withClusterManagerActor(CMGetLogkafkaIdentity(createLogkafkaHostname)) { result: Option[CMLogkafkaIdentity] =>
+      assert(!result.get.logkafkaIdentity.get.identityMap.contains(createLogkafkaLogPath),"Failed to delete logkafka")
     }
   }
 }

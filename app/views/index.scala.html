@@ -3,7 +3,8 @@
 * See accompanying LICENSE file.
 *@
 @import scalaz.{\/}
-@(errorOrClusters: kafka.manager.ApiError \/ kafka.manager.ActorModel.KMClusterList)
+@(errorOrClusters: kafka.manager.ApiError \/ kafka.manager.ActorModel.KMClusterList
+)(implicit af: features.ApplicationFeatures)
 
 @main(
     "Kafka Manager",

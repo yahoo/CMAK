@@ -7,7 +7,8 @@ package kafka.manager.utils
 import java.util.Properties
 
 import kafka.manager.ActorModel._
-import kafka.manager.{ClusterConfig, Kafka_0_8_2_0}
+import kafka.manager.features.ClusterFeatures
+import kafka.manager.{ClusterContext, ClusterConfig, Kafka_0_8_2_0}
 import kafka.manager.utils.zero81._
 import org.apache.zookeeper.data.Stat
 
@@ -25,7 +26,8 @@ class TestReassignPartitions extends CuratorAwareTest {
   private[this] val brokerList = IndexedSeq(1,2,3)
 
   private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false)
-  
+  private[this] val defaultClusterContext = ClusterContext(ClusterFeatures.from(defaultClusterConfig), defaultClusterConfig)
+
   private[this] def mytopic1 : TopicIdentity = getTopicIdentity("mytopic1")
   private[this] def mytopic2 : TopicIdentity = getTopicIdentity("mytopic2")
   private[this] def mytopic3 : TopicIdentity = getTopicIdentity("mytopic3")
@@ -47,8 +49,8 @@ class TestReassignPartitions extends CuratorAwareTest {
       val json : String = curator.getData.storingStatIn(stat).forPath(ZkUtils.getTopicPath(topic))
       val configStat = new Stat
       val configJson : String = curator.getData.storingStatIn(configStat).forPath(ZkUtils.getTopicConfigPath(topic))
-      val td: TopicDescription = TopicDescription(topic,(stat.getVersion,json),None,Option((configStat.getVersion,configJson)),false)
-      TopicIdentity.from(brokerList.size,td,None, defaultClusterConfig)
+      val td: TopicDescription = TopicDescription(topic,(stat.getVersion,json),None,Option((configStat.getVersion,configJson)))
+      TopicIdentity.from(brokerList.size,td,None, defaultClusterContext)
     }
   }
 

@@ -12,11 +12,12 @@
 @import models.form._
 
 @(cluster: String,
+  topic: String,
   assignForm: Form[List[(String, List[(Int,List[Int])])]],
   brokers: BrokerListExtended,
   brokersViews: Seq[BVView],
   formErrors: Seq[FormError]
-)
+)(implicit af: features.ApplicationFeatures, cf: kafka.manager.features.ClusterFeatures)
 
 @theMenu = {
 @views.html.navigation.clusterMenu(cluster,"Topic","Manual Partition Assignments",models.navigation.Menus.clusterMenus(cluster))
@@ -125,7 +126,7 @@
 <div class="row">
     <div class="col-md-8">
         @if(true) {
-            @helper.form(action = routes.ReassignPartitions.handleManualAssignment(cluster)) {
+            @helper.form(action = routes.ReassignPartitions.handleManualAssignment(cluster, topic)) {
                 @partitionsAssignmentsPane
             }
         } else {

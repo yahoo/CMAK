@@ -1,0 +1,62 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@(cluster: String, logkafkas: IndexedSeq[((String, Option[kafka.manager.ActorModel.LogkafkaIdentity]),Boolean)])
+
+@getFilesizeStatus(filesize: Int) = {
+@filesize match {
+    case i if i < 0 => {warning}
+    case i => {}
+}
+}
+
+@getLogkafkaStatus(active: Boolean) = {
+    @if(active) {} else {danger}
+}
+
+<table class="table" id="logkafkas-table">
+    <thead>
+        <tr><th>Hostname</th><th># Log Path</th><th># Real Path</th><th># File Pos</th><th># File Size</th><th># Topic</th></tr>
+    </thead>
+    <tbody>
+    @for( ((hostname, logkafkaIdentity), deleted) <- logkafkas) {
+        @logkafkaIdentity.map{ li =>
+            @for( (log_path, im) <- li.identityMap) {
+                <tr>
+                <td class="@getLogkafkaStatus(li.active)"><a href="@routes.Logkafka.logkafka(cluster, hostname, log_path)">@hostname</a></td>
+
+                @im._1.map { c =>
+                    <td>@log_path</td>
+                }.getOrElse{<td> </td>}
+
+                @im._2.map { c =>
+                    @c.get("realpath").map { d =>
+                        <td>@d</td>
+                    }.getOrElse{<td class = "danger"> no corresponding file to collect </td>}
+                }.getOrElse{<td class = "danger"> logkafka in @hostname is inactive </td>}
+
+                @im._2.map { c =>
+                    @c.get("filepos").map { d =>
+                        <td>@d</td>
+                    }.getOrElse{<td> </td>}
+                }.getOrElse{<td> </td>}
+
+                @im._2.map { c =>
+                    @c.get("filesize").map { d =>
+                        <td class = "@getFilesizeStatus(d.toInt)">@d</td>
+                    }.getOrElse{<td> </td>}
+                }.getOrElse{<td> </td>}
+
+                @im._1.map { c =>
+                    @c.get("topic").map { d =>
+                        <td>@d</td>
+                    }.getOrElse{<td> </td>}
+                }.getOrElse{<td> </td>}
+
+                </tr>
+            }
+        }.getOrElse{}
+    }
+    </tbody>
+</table>

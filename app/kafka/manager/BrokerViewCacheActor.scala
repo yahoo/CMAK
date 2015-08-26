@@ -6,6 +6,7 @@
 package kafka.manager
 
 import akka.actor.{ActorRef, Cancellable, ActorPath}
+import kafka.manager.features.KMJMXMetricsFeature
 import kafka.manager.utils.FiniteQueue
 import org.joda.time.DateTime
 
@@ -20,7 +21,7 @@ import scala.util.Try
  */
 import ActorModel._
 case class BrokerViewCacheActorConfig(kafkaStateActorPath: ActorPath,
-                                      clusterConfig: ClusterConfig,
+                                      clusterContext: ClusterContext,
                                       longRunningPoolConfig: LongRunningPoolConfig,
                                       updatePeriod: FiniteDuration = 10 seconds)
 class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunningPoolActor {
@@ -44,7 +45,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
 
   private[this] var combinedBrokerMetric : Option[BrokerMetrics] = None
 
-  private[this] val EMPTY_BVVIEW = BVView(Map.empty, config.clusterConfig, Option(BrokerMetrics.DEFAULT))
+  private[this] val EMPTY_BVVIEW = BVView(Map.empty, config.clusterContext, Option(BrokerMetrics.DEFAULT))
 
   private[this] var brokerMessagesPerSecCountHistory : Map[Int, Queue[BrokerMessagesPerSecCount]] = Map.empty
 
@@ -184,13 +185,13 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
       topicDescriptions <- topicDescriptionsOption
     } {
       val topicIdentity : IndexedSeq[TopicIdentity] = topicDescriptions.descriptions.map(
-        TopicIdentity.from(brokerList.list.size,_,None, config.clusterConfig))
+        TopicIdentity.from(brokerList.list.size,_,None, config.clusterContext))
       topicIdentities = topicIdentity.map(ti => (ti.topic, ti)).toMap
       val topicPartitionByBroker = topicIdentity.flatMap(
         ti => ti.partitionsByBroker.map(btp => (ti,btp.id,btp.partitions))).groupBy(_._2)
 
       //check for 2*broker list size since we schedule 2 jmx calls for each broker
-      if (config.clusterConfig.jmxEnabled && hasCapacityFor(2*brokerListOption.size)) {
+      if (config.clusterContext.clusterFeatures.features(KMJMXMetricsFeature) && hasCapacityFor(2*brokerListOption.size)) {
         implicit val ec = longRunningExecutionContext
         val brokerLookup = brokerList.list.map(bi => bi.id -> bi).toMap
         topicPartitionByBroker.foreach {
@@ -205,7 +206,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
                         topicPartitions.map {
                           case (topic, id, partitions) =>
                             (topic.topic,
-                              KafkaMetrics.getBrokerMetrics(config.clusterConfig.version, mbsc, Option(topic.topic)))
+                              KafkaMetrics.getBrokerMetrics(config.clusterContext.config.version, mbsc, Option(topic.topic)))
                         }
                     }
                     val result = tryResult match {
@@ -229,7 +230,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
               Future {
                 val tryResult = KafkaJMX.doWithConnection(broker.host, broker.jmxPort) {
                   mbsc =>
-                    KafkaMetrics.getBrokerMetrics(config.clusterConfig.version, mbsc)
+                    KafkaMetrics.getBrokerMetrics(config.clusterContext.config.version, mbsc)
                 }
 
                 val result = tryResult match {
@@ -242,7 +243,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
               }
             }
         }
-      } else if(config.clusterConfig.jmxEnabled) {
+      } else if(config.clusterContext.clusterFeatures.features(KMJMXMetricsFeature)) {
         log.warning("Not scheduling update of JMX for all brokers, not enough capacity!")
       }
 
@@ -253,7 +254,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
               (topic, partitions)
           }.toMap
           brokerTopicPartitions.put(
-            brokerId, BVView(topicPartitionsMap, config.clusterConfig, brokerMetrics.get(brokerId)))
+            brokerId, BVView(topicPartitionsMap, config.clusterContext, brokerMetrics.get(brokerId)))
       }
     }
   }

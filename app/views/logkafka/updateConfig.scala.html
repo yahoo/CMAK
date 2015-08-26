@@ -1,0 +1,57 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import scalaz.{\/}
+@(cluster: String, hostname: String, log_path: String, 
+errorOrForm: kafka.manager.ApiError \/ (Form[models.form.UpdateLogkafkaConfig], kafka.manager.ClusterContext)
+)(implicit af: features.ApplicationFeatures)
+
+@import helper._
+@import b3.vertical.fieldConstructor
+@import controllers.routes
+
+@theMenu = {
+    @views.html.navigation.clusterMenu(cluster,"Logkafka","Update Config",models.navigation.Menus.clusterMenus(cluster)(
+        af,
+        errorOrForm.toOption.map(_._2.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
+}
+        
+@renderForm(updateLogkafkaConfigForm: Form[models.form.UpdateLogkafkaConfig]) = {
+    @b3.form(routes.Logkafka.handleUpdateConfig(cluster, hostname, log_path)) {
+        <table class="table">
+            <thead>
+            <tr><th>Update Config</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        @b3.text(updateLogkafkaConfigForm("hostname"), '_label -> "Hostname", 'placeholder -> "", 'autofocus -> true )
+                        @b3.text(updateLogkafkaConfigForm("log_path"), '_label -> "Log Path", 'placeholder -> "", 'autofocus -> true )
+                        @helper.repeat(updateLogkafkaConfigForm("configs"), min = 1) { configsForm =>
+                            @b3.hidden(configsForm("name").name, configsForm("name").value.getOrElse(""))
+                            @b3.text(configsForm("value"), '_label -> configsForm("name").value.getOrElse(""))
+                        }
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        @b3.submit('class -> "submit-button btn btn-primary"){ Update Config }
+        <a href="@routes.Logkafka.logkafka(cluster,hostname,log_path)" class="cancel-button btn btn-default" role="button">Cancel</a>
+    }
+}
+
+@main(
+    "Update Config",
+    menu = theMenu,
+    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndClusterAndLogkafka("Logkafka View",cluster,hostname,log_path,"Update Config"))) {
+    <div class="col-md-6 un-pad-me">
+        <div class="panel panel-default">
+            <div class="panel-heading"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>Update Config</h3></div>
+            <div class="panel-body">
+                @errorOrForm.fold( views.html.errors.onApiError(_), t => renderForm(t._1))
+            </div>
+        </div>
+    </div>
+}
+

@@ -5,6 +5,7 @@
 
 package kafka.manager
 
+import kafka.manager.features.KMDeleteTopicFeature
 import kafka.manager.utils.zero81.{ReassignPartitionCommand, PreferredReplicaLeaderElectionCommand}
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.cache._
@@ -22,8 +23,7 @@ import ActorModel._
 import kafka.manager.utils._
 import scala.collection.JavaConverters._
 class KafkaStateActor(curator: CuratorFramework, 
-                      deleteSupported: Boolean, 
-                      clusterConfig: ClusterConfig) extends BaseQueryCommandActor {
+                      clusterContext: ClusterContext) extends BaseQueryCommandActor {
 
   // e.g. /brokers/topics/analytics_content/partitions/0/state
   private[this] val topicsTreeCache = new TreeCache(curator,ZkUtils.BrokerTopicsPath)
@@ -175,7 +175,7 @@ class KafkaStateActor(curator: CuratorFramework,
         Option(topicsTreeCache.getCurrentData(statePath)).map(cd => (part, asString(cd.getData)))
       }
       config = getTopicConfigString(topic)
-    } yield TopicDescription(topic, description, Option(states),config, deleteSupported)
+    } yield TopicDescription(topic, description, Option(states),config)
   }
 
   override def processActorResponse(response: ActorResponse): Unit = {
@@ -194,7 +194,7 @@ class KafkaStateActor(curator: CuratorFramework,
     request match {
       case KSGetTopics =>
         val deleteSet: Set[String] = {
-          if(deleteSupported) {
+          if(clusterContext.clusterFeatures.features(KMDeleteTopicFeature)) {
             val deleteTopicsData: mutable.Buffer[ChildData] = deleteTopicsPathCache.getCurrentData.asScala
             deleteTopicsData.map { cd =>
               nodeFromPath(cd.getPath)
@@ -206,9 +206,9 @@ class KafkaStateActor(curator: CuratorFramework,
         withTopicsTreeCache { cache =>
           cache.getCurrentChildren(ZkUtils.BrokerTopicsPath)
         }.fold {
-          sender ! TopicList(IndexedSeq.empty, deleteSet)
+          sender ! TopicList(IndexedSeq.empty, deleteSet, clusterContext)
         } { data: java.util.Map[String, ChildData] =>
-          sender ! TopicList(data.asScala.map(kv => kv._1).toIndexedSeq, deleteSet)
+          sender ! TopicList(data.asScala.map(kv => kv._1).toIndexedSeq, deleteSet, clusterContext)
         }
 
       case KSGetTopicConfig(topic) =>
@@ -250,7 +250,7 @@ class KafkaStateActor(curator: CuratorFramework,
         }.collect { 
           case scalaz.Success(bi) => bi
         }.toIndexedSeq.sortBy(_.id)
-        sender ! BrokerList(result, clusterConfig)
+        sender ! BrokerList(result, clusterContext)
 
       case KSGetPreferredLeaderElection =>
         sender ! preferredLeaderElection
@@ -269,7 +269,7 @@ class KafkaStateActor(curator: CuratorFramework,
           val s: Set[TopicAndPartition] = PreferredReplicaLeaderElectionCommand.parsePreferredReplicaElectionData(json)
           preferredLeaderElection.fold {
             //nothing there, add as new
-            preferredLeaderElection = Some(PreferredReplicaElection(getDateTime(millis), s, None))
+            preferredLeaderElection = Some(PreferredReplicaElection(getDateTime(millis), s, None, clusterContext))
           } {
             existing =>
               existing.endTime.fold {
@@ -277,7 +277,7 @@ class KafkaStateActor(curator: CuratorFramework,
                 preferredLeaderElection = Some(existing.copy(topicAndPartition = existing.topicAndPartition ++ s))
               } { _ =>
                 //new op started
-                preferredLeaderElection = Some(PreferredReplicaElection(getDateTime(millis), s, None))
+                preferredLeaderElection = Some(PreferredReplicaElection(getDateTime(millis), s, None, clusterContext))
               }
           }
         }
@@ -286,7 +286,7 @@ class KafkaStateActor(curator: CuratorFramework,
           val m : Map[TopicAndPartition, Seq[Int]] = ReassignPartitionCommand.parsePartitionReassignmentZkData(json)
           reassignPartitions.fold {
             //nothing there, add as new
-            reassignPartitions = Some(ReassignPartitions(getDateTime(millis),m, None))
+            reassignPartitions = Some(ReassignPartitions(getDateTime(millis),m, None, clusterContext))
           } {
             existing =>
               existing.endTime.fold {
@@ -294,7 +294,7 @@ class KafkaStateActor(curator: CuratorFramework,
                 reassignPartitions = Some(existing.copy(partitionsToBeReassigned = existing.partitionsToBeReassigned ++ m))
               } { _ =>
                 //new op started
-                reassignPartitions = Some(ReassignPartitions(getDateTime(millis),m, None))
+                reassignPartitions = Some(ReassignPartitions(getDateTime(millis),m, None, clusterContext))
               }
           }
         }

@@ -9,10 +9,10 @@
     <table class="table">
         <tbody>
         <tr>
-            <td><b>Zookeepers</b></td><td>@clusterView.clusterConfig.curatorConfig.zkConnect.replace(","," ")</td>
+            <td><b>Zookeepers</b></td><td>@clusterView.clusterContext.config.curatorConfig.zkConnect.replace(","," ")</td>
         </tr>
         <tr>
-            <td><b>Version</b></td><td>@clusterView.clusterConfig.version.toString</td>
+            <td><b>Version</b></td><td>@clusterView.clusterContext.config.version.toString</td>
         </tr>
         </tbody>
     </table>
@@ -23,7 +23,7 @@
         <tbody>
         <tr>
             <td><b>Topics</b></td><td><a href="@routes.Topic.topics(cluster)">@clusterView.topicsCount</a></td>
-            <td><b>Brokers</b></td><td><a href="@routes.Application.brokers(cluster)">@clusterView.brokersCount</a></td>
+            <td><b>Brokers</b></td><td><a href="@routes.Cluster.brokers(cluster)">@clusterView.brokersCount</a></td>
         </tr>
         </tbody>
     </table>
