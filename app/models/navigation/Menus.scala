@@ -22,7 +22,8 @@ object Menus {
       "Create".clusterRouteMenuItem(cluster)),
       None),
     "Preferred Replica Election".clusterMenu(cluster),
-    "Reassign Partitions".clusterMenu(cluster)
+    "Reassign Partitions".clusterMenu(cluster),
+    "Consumers".clusterMenu(cluster)
   )
 
   def indexMenu : IndexedSeq[Menu] = IndexedSeq(

@@ -1,0 +1,24 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import scalaz.{\/}
+@(cluster:String, consumer:String, errorOrComsumerDetail: kafka.manager.ApiError \/ controllers.ConsumerDetail)
+
+@theMenu = {
+    @views.html.navigation.clusterMenu(cluster,"Consumers","",models.navigation.Menus.clusterMenus(cluster))
+}
+
+@main(
+    "Consumer Details",
+    menu = theMenu,
+    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndCluster("Consumer Details", cluster, consumer))) {
+<div class="col-md-12 un-pad-me">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3>@consumer</h3>
+        </div>
+        @errorOrComsumerDetail.fold[Html](views.html.errors.onApiError(_), views.html.consumer.consumerDetailContent(cluster,_))
+    </div>
+</div>
+}
