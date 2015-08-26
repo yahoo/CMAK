@@ -173,9 +173,6 @@
                         <td>
                             <a href="@routes.ReassignPartitions.confirmAssignment(cluster,topic)" class="submit-button btn btn-primary" role="button">Generate Partition Assignments</a>
                         </td>
-                        <td>
-                            <a href="@routes.ReassignPartitions.manualAssignments(cluster, topic)" class="submit-button btn btn-primary" role="button">Manually Set Partition Assignments</a>
-                        </td>
                         }
                     </tr>
                     <tr>
@@ -185,6 +182,11 @@
                         <td>
                             <a href="@routes.Topic.updateConfig(cluster,topic)" class="submit-button btn btn-primary" role="button">Update Config</a>
                         </td>
+                        @features.app(features.KMReassignPartitionsFeature) {
+                        <td>
+                            <a href="@routes.ReassignPartitions.manualAssignments(cluster, topic)" class="submit-button btn btn-primary" role="button">Manually Set Partition Assignments</a>
+                        </td>
+                        }
                     </tr>
                     </tbody>
                 </table>
