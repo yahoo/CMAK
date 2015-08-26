@@ -7,7 +7,7 @@ name := """kafka-manager"""
 /* For packaging purposes, -SNAPSHOT MUST contain a digit */
 version := "1.2.7"
 
-scalaVersion := "2.11.5"
+scalaVersion := "2.11.7"
 
 scalacOptions ++= Seq("-Xlint","-Xfatal-warnings","-deprecation","-feature","-language:implicitConversions","-language:postfixOps")
 
