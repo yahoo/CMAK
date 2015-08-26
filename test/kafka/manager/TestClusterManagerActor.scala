@@ -39,7 +39,7 @@ class TestClusterManagerActor extends CuratorAwareTest {
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false)
+    val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, filterConsumers = true)
     val curatorConfig = CuratorConfig(testServer.getConnectString)
     val config = ClusterManagerActorConfig("pinned-dispatcher","/kafka-manager/clusters/dev",curatorConfig,clusterConfig,FiniteDuration(1,SECONDS))
     val props = Props(classOf[ClusterManagerActor],config)

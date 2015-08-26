@@ -44,6 +44,7 @@ object BreadCrumbs {
       BCDynamicNamedLink(identity,"Summary".clusterRoute),
       "Brokers".clusterRouteBreadCrumb),
     "Topics" -> IndexedSeq("Clusters".baseRouteBreadCrumb,BCDynamicNamedLink(identity,"Summary".clusterRoute)),
+    "Consumers" -> IndexedSeq("Clusters".baseRouteBreadCrumb,BCDynamicNamedLink(identity,"Summary".clusterRoute)),
     "Create Topic" -> IndexedSeq(
       "Clusters".baseRouteBreadCrumb,
       BCDynamicNamedLink(identity,"Summary".clusterRoute),
@@ -52,6 +53,14 @@ object BreadCrumbs {
       "Clusters".baseRouteBreadCrumb,
       BCDynamicNamedLink(identity,"Summary".clusterRoute),
       "Topics".clusterRouteBreadCrumb),
+    "Consumer View" -> IndexedSeq(
+      "Clusters".baseRouteBreadCrumb,
+      BCDynamicNamedLink(identity,"Summary".clusterRoute),
+      "Consumers".clusterRouteBreadCrumb),
+    "Consumed Topic View" -> IndexedSeq(
+      "Clusters".baseRouteBreadCrumb,
+      BCDynamicNamedLink(identity,"Summary".clusterRoute),
+      "Consumers".clusterRouteBreadCrumb),
     "Preferred Replica Election" -> IndexedSeq(
       "Clusters".baseRouteBreadCrumb,
       BCDynamicNamedLink(identity,"Summary".clusterRoute)),
@@ -71,6 +80,15 @@ object BreadCrumbs {
       BCDynamicNamedLink(identity,"Summary".clusterRoute),
       "Topics".clusterRouteBreadCrumb,
       BCDynamicMultiNamedLink(identity,"Topic View".topicRoute)
+    )
+  )
+
+  val consumerBreadCrumbs: Map[String, IndexedSeq[BreadCrumb]] = Map(
+    "Consumer View" -> IndexedSeq(
+      "Clusters".baseRouteBreadCrumb,
+      BCDynamicNamedLink(identity,"Summary".clusterRoute),
+      "Consumers".clusterRouteBreadCrumb,
+      BCDynamicMultiNamedLink(identity,"Consumer View".consumerRoute)
     )
   )
 
@@ -110,7 +128,21 @@ object BreadCrumbs {
     }
   }
 
+  private[this] def renderWithClusterAndConsumer(s: String, clusterName: String, consumer: String, topic: String = "") : IndexedSeq[BreadCrumbRendered] = {
+    consumerBreadCrumbs.getOrElse(s,IndexedSeq.empty[BreadCrumb]) map {
+      case BCStaticLink(n,c) => BCLink(n,c.toString())
+      case BCDynamicNamedLink(cn, cl) => BCLink(cn(clusterName),cl(clusterName).toString())
+      case BCDynamicMultiNamedLink(cn, cl) => BCLink(cn(consumer),cl(clusterName,consumer).toString())
+      case BCDynamicLink(cn, cl) => BCLink(cn,cl(clusterName).toString())
+      case BCDynamicText(cn) => BCText(cn(clusterName))
+    }
+  }
+
   def withNamedViewAndClusterAndTopic(s: String, clusterName: String, topic: String, name: String) : IndexedSeq[BreadCrumbRendered] = {
     renderWithClusterAndTopic(s, clusterName,topic) :+ BCActive(name)
+  }
+
+  def withNamedViewAndClusterAndConsumer(s: String, clusterName: String, consumer: String, name: String) : IndexedSeq[BreadCrumbRendered] = {
+    renderWithClusterAndConsumer(s, clusterName, consumer) :+ BCActive(name)
   }
 }
