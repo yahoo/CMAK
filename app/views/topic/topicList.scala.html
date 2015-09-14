@@ -3,10 +3,13 @@
 * See accompanying LICENSE file.
 *@
 @import scalaz.{\/}
-@(cluster:String, errorOrTopics: kafka.manager.ApiError \/ kafka.manager.TopicListExtended)
+@(cluster:String, errorOrTopics: kafka.manager.ApiError \/ kafka.manager.TopicListExtended
+)(implicit af: features.ApplicationFeatures)
 
 @theMenu = {
-    @views.html.navigation.clusterMenu(cluster,"Topic","List",models.navigation.Menus.clusterMenus(cluster))
+    @views.html.navigation.clusterMenu(cluster,"Topic","List",models.navigation.Menus.clusterMenus(cluster)(
+        af,
+        errorOrTopics.toOption.map(_.clusterContext.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
 }
 
 @topicScripts = {
@@ -23,23 +26,27 @@
     breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Topics",cluster)),
     scripts=topicScripts) {
     <div class="col-md-12">
+        @features.app(features.KMTopicManagerFeature) {
         <div class="panel panel-default">
             <div class="panel-heading"><h4>Operations</h4></div>
             <table class="table">
                 <tr>
+                    @features.app(features.KMReassignPartitionsFeature) {
                     <td>
                         <a href="@routes.ReassignPartitions.confirmMultipleAssignments(cluster)" class="submit-button btn btn-primary" role="button">Generate Partition Assignments</a>
                     </td>
                     <td>
-                        <a href="@routes.ReassignPartitions.manualMultipleAssignments(cluster)" class="submit-button btn btn-primary" role="button">Manually Set Partition Assignments</a>
-                    </td>
-                    <td>
                         <a href="@routes.ReassignPartitions.runMultipleAssignments(cluster)" class="submit-button btn btn-primary" role="button">Run Partition Assignments</a>
+                    </td>
+                    }
+                    <td>
+                        <a href="@routes.Topic.addPartitionsToMultipleTopics(cluster)" class="submit-button btn btn-primary" role="button">Add Partitions</a>
                     </td>
                 </tr>
                 </tbody>
             </table>
         </div>
+        }
     </div>
     <div class="col-md-12">
         <div class="panel panel-default">

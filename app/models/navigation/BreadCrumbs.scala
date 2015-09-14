@@ -52,6 +52,15 @@ object BreadCrumbs {
       "Clusters".baseRouteBreadCrumb,
       BCDynamicNamedLink(identity,"Summary".clusterRoute),
       "Topics".clusterRouteBreadCrumb),
+    "Logkafkas" -> IndexedSeq("Clusters".baseRouteBreadCrumb,BCDynamicNamedLink(identity,"Summary".clusterRoute)),
+    "Create Logkafka" -> IndexedSeq(
+      "Clusters".baseRouteBreadCrumb,
+      BCDynamicNamedLink(identity,"Summary".clusterRoute),
+      "Logkafkas".clusterRouteBreadCrumb),
+    "Logkafka View" -> IndexedSeq(
+      "Clusters".baseRouteBreadCrumb,
+      BCDynamicNamedLink(identity,"Summary".clusterRoute),
+      "Logkafkas".clusterRouteBreadCrumb),
     "Preferred Replica Election" -> IndexedSeq(
       "Clusters".baseRouteBreadCrumb,
       BCDynamicNamedLink(identity,"Summary".clusterRoute)),
@@ -71,6 +80,15 @@ object BreadCrumbs {
       BCDynamicNamedLink(identity,"Summary".clusterRoute),
       "Topics".clusterRouteBreadCrumb,
       BCDynamicMultiNamedLink(identity,"Topic View".topicRoute)
+    )
+  )
+
+  val logkafkaBreadCrumbs: Map[String, IndexedSeq[BreadCrumb]] = Map(
+    "Logkafka View" -> IndexedSeq(
+      "Clusters".baseRouteBreadCrumb,
+      BCDynamicNamedLink(identity,"Summary".clusterRoute),
+      "Logkafkas".clusterRouteBreadCrumb,
+      BCDynamicMultiNamedLink(identity,"Logkafka View".logkafkaRoute)
     )
   )
 
@@ -112,5 +130,20 @@ object BreadCrumbs {
 
   def withNamedViewAndClusterAndTopic(s: String, clusterName: String, topic: String, name: String) : IndexedSeq[BreadCrumbRendered] = {
     renderWithClusterAndTopic(s, clusterName,topic) :+ BCActive(name)
+  }
+
+  private[this] def renderWithClusterAndLogkafka(s: String, clusterName: String, hostname: String, log_path: String) : IndexedSeq[BreadCrumbRendered] = {
+    val hl = hostname + "?" + log_path
+    logkafkaBreadCrumbs.getOrElse(s,IndexedSeq.empty[BreadCrumb]) map {
+      case BCStaticLink(n,c) => BCLink(n,c.toString())
+      case BCDynamicNamedLink(cn, cl) => BCLink(cn(clusterName),cl(clusterName).toString())
+      case BCDynamicMultiNamedLink(cn, cl) => BCLink(cn(hl),cl(clusterName,hl).toString())
+      case BCDynamicLink(cn, cl) => BCLink(cn,cl(clusterName).toString())
+      case BCDynamicText(cn) => BCText(cn(clusterName))
+    }
+  }
+
+  def withNamedViewAndClusterAndLogkafka(s: String, clusterName: String, hostname: String, log_path: String, name: String) : IndexedSeq[BreadCrumbRendered] = {
+    renderWithClusterAndLogkafka(s, clusterName, hostname, log_path) :+ BCActive(name)
   }
 }

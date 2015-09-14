@@ -7,6 +7,7 @@ package kafka.manager
 import java.util.Properties
 
 import com.typesafe.config.{Config, ConfigFactory}
+import kafka.manager.features.KMDeleteTopicFeature
 import kafka.manager.utils.CuratorAwareTest
 import ActorModel.TopicList
 import kafka.test.SeededBroker
@@ -33,7 +34,11 @@ class TestKafkaManager extends CuratorAwareTest {
   private[this] val kafkaManager : KafkaManager = new KafkaManager(config)
 
   private[this] val duration = FiniteDuration(10,SECONDS)
-  private[this] val createTopicName = "km-unit-test"
+  private[this] val createTopicNameA = "km-unit-test-a"
+  private[this] val createTopicNameB = "km-unit-test-b"
+  private[this] val createLogkafkaHostname = "km-unit-test-logkafka-hostname"
+  private[this] val createLogkafkaLogPath = "/km-unit-test-logkafka-logpath"
+  private[this] val createLogkafkaTopic = "km-unit-test-logkafka-topic"
 
   override protected def beforeAll() : Unit = {
     super.beforeAll()
@@ -60,14 +65,17 @@ class TestKafkaManager extends CuratorAwareTest {
   }
 
   test("create topic") {
-    val future = kafkaManager.createTopic("dev",createTopicName,4,1)
-    val result = Await.result(future,duration)
-    assert(result.isRight === true)
+    val futureA = kafkaManager.createTopic("dev",createTopicNameA,4,1)
+    val resultA = Await.result(futureA,duration)
+    val futureB = kafkaManager.createTopic("dev",createTopicNameB,4,1)
+    val resultB = Await.result(futureB,duration)
+    assert(resultA.isRight === true)
+    assert(resultB.isRight === true)
     Thread.sleep(2000)
   }
 
   test("fail to create topic again") {
-    val future = kafkaManager.createTopic("dev",createTopicName,4,1)
+    val future = kafkaManager.createTopic("dev",createTopicNameA,4,1)
     val result = Await.result(future,duration)
     assert(result.isLeft === true)
     Thread.sleep(2000)
@@ -124,6 +132,13 @@ class TestKafkaManager extends CuratorAwareTest {
     val result = Await.result(future,duration)
     assert(result.isRight === true)
   }
+  
+  test("get cluster context") {
+    val future = kafkaManager.getClusterContext("dev")
+    val result = Await.result(future,duration)
+    assert(result.isRight === true, s"Failed : ${result}")
+    assert(result.toOption.get.clusterFeatures.features(KMDeleteTopicFeature))
+  }
 
   test("run preferred leader election") {
     val topicList = getTopicList()
@@ -163,17 +178,17 @@ class TestKafkaManager extends CuratorAwareTest {
   }
 
   test("add topic partitions") {
-    val tiFuture= kafkaManager.getTopicIdentity("dev",createTopicName)
+    val tiFuture= kafkaManager.getTopicIdentity("dev",createTopicNameA)
     val tiOrError = Await.result(tiFuture, duration)
     assert(tiOrError.isRight, "Failed to get topic identity!")
     val ti = tiOrError.toOption.get
-    val future = kafkaManager.addTopicPartitions("dev",createTopicName,Seq(0),ti.partitions + 1,ti.readVersion)
+    val future = kafkaManager.addTopicPartitions("dev",createTopicNameA,Seq(0),ti.partitions + 1,ti.readVersion)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
     
     //check new partition num
     {
-      val tiFuture= kafkaManager.getTopicIdentity("dev",createTopicName)
+      val tiFuture= kafkaManager.getTopicIdentity("dev",createTopicNameA)
       val tiOrError = Await.result(tiFuture, duration)
       assert(tiOrError.isRight, "Failed to get topic identity!")
       val ti = tiOrError.toOption.get
@@ -181,21 +196,49 @@ class TestKafkaManager extends CuratorAwareTest {
     }
   }
 
+  test("add multiple topics partitions") {
+    val tiFutureA = kafkaManager.getTopicIdentity("dev",createTopicNameA)
+    val tiFutureB = kafkaManager.getTopicIdentity("dev",createTopicNameB)
+    val tiOrErrorA = Await.result(tiFutureA,duration)
+    val tiOrErrorB = Await.result(tiFutureB,duration)
+    assert(tiOrErrorA.isRight, "Failed to get topic identity for topic A!")
+    assert(tiOrErrorB.isRight, "Failed to get topic identity for topic B!")
+    val tiA = tiOrErrorA.toOption.get
+    val tiB = tiOrErrorB.toOption.get
+    val newPartitionNum = tiA.partitions + 1
+    val future = kafkaManager.addMultipleTopicsPartitions("dev",Seq(createTopicNameA, createTopicNameB),Seq(0),newPartitionNum,Map(createTopicNameA->tiA.readVersion,createTopicNameB->tiB.readVersion))
+    val result = Await.result(future,duration)
+    assert(result.isRight === true)
+
+    {
+      val tiFutureA = kafkaManager.getTopicIdentity("dev",createTopicNameA)
+      val tiFutureB = kafkaManager.getTopicIdentity("dev",createTopicNameB)
+      val tiOrErrorA = Await.result(tiFutureA,duration)
+      val tiOrErrorB = Await.result(tiFutureB,duration)
+      assert(tiOrErrorA.isRight, "Failed to get topic identity for topic A!")
+      assert(tiOrErrorB.isRight, "Failed to get topic identity for topic B!")
+      val tiA = tiOrErrorA.toOption.get
+      val tiB = tiOrErrorB.toOption.get
+      assert(tiA.partitions === newPartitionNum)
+      assert(tiB.partitions === newPartitionNum)
+    }
+  }
+
   test("update topic config") {
-    val tiFuture= kafkaManager.getTopicIdentity("dev",createTopicName)
+    val tiFuture= kafkaManager.getTopicIdentity("dev",createTopicNameA)
     val tiOrError = Await.result(tiFuture, duration)
     assert(tiOrError.isRight, "Failed to get topic identity!")
     val ti = tiOrError.toOption.get
     val config = new Properties()
     config.put(kafka.manager.utils.zero82.LogConfig.RententionMsProp,"1800000")
     val configReadVersion = ti.configReadVersion
-    val future = kafkaManager.updateTopicConfig("dev",createTopicName,config,configReadVersion)
+    val future = kafkaManager.updateTopicConfig("dev",createTopicNameA,config,configReadVersion)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
 
     //check new topic config
     {
-      val tiFuture= kafkaManager.getTopicIdentity("dev",createTopicName)
+      val tiFuture= kafkaManager.getTopicIdentity("dev",createTopicNameA)
       val tiOrError = Await.result(tiFuture, duration)
       assert(tiOrError.isRight, "Failed to get topic identity!")
       val ti = tiOrError.toOption.get
@@ -205,13 +248,21 @@ class TestKafkaManager extends CuratorAwareTest {
   }
 
   test("delete topic") {
-    val future = kafkaManager.deleteTopic("dev",createTopicName)
-    val result = Await.result(future,duration)
-    assert(result.isRight === true, result)
-    val future2 = kafkaManager.getTopicList("dev")
-    val result2 = Await.result(future2,duration)
-    assert(result2.isRight === true, result2)
-    assert(result2.toOption.get.deleteSet(createTopicName),"Topic not in delete set")
+    val futureA = kafkaManager.deleteTopic("dev",createTopicNameA)
+    val resultA = Await.result(futureA,duration)
+    assert(resultA.isRight === true, resultA)
+    val futureA2 = kafkaManager.getTopicList("dev")
+    val resultA2 = Await.result(futureA2,duration)
+    assert(resultA2.isRight === true, resultA2)
+    assert(resultA2.toOption.get.deleteSet(createTopicNameA),"Topic not in delete set")
+
+    val futureB = kafkaManager.deleteTopic("dev",createTopicNameB)
+    val resultB = Await.result(futureB,duration)
+    assert(resultB.isRight === true, resultB)
+    val futureB2 = kafkaManager.getTopicList("dev")
+    val resultB2 = Await.result(futureB2,duration)
+    assert(resultB2.isRight === true, resultB2)
+    assert(resultB2.toOption.get.deleteSet(createTopicNameB),"Topic not in delete set")
     Thread.sleep(2000)
   }
 
@@ -268,10 +319,78 @@ class TestKafkaManager extends CuratorAwareTest {
   }
 
   test("delete topic not supported prior to 0.8.2.0") {
-    val future = kafkaManager.deleteTopic("dev",createTopicName)
+    val future = kafkaManager.deleteTopic("dev",createTopicNameA)
     val result = Await.result(future,duration)
     assert(result.isLeft === true, result)
     assert(result.swap.toOption.get.msg.contains("not supported"))
+    Thread.sleep(2000)
+  }
+
+  test("update cluster logkafka enabled") {
+    val future = kafkaManager.updateCluster("dev","0.8.2.0",testServer.getConnectString, jmxEnabled = false, logkafkaEnabled = true)
+    val result = Await.result(future,duration)
+    assert(result.isRight === true)
+
+    val future2 = kafkaManager.getClusterList
+    val result2 = Await.result(future2,duration)
+    assert(result2.isRight === true)
+    assert((result2.toOption.get.pending.nonEmpty === true) ||
+           (result2.toOption.get.active.find(c => c.name == "dev").get.logkafkaEnabled === true))
+    Thread.sleep(3000)
+  }
+
+  test("create logkafka") {
+    val config = new Properties()
+    config.put(kafka.manager.utils.logkafka82.LogConfig.TopicProp,createLogkafkaTopic)
+    val future = kafkaManager.createLogkafka("dev",createLogkafkaHostname,createLogkafkaLogPath,config)
+    val result = Await.result(future,duration)
+    assert(result.isRight === true)
+    Thread.sleep(2000)
+  }
+
+  test("get logkafka identity") {
+    val future = kafkaManager.getLogkafkaHostnameList("dev")
+    val result = Await.result(future,duration)
+    assert(result.isRight === true)
+    assert(result.toOption.get.list.nonEmpty === true)
+    result.toOption.get.list.foreach { hostname =>
+      val future2 = kafkaManager.getLogkafkaIdentity("dev",hostname)
+      val result2 = Await.result(future2, duration)
+      assert(result2.isRight === true)
+    }
+  }
+
+  test("update logkafka config") {
+    val liFuture= kafkaManager.getLogkafkaIdentity("dev",createLogkafkaHostname)
+    val liOrError = Await.result(liFuture, duration)
+    assert(liOrError.isRight, "Failed to get logkafka identity!")
+    val li = liOrError.toOption.get
+    val config = new Properties()
+    config.put(kafka.manager.utils.logkafka82.LogConfig.TopicProp,createLogkafkaTopic)
+    config.put(kafka.manager.utils.logkafka82.LogConfig.PartitionProp,"1")
+    val future = kafkaManager.updateLogkafkaConfig("dev",createLogkafkaHostname,createLogkafkaLogPath,config)
+    val result = Await.result(future,duration)
+    assert(result.isRight === true)
+
+    //check new logkafka config
+    {
+      val liFuture= kafkaManager.getLogkafkaIdentity("dev",createLogkafkaHostname)
+      val liOrError = Await.result(liFuture, duration)
+      assert(liOrError.isRight, "Failed to get logkafka identity!")
+      val li = liOrError.toOption.get
+      assert(li.identityMap.get(createLogkafkaLogPath).get._1.get.apply(kafka.manager.utils.logkafka82.LogConfig.PartitionProp) === "1")
+    }
+  }
+
+  test("delete logkafka") {
+    val future = kafkaManager.deleteLogkafka("dev",createLogkafkaHostname,createLogkafkaLogPath)
+    val result = Await.result(future,duration)
+    assert(result.isRight === true, result)
+    val liFuture= kafkaManager.getLogkafkaIdentity("dev",createLogkafkaHostname)
+    val liOrError = Await.result(liFuture, duration)
+    assert(liOrError.isRight, "Failed to get logkafka identity!")
+    val li = liOrError.toOption.get
+    assert(li.identityMap.get(createLogkafkaLogPath) === None)
     Thread.sleep(2000)
   }
 

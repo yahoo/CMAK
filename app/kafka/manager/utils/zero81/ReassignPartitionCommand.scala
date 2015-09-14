@@ -59,8 +59,7 @@ class ReassignPartitionCommand(adminUtils: AdminUtils) {
         currentTopicIdentity.numBrokers,
         currentTopicIdentity.configReadVersion,
         currentTopicIdentity.config, 
-        currentTopicIdentity.deleteSupported,
-        currentTopicIdentity.clusterConfig
+        currentTopicIdentity.clusterContext
         )
     }
   }

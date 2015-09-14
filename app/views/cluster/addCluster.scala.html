@@ -2,7 +2,7 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@(addClusterForm: Form[kafka.manager.ClusterConfig])(implicit request: RequestHeader)
+@(addClusterForm: Form[kafka.manager.ClusterConfig])
 
 @import b3.vertical.fieldConstructor
 @import controllers.routes
@@ -18,6 +18,7 @@
         @b3.text(form("zkHosts"), '_label -> "Cluster Zookeeper Hosts", 'placeholder -> "zk1:2181,zk2:2181,zk3:2181")
         @b3.select( form("kafkaVersion"), options = kafka.manager.KafkaVersion.formSelectList, '_label -> "Kafka Version" )
         @b3.checkbox(form("jmxEnabled"), '_text -> "Enable JMX Polling")
+        @b3.checkbox(form("logkafkaEnabled"), '_text -> "Enable Logkafka")
         @b3.submit('class -> "submit-button btn btn-primary"){ Save }
         <a href="@routes.Application.index()" class="cancel-button btn btn-default" role="button">Cancel</a>
     </fieldset>
@@ -32,6 +33,7 @@
                 @drawForm(addClusterForm)
             </div>
         </div>
+        @configReferences()
     </div>
 }
 

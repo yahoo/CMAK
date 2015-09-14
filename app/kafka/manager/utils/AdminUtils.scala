@@ -91,13 +91,6 @@ class AdminUtils(version: KafkaVersion) {
     (firstReplicaIndex + shift) % nBrokers
   }
   
-  def isDeleteSupported : Boolean = {
-    version match {
-      case Kafka_0_8_2_0 => true
-      case _ => false
-    }
-  }
-
   def deleteTopic(curator: CuratorFramework, topic: String): Unit = {
     checkCondition(topicExists(curator, topic),TopicErrors.TopicDoesNotExist(topic))
     ZkUtils.createPersistentPath(curator,ZkUtils.getDeleteTopicPath(topic))
@@ -191,8 +184,7 @@ class AdminUtils(version: KafkaVersion) {
                     newNumPartitions: Int,
                     partitionReplicaList : Map[Int, Seq[Int]],
                     brokerList: Seq[Int], 
-                    readVersion: Int
-                     ) {
+                    readVersion: Int) {
     
     /*
     import collection.JavaConverters._
@@ -207,7 +199,7 @@ class AdminUtils(version: KafkaVersion) {
     
     val brokerListSorted: Seq[Int] = brokerList.sorted
     val currentNumPartitions: Int = partitionReplicaList.size
-    
+
     checkCondition(currentNumPartitions > 0,
       TopicErrors.PartitionsGreaterThanZero)
     
@@ -236,6 +228,24 @@ class AdminUtils(version: KafkaVersion) {
       TopicErrors.FailedToAddNewPartitions(topic, newNumPartitions, newPartitionsReplicaList.size))
     
     createOrUpdateTopicPartitionAssignmentPathInZK(curator, topic, newPartitionsReplicaList, update=true, readVersion=readVersion)
+  }
+
+  /* Add partitions to multiple topics. After this operation, all topics will have the same number of partitions */
+  def addPartitionsToTopics(curator: CuratorFramework,
+                            topicAndReplicaList: Seq[(String, Map[Int, Seq[Int]])],
+                            newNumPartitions: Int,
+                            brokerList: Seq[Int],
+                            readVersions: Map[String,Int]) {
+    val topicsWithoutReadVersion = topicAndReplicaList.map(x=>x._1).filter{t => !readVersions.contains(t)}
+    checkCondition(topicsWithoutReadVersion.isEmpty, TopicErrors.NoReadVersionFound(topicsWithoutReadVersion.mkString(", ")))
+
+    // topicAndReplicaList is sorted by number of partitions each topic has in order not to start adding partitions if any of requests doesn't work with newNumPartitions
+    for {
+      (topic, replicaList) <- topicAndReplicaList
+      readVersion = readVersions(topic)
+    } {
+      addPartitions(curator, topic, newNumPartitions, replicaList, brokerList, readVersion)
+    }
   }
 
   /**

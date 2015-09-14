@@ -10,7 +10,7 @@
       <th>Bytes out /sec</th>
     </tr>
   @brokersViews.zipWithIndex.map { case (brokerView, idx) =>
-      @if(brokerView.clusterConfig.jmxEnabled) {
+    @if(brokerView.clusterContext.clusterFeatures.features(kafka.manager.features.KMJMXMetricsFeature)) {
       <tr>
         <td>@idx</td>
         <td>
@@ -23,7 +23,7 @@
           <span class="badge">@brokerView.metrics.map(_.bytesOutPerSec.formatMeanRate)</span>
         </td>
       </tr>
-  } else {
+    } else {
       <tr>
         <td>@idx</td>
         <td>
@@ -36,7 +36,7 @@
           <span class="badge">NA</span>
         </td>
       </tr>
-  }
+    }
   }
 </table>
 
@@ -48,7 +48,7 @@
     <th>Failed produce request /sec</th>
   </tr>
   @brokersViews.zipWithIndex.map { case (brokerView, idx) =>
-  @if(brokerView.clusterConfig.jmxEnabled) {
+  @if(brokerView.clusterContext.clusterFeatures.features(kafka.manager.features.KMJMXMetricsFeature)) {
   <tr>
     <td>@idx</td>
     <td>

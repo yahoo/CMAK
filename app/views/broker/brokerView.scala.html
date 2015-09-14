@@ -3,16 +3,29 @@
 * See accompanying LICENSE file.
 *@
 @import scalaz.{\/}
-@(cluster:String, brokerId: Int, errorOrBrokerView: kafka.manager.ApiError \/ kafka.manager.ActorModel.BVView)
+@(cluster:String, brokerId: Int, errorOrBrokerView: kafka.manager.ApiError \/ kafka.manager.ActorModel.BVView
+)(implicit af: features.ApplicationFeatures)
 
 @theMenu = {
-    @views.html.navigation.clusterMenu(cluster,"Brokers","",models.navigation.Menus.clusterMenus(cluster))
+    @views.html.navigation.clusterMenu(cluster,"Brokers","",models.navigation.Menus.clusterMenus(cluster)(
+        af,
+        errorOrBrokerView.toOption.map(_.clusterContext.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
 }
+
+@brokerScripts = {
+<script ype="text/javascript">
+    $(document).ready(function() {
+        $('#broker-table').DataTable();
+    } );
+    </script>
+}
+
 
 @main(
     "Broker View",
     menu = theMenu,
-    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndCluster("Broker View",cluster,brokerId.toString))) {
+    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndCluster("Broker View",cluster,brokerId.toString)),
+    scripts=brokerScripts) {
 <div class="col-md-12 un-pad-me">
     <div class="panel panel-default">
         <div class="panel-heading">

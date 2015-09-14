@@ -1,0 +1,71 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import b3.vertical.fieldConstructor
+@(cluster:String, hostname: String, log_path: String, logkafkaIdentity: kafka.manager.ActorModel.LogkafkaIdentity)
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="panel panel-default">
+            <div class="panel-heading"><h4>Logkafka Summary</h4></div>
+            <table class="table">
+                <tbody>
+                <tr>
+                    <td>Hostname</td>
+                    <td>@hostname</td>
+                <tr>
+                    <td>Log Path</td>
+                    <td>@log_path</td>
+                </tr>
+                </tbody>
+            </table>
+            @if(!logkafkaIdentity.identityMap.isEmpty && !logkafkaIdentity.identityMap.get(log_path).isEmpty) {
+              @defining(logkafkaIdentity.identityMap.get(log_path).get) { identityTuple =>
+                @if(identityTuple._1.isDefined) {
+                <table class="table">
+                    <thead>
+                    <th>Config</th><th>Value</th>
+                    </thead>
+                    <tbody>
+                    @identityTuple._1.map { config =>
+                        @for((k, v) <- config) {
+                            <tr>
+                                <td>@k</td>
+                                <td>@v</td>
+                            </tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+                }
+              }
+            }
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="panel panel-default">
+            <div class="panel-heading"><h4>Operations</h4></div>
+            <table class="table">
+                <tbody>
+                <tr>
+                    <td>
+                        @b3.form(routes.Logkafka.handleDeleteLogkafka(cluster, hostname, log_path)) {
+                        <fieldset>
+                            @b3.hidden("hostname", hostname)
+                            @b3.hidden("log_path", log_path)
+                            @b3.submit('class -> "submit-button btn btn-primary"){ Delete Logkafka }
+                        </fieldset>
+                        }
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <a href="@routes.Logkafka.updateConfig(cluster,hostname,log_path)" class="submit-button btn btn-primary" role="button">Update Config</a>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -11,6 +11,7 @@ import java.util.concurrent.{LinkedBlockingQueue, TimeUnit, ThreadPoolExecutor}
 import akka.pattern._
 import akka.actor.{Props, ActorPath}
 import ActorModel.CMShutdown
+import kafka.manager.features.ClusterFeatures
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.recipes.cache.{PathChildrenCacheEvent, PathChildrenCacheListener, PathChildrenCache}
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
@@ -81,18 +82,18 @@ object ClusterConfig {
     require(zkHosts.length > 0, "cluster zk hosts is illegal, can't be empty!")
   }
 
-  def apply(name: String, version : String, zkHosts: String, zkMaxRetry: Int = 100, jmxEnabled: Boolean) : ClusterConfig = {
+  def apply(name: String, version : String, zkHosts: String, zkMaxRetry: Int = 100, jmxEnabled: Boolean, logkafkaEnabled: Boolean = false) : ClusterConfig = {
     val kafkaVersion = KafkaVersion(version)
     //validate cluster name
     validateName(name)
     //validate zk hosts
     validateZkHosts(zkHosts)
     val cleanZkHosts = zkHosts.replaceAll(" ","")
-    new ClusterConfig(name, CuratorConfig(cleanZkHosts, zkMaxRetry), true, kafkaVersion, jmxEnabled)
+    new ClusterConfig(name, CuratorConfig(cleanZkHosts, zkMaxRetry), true, kafkaVersion, jmxEnabled, logkafkaEnabled)
   }
 
-  def customUnapply(cc: ClusterConfig) : Option[(String, String, String, Int, Boolean)] = {
-    Some((cc.name, cc.version.toString, cc.curatorConfig.zkConnect, cc.curatorConfig.zkMaxRetry, cc.jmxEnabled))
+  def customUnapply(cc: ClusterConfig) : Option[(String, String, String, Int, Boolean, Boolean)] = {
+    Some((cc.name, cc.version.toString, cc.curatorConfig.zkConnect, cc.curatorConfig.zkMaxRetry, cc.jmxEnabled, cc.logkafkaEnabled))
   }
 
   import scalaz.{Failure,Success}
@@ -123,6 +124,7 @@ object ClusterConfig {
       :: ("enabled" -> toJSON(config.enabled))
       :: ("kafkaVersion" -> toJSON(config.version.toString))
       :: ("jmxEnabled" -> toJSON(config.jmxEnabled))
+      :: ("logkafkaEnabled" -> toJSON(config.logkafkaEnabled))
       :: Nil)
     compact(render(json)).getBytes(StandardCharsets.UTF_8)
   }
@@ -137,7 +139,8 @@ object ClusterConfig {
           val versionString = field[String]("kafkaVersion")(json)
           val version = versionString.map(KafkaVersion.apply).getOrElse(Kafka_0_8_1_1)
           val jmxEnabled = field[Boolean]("jmxEnabled")(json)
-          ClusterConfig.apply(name,curatorConfig,enabled,version,jmxEnabled.getOrElse(false))
+          val logkafkaEnabled = field[Boolean]("logkafkaEnabled")(json)
+          ClusterConfig.apply(name,curatorConfig,enabled,version,jmxEnabled.getOrElse(false),logkafkaEnabled.getOrElse(false))
       }
 
       result match {
@@ -152,7 +155,8 @@ object ClusterConfig {
 
 }
 
-case class ClusterConfig (name: String, curatorConfig : CuratorConfig, enabled: Boolean, version: KafkaVersion, jmxEnabled: Boolean)
+case class ClusterContext(clusterFeatures: ClusterFeatures, config: ClusterConfig)
+case class ClusterConfig (name: String, curatorConfig : CuratorConfig, enabled: Boolean, version: KafkaVersion, jmxEnabled: Boolean, logkafkaEnabled: Boolean)
 
 object KafkaManagerActor {
   val ZkRoot : String = "/kafka-manager"
@@ -544,7 +548,8 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
       if(newConfig.curatorConfig.zkConnect == currentConfig.curatorConfig.zkConnect
         && newConfig.enabled == currentConfig.enabled
         && newConfig.version == currentConfig.version
-        && newConfig.jmxEnabled == currentConfig.jmxEnabled) {
+        && newConfig.jmxEnabled == currentConfig.jmxEnabled
+        && newConfig.logkafkaEnabled == currentConfig.logkafkaEnabled) {
         //nothing changed
         false
       } else {
