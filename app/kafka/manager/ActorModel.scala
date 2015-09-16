@@ -5,11 +5,12 @@
 
 package kafka.manager
 
-import java.util.Properties
+import java.util.{Date, Properties}
 
 import org.joda.time.DateTime
 import kafka.manager.utils.TopicAndPartition
 import org.slf4j.LoggerFactory
+import scheduler.models.form.Failover
 
 import scala.collection.immutable.Queue
 import scala.util.Try
@@ -439,6 +440,102 @@ object ActorModel {
         hostnameSet map { l => l -> ((if(!configMap.isEmpty) configMap.get(l) else None, if(!clientMap.isEmpty) clientMap.get(l) else None)) }
       } else { Set() }
       LogkafkaIdentity(hostname, lct.isDefined, identitySet.toMap)
+    }
+  }
+
+  case class SMGetBrokerIdentity(id: Int) extends BVRequest
+
+  case object SMGetView extends QueryRequest
+  case class SMView(topicsCount: Int, brokersCount: Int, schedulerConfig: SchedulerConfig) extends QueryResponse
+
+  case class SMAddBroker(id: Int, cpus: Option[Double], mem: Option[Long], heap: Option[Long], port: Option[String],
+                         bindAddress: Option[String], constraints: Option[String], options: Option[String],
+                         log4jOptions: Option[String], jvmOptions: Option[String], stickinessPeriod: Option[String],
+                         failover: Failover) extends CommandRequest
+
+  case class SMUpdateBroker(id: Int, cpus: Option[Double], mem: Option[Long], heap: Option[Long], port: Option[String],
+                            bindAddress: Option[String], constraints: Option[String], options: Option[String],
+                            log4jOptions: Option[String], jvmOptions: Option[String], stickinessPeriod: Option[String],
+                            failover: Failover) extends CommandRequest
+
+  case class SMCommandResult(result: Try[Unit]) extends CommandResponse
+
+  case class KSCAddBroker(id: Int, cpus: Option[Double], mem: Option[Long], heap: Option[Long], port: Option[String],
+                          bindAddress: Option[String], constraints: Option[String], options: Option[String],
+                          log4jOptions: Option[String], jvmOptions: Option[String], stickinessPeriod: Option[String],
+                          failover: Failover) extends CommandRequest
+
+  case class KSCUpdateBroker(id: Int, cpus: Option[Double], mem: Option[Long], heap: Option[Long], port: Option[String],
+                             bindAddress: Option[String], constraints: Option[String], options: Option[String],
+                             log4jOptions: Option[String], jvmOptions: Option[String], stickinessPeriod: Option[String],
+                             failover: Failover) extends CommandRequest
+
+  case class SMStartBroker(brokerId: Int) extends CommandRequest
+  case class SMStopBroker(brokerId: Int) extends CommandRequest
+  case class SMRemoveBroker(brokerId: Int) extends CommandRequest
+  case class SMRebalanceTopics(ids: String, topics:Option[String]) extends CommandRequest
+
+  case class KSCStartBroker(id: Int) extends CommandRequest
+  case class KSCStopBroker(id: Int) extends CommandRequest
+  case class KSCRemoveBroker(id: Int) extends CommandRequest
+  case class KSCRebalanceTopics(ids: String, topics:Option[String]) extends CommandRequest
+
+  case class KMSchedulerCommandRequest(scheduler: String, request: CommandRequest) extends CommandRequest
+  case class KMSchedulerList(active: IndexedSeq[SchedulerConfig], pending : IndexedSeq[SchedulerConfig]) extends QueryResponse
+  case object KMGetAllSchedulers extends QueryRequest
+  case class KMAddScheduler(config: SchedulerConfig) extends CommandRequest
+  case class KMSchedulerQueryRequest(schedulerName: String, request: QueryRequest) extends QueryRequest
+  case class KMGetSchedulerConfig(schedulerName: String) extends QueryRequest
+  case class KMSchedulerConfigResult(result: Try[SchedulerConfig]) extends QueryResponse
+
+  case object SchedulerKSGetBrokers extends KSRequest
+  case class SchedulerBrokerList(list: Seq[SchedulerBrokerIdentity], schedulerConfig: SchedulerConfig) extends QueryResponse
+
+  case class SchedulerBrokerTaskIdentity(id: String,
+                                         slaveId: String,
+                                         executorId: String,
+                                         hostname: String,
+                                         endpoint: Option[String],
+                                         state: String)
+
+  case class SchedulerBrokerStickinessIdentity(period: String,
+                                               stopTime: Option[Date],
+                                               hostname: Option[String])
+
+  case class SchedulerBrokerFailoverIdentity(delay: String,
+                                             maxDelay: String,
+                                             maxTries: Option[Int],
+                                             failures: Option[Int],
+                                             failureTime: Option[Date])
+
+  case class SchedulerBrokerIdentity(id: Int, active: Boolean, cpus: Double, mem: Long, heap: Long, port: Option[String],
+                                     bindAddress: Option[String], constraints: Seq[(String, String)], options: Seq[(String, String)],
+                                     log4jOptions: Seq[(String, String)], jvmOptions: Option[String],
+                                     stickiness: SchedulerBrokerStickinessIdentity,
+                                     failover: SchedulerBrokerFailoverIdentity,
+                                     task: Option[SchedulerBrokerTaskIdentity],
+                                     schedulerConfig: SchedulerConfig = null,
+                                     metrics: Option[BrokerMetrics] = None,
+                                     stats: Option[BrokerClusterStats] = None) {
+
+    def actualHost(): Option[String] = task.flatMap(t => t.endpoint.map(_.split(":")(0)))
+
+    def actualPort(): Option[String] = task.flatMap(t => t.endpoint.map(_.split(":")(1)))
+
+    def numTopics() = 0
+    def numPartitions() = 0
+
+    def topicPartitions() = Seq.empty[(TopicIdentity,  IndexedSeq[Int])]
+
+    def constraintsDesc = constraints.map { case (k, v) => s"$k=$v" }.mkString
+    def optionsDesc = options.map { case (k, v) => s"$k=$v" }.mkString
+    def log4jOptionsDesc = log4jOptions.map { case (k, v) => s"$k=$v" }.mkString
+
+    def state(): String = {
+      if (active)
+        if (actualHost().isEmpty) "starting" else "running"
+      else
+        "stopped|failed"
     }
   }
 }

@@ -11,7 +11,6 @@ import kafka.manager.{BaseQueryCommandActor, SchedulerConfig}
 import org.apache.curator.framework.CuratorFramework
 
 class KafkaSchedulerStateActor(curator: CuratorFramework,
-                      deleteSupported: Boolean,
                       schedulerConfig: SchedulerConfig) extends BaseQueryCommandActor {
 
   val schedulerRestClient = new SchedulerRestClient(schedulerConfig.apiUrl)(play.api.libs.concurrent.Execution.Implicits.defaultContext)
@@ -45,10 +44,11 @@ class KafkaSchedulerStateActor(curator: CuratorFramework,
   override def processQueryRequest(request: QueryRequest): Unit = {
     request match {
       case KSGetTopics =>
-        sender ! TopicList(IndexedSeq(), Set())
+        sender ! TopicList(IndexedSeq(), Set(), null)
 
       case KSGetAllTopicDescriptions(lastUpdateMillisOption) =>
         sender ! TopicDescriptions(IndexedSeq.empty, 0L)
+
       case SchedulerKSGetBrokers =>
         implicit val ec = context.dispatcher
 

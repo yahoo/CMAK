@@ -67,7 +67,7 @@ class SchedulerManagerActor(smConfig: SchedulerManagerActorConfig)
 
   private[this] val adminUtils = new AdminUtils(smConfig.schedulerConfig.version)
 
-  private[this] val kssProps = Props(classOf[KafkaSchedulerStateActor],sharedClusterCurator, adminUtils.isDeleteSupported, smConfig.schedulerConfig)
+  private[this] val kssProps = Props(classOf[KafkaSchedulerStateActor],sharedClusterCurator, smConfig.schedulerConfig)
   private[this] val kafkaSchedulerStateActor : ActorPath = context.actorOf(kssProps.withDispatcher(smConfig.pinnedDispatcherName),"kafka-scheduler-state").path
 
   private[this] val bvConfig = SchedulerBrokerViewCacheActorConfig(
