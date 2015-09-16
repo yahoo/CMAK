@@ -3,7 +3,8 @@
 * See accompanying LICENSE file.
 *@
 @import b3.vertical.fieldConstructor
-@(cluster:String,topic: String, topicIdentity: kafka.manager.ActorModel.TopicIdentity)
+@(cluster:String,topic: String, topicIdentity: kafka.manager.ActorModel.TopicIdentity
+)(implicit af: features.ApplicationFeatures)
 
 @getUnderReplicatedLevel(percentage: Int) = {
     @percentage match {
@@ -65,7 +66,7 @@
 }
         
 @renderTopicMetrics = {
-    @if(topicIdentity.clusterConfig.jmxEnabled) {
+    @if(topicIdentity.clusterContext.clusterFeatures.features(kafka.manager.features.KMJMXMetricsFeature)) {
         @views.html.common.brokerMetrics(topicIdentity.metrics)
     } else {
         <div class="alert alert-info" role="alert">
@@ -143,12 +144,13 @@
             </div>
         </div>
         <div class="col-md-7">
+            @features.app(features.KMTopicManagerFeature) {
             <div class="panel panel-default">
                 <div class="panel-heading"><h4>Operations</h4></div>
                 <table class="table">
                     <tbody>
                     <tr>
-                        @if(topicIdentity.deleteSupported) {
+                        @if(topicIdentity.clusterContext.clusterFeatures.features(kafka.manager.features.KMDeleteTopicFeature)) {
                         <td>
                             @b3.form(routes.Topic.handleDeleteTopic(cluster, topic)) {
                             <fieldset>
@@ -158,6 +160,7 @@
                             }
                         </td>
                         }
+                        @features.app(features.KMReassignPartitionsFeature) {
                         <td>
                             @b3.form(routes.ReassignPartitions.handleOperation(cluster,topic)) {
                             <fieldset>
@@ -170,6 +173,7 @@
                         <td>
                             <a href="@routes.ReassignPartitions.confirmAssignment(cluster,topic)" class="submit-button btn btn-primary" role="button">Generate Partition Assignments</a>
                         </td>
+                        }
                     </tr>
                     <tr>
                         <td>
@@ -178,22 +182,28 @@
                         <td>
                             <a href="@routes.Topic.updateConfig(cluster,topic)" class="submit-button btn btn-primary" role="button">Update Config</a>
                         </td>
+                        @features.app(features.KMReassignPartitionsFeature) {
+                        <td>
+                            <a href="@routes.ReassignPartitions.manualAssignments(cluster, topic)" class="submit-button btn btn-primary" role="button">Manual Partition Assignments</a>
+                        </td>
+                        }
                     </tr>
                     </tbody>
                 </table>
             </div>
+            }
             <div class="panel panel-default">
                 <div class="panel-heading"><h4>Partitions by Broker</h4></div>
-                <table class="table">
+                <table class="table" style="table-layout: fixed; width: 100%">
                     <thead>
                     <tr><th>Broker</th><th># of Partitions</th><th>Partitions</th><th>Skewed?</th></tr>
                     </thead>
                     <tbody>
                     @for(btp <- topicIdentity.partitionsByBroker) {
                     <tr>
-                        <td><a href="@routes.Application.broker(cluster,btp.id)">@btp.id</a></td>
+                        <td><a href="@routes.Cluster.broker(cluster,btp.id)">@btp.id</a></td>
                         <td>@btp.partitions.size</td>
-                        <td>@btp.partitions.mkString("(",",",")")</td>
+                        <td style="word-wrap: break-word">@btp.partitions.mkString("(",",",")")</td>
                         <td class="@getBrokerIsSkewedLevel(btp.isSkewed)">
                             @btp.isSkewed
                         </td>
@@ -217,7 +227,7 @@
                     <tr>
                         <td>@tpi.partNum</td>
                         <td class="@getPartitionLeaderLevel(tpi.leader)">
-                            <a href="@routes.Application.broker(cluster,tpi.leader)">@tpi.leader</a>
+                            <a href="@routes.Cluster.broker(cluster,tpi.leader)">@tpi.leader</a>
                         </td>
                         <td>@tpi.replicas.mkString("(",",",")")</td>
                         <td>@tpi.isr.mkString("(",",",")")</td>

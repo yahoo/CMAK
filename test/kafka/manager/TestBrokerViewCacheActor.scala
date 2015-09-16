@@ -10,6 +10,7 @@ import akka.actor.{ActorRef, ActorSystem, Kill, Props}
 import akka.pattern._
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
+import kafka.manager.features.ClusterFeatures
 import kafka.manager.utils.KafkaServerInTest
 import ActorModel._
 import kafka.test.SeededBroker
@@ -35,15 +36,17 @@ class TestBrokerViewCacheActor extends KafkaServerInTest {
 
   private[this] var brokerViewCacheActor : Option[ActorRef] = None
   private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false)
+  private[this] val defaultClusterContext = ClusterContext(ClusterFeatures.from(defaultClusterConfig), defaultClusterConfig)
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
     val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false)
-    val props = Props(classOf[KafkaStateActor],sharedCurator, true, defaultClusterConfig)
+    val clusterContext = ClusterContext(ClusterFeatures.from(clusterConfig), clusterConfig)
+    val props = Props(classOf[KafkaStateActor],sharedCurator, defaultClusterContext)
 
     kafkaStateActor = Some(system.actorOf(props.withDispatcher("pinned-dispatcher"),"ksa"))
 
-    val bvConfig = BrokerViewCacheActorConfig(kafkaStateActor.get.path, clusterConfig, LongRunningPoolConfig(2,100), FiniteDuration(10, SECONDS))
+    val bvConfig = BrokerViewCacheActorConfig(kafkaStateActor.get.path, clusterContext, LongRunningPoolConfig(2,100), FiniteDuration(10, SECONDS))
     val bvcProps = Props(classOf[BrokerViewCacheActor],bvConfig)
 
     brokerViewCacheActor = Some(system.actorOf(bvcProps,"broker-view"))

@@ -9,6 +9,7 @@ import java.util.concurrent.{LinkedBlockingQueue, TimeUnit, ThreadPoolExecutor}
 
 import akka.pattern._
 import akka.util.Timeout
+import kafka.manager.features.KMDeleteTopicFeature
 import kafka.manager.utils.zero81.{ReassignPartitionCommand, PreferredReplicaLeaderElectionCommand}
 import org.apache.curator.framework.CuratorFramework
 import kafka.manager.utils.{AdminUtils, ZkUtils}
@@ -26,14 +27,13 @@ import ActorModel._
 case class KafkaCommandActorConfig(curator: CuratorFramework, 
                                    longRunningPoolConfig: LongRunningPoolConfig,
                                    askTimeoutMillis: Long = 400, 
-                                   version: KafkaVersion)
+                                   clusterContext: ClusterContext, 
+                                   adminUtils: AdminUtils)
 class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extends BaseCommandActor with LongRunningPoolActor {
 
   //private[this] val askTimeout: Timeout = kafkaCommandActorConfig.askTimeoutMillis.milliseconds
 
-  private[this] val adminUtils = new AdminUtils(kafkaCommandActorConfig.version)
-
-  private[this] val reassignPartitionCommand = new ReassignPartitionCommand(adminUtils)
+  private[this] val reassignPartitionCommand = new ReassignPartitionCommand(kafkaCommandActorConfig.adminUtils)
   
   @scala.throws[Exception](classOf[Exception])
   override def preStart() = {
@@ -68,26 +68,25 @@ class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extend
     implicit val ec = longRunningExecutionContext
     request match {
       case KCDeleteTopic(topic) =>
-        kafkaCommandActorConfig.version match {
-          case Kafka_0_8_1_1 =>
-            val result : KCCommandResult = KCCommandResult(Failure(new UnsupportedOperationException(
-              s"Delete topic not supported for kafka version ${kafkaCommandActorConfig.version}")))
-            sender ! result
-          case Kafka_0_8_2_0 | Kafka_0_8_2_1 =>
-            longRunning {
-              Future {
-                KCCommandResult(Try {
-                  adminUtils.deleteTopic(kafkaCommandActorConfig.curator, topic) //this should work in 0.8.2
-                  kafkaCommandActorConfig.curator.delete().deletingChildrenIfNeeded().forPath(ZkUtils.getTopicPath(topic))
-                })
-              }
+        if(kafkaCommandActorConfig.clusterContext.clusterFeatures.features(KMDeleteTopicFeature)) {
+          longRunning {
+            Future {
+              KCCommandResult(Try {
+                kafkaCommandActorConfig.adminUtils.deleteTopic(kafkaCommandActorConfig.curator, topic) //this should work in 0.8.2
+                kafkaCommandActorConfig.curator.delete().deletingChildrenIfNeeded().forPath(ZkUtils.getTopicPath(topic))
+              })
             }
+          }
+        } else {
+          val result : KCCommandResult = KCCommandResult(Failure(new UnsupportedOperationException(
+            s"Delete topic not supported for kafka version ${kafkaCommandActorConfig.clusterContext.config.version}")))
+          sender ! result
         }
       case KCCreateTopic(topic, brokers, partitions, replicationFactor, config) =>
         longRunning {
           Future {
             KCCommandResult(Try {
-              adminUtils.createTopic(kafkaCommandActorConfig.curator, brokers, topic, partitions, replicationFactor, config)
+              kafkaCommandActorConfig.adminUtils.createTopic(kafkaCommandActorConfig.curator, brokers, topic, partitions, replicationFactor, config)
             })
           }
         }
@@ -95,7 +94,15 @@ class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extend
         longRunning {
           Future {
             KCCommandResult(Try {
-              adminUtils.addPartitions(kafkaCommandActorConfig.curator, topic, partitions, partitionReplicaList, brokers, readVersion)
+              kafkaCommandActorConfig.adminUtils.addPartitions(kafkaCommandActorConfig.curator, topic, partitions, partitionReplicaList, brokers, readVersion)
+            })
+          }
+        }
+      case KCAddMultipleTopicsPartitions(topicsAndReplicas, brokers, partitions, readVersion) =>
+        longRunning {
+          Future {
+            KCCommandResult(Try {
+              kafkaCommandActorConfig.adminUtils.addPartitionsToTopics(kafkaCommandActorConfig.curator, topicsAndReplicas, partitions, brokers, readVersion)
             })
           }
         }
@@ -103,7 +110,7 @@ class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extend
         longRunning {
           Future {
             KCCommandResult(Try {
-              adminUtils.changeTopicConfig(kafkaCommandActorConfig.curator, topic, config, readVersion)
+              kafkaCommandActorConfig.adminUtils.changeTopicConfig(kafkaCommandActorConfig.curator, topic, config, readVersion)
             })
           }
         }

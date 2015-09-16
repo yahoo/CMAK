@@ -73,6 +73,15 @@ Alternatively, use the environment variable `ZK_HOSTS` if you don't want to hard
 
     ZK_HOSTS="my.zookeeper.host.com:2181"
 
+You can optionally enable/disable the following functionality by modifying the default list in application.conf :
+
+    application.features=["KMClusterManagerFeature","KMTopicManagerFeature","KMPreferredReplicaElectionFeature","KMReassignPartitionsFeature"]
+
+ - KMClusterManagerFeature - allows adding, updating, deleting cluster from Kafka Manager
+ - KMTopicManagerFeature - allows adding, updating, deleting topic from a Kafka cluster
+ - KMPreferredReplicaElectionFeature - allows running of preferred replica election for a Kafka cluster
+ - KMReassignPartitionsFeature - allows generating partition assignments and reassigning partitions
+
 Deployment
 ----------
 

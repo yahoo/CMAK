@@ -5,13 +5,13 @@
 
 package kafka.manager
 
-import java.util.{Date, Properties}
+import java.util.Properties
 
 import org.joda.time.DateTime
 import kafka.manager.utils.TopicAndPartition
 import org.slf4j.LoggerFactory
-import scheduler.models.form.Failover
 
+import scala.collection.immutable.Queue
 import scala.util.Try
 import scalaz.{NonEmptyList, Validation}
 
@@ -19,14 +19,14 @@ import scalaz.{NonEmptyList, Validation}
  * @author hiral
  */
 object ActorModel {
-  sealed trait ActorRequest
-  sealed trait ActorResponse
+  trait ActorRequest
+  trait ActorResponse
 
-  sealed trait CommandRequest extends ActorRequest
-  sealed trait CommandResponse extends ActorResponse
+  trait CommandRequest extends ActorRequest
+  trait CommandResponse extends ActorResponse
 
-  sealed trait QueryRequest extends ActorRequest
-  sealed trait QueryResponse extends ActorResponse
+  trait QueryRequest extends ActorRequest
+  trait QueryResponse extends ActorResponse
 
   case class ActorErrorResponse(msg: String, throwableOption: Option[Throwable] = None) extends ActorResponse
 
@@ -38,21 +38,20 @@ object ActorModel {
   case object BVGetViews extends BVRequest
   case class BVGetTopicMetrics(topic: String) extends BVRequest
   case object BVGetBrokerMetrics extends BVRequest
-  case class BVView(topicPartitions: Map[TopicIdentity, IndexedSeq[Int]], clusterConfig: ClusterConfig,
+  case class BVView(topicPartitions: Map[TopicIdentity, IndexedSeq[Int]], clusterContext: ClusterContext,
                     metrics: Option[BrokerMetrics] = None,
+                    messagesPerSecCountHistory: Option[Queue[BrokerMessagesPerSecCount]] = None,
                     stats: Option[BrokerClusterStats] = None) extends QueryResponse {
     def numTopics : Int = topicPartitions.size
     def numPartitions : Int = topicPartitions.values.foldLeft(0)((acc,i) => acc + i.size)
   }
-
-  case class SMGetBrokerIdentity(id: Int) extends BVRequest
-
   case class BVUpdateTopicMetricsForBroker(id: Int, metrics: IndexedSeq[(String,BrokerMetrics)]) extends CommandRequest
   case class BVUpdateBrokerMetrics(id: Int, metric: BrokerMetrics) extends CommandRequest
 
   case object CMGetView extends QueryRequest
   case class CMGetTopicIdentity(topic: String) extends QueryRequest
-  case class CMView(topicsCount: Int, brokersCount: Int, clusterConfig: ClusterConfig) extends QueryResponse
+  case object CMGetClusterContext extends QueryRequest
+  case class CMView(topicsCount: Int, brokersCount: Int, clusterContext: ClusterContext) extends QueryResponse
   case class CMTopicIdentity(topicIdentity: Try[TopicIdentity]) extends QueryResponse
   case object CMShutdown extends CommandRequest
   case class CMCreateTopic(topic: String,
@@ -64,6 +63,10 @@ object ActorModel {
                                   partitions: Int,
                                   partitionReplicaList: Map[Int, Seq[Int]],
                                   readVersion: Int) extends CommandRequest
+  case class CMAddMultipleTopicsPartitions(topicsAndReplicas: Seq[(String, Map[Int, Seq[Int]])],
+                                           brokers: Seq[Int],
+                                           partitions: Int,
+                                           readVersions: Map[String,Int]) extends CommandRequest
   case class CMUpdateTopicConfig(topic: String, config: Properties, readVersion: Int) extends CommandRequest
   case class CMDeleteTopic(topic: String) extends CommandRequest
   case class CMRunPreferredLeaderElection(topics: Set[String]) extends CommandRequest
@@ -71,42 +74,21 @@ object ActorModel {
   case class CMGeneratePartitionAssignments(topics: Set[String], brokers: Seq[Int]) extends CommandRequest
   case class CMManualPartitionAssignments(assignments: List[(String, List[(Int, List[Int])])]) extends CommandRequest
 
-  case object SMGetView extends QueryRequest
-  case class SMView(topicsCount: Int, brokersCount: Int, schedulerConfig: SchedulerConfig) extends QueryResponse
+  //these are used by Logkafka
+  //##########
+  case class CMGetLogkafkaIdentity(hostname: String) extends QueryRequest
+  case class CMLogkafkaIdentity(logkafkaIdentity: Try[LogkafkaIdentity]) extends QueryResponse
+  case class CMCreateLogkafka(hostname: String,
+                              log_path: String,
+                              config: Properties = new Properties
+                              ) extends CommandRequest
+  case class CMUpdateLogkafkaConfig(hostname: String, 
+                                    log_path: String, 
+                                    config: Properties) extends CommandRequest
+  case class CMDeleteLogkafka(hostname: String, log_path: String) extends CommandRequest
+  //##########
 
-  case class SMAddBroker(id: Int, cpus: Option[Double], mem: Option[Long], heap: Option[Long], port: Option[String],
-                         bindAddress: Option[String], constraints: Option[String], options: Option[String],
-                         log4jOptions: Option[String], jvmOptions: Option[String], stickinessPeriod: Option[String],
-                         failover: Failover) extends CommandRequest
-
-  case class SMUpdateBroker(id: Int, cpus: Option[Double], mem: Option[Long], heap: Option[Long], port: Option[String],
-                         bindAddress: Option[String], constraints: Option[String], options: Option[String],
-                         log4jOptions: Option[String], jvmOptions: Option[String], stickinessPeriod: Option[String],
-                         failover: Failover) extends CommandRequest
-
-  case class SMCommandResult(result: Try[Unit]) extends CommandResponse
-
-  case class KSCAddBroker(id: Int, cpus: Option[Double], mem: Option[Long], heap: Option[Long], port: Option[String],
-                          bindAddress: Option[String], constraints: Option[String], options: Option[String],
-                          log4jOptions: Option[String], jvmOptions: Option[String], stickinessPeriod: Option[String],
-                          failover: Failover) extends CommandRequest
-
-  case class KSCUpdateBroker(id: Int, cpus: Option[Double], mem: Option[Long], heap: Option[Long], port: Option[String],
-                          bindAddress: Option[String], constraints: Option[String], options: Option[String],
-                          log4jOptions: Option[String], jvmOptions: Option[String], stickinessPeriod: Option[String],
-                          failover: Failover) extends CommandRequest
-
-  case class SMStartBroker(brokerId: Int) extends CommandRequest
-  case class SMStopBroker(brokerId: Int) extends CommandRequest
-  case class SMRemoveBroker(brokerId: Int) extends CommandRequest
-  case class SMRebalanceTopics(ids: String, topics:Option[String]) extends CommandRequest
-
-  case class KSCStartBroker(id: Int) extends CommandRequest
-  case class KSCStopBroker(id: Int) extends CommandRequest
-  case class KSCRemoveBroker(id: Int) extends CommandRequest
-  case class KSCRebalanceTopics(ids: String, topics:Option[String]) extends CommandRequest
-
-  case class CMCommandResult(result: Try[Unit]) extends CommandResponse
+  case class CMCommandResult(result: Try[ClusterContext]) extends CommandResponse
   case class CMCommandResults(result: IndexedSeq[Try[Unit]]) extends CommandResponse
 
   case class KCCreateTopic(topic: String,
@@ -119,6 +101,10 @@ object ActorModel {
                            partitions: Int, 
                            partitionReplicaList: Map[Int, Seq[Int]], 
                            readVersion: Int) extends CommandRequest
+  case class KCAddMultipleTopicsPartitions(topicsAndReplicas: Seq[(String, Map[Int, Seq[Int]])],
+                                           brokers: Seq[Int],
+                                           partitions: Int,
+                                           readVersions: Map[String, Int]) extends CommandRequest
   case class KCUpdateTopicConfig(topic: String, config: Properties, readVersion: Int) extends CommandRequest
   case class KCDeleteTopic(topic: String) extends CommandRequest
   case class KCPreferredReplicaLeaderElection(topicAndPartition: Set[TopicAndPartition]) extends CommandRequest
@@ -147,66 +133,6 @@ object ActorModel {
   case class KMClusterCommandRequest(clusterName: String, request: CommandRequest) extends CommandRequest
   case class KMCommandResult(result: Try[Unit]) extends CommandResponse
 
-  case class KMSchedulerCommandRequest(scheduler: String, request: CommandRequest) extends CommandRequest
-  case class KMSchedulerList(active: IndexedSeq[SchedulerConfig], pending : IndexedSeq[SchedulerConfig]) extends QueryResponse
-  case object KMGetAllSchedulers extends QueryRequest
-  case class KMAddScheduler(config: SchedulerConfig) extends CommandRequest
-  case class KMSchedulerQueryRequest(schedulerName: String, request: QueryRequest) extends QueryRequest
-  case class KMGetSchedulerConfig(schedulerName: String) extends QueryRequest
-  case class KMSchedulerConfigResult(result: Try[SchedulerConfig]) extends QueryResponse
-
-  case object SchedulerKSGetBrokers extends KSRequest
-  case class SchedulerBrokerList(list: Seq[SchedulerBrokerIdentity], schedulerConfig: SchedulerConfig) extends QueryResponse
-
-  case class SchedulerBrokerTaskIdentity(id: String,
-                                         slaveId: String,
-                                         executorId: String,
-                                         hostname: String,
-                                         endpoint: Option[String],
-                                         state: String)
-
-  case class SchedulerBrokerStickinessIdentity(period: String,
-                                              stopTime: Option[Date],
-                                              hostname: Option[String])
-
-  case class SchedulerBrokerFailoverIdentity(delay: String,
-                                             maxDelay: String,
-                                             maxTries: Option[Int],
-                                             failures: Option[Int],
-                                             failureTime: Option[Date])
-
-  case class SchedulerBrokerIdentity(id: Int, active: Boolean, cpus: Double, mem: Long, heap: Long, port: Option[String],
-                                     bindAddress: Option[String], constraints: Seq[(String, String)], options: Seq[(String, String)],
-                                     log4jOptions: Seq[(String, String)], jvmOptions: Option[String],
-                                     stickiness: SchedulerBrokerStickinessIdentity,
-                                     failover: SchedulerBrokerFailoverIdentity,
-                                     task: Option[SchedulerBrokerTaskIdentity],
-                                     schedulerConfig: SchedulerConfig = null,
-                                     metrics: Option[BrokerMetrics] = None,
-                                     stats: Option[BrokerClusterStats] = None) {
-
-    def actualHost(): Option[String] = task.flatMap(t => t.endpoint.map(_.split(":")(0)))
-
-    def actualPort(): Option[String] = task.flatMap(t => t.endpoint.map(_.split(":")(1)))
-
-    def numTopics() = 0
-    def numPartitions() = 0
-
-    def topicPartitions() = Seq.empty[(TopicIdentity,  IndexedSeq[Int])]
-
-    def constraintsDesc = constraints.map { case (k, v) => s"$k=$v" }.mkString
-    def optionsDesc = options.map { case (k, v) => s"$k=$v" }.mkString
-    def log4jOptionsDesc = log4jOptions.map { case (k, v) => s"$k=$v" }.mkString
-
-    def state(): String = {
-      if (active)
-        if (actualHost().isEmpty) "starting" else "running"
-      else
-        "stopped|failed"
-    }
-  }
-  /*********************************/
-
   sealed trait KSRequest extends QueryRequest
   case object KSGetTopics extends KSRequest
   case class KSGetTopicConfig(topic: String) extends KSRequest
@@ -224,20 +150,25 @@ object ActorModel {
   case object KSGetBrokers extends KSRequest
   case class KSGetBrokerState(id: String) extends  KSRequest
 
-  case class TopicList(list: IndexedSeq[String], deleteSet: Set[String]) extends QueryResponse
+  case class TopicList(list: IndexedSeq[String], deleteSet: Set[String], clusterContext: ClusterContext) extends QueryResponse
   case class TopicConfig(topic: String, config: Option[(Int,String)]) extends QueryResponse
 
   case class TopicDescription(topic: String,
                               description: (Int,String),
                               partitionState: Option[Map[String, String]], 
-                              config:Option[(Int,String)],
-                              deleteSupported: Boolean) extends  QueryResponse
+                              config:Option[(Int,String)]) extends  QueryResponse
   case class TopicDescriptions(descriptions: IndexedSeq[TopicDescription], lastUpdateMillis: Long) extends QueryResponse
 
-  case class BrokerList(list: IndexedSeq[BrokerIdentity], clusterConfig: ClusterConfig) extends QueryResponse
+  case class BrokerList(list: IndexedSeq[BrokerIdentity], clusterContext: ClusterContext) extends QueryResponse
 
-  case class PreferredReplicaElection(startTime: DateTime, topicAndPartition: Set[TopicAndPartition], endTime: Option[DateTime]) extends QueryResponse
-  case class ReassignPartitions(startTime: DateTime, partitionsToBeReassigned: Map[TopicAndPartition, Seq[Int]], endTime: Option[DateTime]) extends QueryResponse
+  case class PreferredReplicaElection(startTime: DateTime, 
+                                      topicAndPartition: Set[TopicAndPartition], 
+                                      endTime: Option[DateTime], 
+                                      clusterContext: ClusterContext) extends QueryResponse
+  case class ReassignPartitions(startTime: DateTime, 
+                                partitionsToBeReassigned: Map[TopicAndPartition, Seq[Int]], 
+                                endTime: Option[DateTime], 
+                                clusterContext: ClusterContext) extends QueryResponse
 
   case object DCUpdateState extends CommandRequest
 
@@ -300,8 +231,7 @@ object ActorModel {
                            numBrokers: Int,
                            configReadVersion: Int,
                            config: List[(String,String)],
-                           deleteSupported: Boolean, 
-                           clusterConfig: ClusterConfig,
+                           clusterContext: ClusterContext,
                            metrics: Option[BrokerMetrics] = None) {
 
     val replicationFactor : Int = partitionsIdentity.head._2.replicas.size
@@ -315,7 +245,7 @@ object ActorModel {
 
       brokerPartitionsMap.map {
         case (brokerId, brokerPartitions)=>
-          BrokerTopicPartitions(brokerId, brokerPartitions.toIndexedSeq,
+          BrokerTopicPartitions(brokerId, brokerPartitions.toIndexedSeq.sorted,
             brokerPartitions.size > avgPartitionsPerBroker)
       }.toIndexedSeq.sortBy(_.id)
     }
@@ -349,7 +279,7 @@ object ActorModel {
     import org.json4s.scalaz.JsonScalaz._
     import scala.language.reflectiveCalls
     
-    implicit def from(brokers: Int,td: TopicDescription, tm: Option[BrokerMetrics], clusterConfig: ClusterConfig) : TopicIdentity = {
+    implicit def from(brokers: Int,td: TopicDescription, tm: Option[BrokerMetrics], clusterContext: ClusterContext) : TopicIdentity = {
       val descJson = parse(td.description._2)
       //val partMap = (descJson \ "partitions").as[Map[String,Seq[Int]]]
       val partMap = field[Map[String,List[Int]]]("partitions")(descJson).fold({ e =>
@@ -377,11 +307,11 @@ object ActorModel {
             (-1,Map.empty[String, String])
         }
       }
-      TopicIdentity(td.topic,td.description._1,partMap.size,tpi,brokers,config._1,config._2.toList,td.deleteSupported, clusterConfig, tm)
+      TopicIdentity(td.topic,td.description._1,partMap.size,tpi,brokers,config._1,config._2.toList, clusterContext, tm)
     }
 
-    implicit def from(bl: BrokerList,td: TopicDescription, tm: Option[BrokerMetrics], clusterConfig: ClusterConfig) : TopicIdentity = {
-      from(bl.list.size, td, tm, clusterConfig)
+    implicit def from(bl: BrokerList,td: TopicDescription, tm: Option[BrokerMetrics], clusterContext: ClusterContext) : TopicIdentity = {
+      from(bl.list.size, td, tm, clusterContext)
     }
 
     implicit def reassignReplicas(currentTopicIdentity: TopicIdentity,
@@ -402,12 +332,15 @@ object ActorModel {
           currentTopicIdentity.numBrokers,
           currentTopicIdentity.configReadVersion,
           currentTopicIdentity.config,
-          currentTopicIdentity.deleteSupported,
-          currentTopicIdentity.clusterConfig,
+          currentTopicIdentity.clusterContext,
           currentTopicIdentity.metrics)
       }
     }
   }
+
+
+  case class BrokerMessagesPerSecCount(date: DateTime,
+                                       count: Long)
 
   case class BrokerMetrics(bytesInPerSec: MeterMetric,
                            bytesOutPerSec: MeterMetric,
@@ -441,4 +374,71 @@ object ActorModel {
   }
   
   case class BrokerClusterStats(perMessages: BigDecimal, perIncoming: BigDecimal, perOutgoing: BigDecimal)
+  
+  sealed trait LKVRequest extends QueryRequest
+
+  case object LKVForceUpdate extends CommandRequest
+  case object LKVGetLogkafkaIdentities extends LKVRequest
+
+  case class LKCCreateLogkafka(hostname: String,
+                               log_path: String,
+                               config: Properties,
+                               logkafkaConfig: Option[LogkafkaConfig]) extends CommandRequest
+  case class LKCDeleteLogkafka(hostname: String,
+                               log_path: String,
+                               logkafkaConfig: Option[LogkafkaConfig]) extends CommandRequest
+  case class LKCUpdateLogkafkaConfig(hostname: String,
+                                     log_path: String,
+                                     config: Properties,
+                                     logkafkaConfig: Option[LogkafkaConfig]) extends CommandRequest
+
+  case class LKCCommandResult(result: Try[Unit]) extends CommandResponse
+
+  sealed trait LKSRequest extends QueryRequest
+  case object LKSGetLogkafkaHostnames extends LKSRequest
+  case class LKSGetLogkafkaConfig(hostname: String) extends LKSRequest
+  case class LKSGetLogkafkaClient(hostname: String) extends LKSRequest
+  case class LKSGetLogkafkaConfigs(hostnames: Set[String]) extends LKSRequest
+  case class LKSGetLogkafkaClients(hostnames: Set[String]) extends LKSRequest
+  case class LKSGetAllLogkafkaConfigs(lastUpdateMillis: Option[Long]= None) extends LKSRequest
+  case class LKSGetAllLogkafkaClients(lastUpdateMillis: Option[Long]= None) extends LKSRequest
+
+  case class LogkafkaHostnameList(list: IndexedSeq[String], deleteSet: Set[String]) extends QueryResponse
+  case class LogkafkaConfig(hostname: String, config: Option[String]) extends QueryResponse
+  case class LogkafkaClient(hostname: String, client: Option[String]) extends QueryResponse
+  case class LogkafkaConfigs(configs: IndexedSeq[LogkafkaConfig], lastUpdateMillis: Long) extends QueryResponse
+  case class LogkafkaClients(clients: IndexedSeq[LogkafkaClient], lastUpdateMillis: Long) extends QueryResponse
+
+
+  case class LogkafkaIdentity(hostname: String,
+                              active: Boolean,
+                              identityMap: Map[String, (Option[Map[String, String]], Option[Map[String, String]])]) {
+  }
+
+  object LogkafkaIdentity {
+
+    lazy val logger = LoggerFactory.getLogger(this.getClass)
+
+    implicit def from(hostname: String, lcg: Option[LogkafkaConfig], lct: Option[LogkafkaClient]) : LogkafkaIdentity = {
+      val configJsonStr = lcg match {
+        case Some(l) => l.config.getOrElse[String]("{}")
+        case None => "{}"
+      }
+
+      val configMap: Map[String, Map[String, String]] = utils.Logkafka.parseJsonStr(hostname, configJsonStr)
+
+      val clientJsonStr = lct match {
+        case Some(l) => l.client.getOrElse[String]("{}")
+        case None => "{}"
+      }
+
+      val clientMap: Map[String, Map[String, String]]  = utils.Logkafka.parseJsonStr(hostname, clientJsonStr)
+
+      val hostnameSet = configMap.keySet ++ clientMap.keySet
+      val identitySet = if (!hostnameSet.isEmpty) {
+        hostnameSet map { l => l -> ((if(!configMap.isEmpty) configMap.get(l) else None, if(!clientMap.isEmpty) clientMap.get(l) else None)) }
+      } else { Set() }
+      LogkafkaIdentity(hostname, lct.isDefined, identitySet.toMap)
+    }
+  }
 }

@@ -1,0 +1,30 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import scalaz.{\/}
+@(cluster:String,
+  hostname: String,
+  log_path: String,
+  errorOrLogkafkaIdentity: kafka.manager.ApiError \/ (kafka.manager.ActorModel.LogkafkaIdentity, kafka.manager.ClusterContext)
+)(implicit af: features.ApplicationFeatures)
+
+@theMenu = {
+    @views.html.navigation.clusterMenu(cluster,"Logkafka","",models.navigation.Menus.clusterMenus(cluster)(
+        af,
+        errorOrLogkafkaIdentity.toOption.map(_._2.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
+}
+
+@main(
+    "Logkafka View",
+    menu = theMenu,
+    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndCluster("Logkafka View",cluster,hostname))) {
+<div class="col-md-12 un-pad-me">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>@hostname<br/>@log_path</h3>
+        </div>
+        @errorOrLogkafkaIdentity.fold(views.html.errors.onApiError(_), t => views.html.logkafka.logkafkaViewContent(cluster,hostname,log_path,t._1))
+    </div>
+</div>
+}

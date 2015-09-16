@@ -4,14 +4,18 @@
 *@
 @import kafka.manager.ActorModel.BrokerIdentity
 @import scalaz.{\/}
-@(cluster:String, errorOrBrokers: kafka.manager.ApiError \/ kafka.manager.BrokerListExtended)
+@(cluster:String, errorOrBrokers: kafka.manager.ApiError \/ kafka.manager.BrokerListExtended
+)(implicit af: features.ApplicationFeatures)
 
 @theMenu = {
-    @views.html.navigation.clusterMenu(cluster,"Brokers","",models.navigation.Menus.clusterMenus(cluster))
+    @views.html.navigation.clusterMenu(cluster,"Brokers","",models.navigation.Menus.clusterMenus(cluster)(
+        af,
+        errorOrBrokers.toOption.map(_.clusterContext.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
+
 }
         
 @renderBrokerMetrics(bl: kafka.manager.BrokerListExtended) = {
-    @if(bl.clusterConfig.jmxEnabled) {
+    @if(bl.clusterContext.clusterFeatures.features(kafka.manager.features.KMJMXMetricsFeature)) {
         @views.html.common.brokerMetrics(bl.combinedMetric)
     } else {
         <div class="alert alert-info" role="alert">

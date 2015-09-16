@@ -148,4 +148,15 @@ class TestKafkaManagerActor extends CuratorAwareTest {
       result: Seq[BVView] => result.nonEmpty
     }
   }
+
+  test("update cluster logkafka enabled") {
+    val cc2 = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, logkafkaEnabled = true)
+    withKafkaManagerActor(KMUpdateCluster(cc2)) { result: KMCommandResult =>
+      result.result.get
+      Thread.sleep(3000)
+    }
+    withKafkaManagerActor(KMClusterQueryRequest("dev",LKSGetLogkafkaHostnames)) { result: LogkafkaHostnameList =>
+      result.list.nonEmpty
+    }
+  }
 }

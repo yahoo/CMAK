@@ -5,11 +5,11 @@
 name := """kafka-manager"""
 
 /* For packaging purposes, -SNAPSHOT MUST contain a digit */
-version := "1.2.6"
+version := "1.2.8"
 
-scalaVersion := "2.11.5"
+scalaVersion := "2.11.7"
 
-scalacOptions ++= Seq("-Xlint","-Xfatal-warnings","-deprecation","-feature","-language:implicitConversions","-language:postfixOps")
+scalacOptions ++= Seq("-Xlint:-missing-interpolator","-Xfatal-warnings","-deprecation","-feature","-language:implicitConversions","-language:postfixOps")
 
 // From https://www.playframework.com/documentation/2.3.x/ProductionDist
 assemblyMergeStrategy in assembly := {

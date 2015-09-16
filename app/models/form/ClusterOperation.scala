@@ -30,12 +30,12 @@ object Operation {
 }
 
 object ClusterOperation {
-  def apply(operation: String, name: String, version: String, zkHosts: String, zkMaxRetry: Int, jmxEnabled: Boolean): ClusterOperation = {
-    ClusterOperation(operation,ClusterConfig(name, version, zkHosts, zkMaxRetry, jmxEnabled))
+  def apply(operation: String, name: String, version: String, zkHosts: String, zkMaxRetry: Int, jmxEnabled: Boolean, logkafkaEnabled: Boolean): ClusterOperation = {
+    ClusterOperation(operation,ClusterConfig(name, version, zkHosts, zkMaxRetry, jmxEnabled, logkafkaEnabled))
   }
 
-  def customUnapply(co: ClusterOperation) : Option[(String, String, String, String, Int, Boolean)] = {
-    Option((co.op.toString,co.clusterConfig.name, co.clusterConfig.version.toString,co.clusterConfig.curatorConfig.zkConnect,co.clusterConfig.curatorConfig.zkMaxRetry,co.clusterConfig.jmxEnabled))
+  def customUnapply(co: ClusterOperation) : Option[(String, String, String, String, Int, Boolean, Boolean)] = {
+    Option((co.op.toString,co.clusterConfig.name, co.clusterConfig.version.toString,co.clusterConfig.curatorConfig.zkConnect,co.clusterConfig.curatorConfig.zkMaxRetry,co.clusterConfig.jmxEnabled,co.clusterConfig.logkafkaEnabled))
   }
 }
 

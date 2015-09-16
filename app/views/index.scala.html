@@ -5,6 +5,7 @@
 @import scalaz.{\/}
 @(errorOrClusters: kafka.manager.ApiError \/ kafka.manager.ActorModel.KMClusterList,
 errorOrSchedulers: kafka.manager.ApiError \/ kafka.manager.ActorModel.KMSchedulerList)
+(implicit af: features.ApplicationFeatures)
 
 @main(
     "Kafka Manager",
