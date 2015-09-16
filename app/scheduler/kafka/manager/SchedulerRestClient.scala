@@ -106,14 +106,16 @@ object SchedulerRestClient {
 class SchedulerRestClient(val apiUrl: String)(implicit val executionContext: ExecutionContext) {
   private[this] lazy val logger = LoggerFactory.getLogger(this.getClass)
 
-  private val BrokersApiPrefix = s"$apiUrl/api/brokers"
-  private val StatusUrl = s"$BrokersApiPrefix/status"
-  private val AddBrokerUrl = s"$BrokersApiPrefix/add"
-  private val UpdateBrokerUrl = s"$BrokersApiPrefix/update"
-  private val StartBrokerUrl = s"$BrokersApiPrefix/start"
-  private val StopBrokerUrl = s"$BrokersApiPrefix/stop"
-  private val RemoveBrokerUrl = s"$BrokersApiPrefix/remove"
-  private val RebalanceTopicsUrl = s"$BrokersApiPrefix/rebalance"
+  private val BrokerApiPrefix = s"$apiUrl/api/broker"
+  private val StatusUrl = s"$BrokerApiPrefix/list"
+  private val AddBrokerUrl = s"$BrokerApiPrefix/add"
+  private val UpdateBrokerUrl = s"$BrokerApiPrefix/update"
+  private val StartBrokerUrl = s"$BrokerApiPrefix/start"
+  private val StopBrokerUrl = s"$BrokerApiPrefix/stop"
+  private val RemoveBrokerUrl = s"$BrokerApiPrefix/remove"
+
+  private val TopicApiPrefix = s"$apiUrl/api/topic"
+  private val RebalanceTopicsUrl = s"$TopicApiPrefix/rebalance"
 
   private val Timeout = 10000
 
@@ -140,7 +142,7 @@ class SchedulerRestClient(val apiUrl: String)(implicit val executionContext: Exe
                 failover: Failover): Future[Seq[Broker]] = {
 
     val queryParamsSeq = Seq(
-      "id" -> Some(id.toString), "cpus" -> cpus.map(_.toString), "mem" -> mem.map(_.toString), "heap" -> heap.map(_.toString),
+      "broker" -> Some(id.toString), "cpus" -> cpus.map(_.toString), "mem" -> mem.map(_.toString), "heap" -> heap.map(_.toString),
       "port" -> port, "bindAddress" -> bindAddress, "constraints" -> constraints,
       "options" -> options, "log4jOptions" -> log4jOptions, "jvmOptions" -> jvmOptions,
       "stickinessPeriod" -> stickinessPeriod.map(_.toString), "failoverDelay" -> failover.failoverDelay.map(_.toString),
@@ -155,7 +157,8 @@ class SchedulerRestClient(val apiUrl: String)(implicit val executionContext: Exe
       .get()
 
     holder.map {
-      response => response.json.validate[AddBrokerResponse]
+      response =>
+        response.json.validate[AddBrokerResponse]
     }.flatMap {
       case JsError(e) =>
         logger.error(s"Failed to parse add broker response $e")
@@ -171,7 +174,7 @@ class SchedulerRestClient(val apiUrl: String)(implicit val executionContext: Exe
                    failover: Failover): Future[Unit] = {
 
     val queryParamsSeq = Seq(
-      "id" -> Some(id.toString), "cpus" -> cpus.map(_.toString), "mem" -> mem.map(_.toString), "heap" -> heap.map(_.toString),
+      "broker" -> Some(id.toString), "cpus" -> cpus.map(_.toString), "mem" -> mem.map(_.toString), "heap" -> heap.map(_.toString),
       "port" -> port, "bindAddress" -> bindAddress, "constraints" -> constraints,
       "options" -> options, "log4jOptions" -> log4jOptions, "jvmOptions" -> jvmOptions,
       "stickinessPeriod" -> stickinessPeriod.map(_.toString), "failoverDelay" -> failover.failoverDelay.map(_.toString),
@@ -191,7 +194,7 @@ class SchedulerRestClient(val apiUrl: String)(implicit val executionContext: Exe
   def startBroker(id: Int): Future[Unit] = {
     val holder: Future[WSResponse] = WS
       .url(StartBrokerUrl)
-      .withQueryString(Seq("id" -> id.toString, "timeout" -> "0"): _*)
+      .withQueryString(Seq("broker" -> id.toString, "timeout" -> "0"): _*)
       .withRequestTimeout(Timeout)
       .get()
 
@@ -201,7 +204,7 @@ class SchedulerRestClient(val apiUrl: String)(implicit val executionContext: Exe
   def stopBroker(id: Int): Future[Unit] = {
     val holder: Future[WSResponse] = WS
       .url(StopBrokerUrl)
-      .withQueryString(Seq("id" -> id.toString, "timeout" -> "0"): _*)
+      .withQueryString(Seq("broker" -> id.toString, "timeout" -> "0"): _*)
       .withRequestTimeout(Timeout)
       .get()
 
@@ -211,7 +214,7 @@ class SchedulerRestClient(val apiUrl: String)(implicit val executionContext: Exe
   def removeBroker(id: Int): Future[Unit] = {
     val holder: Future[WSResponse] = WS
       .url(RemoveBrokerUrl)
-      .withQueryString(Seq("id" -> id.toString): _*)
+      .withQueryString(Seq("broker" -> id.toString): _*)
       .withRequestTimeout(Timeout)
       .get()
 
@@ -221,7 +224,7 @@ class SchedulerRestClient(val apiUrl: String)(implicit val executionContext: Exe
   def rebalanceTopics(ids: String, topics: Option[String]): Future[Unit] = {
     val holder: Future[WSResponse] = WS
       .url(RebalanceTopicsUrl)
-      .withQueryString(Seq("ids" -> Some(ids), "topics" -> topics).collect {
+      .withQueryString(Seq("broker" -> Some(ids), "topic" -> topics).collect {
       case (key, Some(v)) => (key, v)
     }: _*)
       .withRequestTimeout(Timeout)

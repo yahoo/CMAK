@@ -20,8 +20,8 @@
         <tbody>
         <tr>
             <td>
-                @b3.text(rebalanceForm("ids"), '_label -> "IDs", 'placeholder -> "", 'autofocus -> true )
-                @b3.text(rebalanceForm("topics"), '_label -> "Topics", 'placeholder -> "")
+                @b3.text(rebalanceForm("ids"), '_label -> "Broker Ids Expression", 'placeholder -> "", 'autofocus -> true )
+                @b3.text(rebalanceForm("topics"), '_label -> "Topic Expression", 'placeholder -> "")
                 @b3.submit('class -> "submit-button btn btn-primary"){ Submit }
                 <a href="@routes.SchedulerApplication.brokers(schedulerName)" class="cancel-button btn btn-default" role="button">Cancel</a>
             </td>
