@@ -31,6 +31,11 @@ object BreadCrumbs {
     "Add Cluster" -> IndexedSeq("Clusters".baseRouteBreadCrumb)
   )
 
+  val baseSchedulerBreadCrumbs: Map[String, IndexedSeq[BreadCrumb]] = Map(
+    "Schedulers" -> IndexedSeq.empty[BreadCrumb],
+    "Add Scheduler" -> IndexedSeq("Schedulers".baseRouteBreadCrumb)
+  )
+
   val clusterBreadCrumbs: Map[String, IndexedSeq[BreadCrumb]] = Map(
     "Unknown Cluster Operation" -> IndexedSeq("Clusters".baseRouteBreadCrumb),
     "Delete Cluster" -> IndexedSeq("Clusters".baseRouteBreadCrumb, BCDynamicText(identity)),
@@ -74,6 +79,23 @@ object BreadCrumbs {
     )
   )
 
+  val schedulerBreadCrumbs: Map[String, IndexedSeq[BreadCrumb]] = Map(
+    "Update Scheduler" -> IndexedSeq("Schedulers".baseRouteBreadCrumb, BCDynamicText(identity)),
+    "Summary" -> IndexedSeq("Schedulers".baseRouteBreadCrumb, BCDynamicText(identity)),
+    "Brokers" -> IndexedSeq("Schedulers".baseRouteBreadCrumb, BCDynamicNamedLink(identity, "Summary".schedulerRoute)),
+    "Broker View" -> IndexedSeq(
+      "Schedulers".baseRouteBreadCrumb,
+      BCDynamicNamedLink(identity, "Summary".schedulerRoute),
+      "Brokers".schedulerRouteBreadCrumb),
+    "Add Broker" -> IndexedSeq(
+      "Schedulers".baseRouteBreadCrumb,
+      BCDynamicNamedLink(identity,"Summary".schedulerRoute),
+      "Brokers".schedulerRouteBreadCrumb),
+    "Rebalance Topics" -> IndexedSeq(
+      "Schedulers".baseRouteBreadCrumb,
+      BCDynamicNamedLink(identity, "Summary".schedulerRoute))
+  )
+
   val topicBreadCrumbs: Map[String, IndexedSeq[BreadCrumb]] = Map(
     "Topic View" -> IndexedSeq(
       "Clusters".baseRouteBreadCrumb,
@@ -100,6 +122,14 @@ object BreadCrumbs {
     rendered :+ BCActive(s)
   }
 
+  def withSView(s: String) : IndexedSeq[BreadCrumbRendered] = {
+    val rendered : IndexedSeq[BreadCrumbRendered] = baseSchedulerBreadCrumbs.getOrElse(s,IndexedSeq.empty[BreadCrumb]) map {
+      case BCStaticLink(n,c) => BCLink(n,c.toString())
+      case a: Any => throw new IllegalArgumentException(s"Only static link supported : $a")
+    }
+    rendered :+ BCActive(s)
+  }
+
   private[this] def renderWithCluster(s: String, clusterName: String) : IndexedSeq[BreadCrumbRendered] = {
     clusterBreadCrumbs.getOrElse(s,IndexedSeq.empty[BreadCrumb]) map {
       case BCStaticLink(n,c) => BCLink(n,c.toString())
@@ -110,12 +140,31 @@ object BreadCrumbs {
     }
   }
 
+  private[this] def renderWithScheduler(s: String, schedulerName: String) : IndexedSeq[BreadCrumbRendered] = {
+    schedulerBreadCrumbs.getOrElse(s,IndexedSeq.empty[BreadCrumb]) map {
+      case BCStaticLink(n,c) => BCLink(n,c.toString())
+      case BCDynamicNamedLink(cn, cl) => BCLink(cn(schedulerName),cl(schedulerName).toString())
+      case BCDynamicLink(cn, cl) => BCLink(cn,cl(schedulerName).toString())
+      case BCDynamicText(cn) => BCText(cn(schedulerName))
+      case _ => BCText("ERROR")
+    }
+  }
+
+
   def withNamedViewAndCluster(s: String, clusterName: String, name: String) : IndexedSeq[BreadCrumbRendered] = {
     renderWithCluster(s, clusterName) :+ BCActive(name)
   }
 
+  def withNamedViewAndScheduler(s: String, schedulerName: String, name: String) : IndexedSeq[BreadCrumbRendered] = {
+    renderWithScheduler(s, schedulerName) :+ BCActive(name)
+  }
+
   def withViewAndCluster(s: String, clusterName: String) : IndexedSeq[BreadCrumbRendered] = {
     withNamedViewAndCluster(s, clusterName, s)
+  }
+
+  def withViewAndScheduler(s: String, schedulerName: String) : IndexedSeq[BreadCrumbRendered] = {
+    withNamedViewAndScheduler(s, schedulerName, s)
   }
 
   private[this] def renderWithClusterAndTopic(s: String, clusterName: String, topic: String) : IndexedSeq[BreadCrumbRendered] = {

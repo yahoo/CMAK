@@ -1,0 +1,33 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@(schedulerName: String, schedulerView: kafka.manager.ActorModel.SMView)
+
+<div class="panel panel-default">
+    <div class="panel-heading"><h3>Scheduler Information</h3></div>
+    <table class="table">
+        <tbody>
+        <tr>
+            <td><b>Zookeepers</b></td><td>@schedulerView.schedulerConfig.curatorConfig.zkConnect.replace(","," ")</td>
+        </tr>
+        <tr>
+            <td><b>Api url</b></td><td>@schedulerView.schedulerConfig.apiUrl.toString</td>
+        </tr>
+        <tr>
+            <td><b>Version</b></td><td>@schedulerView.schedulerConfig.version.toString</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+<div class="panel panel-default">
+    <div class="panel-heading"><h3>Scheduler Summary</h3></div>
+    <table class="table">
+        <tbody>
+        <tr>
+            <td><b>Topics</b></td><td>@schedulerView.topicsCount</td>
+            <td><b>Brokers</b></td><td><a href="@scheduler.controllers.routes.SchedulerApplication.brokers(schedulerName)">@schedulerView.brokersCount</a></td>
+        </tr>
+        </tbody>
+    </table>
+</div>
