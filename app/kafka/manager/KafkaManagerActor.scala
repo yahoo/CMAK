@@ -582,7 +582,9 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
         && newConfig.enabled == currentConfig.enabled
         && newConfig.version == currentConfig.version
         && newConfig.jmxEnabled == currentConfig.jmxEnabled
-        && newConfig.logkafkaEnabled == currentConfig.logkafkaEnabled) {
+        && newConfig.logkafkaEnabled == currentConfig.logkafkaEnabled
+        && newConfig.filterConsumers == currentConfig.filterConsumers
+        && newConfig.activeOffsetCacheEnabled == currentConfig.activeOffsetCacheEnabled) {
         //nothing changed
         false
       } else {

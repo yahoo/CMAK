@@ -37,14 +37,15 @@ object ClusterOperation {
             zkMaxRetry: Int,
             jmxEnabled: Boolean,
             filterConsumers: Boolean,
-            logkafkaEnabled: Boolean): ClusterOperation = {
+            logkafkaEnabled: Boolean, 
+            activeOffsetCacheEnabled: Boolean): ClusterOperation = {
     ClusterOperation(operation,ClusterConfig(name, version, zkHosts, zkMaxRetry, jmxEnabled, filterConsumers, logkafkaEnabled))
   }
 
-  def customUnapply(co: ClusterOperation) : Option[(String, String, String, String, Int, Boolean, Boolean, Boolean)] = {
+  def customUnapply(co: ClusterOperation) : Option[(String, String, String, String, Int, Boolean, Boolean, Boolean, Boolean)] = {
     Option((co.op.toString, co.clusterConfig.name, co.clusterConfig.version.toString,
             co.clusterConfig.curatorConfig.zkConnect, co.clusterConfig.curatorConfig.zkMaxRetry,
-            co.clusterConfig.jmxEnabled, co.clusterConfig.filterConsumers, co.clusterConfig.logkafkaEnabled))
+            co.clusterConfig.jmxEnabled, co.clusterConfig.filterConsumers, co.clusterConfig.logkafkaEnabled, co.clusterConfig.activeOffsetCacheEnabled))
   }
 }
 

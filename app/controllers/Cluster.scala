@@ -85,7 +85,8 @@ object Cluster extends Controller {
       "zkMaxRetry" -> ignored(100 : Int),
       "jmxEnabled" -> boolean,
       "filterConsumers" -> boolean,
-      "logkafkaEnabled" -> boolean
+      "logkafkaEnabled" -> boolean,
+      "activeOffsetCacheEnabled" -> boolean
     )(ClusterOperation.apply)(ClusterOperation.customUnapply)
   )
 
@@ -125,7 +126,8 @@ object Cluster extends Controller {
             cc.curatorConfig.zkMaxRetry,
             cc.jmxEnabled,
             cc.filterConsumers,
-            cc.logkafkaEnabled))
+            cc.logkafkaEnabled,
+            cc.activeOffsetCacheEnabled))
         }))
       }
     }
