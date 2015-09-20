@@ -5,8 +5,6 @@
 
 package kafka.manager
 
-import java.nio.file.Path
-
 import akka.pattern._
 import kafka.manager.features.KMDeleteTopicFeature
 import java.util.concurrent.TimeUnit
@@ -127,7 +125,7 @@ case class OffsetCacheActive(curator: CuratorFramework,
     }
   }
   
-  private[this] val consumersTreeCache = new TreeCache(curator,ZkUtils.ConsumersPath)
+  private[this] val consumersTreeCache = new TreeCache(curator, ZkUtils.ConsumersPath)
   
   @volatile
   private[this] var consumersTreeCacheLastUpdateMillis : Long = System.currentTimeMillis()
@@ -198,7 +196,7 @@ case class OffsetCacheActive(curator: CuratorFramework,
     }.fold {
       ConsumerList(IndexedSeq.empty, clusterContext)
     } { data: java.util.Map[String, ChildData] =>
-      val filteredList: IndexedSeq[String] = data.asScala.filter(_._2.getData != null).filter{
+      val filteredList: IndexedSeq[String] = data.asScala.filter{
         case (consumer, childData) =>
           if (clusterContext.config.filterConsumers)
           // Defining "inactive consumer" as a consumer that is missing one of three children ids/ offsets/ or owners/
