@@ -88,18 +88,27 @@ object ClusterConfig {
             zkMaxRetry: Int = 100,
             jmxEnabled: Boolean,
             filterConsumers: Boolean,
-            logkafkaEnabled: Boolean = false) : ClusterConfig = {
+            logkafkaEnabled: Boolean = false, 
+            activeOffsetCacheEnabled: Boolean = false) : ClusterConfig = {
     val kafkaVersion = KafkaVersion(version)
     //validate cluster name
     validateName(name)
     //validate zk hosts
     validateZkHosts(zkHosts)
     val cleanZkHosts = zkHosts.replaceAll(" ","")
-    new ClusterConfig(name, CuratorConfig(cleanZkHosts, zkMaxRetry), true, kafkaVersion, jmxEnabled, filterConsumers, logkafkaEnabled)
+    new ClusterConfig(
+      name, 
+      CuratorConfig(cleanZkHosts, zkMaxRetry), 
+      true, 
+      kafkaVersion, 
+      jmxEnabled, 
+      filterConsumers, 
+      logkafkaEnabled, 
+      activeOffsetCacheEnabled)
   }
 
-  def customUnapply(cc: ClusterConfig) : Option[(String, String, String, Int, Boolean, Boolean, Boolean)] = {
-    Some((cc.name, cc.version.toString, cc.curatorConfig.zkConnect, cc.curatorConfig.zkMaxRetry, cc.jmxEnabled, cc.filterConsumers, cc.logkafkaEnabled))
+  def customUnapply(cc: ClusterConfig) : Option[(String, String, String, Int, Boolean, Boolean, Boolean, Boolean)] = {
+    Some((cc.name, cc.version.toString, cc.curatorConfig.zkConnect, cc.curatorConfig.zkMaxRetry, cc.jmxEnabled, cc.filterConsumers, cc.logkafkaEnabled, cc.activeOffsetCacheEnabled))
   }
 
   import scalaz.{Failure,Success}
@@ -132,6 +141,7 @@ object ClusterConfig {
       :: ("jmxEnabled" -> toJSON(config.jmxEnabled))
       :: ("filterConsumers" -> toJSON(config.filterConsumers))
       :: ("logkafkaEnabled" -> toJSON(config.logkafkaEnabled))
+      :: ("activeOffsetCacheEnabled" -> toJSON(config.activeOffsetCacheEnabled))
       :: Nil)
     compact(render(json)).getBytes(StandardCharsets.UTF_8)
   }
@@ -148,7 +158,15 @@ object ClusterConfig {
           val jmxEnabled = field[Boolean]("jmxEnabled")(json)
           val filterConsumers = field[Boolean]("filterConsumers")(json)
           val logkafkaEnabled = field[Boolean]("logkafkaEnabled")(json)
-          ClusterConfig.apply(name,curatorConfig,enabled,version,jmxEnabled.getOrElse(false),filterConsumers.getOrElse(true),logkafkaEnabled.getOrElse(false))
+          val activeOffsetCacheEnabled = field[Boolean]("activeOffsetCacheEnabled")(json)
+          ClusterConfig.apply(
+            name,
+            curatorConfig,
+            enabled,version,
+            jmxEnabled.getOrElse(false),
+            filterConsumers.getOrElse(true),
+            logkafkaEnabled.getOrElse(false), 
+            activeOffsetCacheEnabled.getOrElse(false))
       }
 
       result match {
@@ -170,7 +188,8 @@ case class ClusterConfig (name: String,
                           version: KafkaVersion,
                           jmxEnabled: Boolean,
                           filterConsumers: Boolean,
-                          logkafkaEnabled: Boolean)
+                          logkafkaEnabled: Boolean,
+                          activeOffsetCacheEnabled: Boolean)
 
 object KafkaManagerActor {
   val ZkRoot : String = "/kafka-manager"

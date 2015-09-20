@@ -318,21 +318,22 @@ object ActorModel {
     import org.json4s.jackson.JsonMethods._
     import org.json4s.scalaz.JsonScalaz._
     import scala.language.reflectiveCalls
-
-    implicit def from(brokers: Int,
-                      td: TopicDescription,
-                      tm: Option[BrokerMetrics],
-                      clusterContext: ClusterContext) : TopicIdentity = {
+    
+    private[this] def getPartitionReplicaMap(td: TopicDescription) : Map[String, List[Int]] = {
       // Get the topic description information
       val descJson = parse(td.description._2)
-      val partMap = field[Map[String,List[Int]]]("partitions")(descJson).fold({ e =>
+      field[Map[String,List[Int]]]("partitions")(descJson).fold({ e =>
         logger.error(s"[topic=${td.topic}] Failed to get partitions from topic json ${td.description._2}")
         Map.empty
       }, identity)
-      val stateMap = td.partitionState.getOrElse(Map.empty)
+    }
 
+    private[this] def getTopicPartitionIdentity(td: TopicDescription,
+                                                partMap: Map[String, List[Int]]) : Map[Int, TopicPartitionIdentity] = {
+
+      val stateMap = td.partitionState.getOrElse(Map.empty)
       // Assign the partition data to the TPI format
-      val tpi : Map[Int,TopicPartitionIdentity] = partMap.map { case (partition, replicas) =>
+      partMap.map { case (partition, replicas) =>
         val partitionNum = partition.toInt
         // block on the futures that hold the latest produced offset in each partition
         val partitionOffsets: Map[Int, Long]= Await.ready(td.partitionOffsets, Duration.Inf).value.get match {
@@ -342,10 +343,26 @@ object ActorModel {
             Map.empty
         }
         (partitionNum,TopicPartitionIdentity.from(partitionNum,
-                                                  stateMap.get(partition),
-                                                  partitionOffsets.get(partitionNum),
-                                                  replicas))
+          stateMap.get(partition),
+          partitionOffsets.get(partitionNum),
+          replicas))
       }
+    }
+    
+    def getTopicPartitionIdentity(td: TopicDescription) : Map[Int, TopicPartitionIdentity] = {
+      // Get the topic description information
+      val partMap = getPartitionReplicaMap(td)
+
+      getTopicPartitionIdentity(td, partMap)
+    }
+    
+    implicit def from(brokers: Int,
+                      td: TopicDescription,
+                      tm: Option[BrokerMetrics],
+                      clusterContext: ClusterContext) : TopicIdentity = {
+      // Get the topic description information
+      val partMap = getPartitionReplicaMap(td)
+      val tpi : Map[Int,TopicPartitionIdentity] = getTopicPartitionIdentity(td, partMap)
       val config : (Int,Map[String, String]) = {
         try {
           val resultOption: Option[(Int,Map[String, String])] = td.config.map { configString =>

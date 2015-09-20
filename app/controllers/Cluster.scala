@@ -71,7 +71,8 @@ object Cluster extends Controller {
       "zkMaxRetry" -> ignored(100 : Int),
       "jmxEnabled" -> boolean,
       "filterConsumers" -> boolean,
-      "logkafkaEnabled" -> boolean
+      "logkafkaEnabled" -> boolean,
+      "activeOffsetCacheEnabled" -> boolean
     )(ClusterConfig.apply)(ClusterConfig.customUnapply)
   )
 

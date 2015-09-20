@@ -179,19 +179,39 @@ class KafkaManager(akkaConfig: Config)
   }
 
   //--------------------Commands--------------------------
-  def addCluster(clusterName: String, version: String, zkHosts: String, jmxEnabled: Boolean, filterConsumers: Boolean, logkafkaEnabled: Boolean = false): Future[ApiError \/
+  def addCluster(clusterName: String, 
+                 version: String, 
+                 zkHosts: String, 
+                 jmxEnabled: Boolean, 
+                 filterConsumers: Boolean, 
+                 logkafkaEnabled: Boolean = false, 
+                 activeOffsetCacheEnabled: Boolean = false): Future[ApiError \/
     Unit] =
   {
-    val cc = ClusterConfig(clusterName, version, zkHosts, jmxEnabled = jmxEnabled, filterConsumers = filterConsumers, logkafkaEnabled = logkafkaEnabled)
+    val cc = ClusterConfig(
+      clusterName, 
+      version, 
+      zkHosts, 
+      jmxEnabled = jmxEnabled, 
+      filterConsumers = filterConsumers, 
+      logkafkaEnabled = logkafkaEnabled, 
+      activeOffsetCacheEnabled = activeOffsetCacheEnabled)
     tryWithKafkaManagerActor(KMAddCluster(cc)) { result: KMCommandResult =>
       result.result.get
     }
   }
 
-  def updateCluster(clusterName: String, version: String, zkHosts: String, jmxEnabled: Boolean, filterConsumers: Boolean, logkafkaEnabled: Boolean = false): Future[ApiError \/
+  def updateCluster(clusterName: String, version: String, zkHosts: String, jmxEnabled: Boolean, filterConsumers: Boolean, logkafkaEnabled: Boolean = false, activeOffsetCacheEnabled: Boolean = false): Future[ApiError \/
     Unit] =
   {
-    val cc = ClusterConfig(clusterName, version, zkHosts, jmxEnabled = jmxEnabled, filterConsumers = filterConsumers, logkafkaEnabled = logkafkaEnabled)
+    val cc = ClusterConfig(
+      clusterName, 
+      version, 
+      zkHosts, 
+      jmxEnabled = jmxEnabled, 
+      filterConsumers = filterConsumers, 
+      logkafkaEnabled = logkafkaEnabled, 
+      activeOffsetCacheEnabled = activeOffsetCacheEnabled)
     tryWithKafkaManagerActor(KMUpdateCluster(cc)) { result: KMCommandResult =>
       result.result.get
     }

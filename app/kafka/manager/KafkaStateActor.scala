@@ -5,6 +5,9 @@
 
 package kafka.manager
 
+import java.nio.file.Path
+
+import akka.pattern._
 import kafka.manager.features.KMDeleteTopicFeature
 import java.util.concurrent.TimeUnit
 
@@ -36,7 +39,7 @@ trait OffsetCache {
   
   protected[this] implicit def ec: ExecutionContext
   
-  protected[this] val log : Logger = LoggerFactory.getLogger(this.getClass)
+  protected[this] lazy val log : Logger = LoggerFactory.getLogger(this.getClass)
 
   // Caches a map of partitions to offsets at a key that is the topic's name.
   private[this] val partitionOffsetsCache: LoadingCache[String, Future[Map[Int,Long]]] = CacheBuilder.newBuilder()
@@ -86,16 +89,16 @@ trait OffsetCache {
     }
     futureMap
   }
+  
+  protected def getTopicPartitionLeaders(topic: String) : Option[List[(Int, Option[Broker])]]
+
+  protected def getTopicDescription(topic: String) : Option[TopicDescription]
 
   def start()
   
   def stop()
 
   def getTopicPartitionOffsets(topic: String) : Future[Map[Int,Long]] = partitionOffsetsCache.get(topic)
-  
-  def getTopicPartitionLeaders(topic: String) : Option[List[(Int, Option[Broker])]]
-  
-  def getTopicDescription(topic: String) : Option[TopicDescription]
   
   def lastUpdateMillis : Long
   
@@ -133,9 +136,9 @@ case class OffsetCacheActive(curator: CuratorFramework,
     Option(fn(consumersTreeCache))
   }
 
-  def getTopicPartitionLeaders(topic: String) : Option[List[(Int, Option[Broker])]] = partitionLeaders(topic)
+  protected def getTopicPartitionLeaders(topic: String) : Option[List[(Int, Option[Broker])]] = partitionLeaders(topic)
 
-  def getTopicDescription(topic: String) : Option[TopicDescription] = topicDescriptions(topic)
+  protected def getTopicDescription(topic: String) : Option[TopicDescription] = topicDescriptions(topic)
   
   def start():  Unit = {
     log.info("Starting consumers tree cache...")
@@ -175,12 +178,12 @@ case class OffsetCacheActive(curator: CuratorFramework,
     val ownerPath = "%s/%s/%s/%s".format(ZkUtils.ConsumersPath, consumer, "owners", topic)
     val partitionOffsets: Option[Map[Int, Long]] = for {
       offsetsByPartition: Map[String, ChildData] <- Option(consumersTreeCache.getCurrentChildren(offsetPath)).map(_.asScala.toMap)
-      offsets : Map[Int, Long] = offsetsByPartition map {case (part, data) => (part.toInt, asString(data.getData).toLong)}
+      offsets : Map[Int, Long] = offsetsByPartition map {case (part, data) => (part.toInt, Option(data.getData).map(asString).getOrElse("-1").toLong)}
     } yield offsets
 
     val partitionOwners: Option[Map[Int, String]] = for {
       ownersByPartition: Map[String, ChildData] <- Option(consumersTreeCache.getCurrentChildren(ownerPath)).map(_.asScala.toMap)
-      owners : Map[Int, String] = ownersByPartition map { case (part, data) => (part.toInt, asString(data.getData)) }
+      owners : Map[Int, String] = ownersByPartition map { case (part, data) => (part.toInt, Option(data.getData).map(asString).getOrElse("")) }
     } yield owners
 
     val optTopic = getTopicDescription(topic)
@@ -195,7 +198,7 @@ case class OffsetCacheActive(curator: CuratorFramework,
     }.fold {
       ConsumerList(IndexedSeq.empty, clusterContext)
     } { data: java.util.Map[String, ChildData] =>
-      val filteredList: IndexedSeq[String] = data.asScala.filter{
+      val filteredList: IndexedSeq[String] = data.asScala.filter(_._2.getData != null).filter{
         case (consumer, childData) =>
           if (clusterContext.config.filterConsumers)
           // Defining "inactive consumer" as a consumer that is missing one of three children ids/ offsets/ or owners/
@@ -203,6 +206,119 @@ case class OffsetCacheActive(curator: CuratorFramework,
           else true
       }.keySet.toIndexedSeq
       ConsumerList(filteredList, clusterContext)
+    }
+  }
+}
+
+case class OffsetCachePassive(curator: CuratorFramework,
+                             clusterContext: ClusterContext,
+                             partitionLeaders: String => Option[List[(Int, Option[Broker])]],
+                             topicDescriptions: String => Option[TopicDescription])
+                            (implicit protected[this] val ec: ExecutionContext) extends OffsetCache {
+
+  private[this] val consumersPathChildrenCacheListener = new PathChildrenCacheListener {
+    override def childEvent(client: CuratorFramework, event: PathChildrenCacheEvent): Unit = {
+      event.getType match {
+        case PathChildrenCacheEvent.Type.INITIALIZED | PathChildrenCacheEvent.Type.CHILD_ADDED |
+             PathChildrenCacheEvent.Type.CHILD_REMOVED | PathChildrenCacheEvent.Type.CHILD_UPDATED =>
+          consumersTreeCacheLastUpdateMillis = System.currentTimeMillis()
+        case _ =>
+        //do nothing
+      }
+    }
+  }
+
+  private[this] val consumersPathChildrenCache = new PathChildrenCache(curator, ZkUtils.ConsumersPath, true)
+
+  @volatile
+  private[this] var consumersTreeCacheLastUpdateMillis : Long = System.currentTimeMillis()
+
+  private[this] def withConsumersPathChildrenCache[T](fn: PathChildrenCache => T) : Option[T] = {
+    Option(fn(consumersPathChildrenCache))
+  }
+
+  protected def getTopicPartitionLeaders(topic: String) : Option[List[(Int, Option[Broker])]] = partitionLeaders(topic)
+
+  protected def getTopicDescription(topic: String) : Option[TopicDescription] = topicDescriptions(topic)
+
+  def start():  Unit = {
+    log.info("Starting consumers path children cache...")
+    consumersPathChildrenCache.start(StartMode.BUILD_INITIAL_CACHE)
+
+    log.info("Adding consumers path children cache listener...")
+    consumersPathChildrenCache.getListenable.addListener(consumersPathChildrenCacheListener)
+  }
+
+  def stop(): Unit = {
+    log.info("Removing consumers path children cache listener...")
+    Try(consumersPathChildrenCache.getListenable.removeListener(consumersPathChildrenCacheListener))
+
+    log.info("Shutting down consumers path children cache...")
+    Try(consumersPathChildrenCache.close())
+  }
+
+  def lastUpdateMillis : Long = consumersTreeCacheLastUpdateMillis
+
+  def getConsumerDescription(consumer: String) : Option[ConsumerDescription] = {
+    val offsetPath = "%s/%s/%s".format(ZkUtils.ConsumersPath,consumer,"offsets")
+    val topicOffsetOption : Option[List[String]] = Try(Option(curator.getChildren.forPath(offsetPath)).map(_.asScala.toList)).toOption.flatten
+    
+    val topicDescriptions: Option[Map[String, ConsumedTopicDescription]] = topicOffsetOption.map {
+      topics =>
+        topics.map { topic =>
+          val topicDesc = getConsumedTopicDescription(consumer, topic)
+          (topic, topicDesc)
+        }.toMap
+    }
+
+    topicDescriptions.map(ConsumerDescription(consumer, _))
+  }
+  
+  private[this] def readConsumerOffsetByTopicPartition(consumer: String, topic: String, tpi: Map[Int, TopicPartitionIdentity]) : Map[Int, Long] = {
+    tpi.map {
+      case (p, _) =>
+        val offsetPath = "%s/%s/%s/%s/%s".format(ZkUtils.ConsumersPath, consumer, "offsets", topic, p)
+        (p, ZkUtils.readDataMaybeNull(curator, offsetPath)._1.map(_.toLong).getOrElse(-1L))
+    }
+  }
+
+  private[this] def readConsumerOwnerByTopicPartition(consumer: String, topic: String, tpi: Map[Int, TopicPartitionIdentity]) : Map[Int, String] = {
+    tpi.map {
+      case (p, _) =>
+        val ownerPath = "%s/%s/%s/%s/%s".format(ZkUtils.ConsumersPath, consumer, "owners", topic, p)
+        (p, ZkUtils.readDataMaybeNull(curator, ownerPath)._1.getOrElse(""))
+    }
+  }
+  
+  def getConsumedTopicDescription(consumer:String, topic:String) : ConsumedTopicDescription = {
+    val optTopic = getTopicDescription(topic)
+    val optTpi = optTopic.map(TopicIdentity.getTopicPartitionIdentity)
+    val partitionOffsets = for {
+      td <- optTopic
+      tpi <- optTpi
+    } yield {
+      readConsumerOffsetByTopicPartition(consumer, topic, tpi)
+    }
+    val partitionOwners = for {
+      td <- optTopic
+      tpi <- optTpi
+    } yield {
+      readConsumerOwnerByTopicPartition(consumer, topic, tpi)
+    }
+    
+    val numPartitions: Int = math.max(optTopic.flatMap(_.partitionState.map(_.size)).getOrElse(0),
+      partitionOffsets.map(_.size).getOrElse(0))
+    ConsumedTopicDescription(consumer, topic, numPartitions, optTopic, partitionOwners, partitionOffsets)
+  }
+
+  def getConsumerList: ConsumerList = {
+    withConsumersPathChildrenCache { cache =>
+      val currentData = cache.getCurrentData
+      currentData
+    }.fold {
+      ConsumerList(IndexedSeq.empty, clusterContext)
+    } { data: java.util.List[ChildData] =>
+      ConsumerList(data.asScala.map(cd => cd.getPath.split("/").last).toIndexedSeq, clusterContext)
     }
   }
 }
@@ -303,8 +419,12 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseQueryCommandAct
     }
   }
   
-  private[this] val offsetCache: OffsetCache =
-    new OffsetCacheActive(config.curator, config.clusterContext, getPartitionLeaders, getTopicDescription)(longRunningExecutionContext)
+  private[this] val offsetCache: OffsetCache = {
+    if(config.clusterContext.config.activeOffsetCacheEnabled)
+      new OffsetCacheActive(config.curator, config.clusterContext, getPartitionLeaders, getTopicDescription)(longRunningExecutionContext)
+    else
+      new OffsetCachePassive(config.curator, config.clusterContext, getPartitionLeaders, getTopicDescription)(longRunningExecutionContext)
+  }
 
   @scala.throws[Exception](classOf[Exception])
   override def preStart() = {
@@ -325,6 +445,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseQueryCommandAct
     log.info("Adding admin path cache listener...")
     adminPathCache.getListenable.addListener(adminPathCacheListener)
     
+    log.info("Starting offset cache...")
     offsetCache.start()
   }
 
@@ -339,7 +460,9 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseQueryCommandAct
   @scala.throws[Exception](classOf[Exception])
   override def postStop(): Unit = {
     log.info("Stopped actor %s".format(self.path))
-    offsetCache.stop()
+    
+    log.info("Stopping offset cache...")
+    Try(offsetCache.stop())
 
     log.info("Removing admin path cache listener...")
     Try(adminPathCache.getListenable.removeListener(adminPathCacheListener))
@@ -436,6 +559,14 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseQueryCommandAct
       case scalaz.Success(bi) => bi
     }.toIndexedSeq.sortBy(_.id)
   }
+  
+  private[this] def asyncPipeToSender[T](fn: => T):  Unit = {
+    implicit val ec = longRunningExecutionContext
+    val result: Future[T] = Future {
+      fn
+    }
+    result pipeTo sender
+  }
 
   override def processQueryRequest(request: QueryRequest): Unit = {
     request match {
@@ -459,7 +590,9 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseQueryCommandAct
         }
 
       case KSGetConsumers =>
-        sender ! offsetCache.getConsumerList
+        asyncPipeToSender {
+          offsetCache.getConsumerList
+        }
 
       case KSGetTopicConfig(topic) =>
         sender ! TopicConfig(topic, getTopicConfigString(topic))
@@ -471,10 +604,14 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseQueryCommandAct
         sender ! TopicDescriptions(topics.toIndexedSeq.flatMap(getTopicDescription), topicsTreeCacheLastUpdateMillis)
 
       case KSGetConsumerDescription(consumer) =>
-        sender ! offsetCache.getConsumerDescription(consumer)
+        asyncPipeToSender {
+          offsetCache.getConsumerDescription(consumer)
+        }
 
       case KSGetConsumedTopicDescription(consumer, topic) =>
-        sender ! offsetCache.getConsumedTopicDescription(consumer,topic)
+        asyncPipeToSender {
+          offsetCache.getConsumedTopicDescription(consumer, topic)
+        }
 
       case KSGetAllTopicDescriptions(lastUpdateMillisOption) =>
         val lastUpdateMillis = lastUpdateMillisOption.getOrElse(0L)
@@ -492,10 +629,12 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseQueryCommandAct
       case KSGetAllConsumerDescriptions(lastUpdateMillisOption) =>
         val lastUpdateMillis = lastUpdateMillisOption.getOrElse(0L)
         if (offsetCache.lastUpdateMillis > lastUpdateMillis) {
-          sender ! ConsumerDescriptions(offsetCache
-            .getConsumerList
-            .list
-            .flatMap(c => offsetCache.getConsumerDescription(c)), offsetCache.lastUpdateMillis)
+          asyncPipeToSender {
+            ConsumerDescriptions(offsetCache
+              .getConsumerList
+              .list
+              .flatMap(c => offsetCache.getConsumerDescription(c)), offsetCache.lastUpdateMillis)
+          }
         }
 
       case KSGetTopicsLastUpdateMillis =>

@@ -50,6 +50,13 @@ case class ApplicationFeatures(features: Set[ApplicationFeature])
 
 object ApplicationFeatures {
   import play.api.Play.current
+  private lazy val log = LoggerFactory.getLogger(classOf[ApplicationFeatures])
+  
+  lazy val default : List[String] = List(
+    KMClusterManagerFeature,
+    KMTopicManagerFeature,
+    KMPreferredReplicaElectionFeature, 
+    KMReassignPartitionsFeature).map(_.getClass.getSimpleName)
   
   lazy val features = {
     getApplicationFeatures(play.api.Play.configuration.underlying)
@@ -57,9 +64,13 @@ object ApplicationFeatures {
   
   def getApplicationFeatures(config: Config) : ApplicationFeatures = {
     import scala.collection.JavaConverters._
-    val configFeatures: List[String] = config.getStringList("application.features").asScala.toList
+    val configFeatures: Option[List[String]] = Try(config.getStringList("application.features").asScala.toList).toOption
+    
+    if(configFeatures.isEmpty) {
+      log.warn(s"application.features not found in conf file, using default values $default")
+    }
 
-    val f = configFeatures.map(ApplicationFeature.from).flatten
+    val f = configFeatures.getOrElse(default).map(ApplicationFeature.from).flatten
     ApplicationFeatures(f.toSet)
   }
 }

@@ -105,6 +105,19 @@ object ZkUtils {
     val dataStr: String = curator.getData.storingStatIn(stat).forPath(path)
     (dataStr, stat)
   }
+  
+  def readDataMaybeNull(curator: CuratorFramework, path: String): (Option[String], Stat) = {
+    val stat: Stat = new Stat()
+    try {
+      val dataStr: String = curator.getData.storingStatIn(stat).forPath(path)
+      (Option(dataStr), stat)
+    } catch {
+      case e: NoNodeException => {
+        (None, stat)
+      }
+      case e2: Throwable => throw e2
+    }
+  }
 
 
   def getPartitionReassignmentZkData(partitionsToBeReassigned: Map[TopicAndPartition, Seq[Int]]): String = {

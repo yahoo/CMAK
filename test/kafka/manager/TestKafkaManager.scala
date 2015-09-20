@@ -5,12 +5,13 @@
 package kafka.manager
 
 import java.util.Properties
+import java.util.concurrent.atomic.AtomicBoolean
 
 import com.typesafe.config.{Config, ConfigFactory}
 import kafka.manager.features.KMDeleteTopicFeature
 import kafka.manager.utils.CuratorAwareTest
 import ActorModel.TopicList
-import kafka.test.SeededBroker
+import kafka.test.{SimpleProducer, HighLevelConsumer, SeededBroker}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -20,7 +21,8 @@ import scala.util.Try
  * @author hiral
  */
 class TestKafkaManager extends CuratorAwareTest {
-  private[this] val broker = new SeededBroker("km-api-test",4)
+  private[this] val seededTopic = "km-api-test"
+  private[this] val broker = new SeededBroker(seededTopic,4)
   private[this] val kafkaServerZkPath = broker.getZookeeperConnectionString
   private[this] val akkaConfig: Properties = new Properties()
   akkaConfig.setProperty("pinned-dispatcher.type","PinnedDispatcher")
@@ -39,13 +41,49 @@ class TestKafkaManager extends CuratorAwareTest {
   private[this] val createLogkafkaHostname = "km-unit-test-logkafka-hostname"
   private[this] val createLogkafkaLogPath = "/km-unit-test-logkafka-logpath"
   private[this] val createLogkafkaTopic = "km-unit-test-logkafka-topic"
+  private[this] var hlConsumer : Option[HighLevelConsumer] = None
+  private[this] var hlConsumerThread : Option[Thread] = None
+  private[this] val hlShutdown = new AtomicBoolean(false)
+  private[this] var simpleProducer : Option[SimpleProducer] = None
+  private[this] var simpleProducerThread : Option[Thread] = None
 
   override protected def beforeAll() : Unit = {
     super.beforeAll()
+    Thread.sleep(2000)
+    hlConsumer = Option(broker.getHighLevelConsumer)
+    hlConsumerThread = Option(new Thread() {
+      override def run(): Unit = {
+        while(!hlShutdown.get()) {
+          hlConsumer.map(_.read { ba => 
+            Option(ba).map(asString).foreach( s => println(s"read message : $s"))
+          })
+          Thread.sleep(500)
+        }
+      }
+    })
+    hlConsumerThread.foreach(_.start())
+    simpleProducer = Option(broker.getSimpleProducer)
+    simpleProducerThread = Option(new Thread() {
+      override def run(): Unit = {
+        var count = 0
+        while(!hlShutdown.get()) {
+          simpleProducer.foreach { p =>
+            p.send(s"simple message $count")
+            count+=1
+            Thread.sleep(500)
+          }
+        }
+      }
+    })
+    simpleProducerThread.foreach(_.start())
     Thread.sleep(1000)
   }
 
   override protected def afterAll(): Unit = {
+    Try(hlShutdown.set(true))
+    Try(simpleProducerThread.foreach(_.interrupt()))
+    Try(hlConsumerThread.foreach(_.interrupt()))
+    Try(hlConsumer.foreach(_.close()))
     kafkaManager.shutdown()
     Try(broker.shutdown())
     super.afterAll()
@@ -138,6 +176,22 @@ class TestKafkaManager extends CuratorAwareTest {
     val result = Await.result(future,duration)
     assert(result.isRight === true, s"Failed : ${result}")
     assert(result.toOption.get.clusterFeatures.features(KMDeleteTopicFeature))
+  }
+  
+  test("get consumer list passive mode") {
+    val future = kafkaManager.getConsumerListExtended("dev")
+    val result = Await.result(future,duration)
+    assert(result.isRight === true, s"Failed : ${result}")
+    assert(result.toOption.get.clusterContext.config.activeOffsetCacheEnabled === false, s"Failed : ${result}")
+    assert(result.toOption.get.list.head._1 === hlConsumer.get.groupId, s"Failed : ${result}")
+  }
+
+  test("get consumer identity passive mode") {
+    val future = kafkaManager.getConsumerIdentity("dev", hlConsumer.get.groupId)
+    val result = Await.result(future,duration)
+    assert(result.isRight === true, s"Failed : ${result}")
+    assert(result.toOption.get.clusterContext.config.activeOffsetCacheEnabled === false, s"Failed : ${result}")
+    assert(result.toOption.get.topicMap.head._1 === seededTopic, s"Failed : ${result}")
   }
 
   test("run preferred leader election") {
@@ -326,18 +380,37 @@ class TestKafkaManager extends CuratorAwareTest {
     Thread.sleep(2000)
   }
 
-  test("update cluster logkafka enabled") {
-    val future = kafkaManager.updateCluster("dev","0.8.2.0",testServer.getConnectString, jmxEnabled = false, filterConsumers = true, logkafkaEnabled = true)
+  test("update cluster logkafka enabled and activeOffsetCache enabled") {
+    val future = kafkaManager.updateCluster("dev","0.8.2.0",testServer.getConnectString, jmxEnabled = false, filterConsumers = true, logkafkaEnabled = true, activeOffsetCacheEnabled = true)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
+    
+    Thread.sleep(3000)
 
     val future2 = kafkaManager.getClusterList
     val result2 = Await.result(future2,duration)
     assert(result2.isRight === true)
-    assert((result2.toOption.get.pending.nonEmpty === true) ||
-           (result2.toOption.get.active.find(c => c.name == "dev").get.logkafkaEnabled === true))
+    assert((result2.toOption.get.active.find(c => c.name == "dev").get.logkafkaEnabled === true) &&
+      (result2.toOption.get.active.find(c => c.name == "dev").get.activeOffsetCacheEnabled === true))
     Thread.sleep(3000)
   }
+
+  /*
+  test("get consumer list active mode") {
+    val future = kafkaManager.getConsumerListExtended("dev")
+    val result = Await.result(future,duration)
+    assert(result.isRight === true, s"Failed : ${result}")
+    assert(result.toOption.get.clusterContext.config.activeOffsetCacheEnabled === false, s"Failed : ${result}")
+    assert(result.toOption.get.list.head._1 === hlConsumer.get.groupId, s"Failed : ${result}")
+  }
+
+  test("get consumer identity active mode") {
+    val future = kafkaManager.getConsumerIdentity("dev", hlConsumer.get.groupId)
+    val result = Await.result(future,duration)
+    assert(result.isRight === true, s"Failed : ${result}")
+    assert(result.toOption.get.clusterContext.config.activeOffsetCacheEnabled === false, s"Failed : ${result}")
+    assert(result.toOption.get.topicMap.head._1 === seededTopic, s"Failed : ${result}")
+  }*/
 
   test("create logkafka") {
     val config = new Properties()
