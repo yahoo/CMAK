@@ -6,7 +6,7 @@ A tool for managing [Apache Kafka](http://kafka.apache.org).
 It supports the following :
 
  - Manage multiple clusters
- - Easy inspection of cluster state (topics, brokers, replica distribution, partition distribution)
+ - Easy inspection of cluster state (topics, consumers, offsets, brokers, replica distribution, partition distribution)
  - Run preferred replica election
  - Generate partition assignments with option to select brokers to use
  - Run reassignment of partition (based on generated assignments)
@@ -18,6 +18,7 @@ It supports the following :
  - Add partitions to existing topic
  - Update config for existing topic
  - Optionally enable JMX polling for broker level and topic level metrics.
+ - Optionally filter out consumers that do not have ids/ owners/ & offsets/ directories in zookeeper.
 
 Cluster Management
 
@@ -37,9 +38,21 @@ Topic View
 
 ***
 
+Consumer List View
+
+![consumer](/img/consumer-list.png)
+
+***
+
+Consumed Topic View
+
+![consumer](/img/consumed-topic.png)
+
+***
+
 Broker List
 
-![topic](/img/broker-list.png)
+![broker](/img/broker-list.png)
 
 ***
 
@@ -52,9 +65,9 @@ Broker View
 Requirements
 ------------
 
-1. [Kafka 0.8.1.1 or 0.8.2.0](http://kafka.apache.org/downloads.html)
+1. [Kafka 0.8.1.1 or 0.8.2.1](http://kafka.apache.org/downloads.html)
 2. [sbt 0.13.x](http://www.scala-sbt.org/download.html)
-3. Java 7+
+3. Java 8+
 
 Configuration
 -------------

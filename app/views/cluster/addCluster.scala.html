@@ -19,6 +19,8 @@
         @b3.select( form("kafkaVersion"), options = kafka.manager.KafkaVersion.formSelectList, '_label -> "Kafka Version" )
         @b3.checkbox(form("jmxEnabled"), '_text -> "Enable JMX Polling")
         @b3.checkbox(form("logkafkaEnabled"), '_text -> "Enable Logkafka")
+        @b3.checkbox(form("filterConsumers"), '_text -> "Filter out inactive consumers")
+        @b3.checkbox(form("activeOffsetCacheEnabled"), '_text -> "Enable Active OffsetCache (Not recommended for large # of consumers)")
         @b3.submit('class -> "submit-button btn btn-primary"){ Save }
         <a href="@routes.Application.index()" class="cancel-button btn btn-default" role="button">Cancel</a>
     </fieldset>

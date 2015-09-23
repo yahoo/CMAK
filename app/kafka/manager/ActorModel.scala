@@ -8,11 +8,13 @@ package kafka.manager
 import java.util.Properties
 
 import org.joda.time.DateTime
-import kafka.manager.utils.TopicAndPartition
+import kafka.common.TopicAndPartition
 import org.slf4j.LoggerFactory
 
 import scala.collection.immutable.Queue
-import scala.util.Try
+import scala.concurrent.{Await, Future}
+import scala.concurrent.duration.Duration
+import scala.util.{Try, Success, Failure}
 import scalaz.{NonEmptyList, Validation}
 
 /**
@@ -34,6 +36,8 @@ object ActorModel {
 
   case object BVForceUpdate extends CommandRequest
   case object BVGetTopicIdentities extends BVRequest
+  case object BVGetTopicConsumerMap extends BVRequest
+  case object BVGetConsumerIdentities extends BVRequest
   case class BVGetView(id: Int) extends BVRequest
   case object BVGetViews extends BVRequest
   case class BVGetTopicMetrics(topic: String) extends BVRequest
@@ -52,7 +56,11 @@ object ActorModel {
   case class CMGetTopicIdentity(topic: String) extends QueryRequest
   case object CMGetClusterContext extends QueryRequest
   case class CMView(topicsCount: Int, brokersCount: Int, clusterContext: ClusterContext) extends QueryResponse
+  case class CMGetConsumerIdentity(consumer: String) extends QueryRequest
+  case class CMGetConsumedTopicState(consumer: String, topic: String) extends QueryRequest
   case class CMTopicIdentity(topicIdentity: Try[TopicIdentity]) extends QueryResponse
+  case class CMConsumerIdentity(consumerIdentity: Try[ConsumerIdentity]) extends QueryResponse
+  case class CMConsumedTopic(ctIdentity: Try[ConsumedTopicState]) extends QueryResponse
   case object CMShutdown extends CommandRequest
   case class CMCreateTopic(topic: String,
                            partitions: Int,
@@ -98,8 +106,8 @@ object ActorModel {
                            config: Properties) extends CommandRequest
   case class KCAddTopicPartitions(topic: String,
                            brokers: Seq[Int],
-                           partitions: Int, 
-                           partitionReplicaList: Map[Int, Seq[Int]], 
+                           partitions: Int,
+                           partitionReplicaList: Map[Int, Seq[Int]],
                            readVersion: Int) extends CommandRequest
   case class KCAddMultipleTopicsPartitions(topicsAndReplicas: Seq[(String, Map[Int, Seq[Int]])],
                                            brokers: Seq[Int],
@@ -135,10 +143,15 @@ object ActorModel {
 
   sealed trait KSRequest extends QueryRequest
   case object KSGetTopics extends KSRequest
+  case object KSGetConsumers extends KSRequest
   case class KSGetTopicConfig(topic: String) extends KSRequest
   case class KSGetTopicDescription(topic: String) extends KSRequest
   case class KSGetAllTopicDescriptions(lastUpdateMillis: Option[Long]= None) extends KSRequest
   case class KSGetTopicDescriptions(topics: Set[String]) extends KSRequest
+  case class KSGetConsumerDescription(consumer: String) extends KSRequest
+  case class KSGetConsumedTopicDescription(consumer: String, topic: String) extends KSRequest
+  case class KSGetAllConsumerDescriptions(lastUpdateMillis: Option[Long]= None) extends KSRequest
+  case class KSGetConsumerDescriptions(consumers: Set[String]) extends KSRequest
   case object KSGetTopicsLastUpdateMillis extends KSRequest
   case object KSGetPreferredLeaderElection extends KSRequest
   case object KSGetReassignPartition extends KSRequest
@@ -152,10 +165,12 @@ object ActorModel {
 
   case class TopicList(list: IndexedSeq[String], deleteSet: Set[String], clusterContext: ClusterContext) extends QueryResponse
   case class TopicConfig(topic: String, config: Option[(Int,String)]) extends QueryResponse
+  case class ConsumerList(list: IndexedSeq[String], clusterContext: ClusterContext) extends QueryResponse
 
   case class TopicDescription(topic: String,
                               description: (Int,String),
                               partitionState: Option[Map[String, String]], 
+                              partitionOffsets: Future[Map[Int, Long]],
                               config:Option[(Int,String)]) extends  QueryResponse
   case class TopicDescriptions(descriptions: IndexedSeq[TopicDescription], lastUpdateMillis: Long) extends QueryResponse
 
@@ -169,6 +184,16 @@ object ActorModel {
                                 partitionsToBeReassigned: Map[TopicAndPartition, Seq[Int]], 
                                 endTime: Option[DateTime], 
                                 clusterContext: ClusterContext) extends QueryResponse
+
+  case class ConsumedTopicDescription(consumer: String,
+                                      topic: String,
+                                      numPartitions: Int,
+                                      topicDescription: Option[TopicDescription],
+                                      partitionOwners: Option[Map[Int, String]],
+                                      partitionOffsets: Option[Map[Int, Long]])
+  case class ConsumerDescription(consumer: String,
+                                 topics: Map[String, ConsumedTopicDescription]) extends  QueryResponse
+  case class ConsumerDescriptions(descriptions: IndexedSeq[ConsumerDescription], lastUpdateMillis: Long) extends QueryResponse
 
   case object DCUpdateState extends CommandRequest
 
@@ -190,17 +215,26 @@ object ActorModel {
     }
   }
 
-  case class TopicPartitionIdentity(partNum: Int, leader:Int, isr: Seq[Int], replicas: Seq[Int], isPreferredLeader: Boolean = false, isUnderReplicated: Boolean = false)
+  case class TopicPartitionIdentity(partNum: Int,
+                                    leader: Int,
+                                    latestOffset: Option[Long],
+                                    isr: Seq[Int],
+                                    replicas: Seq[Int],
+                                    isPreferredLeader: Boolean = false,
+                                    isUnderReplicated: Boolean = false)
   object TopicPartitionIdentity {
-    
+
     lazy val logger = LoggerFactory.getLogger(this.getClass)
-    
+
     import scalaz.syntax.applicative._
     import org.json4s.jackson.JsonMethods._
     import org.json4s.scalaz.JsonScalaz._
     import scala.language.reflectiveCalls
 
-    implicit def from(partition: Int, state:Option[String], replicas: Seq[Int]) : TopicPartitionIdentity = {
+    implicit def from(partition: Int,
+                      state:Option[String],
+                      offset: Option[Long],
+                      replicas: Seq[Int]) : TopicPartitionIdentity = {
       val leaderAndIsr = for {
         json <- state
         parsedJson = parse(json)
@@ -209,14 +243,18 @@ object ActorModel {
           (leader: Int, isr: Seq[Int]) => leader -> isr
         }
       }
-      val default = TopicPartitionIdentity(partition,-2,Seq.empty,replicas)
+      val default = TopicPartitionIdentity(partition,
+                                           -2,
+                                           offset,
+                                           Seq.empty,
+                                           replicas)
       leaderAndIsr.fold(default) { parsedLeaderAndIsrOrError =>
         parsedLeaderAndIsrOrError.fold({ e =>
           logger.error(s"Failed to parse topic state $e")
           default
         }, {
           case (leader, isr) =>
-            TopicPartitionIdentity(partition, leader, isr, replicas, leader == replicas.head, isr.size != replicas.size)
+            TopicPartitionIdentity(partition, leader, offset, isr, replicas, leader == replicas.head, isr.size != replicas.size)
         })
       }
     }
@@ -250,6 +288,8 @@ object ActorModel {
       }.toIndexedSeq.sortBy(_.id)
     }
 
+    // a topic's log-size is the sum of its partitions' log-sizes, we take the sum of the ones we know the offset for.
+    val summedTopicOffsets : Long = partitionsIdentity.map(_._2.latestOffset).collect{case Some(offset) => offset}.sum
 
     val preferredReplicasPercentage : Int = (100 * partitionsIdentity.count(_._2.isPreferredLeader)) / partitions
 
@@ -279,17 +319,50 @@ object ActorModel {
     import org.json4s.scalaz.JsonScalaz._
     import scala.language.reflectiveCalls
     
-    implicit def from(brokers: Int,td: TopicDescription, tm: Option[BrokerMetrics], clusterContext: ClusterContext) : TopicIdentity = {
+    private[this] def getPartitionReplicaMap(td: TopicDescription) : Map[String, List[Int]] = {
+      // Get the topic description information
       val descJson = parse(td.description._2)
-      //val partMap = (descJson \ "partitions").as[Map[String,Seq[Int]]]
-      val partMap = field[Map[String,List[Int]]]("partitions")(descJson).fold({ e =>
+      field[Map[String,List[Int]]]("partitions")(descJson).fold({ e =>
         logger.error(s"[topic=${td.topic}] Failed to get partitions from topic json ${td.description._2}")
         Map.empty
       }, identity)
+    }
+
+    private[this] def getTopicPartitionIdentity(td: TopicDescription,
+                                                partMap: Map[String, List[Int]]) : Map[Int, TopicPartitionIdentity] = {
+
       val stateMap = td.partitionState.getOrElse(Map.empty)
-      val tpi : Map[Int,TopicPartitionIdentity] = partMap.map { case (part, replicas) =>
-        (part.toInt,TopicPartitionIdentity.from(part.toInt,stateMap.get(part),replicas))
-      }.toMap
+      // Assign the partition data to the TPI format
+      partMap.map { case (partition, replicas) =>
+        val partitionNum = partition.toInt
+        // block on the futures that hold the latest produced offset in each partition
+        val partitionOffsets: Map[Int, Long]= Await.ready(td.partitionOffsets, Duration.Inf).value.get match {
+          case Success(offsetMap) =>
+            offsetMap
+          case Failure(e) =>
+            Map.empty
+        }
+        (partitionNum,TopicPartitionIdentity.from(partitionNum,
+          stateMap.get(partition),
+          partitionOffsets.get(partitionNum),
+          replicas))
+      }
+    }
+    
+    def getTopicPartitionIdentity(td: TopicDescription) : Map[Int, TopicPartitionIdentity] = {
+      // Get the topic description information
+      val partMap = getPartitionReplicaMap(td)
+
+      getTopicPartitionIdentity(td, partMap)
+    }
+    
+    implicit def from(brokers: Int,
+                      td: TopicDescription,
+                      tm: Option[BrokerMetrics],
+                      clusterContext: ClusterContext) : TopicIdentity = {
+      // Get the topic description information
+      val partMap = getPartitionReplicaMap(td)
+      val tpi : Map[Int,TopicPartitionIdentity] = getTopicPartitionIdentity(td, partMap)
       val config : (Int,Map[String, String]) = {
         try {
           val resultOption: Option[(Int,Map[String, String])] = td.config.map { configString =>
@@ -321,7 +394,8 @@ object ActorModel {
           val newReplicaSeq = assignedReplicas.get(part)
           require(newReplicaSeq.isDefined, s"Missing replica assignment for partition $part for topic ${currentTopicIdentity.topic}")
           val newReplicaSet = newReplicaSeq.get.toSet
-          require(newReplicaSeq.get.size == newReplicaSet.size, s"Duplicates found in replica set ${newReplicaSeq.get} for partition $part for topic ${currentTopicIdentity.topic}")
+          require(newReplicaSeq.get.size == newReplicaSet.size,
+            s"Duplicates found in replica set ${newReplicaSeq.get} for partition $part for topic ${currentTopicIdentity.topic}")
           (part,tpi.copy(replicas = newReplicaSeq.get))
         }
         TopicIdentity(
@@ -338,6 +412,79 @@ object ActorModel {
     }
   }
 
+  case class ConsumedTopicState(consumerGroup: String,
+                                topic: String,
+                                numPartitions: Int,
+                                partitionLatestOffsets: Map[Int, Long],
+                                partitionOwners: Map[Int, String],
+                                partitionOffsets: Map[Int, Long], 
+                                clusterContext: ClusterContext) {
+    lazy val totalLag : Option[Long] = {
+      // only defined if every partition has a latest offset
+      if (partitionLatestOffsets.values.size == numPartitions && partitionLatestOffsets.size == numPartitions) {
+          Some(partitionLatestOffsets.values.sum - partitionOffsets.values.sum)
+      } else None
+    }
+    def topicOffsets(partitionNum: Int) : Option[Long] = partitionLatestOffsets.get(partitionNum)
+
+    def partitionLag(partitionNum: Int) : Option[Long] = {
+      topicOffsets(partitionNum).flatMap{topicOffset =>
+        partitionOffsets.get(partitionNum).map(topicOffset - _)}
+    }
+
+    // Percentage of the partitions that have an owner
+    def percentageCovered : Int =
+    if (numPartitions != 0) {
+      val numCovered = partitionOwners.size
+      100 * numCovered / numPartitions
+    } else {
+      100 // if there are no partitions to cover, they are all covered!
+    }
+  }
+
+  object ConsumedTopicState {
+    def from(ctd: ConsumedTopicDescription, clusterContext: ClusterContext): ConsumedTopicState = {
+      val partitionOffsetsMap = ctd.partitionOffsets.getOrElse(Map.empty)
+      val partitionOwnersMap = ctd.partitionOwners.getOrElse(Map.empty)
+      // block on the futures that hold the latest produced offset in each partition
+      val topicOffsetsOptMap: Map[Int, Long]= ctd.topicDescription.map{td: TopicDescription =>
+        Await.ready(td.partitionOffsets, Duration.Inf).value.get match {
+        case Success(offsetMap: Map[Int,Long]) =>
+          offsetMap
+        case Failure(e) =>
+          Map.empty[Int, Long]
+      }}.getOrElse(Map.empty)
+
+      ConsumedTopicState(
+        ctd.consumer, 
+        ctd.topic, 
+        ctd.numPartitions, 
+        topicOffsetsOptMap, 
+        partitionOwnersMap, 
+        partitionOffsetsMap, 
+        clusterContext)
+    }
+  }
+
+  case class ConsumerIdentity(consumerGroup:String,
+                              topicMap: Map[String, ConsumedTopicState],
+                              clusterContext: ClusterContext)
+  object ConsumerIdentity {
+    lazy val logger = LoggerFactory.getLogger(this.getClass)
+    import scala.language.reflectiveCalls
+
+    implicit def from(cd: ConsumerDescription,
+                      clusterContext: ClusterContext) : ConsumerIdentity = {
+      val topicMap: Seq[(String, ConsumedTopicState)] = for {
+        (topic, ctd) <- cd.topics.toSeq
+        cts = ConsumedTopicState.from(ctd, clusterContext)
+      } yield (topic, cts)
+      ConsumerIdentity(cd.consumer,
+        topicMap.toMap,
+        clusterContext)
+    }
+
+  }
 
   case class BrokerMessagesPerSecCount(date: DateTime,
                                        count: Long)
@@ -372,7 +519,7 @@ object ActorModel {
       MeterMetric(0, 0, 0, 0, 0),
       OSMetric(0D, 0D))
   }
-  
+
   case class BrokerClusterStats(perMessages: BigDecimal, perIncoming: BigDecimal, perOutgoing: BigDecimal)
   
   sealed trait LKVRequest extends QueryRequest

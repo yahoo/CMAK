@@ -70,7 +70,9 @@ object Cluster extends Controller {
       "zkHosts" -> nonEmptyText.verifying(validateZkHosts),
       "zkMaxRetry" -> ignored(100 : Int),
       "jmxEnabled" -> boolean,
-      "logkafkaEnabled" -> boolean
+      "filterConsumers" -> boolean,
+      "logkafkaEnabled" -> boolean,
+      "activeOffsetCacheEnabled" -> boolean
     )(ClusterConfig.apply)(ClusterConfig.customUnapply)
   )
 
@@ -82,7 +84,9 @@ object Cluster extends Controller {
       "zkHosts" -> nonEmptyText.verifying(validateZkHosts),
       "zkMaxRetry" -> ignored(100 : Int),
       "jmxEnabled" -> boolean,
-      "logkafkaEnabled" -> boolean
+      "filterConsumers" -> boolean,
+      "logkafkaEnabled" -> boolean,
+      "activeOffsetCacheEnabled" -> boolean
     )(ClusterOperation.apply)(ClusterOperation.customUnapply)
   )
 
@@ -121,7 +125,9 @@ object Cluster extends Controller {
             cc.curatorConfig.zkConnect,
             cc.curatorConfig.zkMaxRetry,
             cc.jmxEnabled,
-            cc.logkafkaEnabled))
+            cc.filterConsumers,
+            cc.logkafkaEnabled,
+            cc.activeOffsetCacheEnabled))
         }))
       }
     }
@@ -133,7 +139,7 @@ object Cluster extends Controller {
       clusterConfigForm.bindFromRequest.fold(
         formWithErrors => Future.successful(BadRequest(views.html.cluster.addCluster(formWithErrors))),
         clusterConfig => {
-          kafkaManager.addCluster(clusterConfig.name, clusterConfig.version.toString, clusterConfig.curatorConfig.zkConnect, clusterConfig.jmxEnabled, clusterConfig.logkafkaEnabled).map { errorOrSuccess =>
+          kafkaManager.addCluster(clusterConfig.name, clusterConfig.version.toString, clusterConfig.curatorConfig.zkConnect, clusterConfig.jmxEnabled, clusterConfig.filterConsumers, clusterConfig.logkafkaEnabled, clusterConfig.activeOffsetCacheEnabled).map { errorOrSuccess =>
             Ok(views.html.common.resultOfCommand(
               views.html.navigation.defaultMenu(),
               models.navigation.BreadCrumbs.withView("Add Cluster"),
@@ -192,7 +198,9 @@ object Cluster extends Controller {
               clusterOperation.clusterConfig.version.toString,
               clusterOperation.clusterConfig.curatorConfig.zkConnect,
               clusterOperation.clusterConfig.jmxEnabled,
-              clusterOperation.clusterConfig.logkafkaEnabled
+              clusterOperation.clusterConfig.filterConsumers,
+              clusterOperation.clusterConfig.logkafkaEnabled,
+              clusterOperation.clusterConfig.activeOffsetCacheEnabled
             ).map { errorOrSuccess =>
               Ok(views.html.common.resultOfCommand(
                 views.html.navigation.defaultMenu(),
