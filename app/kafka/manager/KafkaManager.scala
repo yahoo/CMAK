@@ -83,7 +83,7 @@ object KafkaManager {
       StartDelayMillis -> "1000",
       ApiTimeoutMillis -> "5000",
       ClusterActorsAskTimeoutMillis -> "2000",
-      PartitionOffsetCacheTimeoutSecs -> "5000",
+      PartitionOffsetCacheTimeoutSecs -> "5",
       SimpleConsumerSocketTimeoutMillis -> "10000"
     )
     import scala.collection.JavaConverters._

@@ -475,6 +475,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseQueryCommandAct
 
   @scala.throws[Exception](classOf[Exception])
   override def preStart() = {
+    log.info(config.toString)
     log.info("Started actor %s".format(self.path))
     log.info("Starting topics tree cache...")
     topicsTreeCache.start()
@@ -657,7 +658,8 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseQueryCommandAct
 
       case KSGetAllTopicDescriptions(lastUpdateMillisOption) =>
         val lastUpdateMillis = lastUpdateMillisOption.getOrElse(0L)
-        if (topicsTreeCacheLastUpdateMillis > lastUpdateMillis) {
+        //since we want to update offsets, let's do so if last update plus offset cache timeout is before current time
+        if (topicsTreeCacheLastUpdateMillis > lastUpdateMillis || ((topicsTreeCacheLastUpdateMillis + (config.partitionOffsetCacheTimeoutSecs * 1000)) < System.currentTimeMillis())) {
           //we have option here since there may be no topics at all!
           withTopicsTreeCache {  cache: TreeCache =>
             cache.getCurrentChildren(ZkUtils.BrokerTopicsPath)
