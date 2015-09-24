@@ -212,7 +212,11 @@ case class KafkaManagerActorConfig(curatorConfig: CuratorConfig,
                                    maxQueueSize: Int = 100,
                                    kafkaManagerUpdatePeriod: FiniteDuration = 10 seconds,
                                    deleteClusterUpdatePeriod: FiniteDuration = 10 seconds,
-                                   deletionBatchSize : Int = 2)
+                                   deletionBatchSize : Int = 2,
+                                   clusterActorsAskTimeoutMillis: Int = 2000,
+                                   partitionOffsetCacheTimeoutSecs: Int = 5,
+                                   simpleConsumerSocketTimeoutMillis : Int = 10000
+                                    )
 class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
   extends BaseQueryCommandActor with CuratorAwareActor with BaseZkPath {
 
@@ -565,7 +569,13 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
           getClusterZkPath(config),
           kafkaManagerConfig.curatorConfig,
           config,
-          kafkaManagerConfig.brokerViewUpdatePeriod)
+          kafkaManagerConfig.brokerViewUpdatePeriod,
+          threadPoolSize = kafkaManagerConfig.threadPoolSize,
+          maxQueueSize = kafkaManagerConfig.maxQueueSize,
+          askTimeoutMillis = kafkaManagerConfig.clusterActorsAskTimeoutMillis,
+          mutexTimeoutMillis = kafkaManagerConfig.mutexTimeoutMillis,
+          partitionOffsetCacheTimeoutSecs = kafkaManagerConfig.partitionOffsetCacheTimeoutSecs,
+          simpleConsumerSocketTimeoutMillis = kafkaManagerConfig.simpleConsumerSocketTimeoutMillis)
         val props = Props(classOf[ClusterManagerActor], clusterManagerConfig)
         val newClusterManager = context.actorOf(props, config.name).path
         clusterConfigMap += (config.name -> config)

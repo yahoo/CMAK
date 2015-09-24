@@ -48,6 +48,7 @@
         <th>Brokers Skew %</th>
         <th># Replicas</th>
         <th>Under Replicated %</th>
+        <th>Producer Message/Sec</th>
         <th>Summed Recent Offsets</th>
     </tr>
     </thead>
@@ -61,6 +62,7 @@
           @topicIdentity.map{ ti => <td class="@getBrokersSkewLevel(ti.brokersSkewPercentage)">@ti.brokersSkewPercentage</td>}.getOrElse{<td> </td>}
           @topicIdentity.map{ ti => <td>@ti.replicationFactor</td>}.getOrElse{<td> </td>}
           @topicIdentity.map{ ti => <td class="@getUnderReplicatedLevel(ti.underReplicatedPercentage)">@ti.underReplicatedPercentage</td>}.getOrElse{<td> </td>}
+          @topicIdentity.map{ ti => <td>@ti.producerRate</td>}.getOrElse{<td> </td>}
           @topicIdentity.map{ ti => <td>@ti.summedTopicOffsets</td>}.getOrElse{<td> </td>}
       </tr>
     }

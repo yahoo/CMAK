@@ -56,7 +56,9 @@ case class ClusterManagerActorConfig(pinnedDispatcherName: String,
                                 threadPoolSize: Int = 2,
                                 maxQueueSize: Int = 100,
                                 askTimeoutMillis: Long = 2000,
-                                mutexTimeoutMillis: Int = 4000)
+                                mutexTimeoutMillis: Int = 4000,
+                                partitionOffsetCacheTimeoutSecs : Int = 5,
+                                simpleConsumerSocketTimeoutMillis: Int = 10000)
 
 class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
   extends BaseQueryCommandActor with CuratorAwareActor with BaseZkPath {
@@ -94,7 +96,9 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
   private[this] val ksConfig = KafkaStateActorConfig(
     sharedClusterCurator,
     clusterContext,
-    LongRunningPoolConfig(Runtime.getRuntime.availableProcessors(), 1000))
+    LongRunningPoolConfig(Runtime.getRuntime.availableProcessors(), 1000),
+    cmConfig.partitionOffsetCacheTimeoutSecs,
+    cmConfig.simpleConsumerSocketTimeoutMillis)
   private[this] val ksProps = Props(classOf[KafkaStateActor],ksConfig)
   private[this] val kafkaStateActor : ActorPath = context.actorOf(ksProps.withDispatcher(cmConfig.pinnedDispatcherName),"kafka-state").path
 
@@ -249,7 +253,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           bl <- eventualBrokerList
           tm <- eventualTopicMetrics
           tdO <- eventualTopicDescription
-        } yield tdO.map( td => CMTopicIdentity(Try(TopicIdentity.from(bl,td,tm,clusterContext))))
+        } yield tdO.map( td => CMTopicIdentity(Try(TopicIdentity.from(bl,td,tm,clusterContext,None))))
         result pipeTo sender
 
       case CMGetLogkafkaIdentity(hostname) =>
@@ -409,7 +413,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           for {
             bl <- eventualBrokerList
             tds <- eventualDescriptions
-            tis = tds.descriptions.map(TopicIdentity.from(bl, _, None,clusterContext))
+            tis = tds.descriptions.map(TopicIdentity.from(bl, _, None,clusterContext, None))
           } yield {
             bl.list.map(_.id.toInt)
             // check if any nonexistent broker got selected for reassignment
@@ -452,7 +456,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         val preferredLeaderElections = for {
           bl <- eventualBrokerList
           tds <- eventualDescriptions
-          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, clusterContext))
+          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, clusterContext, None))
           toElect = tis.map(ti => ti.partitionsIdentity.values.filter(!_.isPreferredLeader).map(tpi => TopicAndPartition(ti.topic, tpi.partNum))).flatten.toSet
         } yield toElect
         preferredLeaderElections.map { toElect =>
@@ -468,7 +472,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         val topicsAndReassignments = for {
           bl <- eventualBrokerList
           tds <- eventualDescriptions
-          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, clusterContext))
+          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, clusterContext, None))
         } yield {
           val reassignments = tis.map { ti =>
             val topicZkPath = zkPathFrom(baseTopicsZkPath, ti.topic)

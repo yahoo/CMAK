@@ -150,6 +150,11 @@ class TestKafkaManager extends CuratorAwareTest {
       val result2 = Await.result(future2, duration)
       assert(result2.isRight === true)
     }
+    //seeded topic should have offsets
+    val future2 = kafkaManager.getTopicIdentity("dev",seededTopic)
+    val result2 = Await.result(future2, duration)
+    assert(result2.isRight === true)
+    assert(result2.toOption.get.summedTopicOffsets > 0)
   }
 
   test("get cluster list") {

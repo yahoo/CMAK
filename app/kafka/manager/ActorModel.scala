@@ -170,7 +170,7 @@ object ActorModel {
   case class TopicDescription(topic: String,
                               description: (Int,String),
                               partitionState: Option[Map[String, String]], 
-                              partitionOffsets: Future[Map[Int, Long]],
+                              partitionOffsets: Future[PartitionOffsetsCapture],
                               config:Option[(Int,String)]) extends  QueryResponse
   case class TopicDescriptions(descriptions: IndexedSeq[TopicDescription], lastUpdateMillis: Long) extends QueryResponse
 
@@ -218,6 +218,7 @@ object ActorModel {
   case class TopicPartitionIdentity(partNum: Int,
                                     leader: Int,
                                     latestOffset: Option[Long],
+                                    rateOfChange: Option[Double],
                                     isr: Seq[Int],
                                     replicas: Seq[Int],
                                     isPreferredLeader: Boolean = false,
@@ -234,6 +235,7 @@ object ActorModel {
     implicit def from(partition: Int,
                       state:Option[String],
                       offset: Option[Long],
+                      rateOfChange: Option[Double],
                       replicas: Seq[Int]) : TopicPartitionIdentity = {
       val leaderAndIsr = for {
         json <- state
@@ -246,6 +248,7 @@ object ActorModel {
       val default = TopicPartitionIdentity(partition,
                                            -2,
                                            offset,
+                                           rateOfChange,
                                            Seq.empty,
                                            replicas)
       leaderAndIsr.fold(default) { parsedLeaderAndIsrOrError =>
@@ -254,13 +257,37 @@ object ActorModel {
           default
         }, {
           case (leader, isr) =>
-            TopicPartitionIdentity(partition, leader, offset, isr, replicas, leader == replicas.head, isr.size != replicas.size)
+            TopicPartitionIdentity(partition, leader, offset, rateOfChange, isr, replicas, leader == replicas.head, isr.size != replicas.size)
         })
       }
     }
   }
 
   case class BrokerTopicPartitions(id: Int, partitions: IndexedSeq[Int], isSkewed: Boolean)
+  
+  case class PartitionOffsetsCapture(updateTimeMillis: Long, offsetsMap: Map[Int, Long])
+
+  object PartitionOffsetsCapture {
+    val ZERO : Option[Double] = Option(0D)
+    
+    val EMPTY : PartitionOffsetsCapture = PartitionOffsetsCapture(0, Map.empty)
+
+    def getRate(part: Int, currentOffsets: PartitionOffsetsCapture, previousOffsets: PartitionOffsetsCapture): Option[Double] = {
+      val timeDiffMillis = currentOffsets.updateTimeMillis - previousOffsets.updateTimeMillis
+      val offsetDif = for {
+        currentOffset <- currentOffsets.offsetsMap.get(part)
+        previousOffset <- previousOffsets.offsetsMap.get(part)
+      } yield {
+        currentOffset - previousOffset
+      }
+      if(timeDiffMillis > 0) {
+        //multiply by 1000 since we have millis
+        offsetDif.map( od => od * 1000 * 1D / timeDiffMillis)
+      } else {
+        PartitionOffsetsCapture.ZERO
+      }
+    }
+  }
 
   case class TopicIdentity(topic:String,
                            readVersion: Int,
@@ -309,6 +336,7 @@ object ActorModel {
       100 // everthing is spreaded if nothing has to be spreaded
     }
 
+    val producerRate: String = BigDecimal(partitionsIdentity.map(_._2.rateOfChange.getOrElse(0D)).sum).setScale(2, BigDecimal.RoundingMode.HALF_UP).toString()
   }
 
   object TopicIdentity {
@@ -329,40 +357,59 @@ object ActorModel {
     }
 
     private[this] def getTopicPartitionIdentity(td: TopicDescription,
-                                                partMap: Map[String, List[Int]]) : Map[Int, TopicPartitionIdentity] = {
+                                                partMap: Map[String, List[Int]],
+                                                tdPrevious: Option[TopicDescription]) : Map[Int, TopicPartitionIdentity] = {
 
       val stateMap = td.partitionState.getOrElse(Map.empty)
       // Assign the partition data to the TPI format
       partMap.map { case (partition, replicas) =>
         val partitionNum = partition.toInt
         // block on the futures that hold the latest produced offset in each partition
-        val partitionOffsets: Map[Int, Long]= Await.ready(td.partitionOffsets, Duration.Inf).value.get match {
+        val partitionOffsets: Option[PartitionOffsetsCapture] = Await.ready(td.partitionOffsets, Duration.Inf).value.get match {
           case Success(offsetMap) =>
-            offsetMap
+            Option(offsetMap)
           case Failure(e) =>
-            Map.empty
+            None
         }
+
+        val previousPartitionOffsets: Option[PartitionOffsetsCapture] = tdPrevious.flatMap {
+          ptd => Await.ready(ptd.partitionOffsets, Duration.Inf).value.get match {
+            case Success(offsetMap) =>
+              Option(offsetMap)
+            case Failure(e) =>
+              None
+          }
+        }
+        
+        val currentOffsetOption = partitionOffsets.flatMap(_.offsetsMap.get(partitionNum))
+        val rateOfChange = for {
+          currentOffsets <- partitionOffsets
+          previousOffsets <- previousPartitionOffsets
+          result <- PartitionOffsetsCapture.getRate(partitionNum, currentOffsets, previousOffsets)
+        } yield result
+
         (partitionNum,TopicPartitionIdentity.from(partitionNum,
           stateMap.get(partition),
-          partitionOffsets.get(partitionNum),
+          currentOffsetOption,
+          rateOfChange,
           replicas))
       }
     }
     
-    def getTopicPartitionIdentity(td: TopicDescription) : Map[Int, TopicPartitionIdentity] = {
+    def getTopicPartitionIdentity(td: TopicDescription, tdPrevious: Option[TopicDescription]) : Map[Int, TopicPartitionIdentity] = {
       // Get the topic description information
       val partMap = getPartitionReplicaMap(td)
 
-      getTopicPartitionIdentity(td, partMap)
+      getTopicPartitionIdentity(td, partMap, tdPrevious)
     }
     
     implicit def from(brokers: Int,
                       td: TopicDescription,
                       tm: Option[BrokerMetrics],
-                      clusterContext: ClusterContext) : TopicIdentity = {
+                      clusterContext: ClusterContext, tdPrevious: Option[TopicDescription]) : TopicIdentity = {
       // Get the topic description information
       val partMap = getPartitionReplicaMap(td)
-      val tpi : Map[Int,TopicPartitionIdentity] = getTopicPartitionIdentity(td, partMap)
+      val tpi : Map[Int,TopicPartitionIdentity] = getTopicPartitionIdentity(td, partMap, tdPrevious)
       val config : (Int,Map[String, String]) = {
         try {
           val resultOption: Option[(Int,Map[String, String])] = td.config.map { configString =>
@@ -383,8 +430,8 @@ object ActorModel {
       TopicIdentity(td.topic,td.description._1,partMap.size,tpi,brokers,config._1,config._2.toList, clusterContext, tm)
     }
 
-    implicit def from(bl: BrokerList,td: TopicDescription, tm: Option[BrokerMetrics], clusterContext: ClusterContext) : TopicIdentity = {
-      from(bl.list.size, td, tm, clusterContext)
+    implicit def from(bl: BrokerList,td: TopicDescription, tm: Option[BrokerMetrics], clusterContext: ClusterContext, tdPrevious: Option[TopicDescription]) : TopicIdentity = {
+      from(bl.list.size, td, tm, clusterContext, tdPrevious)
     }
 
     implicit def reassignReplicas(currentTopicIdentity: TopicIdentity,
@@ -449,8 +496,8 @@ object ActorModel {
       // block on the futures that hold the latest produced offset in each partition
       val topicOffsetsOptMap: Map[Int, Long]= ctd.topicDescription.map{td: TopicDescription =>
         Await.ready(td.partitionOffsets, Duration.Inf).value.get match {
-        case Success(offsetMap: Map[Int,Long]) =>
-          offsetMap
+        case Success(offsetMap) =>
+          offsetMap.offsetsMap
         case Failure(e) =>
           Map.empty[Int, Long]
       }}.getOrElse(Map.empty)

@@ -32,6 +32,8 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
 
   private[this] var topicIdentities : Map[String, TopicIdentity] = Map.empty
 
+  private[this] var previousTopicDescriptionsOption : Option[TopicDescriptions] = None
+  
   private[this] var topicDescriptionsOption : Option[TopicDescriptions] = None
 
   private[this] var topicConsumerMap : Map[String, Iterable[String]] = Map.empty
@@ -179,6 +181,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
   override def processActorResponse(response: ActorResponse): Unit = {
     response match {
       case td: TopicDescriptions =>
+        previousTopicDescriptionsOption = topicDescriptionsOption
         topicDescriptionsOption = Some(td)
         updateView()
 
@@ -205,9 +208,13 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
     for {
       brokerList <- brokerListOption
       topicDescriptions <- topicDescriptionsOption
+      previousDescriptionsMap: Option[Map[String, TopicDescription]] = previousTopicDescriptionsOption.map(_.descriptions.map(td => (td.topic, td)).toMap)
     } {
-      val topicIdentity : IndexedSeq[TopicIdentity] = topicDescriptions.descriptions.map(
-        TopicIdentity.from(brokerList.list.size,_,None, config.clusterContext))
+      val topicIdentity : IndexedSeq[TopicIdentity] = topicDescriptions.descriptions.map {
+        tdCurrent =>
+          TopicIdentity.from(brokerList.list.size,tdCurrent,None, config.clusterContext, previousDescriptionsMap.flatMap(_.get(tdCurrent.topic)))
+        
+      }
       topicIdentities = topicIdentity.map(ti => (ti.topic, ti)).toMap
       val topicPartitionByBroker = topicIdentity.flatMap(
         ti => ti.partitionsByBroker.map(btp => (ti,btp.id,btp.partitions))).groupBy(_._2)

@@ -65,6 +65,9 @@ object KafkaManager {
   val MutexTimeoutMillis = "kafka-manager.mutex-timeout-millis"
   val StartDelayMillis = "kafka-manager.start-delay-millis"
   val ApiTimeoutMillis = "kafka-manager.api-timeout-millis"
+  val ClusterActorsAskTimeoutMillis = "kafka-manager.cluster-actors-ask-timeout-millis"
+  val PartitionOffsetCacheTimeoutSecs = "kafka-manager.partition-offset-cache-timeout-secs"
+  val SimpleConsumerSocketTimeoutMillis = "kafka-manager.simple-consumer-socket-timeout-millis"
 
   val DefaultConfig: Config = {
     val defaults: Map[String, _ <: AnyRef] = Map(
@@ -78,7 +81,10 @@ object KafkaManager {
       ThreadPoolSize -> "2",
       MutexTimeoutMillis -> "4000",
       StartDelayMillis -> "1000",
-      ApiTimeoutMillis -> "5000"
+      ApiTimeoutMillis -> "5000",
+      ClusterActorsAskTimeoutMillis -> "2000",
+      PartitionOffsetCacheTimeoutSecs -> "5",
+      SimpleConsumerSocketTimeoutMillis -> "10000"
     )
     import scala.collection.JavaConverters._
     ConfigFactory.parseMap(defaults.asJava)
@@ -106,7 +112,10 @@ class KafkaManager(akkaConfig: Config)
       maxQueueSize = configWithDefaults.getInt(MaxQueueSize),
       kafkaManagerUpdatePeriod = FiniteDuration(configWithDefaults.getInt(KafkaManagerUpdateSeconds), SECONDS),
       deleteClusterUpdatePeriod = FiniteDuration(configWithDefaults.getInt(DeleteClusterUpdateSeconds), SECONDS),
-      deletionBatchSize = configWithDefaults.getInt(DeletionBatchSize)
+      deletionBatchSize = configWithDefaults.getInt(DeletionBatchSize),
+      clusterActorsAskTimeoutMillis = configWithDefaults.getInt(ClusterActorsAskTimeoutMillis),
+      partitionOffsetCacheTimeoutSecs = configWithDefaults.getInt(PartitionOffsetCacheTimeoutSecs),
+      simpleConsumerSocketTimeoutMillis =  configWithDefaults.getInt(SimpleConsumerSocketTimeoutMillis)
     )
   }
 
