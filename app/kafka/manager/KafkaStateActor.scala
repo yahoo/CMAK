@@ -43,11 +43,11 @@ trait OffsetCache {
   protected[this] lazy val log : Logger = LoggerFactory.getLogger(this.getClass)
 
   // Caches a map of partitions to offsets at a key that is the topic's name.
-  private[this] val partitionOffsetsCache: LoadingCache[String, Future[Map[Int,Long]]] = CacheBuilder.newBuilder()
+  private[this] val partitionOffsetsCache: LoadingCache[String, Future[PartitionOffsetsCapture]] = CacheBuilder.newBuilder()
     .expireAfterWrite(getCacheTimeoutSecs,TimeUnit.SECONDS) // TODO - update more or less often maybe, or make it configurable
     .build(
-      new CacheLoader[String,Future[Map[Int,Long]]] {
-        def load(topic: String): Future[Map[Int,Long]] = {
+      new CacheLoader[String,Future[PartitionOffsetsCapture]] {
+        def load(topic: String): Future[PartitionOffsetsCapture] = {
           loadPartitionOffsets(topic)
         }
       }
@@ -55,7 +55,7 @@ trait OffsetCache {
 
   // Get the latest offsets for the partitions of the topic,
   // Code based off of the GetOffsetShell tool in kafka.tools, kafka 0.8.2.1
-  private[this] def loadPartitionOffsets(topic: String): Future[Map[Int,Long]] = {
+  private[this] def loadPartitionOffsets(topic: String): Future[PartitionOffsetsCapture] = {
     // Get partition leader broker information
     val optPartitionsWithLeaders : Option[List[(Int, Option[BrokerIdentity])]] = getTopicPartitionLeaders(topic)
 
@@ -74,8 +74,8 @@ trait OffsetCache {
       new SimpleConsumer(bi.host, bi.port, getSimpleConsumerSocketTimeoutMillis, 256 * 1024, clientId)
 
     // Get the latest offset for each partition
-    val futureMap: Future[Map[Int,Long]] = {
-      partitionsByBroker.fold[Future[Map[Int, Long]]]{
+    val futureMap: Future[PartitionOffsetsCapture] = {
+      partitionsByBroker.fold[Future[PartitionOffsetsCapture]]{
         Future.failed(new IllegalArgumentException(s"Do not have partitions and their leaders for topic $topic"))
       } { partitionsWithLeaders =>
         try {
@@ -96,7 +96,7 @@ trait OffsetCache {
               }
           }
           val result: Future[Map[Int, Option[Long]]] = Future.sequence(listOfFutures).map(_.foldRight(Map.empty[Int, Option[Long]])((b, a) => b ++ a))
-          result.map(_.mapValues(_.getOrElse(0L)))
+          result.map(m => PartitionOffsetsCapture(System.currentTimeMillis(), m.mapValues(_.getOrElse(0L))))
         } 
         catch {
           case e: Exception =>
@@ -120,7 +120,7 @@ trait OffsetCache {
   
   def stop()
 
-  def getTopicPartitionOffsets(topic: String) : Future[Map[Int,Long]] = partitionOffsetsCache.get(topic)
+  def getTopicPartitionOffsets(topic: String) : Future[PartitionOffsetsCapture] = partitionOffsetsCache.get(topic)
   
   def lastUpdateMillis : Long
   
@@ -326,7 +326,7 @@ case class OffsetCachePassive(curator: CuratorFramework,
   
   def getConsumedTopicDescription(consumer:String, topic:String) : ConsumedTopicDescription = {
     val optTopic = getTopicDescription(topic)
-    val optTpi = optTopic.map(TopicIdentity.getTopicPartitionIdentity)
+    val optTpi = optTopic.map(TopicIdentity.getTopicPartitionIdentity(_, None))
     val partitionOffsets = for {
       td <- optTopic
       tpi <- optTpi

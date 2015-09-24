@@ -253,7 +253,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           bl <- eventualBrokerList
           tm <- eventualTopicMetrics
           tdO <- eventualTopicDescription
-        } yield tdO.map( td => CMTopicIdentity(Try(TopicIdentity.from(bl,td,tm,clusterContext))))
+        } yield tdO.map( td => CMTopicIdentity(Try(TopicIdentity.from(bl,td,tm,clusterContext,None))))
         result pipeTo sender
 
       case CMGetLogkafkaIdentity(hostname) =>
@@ -413,7 +413,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           for {
             bl <- eventualBrokerList
             tds <- eventualDescriptions
-            tis = tds.descriptions.map(TopicIdentity.from(bl, _, None,clusterContext))
+            tis = tds.descriptions.map(TopicIdentity.from(bl, _, None,clusterContext, None))
           } yield {
             bl.list.map(_.id.toInt)
             // check if any nonexistent broker got selected for reassignment
@@ -456,7 +456,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         val preferredLeaderElections = for {
           bl <- eventualBrokerList
           tds <- eventualDescriptions
-          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, clusterContext))
+          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, clusterContext, None))
           toElect = tis.map(ti => ti.partitionsIdentity.values.filter(!_.isPreferredLeader).map(tpi => TopicAndPartition(ti.topic, tpi.partNum))).flatten.toSet
         } yield toElect
         preferredLeaderElections.map { toElect =>
@@ -472,7 +472,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         val topicsAndReassignments = for {
           bl <- eventualBrokerList
           tds <- eventualDescriptions
-          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, clusterContext))
+          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, clusterContext, None))
         } yield {
           val reassignments = tis.map { ti =>
             val topicZkPath = zkPathFrom(baseTopicsZkPath, ti.topic)

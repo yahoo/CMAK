@@ -98,7 +98,7 @@ class TestKafkaStateActor extends KafkaServerInTest {
       descriptions foreach println
 
       withKafkaStateActor(KSGetBrokers) { brokerList: BrokerList =>
-        val topicIdentityList : IndexedSeq[TopicIdentity] = descriptions.flatten.map(td => TopicIdentity.from(brokerList,td, None, brokerList.clusterContext))
+        val topicIdentityList : IndexedSeq[TopicIdentity] = descriptions.flatten.map(td => TopicIdentity.from(brokerList,td, None, brokerList.clusterContext, None))
         topicIdentityList foreach println
       }
     }
