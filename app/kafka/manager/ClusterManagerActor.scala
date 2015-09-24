@@ -56,7 +56,9 @@ case class ClusterManagerActorConfig(pinnedDispatcherName: String,
                                 threadPoolSize: Int = 2,
                                 maxQueueSize: Int = 100,
                                 askTimeoutMillis: Long = 2000,
-                                mutexTimeoutMillis: Int = 4000)
+                                mutexTimeoutMillis: Int = 4000,
+                                partitionOffsetCacheTimeoutSecs : Int = 5,
+                                simpleConsumerSocketTimeoutMillis: Int = 10000)
 
 class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
   extends BaseQueryCommandActor with CuratorAwareActor with BaseZkPath {
@@ -94,7 +96,9 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
   private[this] val ksConfig = KafkaStateActorConfig(
     sharedClusterCurator,
     clusterContext,
-    LongRunningPoolConfig(Runtime.getRuntime.availableProcessors(), 1000))
+    LongRunningPoolConfig(Runtime.getRuntime.availableProcessors(), 1000),
+    cmConfig.partitionOffsetCacheTimeoutSecs,
+    cmConfig.simpleConsumerSocketTimeoutMillis)
   private[this] val ksProps = Props(classOf[KafkaStateActor],ksConfig)
   private[this] val kafkaStateActor : ActorPath = context.actorOf(ksProps.withDispatcher(cmConfig.pinnedDispatcherName),"kafka-state").path
 

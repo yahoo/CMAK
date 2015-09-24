@@ -34,13 +34,17 @@ import scala.collection.JavaConverters._
 
 trait OffsetCache {
   
+  def getCacheTimeoutSecs: Int
+
+  def getSimpleConsumerSocketTimeoutMillis: Int
+
   protected[this] implicit def ec: ExecutionContext
   
   protected[this] lazy val log : Logger = LoggerFactory.getLogger(this.getClass)
 
   // Caches a map of partitions to offsets at a key that is the topic's name.
   private[this] val partitionOffsetsCache: LoadingCache[String, Future[Map[Int,Long]]] = CacheBuilder.newBuilder()
-    .expireAfterWrite(5,TimeUnit.SECONDS) // TODO - update more or less often maybe, or make it configurable
+    .expireAfterWrite(getCacheTimeoutSecs,TimeUnit.SECONDS) // TODO - update more or less often maybe, or make it configurable
     .build(
       new CacheLoader[String,Future[Map[Int,Long]]] {
         def load(topic: String): Future[Map[Int,Long]] = {
@@ -58,10 +62,7 @@ trait OffsetCache {
     val clientId = "partitionOffsetGetter"
     val time = -1
     val nOffsets = 1
-
-    val partitionsWithNoLeader = optPartitionsWithLeaders.map(_.collect {
-      case (part, broker) if broker.isEmpty => (part, 0L)
-    })
+    val simpleConsumerBufferSize = 256 * 1024
 
     val partitionsByBroker = optPartitionsWithLeaders.map {
       listOfPartAndBroker => listOfPartAndBroker.collect {
@@ -69,7 +70,8 @@ trait OffsetCache {
       }.groupBy(_._1)
     }
 
-    def getSimpleConsumer(bi: BrokerIdentity) = new SimpleConsumer(bi.host, bi.port, 10000, 100000, clientId)
+    def getSimpleConsumer(bi: BrokerIdentity) =
+      new SimpleConsumer(bi.host, bi.port, getSimpleConsumerSocketTimeoutMillis, 256 * 1024, clientId)
 
     // Get the latest offset for each partition
     val futureMap: Future[Map[Int,Long]] = {
@@ -132,8 +134,14 @@ trait OffsetCache {
 case class OffsetCacheActive(curator: CuratorFramework,
                                   clusterContext: ClusterContext, 
                                   partitionLeaders: String => Option[List[(Int, Option[BrokerIdentity])]],
-                                  topicDescriptions: String => Option[TopicDescription])
+                                  topicDescriptions: String => Option[TopicDescription],
+                                  cacheTimeoutSecs: Int,
+                                  socketTimeoutMillis: Int)
                                  (implicit protected[this] val ec: ExecutionContext) extends OffsetCache {
+
+  def getCacheTimeoutSecs: Int = cacheTimeoutSecs
+
+  def getSimpleConsumerSocketTimeoutMillis: Int = socketTimeoutMillis
 
   private[this] val consumersTreeCacheListener = new TreeCacheListener {
     override def childEvent(client: CuratorFramework, event: TreeCacheEvent): Unit = {
@@ -233,8 +241,14 @@ case class OffsetCacheActive(curator: CuratorFramework,
 case class OffsetCachePassive(curator: CuratorFramework,
                              clusterContext: ClusterContext,
                              partitionLeaders: String => Option[List[(Int, Option[BrokerIdentity])]],
-                             topicDescriptions: String => Option[TopicDescription])
+                             topicDescriptions: String => Option[TopicDescription],
+                             cacheTimeoutSecs: Int,
+                             socketTimeoutMillis: Int)
                             (implicit protected[this] val ec: ExecutionContext) extends OffsetCache {
+
+  def getCacheTimeoutSecs: Int = cacheTimeoutSecs
+
+  def getSimpleConsumerSocketTimeoutMillis: Int = socketTimeoutMillis
 
   private[this] val consumersPathChildrenCacheListener = new PathChildrenCacheListener {
     override def childEvent(client: CuratorFramework, event: PathChildrenCacheEvent): Unit = {
@@ -345,7 +359,8 @@ case class OffsetCachePassive(curator: CuratorFramework,
 
 case class KafkaStateActorConfig(curator: CuratorFramework,
                                  clusterContext: ClusterContext,
-                                 longRunningPoolConfig: LongRunningPoolConfig)
+                                 longRunningPoolConfig: LongRunningPoolConfig,
+                                 partitionOffsetCacheTimeoutSecs: Int, simpleConsumerSocketTimeoutMillis: Int)
 class KafkaStateActor(config: KafkaStateActorConfig) extends BaseQueryCommandActor with LongRunningPoolActor {
 
   override protected def longRunningPoolConfig: LongRunningPoolConfig = config.longRunningPoolConfig
@@ -441,9 +456,21 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseQueryCommandAct
   
   private[this] val offsetCache: OffsetCache = {
     if(config.clusterContext.config.activeOffsetCacheEnabled)
-      new OffsetCacheActive(config.curator, config.clusterContext, getPartitionLeaders, getTopicDescription)(longRunningExecutionContext)
+      new OffsetCacheActive(
+        config.curator,
+        config.clusterContext,
+        getPartitionLeaders,
+        getTopicDescription,
+        config.partitionOffsetCacheTimeoutSecs,
+        config.simpleConsumerSocketTimeoutMillis)(longRunningExecutionContext)
     else
-      new OffsetCachePassive(config.curator, config.clusterContext, getPartitionLeaders, getTopicDescription)(longRunningExecutionContext)
+      new OffsetCachePassive(
+        config.curator,
+        config.clusterContext,
+        getPartitionLeaders,
+        getTopicDescription,
+        config.partitionOffsetCacheTimeoutSecs,
+        config .simpleConsumerSocketTimeoutMillis)(longRunningExecutionContext)
   }
 
   @scala.throws[Exception](classOf[Exception])
