@@ -12,7 +12,6 @@ import java.util.concurrent.TimeUnit
 import com.google.common.cache.{LoadingCache, CacheLoader, CacheBuilder}
 import kafka.api.{PartitionOffsetRequestInfo, OffsetRequest}
 import kafka.consumer.SimpleConsumer
-import kafka.cluster.Broker
 import kafka.common.TopicAndPartition
 import kafka.manager.utils.zero81.{ReassignPartitionCommand, PreferredReplicaLeaderElectionCommand}
 import kafka.manager.utils.ZkUtils
@@ -54,31 +53,54 @@ trait OffsetCache {
   // Code based off of the GetOffsetShell tool in kafka.tools, kafka 0.8.2.1
   private[this] def loadPartitionOffsets(topic: String): Future[Map[Int,Long]] = {
     // Get partition leader broker information
-    val optPartitionsWithLeaders : Option[List[(Int, Option[Broker])]] = getTopicPartitionLeaders(topic)
+    val optPartitionsWithLeaders : Option[List[(Int, Option[BrokerIdentity])]] = getTopicPartitionLeaders(topic)
 
     val clientId = "partitionOffsetGetter"
     val time = -1
     val nOffsets = 1
+
+    val partitionsWithNoLeader = optPartitionsWithLeaders.map(_.collect {
+      case (part, broker) if broker.isEmpty => (part, 0L)
+    })
+
+    val partitionsByBroker = optPartitionsWithLeaders.map {
+      listOfPartAndBroker => listOfPartAndBroker.collect {
+        case (part, broker) if broker.isDefined => (broker.get, part)
+      }.groupBy(_._1)
+    }
+
+    def getSimpleConsumer(bi: BrokerIdentity) = new SimpleConsumer(bi.host, bi.port, 10000, 100000, clientId)
+
     // Get the latest offset for each partition
-    val futureMap: Future[Map[Int,Long]] = Future {
-      optPartitionsWithLeaders.fold{
-        throw new IllegalArgumentException(s"Do not have partitions and their leaders for topic $topic")
+    val futureMap: Future[Map[Int,Long]] = {
+      partitionsByBroker.fold[Future[Map[Int, Long]]]{
+        Future.failed(new IllegalArgumentException(s"Do not have partitions and their leaders for topic $topic"))
       } { partitionsWithLeaders =>
-        val optPartitionOffsets: List[(Int, Option[Long])] = for {
-          (partitionId, optLeader) <- partitionsWithLeaders.sortBy(_._1)
-          partitionOffset = optLeader match {
-            case Some(leader) =>
-              val consumer = new SimpleConsumer(leader.host, leader.port, 10000, 100000, clientId)
-              val topicAndPartition = TopicAndPartition(topic, partitionId)
-              val request = OffsetRequest(Map(topicAndPartition -> PartitionOffsetRequestInfo(time, nOffsets)))
-              val offsets = consumer.getOffsetsBefore(request).partitionErrorAndOffsets(topicAndPartition).offsets
-              consumer.close()
-              offsets.headOption
-            case None => None
+        try {
+          val listOfFutures = partitionsWithLeaders.toList.map(tpl => (getSimpleConsumer(tpl._1), tpl._2)).map {
+            case (simpleConsumer, parts) =>
+              val f: Future[Map[Int, Option[Long]]] = Future {
+                try {
+                  val topicAndPartitions = parts.map(tpl => (TopicAndPartition(topic, tpl._2), PartitionOffsetRequestInfo(time, nOffsets)))
+                  val request = OffsetRequest(topicAndPartitions.toMap)
+                  simpleConsumer.getOffsetsBefore(request).partitionErrorAndOffsets.map(tpl => (tpl._1.asTuple._2, tpl._2.offsets.headOption))
+                } finally {
+                  simpleConsumer.close()
+                }
+              }
+              f.recover { case t =>
+                log.error(s"[topic=$topic] An error has occurred while getting topic offsets from broker $parts", t)
+                Map.empty[Int, Option[Long]]
+              }
           }
-        } yield (partitionId, partitionOffset)
-        // Remove the Option layer by simply not including Nones in the map
-        optPartitionOffsets.collect { case (part, Some(offset)) => (part, offset) }.toMap
+          val result: Future[Map[Int, Option[Long]]] = Future.sequence(listOfFutures).map(_.foldRight(Map.empty[Int, Option[Long]])((b, a) => b ++ a))
+          result.map(_.mapValues(_.getOrElse(0L)))
+        } 
+        catch {
+          case e: Exception =>
+            log.error(s"Failed to get offsets for topic $topic", e)
+            Future.failed(e)
+        }
       }
     }
 
@@ -88,7 +110,7 @@ trait OffsetCache {
     futureMap
   }
   
-  protected def getTopicPartitionLeaders(topic: String) : Option[List[(Int, Option[Broker])]]
+  protected def getTopicPartitionLeaders(topic: String) : Option[List[(Int, Option[BrokerIdentity])]]
 
   protected def getTopicDescription(topic: String) : Option[TopicDescription]
 
@@ -109,7 +131,7 @@ trait OffsetCache {
 
 case class OffsetCacheActive(curator: CuratorFramework,
                                   clusterContext: ClusterContext, 
-                                  partitionLeaders: String => Option[List[(Int, Option[Broker])]],
+                                  partitionLeaders: String => Option[List[(Int, Option[BrokerIdentity])]],
                                   topicDescriptions: String => Option[TopicDescription])
                                  (implicit protected[this] val ec: ExecutionContext) extends OffsetCache {
 
@@ -134,7 +156,7 @@ case class OffsetCacheActive(curator: CuratorFramework,
     Option(fn(consumersTreeCache))
   }
 
-  protected def getTopicPartitionLeaders(topic: String) : Option[List[(Int, Option[Broker])]] = partitionLeaders(topic)
+  protected def getTopicPartitionLeaders(topic: String) : Option[List[(Int, Option[BrokerIdentity])]] = partitionLeaders(topic)
 
   protected def getTopicDescription(topic: String) : Option[TopicDescription] = topicDescriptions(topic)
   
@@ -210,7 +232,7 @@ case class OffsetCacheActive(curator: CuratorFramework,
 
 case class OffsetCachePassive(curator: CuratorFramework,
                              clusterContext: ClusterContext,
-                             partitionLeaders: String => Option[List[(Int, Option[Broker])]],
+                             partitionLeaders: String => Option[List[(Int, Option[BrokerIdentity])]],
                              topicDescriptions: String => Option[TopicDescription])
                             (implicit protected[this] val ec: ExecutionContext) extends OffsetCache {
 
@@ -235,7 +257,7 @@ case class OffsetCachePassive(curator: CuratorFramework,
     Option(fn(consumersPathChildrenCache))
   }
 
-  protected def getTopicPartitionLeaders(topic: String) : Option[List[(Int, Option[Broker])]] = partitionLeaders(topic)
+  protected def getTopicPartitionLeaders(topic: String) : Option[List[(Int, Option[BrokerIdentity])]] = partitionLeaders(topic)
 
   protected def getTopicDescription(topic: String) : Option[TopicDescription] = topicDescriptions(topic)
 
@@ -500,7 +522,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseQueryCommandAct
     } yield TopicDescription(topic, description, Option(states), partitionOffsets, topicConfig)
   }
 
-  def getPartitionLeaders(topic: String) : Option[List[(Int, Option[Broker])]] = {
+  def getPartitionLeaders(topic: String) : Option[List[(Int, Option[BrokerIdentity])]] = {
     val partitionsPath = "%s/%s/partitions".format(ZkUtils.BrokerTopicsPath, topic)
     val partitions: Option[Map[String, ChildData]] = Option(topicsTreeCache.getCurrentChildren(partitionsPath)).map(_.asScala.toMap)
     val states : Option[Iterable[(String, String)]] =
@@ -510,7 +532,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseQueryCommandAct
           Option(topicsTreeCache.getCurrentData(statePath)).map(cd => (part, asString(cd.getData)))
         }
       }
-    val targetBrokers : IndexedSeq[Broker] = getBrokers.map(brokerIdentity2Broker)
+    val targetBrokers : IndexedSeq[BrokerIdentity] = getBrokers
 
     import org.json4s.jackson.JsonMethods.parse
     import org.json4s.scalaz.JsonScalaz.field
@@ -536,11 +558,6 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseQueryCommandAct
     }
   }
 
-
-  // conversion between BrokerIdentity and the kafka library's broker case class
-  implicit def brokerIdentity2Broker(id : BrokerIdentity) : Broker = {
-    Broker(id.id, id.host, id.port)
-  }
 
   private[this] def getBrokers : IndexedSeq[BrokerIdentity] = {
     val data: mutable.Buffer[ChildData] = brokersPathCache.getCurrentData.asScala
