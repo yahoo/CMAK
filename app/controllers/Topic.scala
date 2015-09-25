@@ -10,7 +10,8 @@ import java.util.Properties
 import features.{KMTopicManagerFeature, ApplicationFeatures}
 import kafka.manager.ActorModel.TopicIdentity
 import kafka.manager.features.ClusterFeatures
-import kafka.manager.utils.TopicConfigs
+import kafka.manager.utils.KafkaMessageProducer.MessageProducerConfig
+import kafka.manager.utils.{KafkaMessageProducer, TopicConfigs}
 import kafka.manager.{Kafka_0_8_2_1, ApiError, Kafka_0_8_2_0, Kafka_0_8_1_1, TopicListExtended}
 import models.FollowLink
 import models.form._
@@ -42,7 +43,7 @@ object Topic extends Controller{
       case Success(_) => Valid
     }
   }
-  
+
   val kafka_0_8_1_1_Default = CreateTopic("",1,1,TopicConfigs.configNames(Kafka_0_8_1_1).map(n => TConfig(n,None)).toList)
   val kafka_0_8_2_0_Default = CreateTopic("",1,1,TopicConfigs.configNames(Kafka_0_8_2_0).map(n => TConfig(n,None)).toList)
   val kafka_0_8_2_1_Default = CreateTopic("",1,1,TopicConfigs.configNames(Kafka_0_8_2_1).map(n => TConfig(n,None)).toList)
@@ -60,7 +61,7 @@ object Topic extends Controller{
       )
     )(CreateTopic.apply)(CreateTopic.unapply)
   )
-  
+
   val defaultDeleteForm = Form(
     mapping(
       "topic" -> nonEmptyText.verifying(maxLength(250), validateName)
@@ -118,6 +119,12 @@ object Topic extends Controller{
       ),
       "readVersion" -> number(min = 0)
     )(UpdateTopicConfig.apply)(UpdateTopicConfig.unapply)
+  )
+
+  val defaultSendMessageForm = Form(
+    mapping(
+      "message" -> nonEmptyText
+    )(SendMessageTopic.apply)(SendMessageTopic.unapply)
   )
 
   private def createTopicForm(clusterName: String) = {
@@ -400,5 +407,33 @@ object Topic extends Controller{
         }
       )
     }
+  }
+
+  def sendMessage(clusterName: String, topic: String) = Action { implicit request =>
+    Ok(views.html.topic.sendMessage(clusterName, topic, defaultSendMessageForm.fill(SendMessageTopic(""))))
+  }
+
+  def handleSendMessage(clusterName: String, topic: String) = Action.async { implicit request =>
+    defaultSendMessageForm.bindFromRequest.fold(
+      formWithErrors => {
+        Future(BadRequest(views.html.topic.sendMessage(clusterName, topic, formWithErrors)))
+      },
+      sendMessageTopic => {
+        kafkaManager.getBrokerList(clusterName).map { errorOrBrokerList =>
+          errorOrBrokerList.map { bl =>
+            KafkaMessageProducer.send(sendMessageTopic.message, MessageProducerConfig(topic, bl.list))
+          }
+          implicit val clusterFeatures = ClusterFeatures.default
+          Ok(views.html.common.resultOfCommand(
+            views.html.navigation.clusterMenu(clusterName, "Topic", "Topic View", Menus.clusterMenus(clusterName)),
+            models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View", clusterName, topic, "Send Message"),
+            errorOrBrokerList,
+            "Send Message",
+            FollowLink("Go to topic view.", routes.Topic.topic(clusterName, topic).toString()),
+            FollowLink("Try again.", routes.Topic.sendMessage(clusterName, topic).toString())
+          ))
+        }
+      }
+    )
   }
 }

@@ -42,6 +42,8 @@ GET         /clusters/:c/topics/:t/addPartitions          controllers.Topic.addP
 POST        /clusters/:c/topics/:t/addPartitions          controllers.Topic.handleAddPartitions(c:String,t:String)
 GET         /clusters/:c/topics/:t/updateConfig           controllers.Topic.updateConfig(c:String,t:String)
 POST        /clusters/:c/topics/:t/updateConfig           controllers.Topic.handleUpdateConfig(c:String,t: String)
+GET         /clusters/:c/topics/:t/sendMessage            controllers.Topic.sendMessage(c:String,t:String)
+POST        /clusters/:c/topics/:t/sendMessage            controllers.Topic.handleSendMessage(c:String,t: String)
 GET         /clusters/:c/topics/:t/assignments/manual     controllers.ReassignPartitions.manualAssignments(c:String, t:String)
 POST        /clusters/:c/topics/:t/assignments/manual     controllers.ReassignPartitions.handleManualAssignment(c:String, t: String)
 GET         /clusters/:c/createLogkafka                   controllers.Logkafka.createLogkafka(c:String)
