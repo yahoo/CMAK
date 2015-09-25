@@ -5,7 +5,7 @@
 
 @import scalaz.{\/}
 @import b3.vertical.fieldConstructor
-@import kafka.manager.ActorModel.{TopicIdentity, BVView}
+@import kafka.manager.ActorModel._
 @import kafka.manager.{BrokerListExtended}
 @import kafka.manager.utils._
 @import helper._
@@ -13,9 +13,9 @@
 
 @(cluster: String,
   topic: String,
-  assignForm: Form[List[(String, List[(Int,List[Int])])]],
+  assignForm: List[(String, List[(Int,List[Int])])],
   brokers: BrokerListExtended,
-  brokersViews: Seq[BVView],
+  brokersViews: Map[Int, BVView],
   formErrors: Seq[FormError]
 )(implicit af: features.ApplicationFeatures, cf: kafka.manager.features.ClusterFeatures)
 
@@ -23,12 +23,17 @@
 @views.html.navigation.clusterMenu(cluster,"Topic","Manual Partition Assignments",models.navigation.Menus.clusterMenus(cluster))
 }
 
-@replicaSelection(brokerField: Field) = {
-    <select name="@brokerField.name">
-        @for(idx <- 0 until brokers.list.size) {
-            <option value="@idx" @if(idx == brokerField.value.get.toInt){selected}>Broker @idx</option>
-        }
-    </select>
+@replicaSelection(topicIdx: Int, assignIdx: Int, brokerIndex: Int, brokerId: Int) = {
+    @if(brokers.list.filter({broker => broker.id == brokerId}).size > 0) {
+        <select name="topics[@topicIdx].assignments[@assignIdx].brokers[@brokerIndex]">
+            @brokers.list.map { case broker =>
+            <option value="@broker.id" @if(broker.id == brokerId){selected}>Broker @broker.id</option>
+            }
+        </select>
+    } else {
+        <small style="color:red">Broker Down!</small>
+        <script>window.onload = function() {disableSubmission()}</script>
+    }
 }
 
 @topHeading = {
@@ -61,36 +66,34 @@
 
 @mainBody = {
 <div class="panel-body assignment-pane">
-    @repeat(assignForm("topics")) { partitionAssignment =>
-    <div class="assignment-cell" name='@partitionAssignment("topic").value.get'>
+    @assignForm.zipWithIndex.map { case (partitionAssignment, topicIdx) =>
+    <div class="assignment-cell" name="@partitionAssignment._1">
         <h4>
             <input type="text" class="borderless" style="display:none"
-                   name='@partitionAssignment("topic").name'
-                   value='@partitionAssignment("topic").value.get' readonly/>
-            @partitionAssignment("topic").value.get
+                   name='topics[@topicIdx].topic'
+                   value='@partitionAssignment._1' readonly/>
+            @partitionAssignment._1
         </h4>
-        @repeat(partitionAssignment("assignments")) { assignment =>
-        @if(assignment("partition").value.isDefined) {
-        <div class="partition-cell">
-            <table>
-                @repeatWithIndex(assignment("brokers")) { (broker, index) =>
-                @if(index == 0) {
-                <tr>
-                    <th>Partition
-                        <input type="number" class="borderless"
-                               name='@assignment("partition").name'
-                               value='@assignment("partition").value.get'
-                               readonly>
-                    </th>
-                </tr>
-                }
-                <tr><td>
-                    Replica @index: @replicaSelection(broker)
-                </td></tr>
-                }
-            </table>
-        </div>
-        }
+        @partitionAssignment._2.zipWithIndex.map { case (assignment, assgnIndex) =>
+            <div class="partition-cell">
+                <table>
+                    @assignment._2.zipWithIndex.map { case (broker, brokerIndex) =>
+                        @if(brokerIndex == 0) {
+                        <tr>
+                            <th>Partition
+                                <input type="number" class="borderless"
+                                       name='topics[@topicIdx].assignments[@assgnIndex].partition'
+                                       value='@assignment._1'
+                                       readonly>
+                            </th>
+                        </tr>
+                        }
+                        <tr><td>
+                            Replica @brokerIndex: @replicaSelection(topicIdx, assgnIndex, brokerIndex, broker)
+                        </td></tr>
+                    }
+                </table>
+            </div>
         }
     </div>
     }
@@ -109,12 +112,12 @@
 @brokersInfoPane = {
     <input type="text" placeholder="Type to filter metrics"
            id="selectMetrics" onkeyup="selectBySubname('#selectMetrics', 'metric-row', '')"/>
-    @for(idx <- 0 until brokersViews.size) {
+    @brokersViews.map { case (idx, bv) =>
         <div class="panel panel-default">
             <div class="panel-heading">
                 <h4>Broker @idx</h4>
             </div>
-            @views.html.common.expandedBrokerMetrics(brokersViews(idx).metrics)
+            @views.html.common.expandedBrokerMetrics(bv.metrics)
         </div>
     }
 }

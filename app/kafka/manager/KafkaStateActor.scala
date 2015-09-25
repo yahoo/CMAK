@@ -320,8 +320,8 @@ case class OffsetCachePassive(curator: CuratorFramework,
     tpi.map {
       case (p, _) =>
         val ownerPath = "%s/%s/%s/%s/%s".format(ZkUtils.ConsumersPath, consumer, "owners", topic, p)
-        (p, ZkUtils.readDataMaybeNull(curator, ownerPath)._1.getOrElse(""))
-    }
+        (p, ZkUtils.readDataMaybeNull(curator, ownerPath)._1.orNull)
+    }.filter(_._2 != null)
   }
   
   def getConsumedTopicDescription(consumer:String, topic:String) : ConsumedTopicDescription = {
