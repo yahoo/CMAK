@@ -6,7 +6,7 @@
 package controller.api
 
 import controllers.KafkaManagerContext
-import controllers.api.KafkaHealthCheck
+import controllers.api.KafkaStateCheck
 import kafka.manager.utils.{CuratorAwareTest, KafkaServerInTest}
 import kafka.test.SeededBroker
 import play.api.Play
@@ -78,35 +78,35 @@ class TestKafkaHealthCheck extends CuratorAwareTest with KafkaServerInTest {
   }
 
   test("get available brokers") {
-    val future = KafkaHealthCheck.availableBrokers(testClusterName).apply(FakeRequest())
+    val future = KafkaStateCheck.brokers(testClusterName).apply(FakeRequest())
     assert(status(future) === OK)
     assert(contentAsJson(future) === Json.obj("availableBrokers" -> Seq(0)))
   }
 
   test("get available brokers in non-existing cluster") {
-    val future = KafkaHealthCheck.availableBrokers("non-existent").apply(FakeRequest())
+    val future = KafkaStateCheck.brokers("non-existent").apply(FakeRequest())
     assert(status(future) === BAD_REQUEST)
   }
 
   test("get under-replicated partitions") {
-    val future = KafkaHealthCheck.underReplicatedPartitions(testClusterName, testTopicName).apply(FakeRequest())
+    val future = KafkaStateCheck.underReplicatedPartitions(testClusterName, testTopicName).apply(FakeRequest())
     assert(status(future) === OK)
     assert(contentAsJson(future) === Json.obj("topic" -> testTopicName, "underReplicatedPartitions" -> Seq.empty[Int]))
   }
 
   test("get under-replicated partitions of non-existing topic in non-existing cluster") {
-    val future = KafkaHealthCheck.underReplicatedPartitions("non-existent", "weird").apply(FakeRequest())
+    val future = KafkaStateCheck.underReplicatedPartitions("non-existent", "weird").apply(FakeRequest())
     assert(status(future) === BAD_REQUEST)
   }
 
   test("get unavailable partitions") {
-    val future = KafkaHealthCheck.unavailablePartitions(testClusterName, testTopicName).apply(FakeRequest())
+    val future = KafkaStateCheck.unavailablePartitions(testClusterName, testTopicName).apply(FakeRequest())
     assert(status(future) == OK)
     assert(contentAsJson(future) == Json.obj("topic" -> testTopicName, "unavailablePartitions" -> Seq.empty[Int]))
   }
 
   test("get unavailable partitions of non-existing topic in non-existing cluster") {
-    val future = KafkaHealthCheck.unavailablePartitions("non-existent", "weird").apply(FakeRequest())
+    val future = KafkaStateCheck.unavailablePartitions("non-existent", "weird").apply(FakeRequest())
     assert(status(future) === BAD_REQUEST)
   }
 }
