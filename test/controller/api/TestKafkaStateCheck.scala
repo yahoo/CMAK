@@ -20,7 +20,7 @@ import scala.concurrent.duration._
 import scala.util.Try
 
 
-class TestKafkaHealthCheck extends CuratorAwareTest with KafkaServerInTest {
+class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest {
   private[this] val broker = new SeededBroker("controller-api-test",4)
   override val kafkaServerZkPath = broker.getZookeeperConnectionString
   private[this] val duration = FiniteDuration(10,SECONDS)
@@ -77,14 +77,25 @@ class TestKafkaHealthCheck extends CuratorAwareTest with KafkaServerInTest {
     Thread.sleep(3000)
   }
 
-  test("get available brokers") {
+  test("get brokers") {
     val future = KafkaStateCheck.brokers(testClusterName).apply(FakeRequest())
     assert(status(future) === OK)
-    assert(contentAsJson(future) === Json.obj("availableBrokers" -> Seq(0)))
+    assert(contentAsJson(future) === Json.obj("brokers" -> Seq(0)))
   }
 
   test("get available brokers in non-existing cluster") {
     val future = KafkaStateCheck.brokers("non-existent").apply(FakeRequest())
+    assert(status(future) === BAD_REQUEST)
+  }
+
+  test("get topics") {
+    val future = KafkaStateCheck.topics(testClusterName).apply(FakeRequest())
+    assert(status(future) === OK)
+    assert(contentAsJson(future) === Json.obj("topics" -> Seq(testTopicName)))
+  }
+
+  test("get topics in non-existing cluster") {
+    val future = KafkaStateCheck.topics("non-existent").apply(FakeRequest())
     assert(status(future) === BAD_REQUEST)
   }
 
