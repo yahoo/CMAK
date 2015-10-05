@@ -23,7 +23,7 @@ object KafkaStateCheck extends Controller {
     kafkaManager.getBrokerList(c).map { errorOrBrokerList =>
       errorOrBrokerList.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
-        brokerList => Ok(Json.obj("brokers" -> brokerList.list.map(bi => bi.id)))
+        brokerList => Ok(Json.obj("brokers" -> brokerList.list.map(bi => bi.id).sorted))
       )
     }
   }
@@ -32,7 +32,7 @@ object KafkaStateCheck extends Controller {
     kafkaManager.getTopicList(c).map { errorOrTopicList =>
       errorOrTopicList.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
-        topicList => Ok(Json.obj("topics" -> topicList.list))
+        topicList => Ok(Json.obj("topics" -> topicList.list.sorted))
       )
     }
   }

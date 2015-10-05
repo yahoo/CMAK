@@ -25,8 +25,8 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest {
   override val kafkaServerZkPath = broker.getZookeeperConnectionString
   private[this] val duration = FiniteDuration(10,SECONDS)
 
-  private[this] val testClusterName = "kafka-hc-test-cluster"
-  private[this] val testTopicName = "kafka-hc-test-topic"
+  private[this] val testClusterName = "kafka-sc-test-cluster"
+  private[this] val testTopicName = "kafka-sc-test-topic"
 
   override protected def beforeAll() : Unit = {
     super.beforeAll()
@@ -91,7 +91,7 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest {
   test("get topics") {
     val future = KafkaStateCheck.topics(testClusterName).apply(FakeRequest())
     assert(status(future) === OK)
-    assert(contentAsJson(future) === Json.obj("topics" -> Seq(testTopicName)))
+    assert(contentAsJson(future) === Json.obj("topics" -> Seq(testTopicName, "controller-api-test").sorted))
   }
 
   test("get topics in non-existing cluster") {
