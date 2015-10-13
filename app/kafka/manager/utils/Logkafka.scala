@@ -46,6 +46,7 @@ object Logkafka {
       case None =>
         checkCondition(false, IllegalCharacterInName(hostname))
     }
+    checkCondition(!hostname.matches("^localhost$"), HostnameIsLocalhost)
     checkCondition(hostname.matches(validHostnameRegex), InvalidHostname)
   }
 
@@ -86,6 +87,7 @@ object Logkafka {
 
 object LogkafkaErrors {
   class HostnameEmpty private[LogkafkaErrors] extends UtilError("hostname is illegal, can't be empty")
+  class HostnameIsLocalhost private[LogkafkaErrors] extends UtilError("hostname is illegal, can't be localhost")
   class LogPathEmpty private[LogkafkaErrors] extends UtilError("log path is illegal, can't be empty")
   class LogPathNotAbsolute private[LogkafkaErrors] extends UtilError("log path is illegal, must be absolute")
   class InvalidHostname private[LogkafkaErrors] extends UtilError(s"hostname is illegal, does not match regex ${Logkafka.validHostnameRegex}")
@@ -100,6 +102,7 @@ object LogkafkaErrors {
   class HostnameNotExists private[LogkafkaErrors] (hostname: String) extends UtilError(s"Hostname not exists : $hostname")
 
   val HostnameEmpty = new HostnameEmpty
+  val HostnameIsLocalhost = new HostnameIsLocalhost
   val LogPathEmpty = new LogPathEmpty 
   val LogPathNotAbsolute = new LogPathNotAbsolute
   val InvalidHostname = new InvalidHostname
