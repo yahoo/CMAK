@@ -5,14 +5,14 @@
 @(cluster: String, logkafkas: IndexedSeq[((String, Option[kafka.manager.ActorModel.LogkafkaIdentity]),Boolean)])
 
 @getFilesizeStatus(filesize: Int) = {
-@filesize match {
-    case i if i < 0 => {warning}
-    case i => {}
-}
+    @filesize match {
+        case i if i < 0 => {warning}
+        case i => {}
+    }
 }
 
-@getLogkafkaStatus(active: Boolean) = {
-    @if(active) {} else {danger}
+@getLogkafkaStatus(flag: Boolean, s1: String, s2: String) = {
+    @if(flag) {@s1} else {@s2}
 }
 
 <table class="table" id="logkafkas-table">
@@ -24,7 +24,9 @@
         @logkafkaIdentity.map{ li =>
             @for( (log_path, im) <- li.identityMap) {
                 <tr>
-                <td class="@getLogkafkaStatus(li.active)"><a href="@routes.Logkafka.logkafka(cluster, hostname, log_path)">@hostname</a></td>
+                <td class=@getLogkafkaStatus(li.active, "", "danger")>
+                    <a href="@routes.Logkafka.logkafka(cluster, hostname, log_path)">@hostname</a>
+                </td>
 
                 @im._1.map { c =>
                     <td>@log_path</td>
@@ -33,8 +35,12 @@
                 @im._2.map { c =>
                     @c.get("realpath").map { d =>
                         <td>@d</td>
-                    }.getOrElse{<td class = "danger"> no corresponding file to collect </td>}
-                }.getOrElse{<td class = "danger"> logkafka in @hostname is inactive </td>}
+                    }.getOrElse{<td class = "danger"> no corresponding file </td>}
+                }.getOrElse{
+                    <td class = @getLogkafkaStatus(li.active, "warning", "danger")> 
+                        @getLogkafkaStatus(li.active,"scanning for new file", "logkafka is inactive") 
+                    </td>
+                }
 
                 @im._2.map { c =>
                     @c.get("filepos").map { d =>
