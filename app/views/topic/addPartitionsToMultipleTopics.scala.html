@@ -3,14 +3,17 @@
 * See accompanying LICENSE file.
 *@
 @import scalaz.{\/}
-@(cluster: String, errorOrForm: kafka.manager.ApiError \/ Form[models.form.AddMultipleTopicsPartitions])(implicit request: RequestHeader)
+@(cluster: String, errorOrForm: kafka.manager.ApiError \/ (Form[models.form.AddMultipleTopicsPartitions], kafka.manager.ClusterContext)
+)(implicit af: features.ApplicationFeatures)
 
 @import helper._
 @import b3.vertical.fieldConstructor
 @import controllers.routes
 
 @theMenu = {
-@views.html.navigation.clusterMenu(cluster,"Topics","Add Partitions to Topics",models.navigation.Menus.clusterMenus(cluster))
+    @views.html.navigation.clusterMenu(cluster,"Topics","Add Partitions to Topics",models.navigation.Menus.clusterMenus(cluster)(
+        af,
+        errorOrForm.toOption.map(_._2.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
 }
 
 @checkboxWithLink(field: play.api.data.Field, topic: String) = {
@@ -81,7 +84,7 @@ breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.with
     <div class="panel panel-default">
         <div class="panel-heading"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>Add Partitions</h3></div>
         <div class="panel-body">
-            @errorOrForm.fold( views.html.errors.onApiError(_), renderForm(_))
+            @errorOrForm.fold( views.html.errors.onApiError(_), t => renderForm(t._1))
         </div>
     </div>
 </div>

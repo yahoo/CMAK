@@ -5,11 +5,13 @@
 package kafka.manager
 
 import java.util.Properties
+import java.util.concurrent.atomic.AtomicBoolean
 
 import com.typesafe.config.{Config, ConfigFactory}
+import kafka.manager.features.KMDeleteTopicFeature
 import kafka.manager.utils.CuratorAwareTest
 import ActorModel.TopicList
-import kafka.test.SeededBroker
+import kafka.test.{SimpleProducer, HighLevelConsumer, SeededBroker}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -19,7 +21,8 @@ import scala.util.Try
  * @author hiral
  */
 class TestKafkaManager extends CuratorAwareTest {
-  private[this] val broker = new SeededBroker("km-api-test",4)
+  private[this] val seededTopic = "km-api-test"
+  private[this] val broker = new SeededBroker(seededTopic,4)
   private[this] val kafkaServerZkPath = broker.getZookeeperConnectionString
   private[this] val akkaConfig: Properties = new Properties()
   akkaConfig.setProperty("pinned-dispatcher.type","PinnedDispatcher")
@@ -35,13 +38,52 @@ class TestKafkaManager extends CuratorAwareTest {
   private[this] val duration = FiniteDuration(10,SECONDS)
   private[this] val createTopicNameA = "km-unit-test-a"
   private[this] val createTopicNameB = "km-unit-test-b"
+  private[this] val createLogkafkaHostname = "km-unit-test-logkafka-hostname"
+  private[this] val createLogkafkaLogPath = "/km-unit-test-logkafka-logpath"
+  private[this] val createLogkafkaTopic = "km-unit-test-logkafka-topic"
+  private[this] var hlConsumer : Option[HighLevelConsumer] = None
+  private[this] var hlConsumerThread : Option[Thread] = None
+  private[this] val hlShutdown = new AtomicBoolean(false)
+  private[this] var simpleProducer : Option[SimpleProducer] = None
+  private[this] var simpleProducerThread : Option[Thread] = None
 
   override protected def beforeAll() : Unit = {
     super.beforeAll()
+    Thread.sleep(2000)
+    hlConsumer = Option(broker.getHighLevelConsumer)
+    hlConsumerThread = Option(new Thread() {
+      override def run(): Unit = {
+        while(!hlShutdown.get()) {
+          hlConsumer.map(_.read { ba => 
+            Option(ba).map(asString).foreach( s => println(s"read message : $s"))
+          })
+          Thread.sleep(500)
+        }
+      }
+    })
+    hlConsumerThread.foreach(_.start())
+    simpleProducer = Option(broker.getSimpleProducer)
+    simpleProducerThread = Option(new Thread() {
+      override def run(): Unit = {
+        var count = 0
+        while(!hlShutdown.get()) {
+          simpleProducer.foreach { p =>
+            p.send(s"simple message $count")
+            count+=1
+            Thread.sleep(500)
+          }
+        }
+      }
+    })
+    simpleProducerThread.foreach(_.start())
     Thread.sleep(1000)
   }
 
   override protected def afterAll(): Unit = {
+    Try(hlShutdown.set(true))
+    Try(simpleProducerThread.foreach(_.interrupt()))
+    Try(hlConsumerThread.foreach(_.interrupt()))
+    Try(hlConsumer.foreach(_.close()))
     kafkaManager.shutdown()
     Try(broker.shutdown())
     super.afterAll()
@@ -54,7 +96,7 @@ class TestKafkaManager extends CuratorAwareTest {
   }
 
   test("add cluster") {
-    val future = kafkaManager.addCluster("dev", "0.8.2.0", kafkaServerZkPath, jmxEnabled = false, displaySizeEnabled = false)
+    val future = kafkaManager.addCluster("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, filterConsumers = true)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
     Thread.sleep(2000)
@@ -108,6 +150,11 @@ class TestKafkaManager extends CuratorAwareTest {
       val result2 = Await.result(future2, duration)
       assert(result2.isRight === true)
     }
+    //seeded topic should have offsets
+    val future2 = kafkaManager.getTopicIdentity("dev",seededTopic)
+    val result2 = Await.result(future2, duration)
+    assert(result2.isRight === true)
+    assert(result2.toOption.get.summedTopicOffsets > 0)
   }
 
   test("get cluster list") {
@@ -127,6 +174,29 @@ class TestKafkaManager extends CuratorAwareTest {
     val future = kafkaManager.getClusterConfig("dev")
     val result = Await.result(future,duration)
     assert(result.isRight === true)
+  }
+  
+  test("get cluster context") {
+    val future = kafkaManager.getClusterContext("dev")
+    val result = Await.result(future,duration)
+    assert(result.isRight === true, s"Failed : ${result}")
+    assert(result.toOption.get.clusterFeatures.features(KMDeleteTopicFeature))
+  }
+  
+  test("get consumer list passive mode") {
+    val future = kafkaManager.getConsumerListExtended("dev")
+    val result = Await.result(future,duration)
+    assert(result.isRight === true, s"Failed : ${result}")
+    assert(result.toOption.get.clusterContext.config.activeOffsetCacheEnabled === false, s"Failed : ${result}")
+    assert(result.toOption.get.list.head._1 === hlConsumer.get.groupId, s"Failed : ${result}")
+  }
+
+  test("get consumer identity passive mode") {
+    val future = kafkaManager.getConsumerIdentity("dev", hlConsumer.get.groupId)
+    val result = Await.result(future,duration)
+    assert(result.isRight === true, s"Failed : ${result}")
+    assert(result.toOption.get.clusterContext.config.activeOffsetCacheEnabled === false, s"Failed : ${result}")
+    assert(result.toOption.get.topicMap.head._1 === seededTopic, s"Failed : ${result}")
   }
 
   test("run preferred leader election") {
@@ -262,7 +332,7 @@ class TestKafkaManager extends CuratorAwareTest {
   }
 
   test("update cluster zkhost") {
-    val future = kafkaManager.updateCluster("dev", "0.8.2.0", testServer.getConnectString, jmxEnabled = false, displaySizeEnabled = false)
+    val future = kafkaManager.updateCluster("dev","0.8.2.0",testServer.getConnectString, jmxEnabled = false, filterConsumers = true)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
 
@@ -295,7 +365,7 @@ class TestKafkaManager extends CuratorAwareTest {
   }
 
   test("update cluster version") {
-    val future = kafkaManager.updateCluster("dev", "0.8.1.1", testServer.getConnectString, jmxEnabled = false, displaySizeEnabled = false)
+    val future = kafkaManager.updateCluster("dev","0.8.1.1",testServer.getConnectString, jmxEnabled = false, filterConsumers = true)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
 
@@ -312,6 +382,93 @@ class TestKafkaManager extends CuratorAwareTest {
     val result = Await.result(future,duration)
     assert(result.isLeft === true, result)
     assert(result.swap.toOption.get.msg.contains("not supported"))
+    Thread.sleep(2000)
+  }
+
+  test("update cluster logkafka enabled and activeOffsetCache enabled") {
+    val future = kafkaManager.updateCluster("dev","0.8.2.0",testServer.getConnectString, jmxEnabled = false, filterConsumers = true, logkafkaEnabled = true, activeOffsetCacheEnabled = true)
+    val result = Await.result(future,duration)
+    assert(result.isRight === true)
+    
+    Thread.sleep(3000)
+
+    val future2 = kafkaManager.getClusterList
+    val result2 = Await.result(future2,duration)
+    assert(result2.isRight === true)
+    assert((result2.toOption.get.active.find(c => c.name == "dev").get.logkafkaEnabled === true) &&
+      (result2.toOption.get.active.find(c => c.name == "dev").get.activeOffsetCacheEnabled === true))
+    Thread.sleep(3000)
+  }
+
+  /*
+  test("get consumer list active mode") {
+    val future = kafkaManager.getConsumerListExtended("dev")
+    val result = Await.result(future,duration)
+    assert(result.isRight === true, s"Failed : ${result}")
+    assert(result.toOption.get.clusterContext.config.activeOffsetCacheEnabled === false, s"Failed : ${result}")
+    assert(result.toOption.get.list.head._1 === hlConsumer.get.groupId, s"Failed : ${result}")
+  }
+
+  test("get consumer identity active mode") {
+    val future = kafkaManager.getConsumerIdentity("dev", hlConsumer.get.groupId)
+    val result = Await.result(future,duration)
+    assert(result.isRight === true, s"Failed : ${result}")
+    assert(result.toOption.get.clusterContext.config.activeOffsetCacheEnabled === false, s"Failed : ${result}")
+    assert(result.toOption.get.topicMap.head._1 === seededTopic, s"Failed : ${result}")
+  }*/
+
+  test("create logkafka") {
+    val config = new Properties()
+    config.put(kafka.manager.utils.logkafka82.LogConfig.TopicProp,createLogkafkaTopic)
+    val future = kafkaManager.createLogkafka("dev",createLogkafkaHostname,createLogkafkaLogPath,config)
+    val result = Await.result(future,duration)
+    assert(result.isRight === true)
+    Thread.sleep(2000)
+  }
+
+  test("get logkafka identity") {
+    val future = kafkaManager.getLogkafkaHostnameList("dev")
+    val result = Await.result(future,duration)
+    assert(result.isRight === true)
+    assert(result.toOption.get.list.nonEmpty === true)
+    result.toOption.get.list.foreach { hostname =>
+      val future2 = kafkaManager.getLogkafkaIdentity("dev",hostname)
+      val result2 = Await.result(future2, duration)
+      assert(result2.isRight === true)
+    }
+  }
+
+  test("update logkafka config") {
+    val liFuture= kafkaManager.getLogkafkaIdentity("dev",createLogkafkaHostname)
+    val liOrError = Await.result(liFuture, duration)
+    assert(liOrError.isRight, "Failed to get logkafka identity!")
+    val li = liOrError.toOption.get
+    val config = new Properties()
+    config.put(kafka.manager.utils.logkafka82.LogConfig.TopicProp,createLogkafkaTopic)
+    config.put(kafka.manager.utils.logkafka82.LogConfig.PartitionProp,"1")
+    val future = kafkaManager.updateLogkafkaConfig("dev",createLogkafkaHostname,createLogkafkaLogPath,config)
+    val result = Await.result(future,duration)
+    assert(result.isRight === true)
+
+    //check new logkafka config
+    {
+      val liFuture= kafkaManager.getLogkafkaIdentity("dev",createLogkafkaHostname)
+      val liOrError = Await.result(liFuture, duration)
+      assert(liOrError.isRight, "Failed to get logkafka identity!")
+      val li = liOrError.toOption.get
+      assert(li.identityMap.get(createLogkafkaLogPath).get._1.get.apply(kafka.manager.utils.logkafka82.LogConfig.PartitionProp) === "1")
+    }
+  }
+
+  test("delete logkafka") {
+    val future = kafkaManager.deleteLogkafka("dev",createLogkafkaHostname,createLogkafkaLogPath)
+    val result = Await.result(future,duration)
+    assert(result.isRight === true, result)
+    val liFuture= kafkaManager.getLogkafkaIdentity("dev",createLogkafkaHostname)
+    val liOrError = Await.result(liFuture, duration)
+    assert(liOrError.isRight, "Failed to get logkafka identity!")
+    val li = liOrError.toOption.get
+    assert(li.identityMap.get(createLogkafkaLogPath) === None)
     Thread.sleep(2000)
   }
 

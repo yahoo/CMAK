@@ -5,11 +5,11 @@
 name := """kafka-manager"""
 
 /* For packaging purposes, -SNAPSHOT MUST contain a digit */
-version := "1.2.7"
+version := "1.2.9.10"
 
-scalaVersion := "2.11.5"
+scalaVersion := "2.11.7"
 
-scalacOptions ++= Seq("-Xlint","-Xfatal-warnings","-deprecation","-feature","-language:implicitConversions","-language:postfixOps")
+scalacOptions ++= Seq("-Xlint:-missing-interpolator","-Xfatal-warnings","-deprecation","-feature","-language:implicitConversions","-language:postfixOps")
 
 // From https://www.playframework.com/documentation/2.3.x/ProductionDist
 assemblyMergeStrategy in assembly := {
@@ -19,6 +19,7 @@ assemblyMergeStrategy in assembly := {
 
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.3.10",
+  "com.google.code.findbugs" % "jsr305" % "2.0.1",
   "org.webjars" %% "webjars-play" % "2.3.0-2",
   "org.webjars" % "bootstrap" % "3.3.4",
   "org.webjars" % "jquery" % "2.1.4",
@@ -31,7 +32,7 @@ libraryDependencies ++= Seq(
   "org.json4s" %% "json4s-scalaz" % "3.2.11",
   "org.slf4j" % "log4j-over-slf4j" % "1.7.7",
   "com.adrianhurt" %% "play-bootstrap3" % "0.4",
-  "org.apache.kafka" %% "kafka" % "0.8.2.1" % "test",
+  "org.apache.kafka" %% "kafka" % "0.8.2.1" exclude("log4j","log4j") force(),
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "org.apache.curator" % "curator-test" % "2.7.1" % "test",
   "com.yammer.metrics" % "metrics-core" % "2.1.2" force()

@@ -17,6 +17,7 @@
 
 package kafka.manager.utils.zero81
 
+import kafka.common.TopicAndPartition
 import kafka.manager.utils._
 import kafka.manager.ActorModel.{TopicPartitionIdentity, TopicIdentity}
 import org.apache.curator.framework.CuratorFramework
@@ -59,8 +60,7 @@ class ReassignPartitionCommand(adminUtils: AdminUtils) {
         currentTopicIdentity.numBrokers,
         currentTopicIdentity.configReadVersion,
         currentTopicIdentity.config, 
-        currentTopicIdentity.deleteSupported,
-        currentTopicIdentity.clusterConfig
+        currentTopicIdentity.clusterContext
         )
     }
   }

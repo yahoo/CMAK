@@ -2,7 +2,7 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@(addClusterForm: Form[kafka.manager.ClusterConfig])(implicit request: RequestHeader)
+@(addClusterForm: Form[kafka.manager.ClusterConfig])
 
 @import b3.vertical.fieldConstructor
 @import controllers.routes
@@ -11,25 +11,16 @@
     @views.html.navigation.defaultMenu(views.html.navigation.menuNav("Cluster","Add Cluster",models.navigation.Menus.indexMenu))
 }
 
-@checkboxWithLink(field: play.api.data.Field) = {
-@b3.inputFormGroup(field, withFeedback = false, withLabelFor = false, b3.Args.withDefault(Seq(), 'disabled -> false)) { fieldInfo =>
-<div class="checkbox">
-    <label for="@fieldInfo.id">
-        <input type="checkbox" id="@fieldInfo.id" name="@fieldInfo.name" value="true" @if(fieldInfo.value == Some("true")){checked} @toHtmlArgs(fieldInfo.innerArgsMap)>
-        Display Broker and Topic Size (only works after applying <a href="https://issues.apache.org/jira/browse/KAFKA-1614">this patch</a>)
-    </label>
-</div>
-}
-}
-
 @drawForm(form : Form[kafka.manager.ClusterConfig]) = {
     @b3.form(routes.Cluster.handleAddCluster) {
     <fieldset>
         @b3.text(form("name"), '_label -> "Cluster Name", 'placeholder -> "", 'autofocus -> true )
         @b3.text(form("zkHosts"), '_label -> "Cluster Zookeeper Hosts", 'placeholder -> "zk1:2181,zk2:2181,zk3:2181")
-        @b3.select(form("kafkaVersion"), options = kafka.manager.KafkaVersion.formSelectList, '_label -> "Kafka Version")
+        @b3.select( form("kafkaVersion"), options = kafka.manager.KafkaVersion.formSelectList, '_label -> "Kafka Version" )
         @b3.checkbox(form("jmxEnabled"), '_text -> "Enable JMX Polling")
-        @checkboxWithLink(form("displaySizeEnabled"))
+        @b3.checkbox(form("logkafkaEnabled"), '_text -> "Enable Logkafka")
+        @b3.checkbox(form("filterConsumers"), '_text -> "Filter out inactive consumers")
+        @b3.checkbox(form("activeOffsetCacheEnabled"), '_text -> "Enable Active OffsetCache (Not recommended for large # of consumers)")
         @b3.submit('class -> "submit-button btn btn-primary"){ Save }
         <a href="@routes.Application.index()" class="cancel-button btn btn-default" role="button">Cancel</a>
     </fieldset>
@@ -44,6 +35,7 @@
                 @drawForm(addClusterForm)
             </div>
         </div>
+        @configReferences()
     </div>
 }
 

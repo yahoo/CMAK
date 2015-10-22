@@ -4,10 +4,13 @@
 *@
 @import scalaz.{\/}
 @import b3.vertical.fieldConstructor
-@(cluster:String, errorOrStatus: kafka.manager.ApiError \/ Option[kafka.manager.ActorModel.ReassignPartitions])
+@(cluster:String, errorOrStatus: kafka.manager.ApiError \/ Option[kafka.manager.ActorModel.ReassignPartitions]
+)(implicit af: features.ApplicationFeatures)
 
 @theMenu = {
-@views.html.navigation.clusterMenu(cluster,"Reassign Partitions","",models.navigation.Menus.clusterMenus(cluster))
+@views.html.navigation.clusterMenu(cluster,"Reassign Partitions","",models.navigation.Menus.clusterMenus(cluster)(
+    af,
+    errorOrStatus.toOption.flatten.map(_.clusterContext.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
 }
 
 @renderView(c: String, viewOption: Option[kafka.manager.ActorModel.ReassignPartitions]) = {
@@ -42,7 +45,7 @@
             <tr><th>Topic</th><th>Partition</th><th>Replica Assignment</th></tr>
             </thead>
             <tbody>
-            @for((kafka.manager.utils.TopicAndPartition(topic,partNum),assignment) <- repar.partitionsToBeReassigned.toList.sortBy(_._1.topic) ) {
+            @for((kafka.common.TopicAndPartition(topic,partNum),assignment) <- repar.partitionsToBeReassigned.toList.sortBy(_._1.topic) ) {
             <tr>
                 <td><a href="@routes.Topic.topic(cluster,topic)">@topic</a></td>
                 <td>@partNum</td>

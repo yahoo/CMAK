@@ -17,8 +17,20 @@
 
 package kafka.manager.utils
 
-/**
- * Borrowed from kafka 0.8.1.1
- * https://git-wip-us.apache.org/repos/asf?p=kafka.git;a=blob;f=core/src/main/scala/kafka/common/TopicAndPartition.scala
- */
-case class TopicAndPartition(topic: String, partition: Int)
+import java.nio.charset.StandardCharsets
+
+import org.apache.curator.framework.CuratorFramework
+import org.apache.zookeeper.CreateMode
+import org.apache.zookeeper.KeeperException.{NodeExistsException, NoNodeException}
+import org.apache.zookeeper.data.Stat
+
+object LogkafkaZkUtils {
+  val LogkafkaConfigPath = "/logkafka/config"
+  val LogkafkaClientPath = "/logkafka/client"
+
+  def getLogkafkaConfigPath(hostname: String): String =
+    LogkafkaConfigPath + "/" + hostname 
+
+  def getLogkafkaClientPath(hostname: String): String =
+    LogkafkaClientPath + "/" + hostname 
+}

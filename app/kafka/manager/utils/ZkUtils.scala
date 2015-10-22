@@ -19,6 +19,7 @@ package kafka.manager.utils
 
 import java.nio.charset.StandardCharsets
 
+import kafka.common.TopicAndPartition
 import org.apache.curator.framework.CuratorFramework
 import org.apache.zookeeper.CreateMode
 import org.apache.zookeeper.KeeperException.{NodeExistsException, NoNodeException}
@@ -103,6 +104,19 @@ object ZkUtils {
     val stat: Stat = new Stat()
     val dataStr: String = curator.getData.storingStatIn(stat).forPath(path)
     (dataStr, stat)
+  }
+  
+  def readDataMaybeNull(curator: CuratorFramework, path: String): (Option[String], Stat) = {
+    val stat: Stat = new Stat()
+    try {
+      val dataStr: String = curator.getData.storingStatIn(stat).forPath(path)
+      (Option(dataStr), stat)
+    } catch {
+      case e: NoNodeException => {
+        (None, stat)
+      }
+      case e2: Throwable => throw e2
+    }
   }
 
 

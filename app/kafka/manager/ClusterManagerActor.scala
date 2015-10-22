@@ -11,14 +11,16 @@ import java.util.concurrent.{LinkedBlockingQueue, TimeUnit, ThreadPoolExecutor}
 import akka.pattern._
 import akka.actor.{ActorPath, Props}
 import akka.util.Timeout
+import kafka.manager.features.{KMJMXMetricsFeature, KMLogKafkaFeature, ClusterFeatures}
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.recipes.cache.PathChildrenCache
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex
 import org.apache.zookeeper.CreateMode
-import kafka.manager.utils.{AdminUtils, TopicAndPartition}
+import kafka.common.TopicAndPartition
+import kafka.manager.utils.AdminUtils
 
-import scala.collection.{mutable, immutable}
+import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
@@ -54,11 +56,15 @@ case class ClusterManagerActorConfig(pinnedDispatcherName: String,
                                 threadPoolSize: Int = 2,
                                 maxQueueSize: Int = 100,
                                 askTimeoutMillis: Long = 2000,
-                                mutexTimeoutMillis: Int = 4000)
+                                mutexTimeoutMillis: Int = 4000,
+                                partitionOffsetCacheTimeoutSecs : Int = 5,
+                                simpleConsumerSocketTimeoutMillis: Int = 10000)
 
 class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
   extends BaseQueryCommandActor with CuratorAwareActor with BaseZkPath {
 
+  private[this] val clusterContext = ClusterContext(ClusterFeatures.from(cmConfig.clusterConfig), cmConfig.clusterConfig)
+  
   //this is from base zk path trait
   override def baseZkPath : String = cmConfig.baseZkPath
 
@@ -87,12 +93,18 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
 
   private[this] val adminUtils = new AdminUtils(cmConfig.clusterConfig.version)
 
-  private[this] val ksProps = Props(classOf[KafkaStateActor],sharedClusterCurator, adminUtils.isDeleteSupported, cmConfig.clusterConfig)
+  private[this] val ksConfig = KafkaStateActorConfig(
+    sharedClusterCurator,
+    clusterContext,
+    LongRunningPoolConfig(Runtime.getRuntime.availableProcessors(), 1000),
+    cmConfig.partitionOffsetCacheTimeoutSecs,
+    cmConfig.simpleConsumerSocketTimeoutMillis)
+  private[this] val ksProps = Props(classOf[KafkaStateActor],ksConfig)
   private[this] val kafkaStateActor : ActorPath = context.actorOf(ksProps.withDispatcher(cmConfig.pinnedDispatcherName),"kafka-state").path
 
   private[this] val bvConfig = BrokerViewCacheActorConfig(
     kafkaStateActor, 
-    cmConfig.clusterConfig, 
+    clusterContext,
     LongRunningPoolConfig(Runtime.getRuntime.availableProcessors(), 1000),
     cmConfig.updatePeriod)
   private[this] val bvcProps = Props(classOf[BrokerViewCacheActor],bvConfig)
@@ -103,10 +115,59 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
       sharedClusterCurator,
       LongRunningPoolConfig(cmConfig.threadPoolSize, cmConfig.maxQueueSize),
       cmConfig.askTimeoutMillis,
-      cmConfig.clusterConfig.version)
+      clusterContext, 
+      adminUtils)
     Props(classOf[KafkaCommandActor],kcaConfig)
   }
   private[this] val kafkaCommandActor : ActorPath = context.actorOf(kcProps,"kafka-command").path
+
+  private[this] val lksProps: Option[Props] =
+    clusterContext.clusterFeatures.features(KMLogKafkaFeature) match {
+      case true => Some(Props(classOf[LogkafkaStateActor],sharedClusterCurator, clusterContext))
+      case false => None
+    }
+  private[this] val logkafkaStateActor : Option[ActorPath] =
+    clusterContext.clusterFeatures.features(KMLogKafkaFeature) match {
+      case true => Some(context.actorOf(lksProps.get.withDispatcher(cmConfig.pinnedDispatcherName),"logkafka-state").path)
+      case false => None
+    }
+
+  private[this] val lkvConfig: Option[LogkafkaViewCacheActorConfig] =
+    clusterContext.clusterFeatures.features(KMLogKafkaFeature) match {
+      case true => Some(LogkafkaViewCacheActorConfig(
+        logkafkaStateActor.get,
+        clusterContext,
+        LongRunningPoolConfig(Runtime.getRuntime.availableProcessors(), 1000),
+        cmConfig.updatePeriod))
+      case false => None
+    }
+  private[this] val lkvcProps: Option[Props] =
+    clusterContext.clusterFeatures.features(KMLogKafkaFeature) match {
+      case true => Some(Props(classOf[LogkafkaViewCacheActor],lkvConfig.get))
+      case false => None
+    }
+  private[this] val logkafkaViewCacheActor: Option[ActorPath] =
+    clusterContext.clusterFeatures.features(KMLogKafkaFeature) match {
+      case true => Some(context.actorOf(lkvcProps.get,"logkafka-view").path)
+      case false => None
+    }
+
+  private[this] val lkcProps: Option[Props] = {
+    clusterContext.clusterFeatures.features(KMLogKafkaFeature) match {
+      case true => { val lkcaConfig = LogkafkaCommandActorConfig(
+        sharedClusterCurator,
+        LongRunningPoolConfig(cmConfig.threadPoolSize, cmConfig.maxQueueSize),
+        cmConfig.askTimeoutMillis,
+        clusterContext)
+      Some(Props(classOf[LogkafkaCommandActor],lkcaConfig)) }
+      case false => None
+    }
+  }
+  private[this] val logkafkaCommandActor : Option[ActorPath] =
+    clusterContext.clusterFeatures.features(KMLogKafkaFeature) match {
+      case true => Some(context.actorOf(lkcProps.get,"logkafka-command").path)
+      case false => None
+    }
 
   private[this] implicit val timeout: Timeout = FiniteDuration(cmConfig.askTimeoutMillis,MILLISECONDS)
 
@@ -149,9 +210,24 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
       case ksRequest: KSRequest =>
         context.actorSelection(kafkaStateActor).forward(ksRequest)
 
+      case lksRequest: LKSRequest =>
+        logkafkaStateActor.isDefined match {
+          case true => context.actorSelection(logkafkaStateActor.get).forward(lksRequest)
+          case false => log.warning("cma: processQueryResponse : Received LKSRequest", lksRequest)
+        }
+
       case bvRequest: BVRequest =>
         context.actorSelection(brokerViewCacheActor).forward(bvRequest)
 
+      case lkvRequest: LKVRequest =>
+        logkafkaStateActor.isDefined match {
+          case true => context.actorSelection(logkafkaViewCacheActor.get).forward(lkvRequest)
+          case false =>  log.warning("cma: processQueryResponse : Received LKVRequest", lkvRequest)
+        }
+
+      case CMGetClusterContext =>
+        sender ! clusterContext
+        
       case CMGetView =>
         implicit val ec = context.dispatcher
         val eventualBrokerList = withKafkaStateActor(KSGetBrokers)(identity[BrokerList])
@@ -159,28 +235,54 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         val result = for {
           bl <- eventualBrokerList
           tl <- eventualTopicList
-        } yield CMView(tl.list.size, bl.list.size, cmConfig.clusterConfig)
+        } yield CMView(tl.list.size, bl.list.size, clusterContext)
         result pipeTo sender
 
-        // TODO: add topic partition size to TopicIdentity
       case CMGetTopicIdentity(topic) =>
         implicit val ec = context.dispatcher
         val eventualBrokerList = withKafkaStateActor(KSGetBrokers)(identity[BrokerList])
         val eventualTopicMetrics : Future[Option[BrokerMetrics]] = {
-          if(cmConfig.clusterConfig.jmxEnabled) {
+          if(clusterContext.clusterFeatures.features(KMJMXMetricsFeature)) {
             withBrokerViewCacheActor(BVGetTopicMetrics(topic))(identity[Option[BrokerMetrics]])
           } else {
             Future.successful(None)
           }
         }
         val eventualTopicDescription = withKafkaStateActor(KSGetTopicDescription(topic))(identity[Option[TopicDescription]])
-        val eventualTopicPartitionSizes = withBrokerViewCacheActor(BVGetBrokerTopicPartitionSizes(topic))(identity[Option[Map[Int, Map[Int, Long]]]])
         val result: Future[Option[CMTopicIdentity]] = for {
           bl <- eventualBrokerList
           tm <- eventualTopicMetrics
           tdO <- eventualTopicDescription
-          tp <- eventualTopicPartitionSizes
-        } yield tdO.map( td => CMTopicIdentity(Try(TopicIdentity.from(bl,td,tm,tp,cmConfig.clusterConfig))))
+        } yield tdO.map( td => CMTopicIdentity(Try(TopicIdentity.from(bl,td,tm,clusterContext,None))))
+        result pipeTo sender
+
+      case CMGetLogkafkaIdentity(hostname) =>
+        implicit val ec = context.dispatcher
+        val eventualLogkafkaConfig= withLogkafkaStateActor(LKSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
+        val eventualLogkafkaClient= withLogkafkaStateActor(LKSGetLogkafkaClient(hostname))(identity[Option[LogkafkaClient]])
+        val result: Future[Option[CMLogkafkaIdentity]] = for {
+          lcg <- eventualLogkafkaConfig
+          lct <- eventualLogkafkaClient
+        } yield Some(CMLogkafkaIdentity(Try(LogkafkaIdentity.from(hostname,lcg,lct))))
+        result pipeTo sender
+
+      case CMGetConsumerIdentity(consumer) =>
+        implicit val ec = context.dispatcher
+        val eventualConsumerDescription = withKafkaStateActor(KSGetConsumerDescription(consumer))(identity[Option[ConsumerDescription]])
+        val result: Future[Option[CMConsumerIdentity]] = for {
+          cdO <- eventualConsumerDescription
+          ciO = cdO.map( cd => CMConsumerIdentity(Try(ConsumerIdentity.from(cd,clusterContext))))
+        } yield ciO
+        result pipeTo sender
+
+      case CMGetConsumedTopicState(consumer, topic) =>
+        implicit val ec = context.dispatcher
+        val eventualConsumedTopicDescription = withKafkaStateActor(
+          KSGetConsumedTopicDescription(consumer,topic)
+        )(identity[ConsumedTopicDescription])
+        val result: Future[CMConsumedTopic] = eventualConsumedTopicDescription.map{
+          ctd: ConsumedTopicDescription =>  CMConsumedTopic(Try(ConsumedTopicState.from(ctd, clusterContext)))
+        }
         result pipeTo sender
 
       case any: Any => log.warning("cma : processQueryResponse : Received unknown message: {}", any)
@@ -201,6 +303,10 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         curator.setData().forPath(topicZkPath, data)
       }
     }
+  }
+  
+  implicit private def toTryClusterContext(t: Try[Unit]) : Try[ClusterContext] = {
+    t.map(_ => clusterContext)
   }
 
   override def processCommandRequest(request: CommandRequest): Unit = {
@@ -299,29 +405,31 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
 
       case CMGeneratePartitionAssignments(topics, brokers) =>
         implicit val ec = longRunningExecutionContext
-        val eventualBrokerList = withKafkaStateActor(KSGetBrokers)(identity[BrokerList])
-        val eventualDescriptions = withKafkaStateActor(KSGetTopicDescriptions(topics))(identity[TopicDescriptions])
-        val eventualReassignPartitions = withKafkaStateActor(KSGetReassignPartition)(identity[Option[ReassignPartitions]])
-        val generated: Future[IndexedSeq[(String, Map[Int, Seq[Int]])]] = for {
-          bl <- eventualBrokerList
-          tds <- eventualDescriptions
-          rp <- eventualReassignPartitions
-          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, None, cmConfig.clusterConfig))
-        } yield {
-          bl.list.map(_.id.toInt)
-          // check if any topic undergoing reassignment got selected for reassignment
-          val topicsUndergoingReassignment = getTopicsUnderReassignment(rp, topics)
-          require(topicsUndergoingReassignment.isEmpty, "Topic(s) already undergoing reassignment(s): [%s]".format(topicsUndergoingReassignment.mkString(", ")))
-          // check if any nonexistent broker got selected for reassignment
-          val nonExistentBrokers = getNonExistentBrokers(bl, brokers)
-          require(nonExistentBrokers.isEmpty, "Nonexistent broker(s) selected: [%s]".format(nonExistentBrokers.mkString(", ")))
-          tis.map(ti => (ti.topic, adminUtils.assignReplicasToBrokers(
-            brokers,
-            ti.partitions,
-            ti.replicationFactor)))
+        val topicCheckFutureBefore = checkTopicsUnderAssignment(topics)
+
+        val generated: Future[IndexedSeq[(String, Map[Int, Seq[Int]])]] = topicCheckFutureBefore.flatMap { _ =>
+          val eventualBrokerList = withKafkaStateActor(KSGetBrokers)(identity[BrokerList])
+          val eventualDescriptions = withKafkaStateActor(KSGetTopicDescriptions(topics))(identity[TopicDescriptions])
+          for {
+            bl <- eventualBrokerList
+            tds <- eventualDescriptions
+            tis = tds.descriptions.map(TopicIdentity.from(bl, _, None,clusterContext, None))
+          } yield {
+            bl.list.map(_.id.toInt)
+            // check if any nonexistent broker got selected for reassignment
+            val nonExistentBrokers = getNonExistentBrokers(bl, brokers)
+            require(nonExistentBrokers.isEmpty, "Nonexistent broker(s) selected: [%s]".format(nonExistentBrokers.mkString(", ")))
+            tis.map(ti => (ti.topic, adminUtils.assignReplicasToBrokers(
+              brokers,
+              ti.partitions,
+              ti.replicationFactor)))
+          }
         }
 
-        val result: Future[IndexedSeq[Try[Unit]]] = generated.map { list =>
+        val result: Future[IndexedSeq[Try[Unit]]] = for {
+          list <- generated
+          _ <- checkTopicsUnderAssignment(topics) //check again
+        } yield {
           modify {
             list.map { case (topic, assignments: Map[Int, Seq[Int]]) =>
               updateAssignmentInZk(topic, assignments)
@@ -337,7 +445,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
             assignments.map { case (topic, assignment) =>
               updateAssignmentInZk(topic, assignment.toMap)
             }
-          } toIndexedSeq
+          }.toIndexedSeq
         }
         result.map(CMCommandResults.apply) pipeTo sender()
 
@@ -348,7 +456,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         val preferredLeaderElections = for {
           bl <- eventualBrokerList
           tds <- eventualDescriptions
-          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, None, cmConfig.clusterConfig))
+          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, clusterContext, None))
           toElect = tis.map(ti => ti.partitionsIdentity.values.filter(!_.isPreferredLeader).map(tpi => TopicAndPartition(ti.topic, tpi.partNum))).flatten.toSet
         } yield toElect
         preferredLeaderElections.map { toElect =>
@@ -364,7 +472,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         val topicsAndReassignments = for {
           bl <- eventualBrokerList
           tds <- eventualDescriptions
-          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, None, cmConfig.clusterConfig))
+          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, clusterContext, None))
         } yield {
           val reassignments = tis.map { ti =>
             val topicZkPath = zkPathFrom(baseTopicsZkPath, ti.topic)
@@ -391,6 +499,40 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           }
         } pipeTo sender()
 
+      case CMDeleteLogkafka(hostname, log_path) =>
+        implicit val ec = longRunningExecutionContext
+        val eventualLogkafkaConfig = withLogkafkaStateActor(LKSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
+        eventualLogkafkaConfig.map { logkafkaConfigOption =>
+          logkafkaConfigOption.fold {
+            Future.successful(CMCommandResult(Failure(new IllegalArgumentException(s"Hostname doesn't exists : $hostname"))))
+          } { td =>
+            withLogkafkaCommandActor(LKCDeleteLogkafka(hostname, log_path, logkafkaConfigOption)) {
+              lkcResponse: LKCCommandResult =>
+                CMCommandResult(lkcResponse.result)
+            }
+          }
+        } pipeTo sender()
+
+      case CMCreateLogkafka(hostname, log_path, config) =>
+        implicit val ec = longRunningExecutionContext
+        val eventualLogkafkaConfig = withLogkafkaStateActor(LKSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
+        eventualLogkafkaConfig.map { logkafkaConfigOption =>
+            withLogkafkaCommandActor(LKCCreateLogkafka(hostname, log_path, config, logkafkaConfigOption)) {
+              lkcResponse: LKCCommandResult =>
+                CMCommandResult(lkcResponse.result)
+            }
+        } pipeTo sender()
+
+      case CMUpdateLogkafkaConfig(hostname, log_path, config) =>
+        implicit val ec = longRunningExecutionContext
+        val eventualLogkafkaConfig = withLogkafkaStateActor(LKSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
+        eventualLogkafkaConfig.map { logkafkaConfigOption =>
+            withLogkafkaCommandActor(LKCUpdateLogkafkaConfig(hostname, log_path, config, logkafkaConfigOption)) {
+              lkcResponse: LKCCommandResult =>
+                CMCommandResult(lkcResponse.result)
+            }
+        } pipeTo sender()
+
       case any: Any => log.warning("cma : processCommandRequest : Received unknown message: {}", any)
     }
   }
@@ -400,14 +542,29 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
     context.actorSelection(kafkaStateActor).ask(msg).mapTo[Output].map(fn)
   }
 
+  private[this]  def withLogkafkaStateActor[Input,Output,FOutput]
+  (msg: Input)(fn: Output => FOutput)(implicit tag: ClassTag[Output], ec: ExecutionContext) : Future[FOutput] = {
+    context.actorSelection(logkafkaStateActor.get).ask(msg).mapTo[Output].map(fn)
+  }
+
   private[this] def withBrokerViewCacheActor[Input,Output,FOutput]
   (msg: Input)(fn: Output => FOutput)(implicit tag: ClassTag[Output], ec: ExecutionContext) : Future[FOutput] = {
     context.actorSelection(brokerViewCacheActor).ask(msg).mapTo[Output].map(fn)
   }
 
+  private[this] def withLogkafkaViewCacheActor[Input,Output,FOutput]
+  (msg: Input)(fn: Output => FOutput)(implicit tag: ClassTag[Output], ec: ExecutionContext) : Future[FOutput] = {
+    context.actorSelection(logkafkaViewCacheActor.get).ask(msg).mapTo[Output].map(fn)
+  }
+
   private[this] def withKafkaCommandActor[Input,Output,FOutput]
   (msg: Input)(fn: Output => FOutput)(implicit tag: ClassTag[Output], ec: ExecutionContext) : Future[FOutput] = {
     context.actorSelection(kafkaCommandActor).ask(msg).mapTo[Output].map(fn)
+  }
+
+  private[this] def withLogkafkaCommandActor[Input,Output,FOutput]
+  (msg: Input)(fn: Output => FOutput)(implicit tag: ClassTag[Output], ec: ExecutionContext) : Future[FOutput] = {
+    context.actorSelection(logkafkaCommandActor.get).ask(msg).mapTo[Output].map(fn)
   }
 
   private[this] def modify[T](fn: => T): T = {
@@ -421,22 +578,34 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
     }
   }
 
-  def getNonExistentBrokers(availableBrokers: BrokerList, selectedBrokers: Seq[Int]): Seq[Int] = {
+  private[this] def getNonExistentBrokers(availableBrokers: BrokerList, selectedBrokers: Seq[Int]): Seq[Int] = {
     val availableBrokerIds: Set[Int] = availableBrokers.list.map(_.id.toInt).toSet
     selectedBrokers filter { b: Int => !availableBrokerIds.contains(b) }
   }
 
-  def getNonExistentBrokers(availableBrokers: BrokerList, assignments: Map[Int, Seq[Int]]): Seq[Int] = {
+  private[this] def getNonExistentBrokers(availableBrokers: BrokerList, assignments: Map[Int, Seq[Int]]): Seq[Int] = {
     val brokersAssigned = assignments.flatMap({ case  (pt, bl) => bl }).toSet.toSeq
     getNonExistentBrokers(availableBrokers, brokersAssigned)
   }
 
-  def getTopicsUnderReassignment(reassignPartitions: Option[ReassignPartitions], topicsToBeReassigned: Set[String]): Set[String] = {
+  private[this] def getTopicsUnderReassignment(reassignPartitions: Option[ReassignPartitions], topicsToBeReassigned: Set[String]): Set[String] = {
     val topicsUnderReassignment = reassignPartitions.map { asgn =>
       asgn.endTime.map(_ => Set[String]()).getOrElse{
         asgn.partitionsToBeReassigned.map { case (t,s) => t.topic}.toSet
       }
     }.getOrElse(Set[String]())
     topicsToBeReassigned.intersect(topicsUnderReassignment)
+  }
+  
+  private[this] def checkTopicsUnderAssignment(topicsToBeReassigned: Set[String])(implicit ec: ExecutionContext) : Future[Unit] = {
+    val eventualReassignPartitions = withKafkaStateActor(KSGetReassignPartition)(identity[Option[ReassignPartitions]])
+    for {
+      rp <- eventualReassignPartitions
+    } yield {
+      // check if any topic undergoing reassignment got selected for reassignment
+      val topicsUndergoingReassignment = getTopicsUnderReassignment(rp, topicsToBeReassigned)
+      require(topicsUndergoingReassignment.isEmpty, "Topic(s) already undergoing reassignment(s): [%s]"
+        .format(topicsUndergoingReassignment.mkString(", ")))
+    }
   }
 }

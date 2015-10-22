@@ -1,0 +1,36 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import scalaz.{\/}
+@(cluster:String, errorOrConsumers: kafka.manager.ApiError \/ kafka.manager.ConsumerListExtended
+)(implicit af: features.ApplicationFeatures)
+
+@theMenu = {
+    @views.html.navigation.clusterMenu(cluster,"Consumer","List",models.navigation.Menus.clusterMenus(cluster)(
+        af,
+        errorOrConsumers.toOption.map(_.clusterContext.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
+}
+
+@consumerScripts = {
+    <script ype="text/javascript">
+    $(document).ready(function() {
+        $('#consumer-table').DataTable();
+    } );
+    </script>
+}
+
+@main(
+    "Consumer List",
+    menu = theMenu,
+    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Consumers",cluster)),
+    scripts=consumerScripts) {
+    <div class="col-md-12">
+        <div class="panel panel-default">
+            <div class="panel-heading"><h3>Consumers</h3></div>
+            @errorOrConsumers.fold(
+                views.html.errors.onApiError(_),
+                cl => views.html.consumer.consumerListContent(cluster,cl.list))
+        </div>
+    </div>
+}

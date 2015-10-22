@@ -7,10 +7,12 @@
 @(cluster:String,
 errorOrStatus: kafka.manager.ApiError \/ Option[kafka.manager.ActorModel.PreferredReplicaElection],
 operationForm: Form[models.form.PreferredReplicaElectionOperation]
-)
+)(implicit af: features.ApplicationFeatures)
 
 @theMenu = {
-@views.html.navigation.clusterMenu(cluster,"Preferred Replica Election","",models.navigation.Menus.clusterMenus(cluster))
+@views.html.navigation.clusterMenu(cluster,"Preferred Replica Election","",models.navigation.Menus.clusterMenus(cluster)(
+    af,
+    errorOrStatus.toOption.flatten.map(_.clusterContext.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
 }
 
 @renderView(c: String, viewOption: Option[kafka.manager.ActorModel.PreferredReplicaElection]) = {
@@ -45,7 +47,7 @@ operationForm: Form[models.form.PreferredReplicaElectionOperation]
             <tr><th>Topic</th><th>Partition</th></tr>
             </thead>
             <tbody>
-            @for(kafka.manager.utils.TopicAndPartition(topic,partNum) <- pre.topicAndPartition.toList.sortBy(_.topic) ) {
+            @for(kafka.common.TopicAndPartition(topic,partNum) <- pre.topicAndPartition.toList.sortBy(_.topic) ) {
             <tr>
                 <td><a href="@routes.Topic.topic(cluster,topic)">@topic</a></td>
                 <td>@partNum</td>
@@ -66,14 +68,16 @@ operationForm: Form[models.form.PreferredReplicaElectionOperation]
     <div class="panel panel-default">
         <div class="panel-heading"><h3>Preferred Replica Election</h3></div>
         <div class="col-md-12">
-            <div class="row">
-                @b3.form(routes.PreferredReplicaElection.handleRunElection(cluster)) {
-                <fieldset>
-                    <input type="hidden" name="operation" value="run">
-                    @b3.submit('class -> "btn btn-primary"){ Run Preferred Replica Election }
-                </fieldset>
-                }
-            </div>
+            @features.app(features.KMPreferredReplicaElectionFeature) {
+                <div class="row">
+                    @b3.form(routes.PreferredReplicaElection.handleRunElection(cluster)) {
+                    <fieldset>
+                        <input type="hidden" name="operation" value="run">
+                        @b3.submit('class -> "btn btn-primary"){ Run Preferred Replica Election }
+                    </fieldset>
+                    }
+                </div>
+            }
 
             @errorOrStatus.fold[Html](views.html.errors.onApiError(_), renderView(cluster, _))
         </div>
