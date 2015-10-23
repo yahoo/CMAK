@@ -66,18 +66,12 @@ class LogkafkaCommandActor(logkafkaCommandActorConfig: LogkafkaCommandActorConfi
     implicit val ec = longRunningExecutionContext
     request match {
       case LKCDeleteLogkafka(hostname, log_path, logkafkaConfig) =>
-        if(logkafkaCommandActorConfig.clusterContext.clusterFeatures.features(KMDeleteTopicFeature)) {
-          longRunning {
-            Future {
-              LKCCommandResult(Try {
-                logkafkaAdminUtils.deleteLogkafka(logkafkaCommandActorConfig.curator, hostname, log_path, logkafkaConfig)
-              })
-            }
+        longRunning {
+          Future {
+            LKCCommandResult(Try {
+              logkafkaAdminUtils.deleteLogkafka(logkafkaCommandActorConfig.curator, hostname, log_path, logkafkaConfig)
+            })
           }
-        } else {
-          val result : LKCCommandResult = LKCCommandResult(Failure(new UnsupportedOperationException(
-            s"Delete logkafka not supported for kafka version ${logkafkaCommandActorConfig.clusterContext.config.version}")))
-          sender ! result
         }
       case LKCCreateLogkafka(hostname, log_path, config, logkafkaConfig) =>
         longRunning {
