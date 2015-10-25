@@ -81,11 +81,11 @@ class LogkafkaCommandActor(logkafkaCommandActorConfig: LogkafkaCommandActorConfi
             })
           }
         }
-      case LKCUpdateLogkafkaConfig(hostname, log_path, config, logkafkaConfig) =>
+      case LKCUpdateLogkafkaConfig(hostname, log_path, config, logkafkaConfig, checkConfig) =>
         longRunning {
           Future {
             LKCCommandResult(Try {
-              logkafkaAdminUtils.changeLogkafkaConfig(logkafkaCommandActorConfig.curator, hostname, log_path, config, logkafkaConfig)
+              logkafkaAdminUtils.changeLogkafkaConfig(logkafkaCommandActorConfig.curator, hostname, log_path, config, logkafkaConfig, checkConfig)
             })
           }
         }
