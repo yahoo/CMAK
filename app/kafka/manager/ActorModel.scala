@@ -92,7 +92,9 @@ object ActorModel {
                               ) extends CommandRequest
   case class CMUpdateLogkafkaConfig(hostname: String, 
                                     log_path: String, 
-                                    config: Properties) extends CommandRequest
+                                    config: Properties,
+                                    checkConfig: Boolean = true
+                                    ) extends CommandRequest
   case class CMDeleteLogkafka(hostname: String, log_path: String) extends CommandRequest
   //##########
 
@@ -584,7 +586,9 @@ object ActorModel {
   case class LKCUpdateLogkafkaConfig(hostname: String,
                                      log_path: String,
                                      config: Properties,
-                                     logkafkaConfig: Option[LogkafkaConfig]) extends CommandRequest
+                                     logkafkaConfig: Option[LogkafkaConfig],
+                                     checkConfig: Boolean = true
+                                     ) extends CommandRequest
 
   case class LKCCommandResult(result: Try[Unit]) extends CommandResponse
 
