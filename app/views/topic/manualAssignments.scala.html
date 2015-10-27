@@ -22,14 +22,27 @@
 @theMenu = {
 @views.html.navigation.clusterMenu(cluster,"Topic","Manual Partition Assignments",models.navigation.Menus.clusterMenus(cluster))
 }
-
+@color(brokerId: Int) = @{
+  java.security.MessageDigest.getInstance("MD5").digest("" + brokerId).map("%02X".format(_)).mkString.substring(0,6)
+}
+@toColor(brokerId: Int) = {
+  #@color(brokerId)
+}
+@reverseColor(originalColor: String) = {
+  #@originalColor.map({x => if(x == '#') x else "%X".format(0xf - Integer.parseInt(x.toString,16)).head})
+}
 @replicaSelection(topicIdx: Int, assignIdx: Int, brokerIndex: Int, brokerId: Int) = {
     @if(brokers.list.filter({broker => broker.id == brokerId}).size > 0) {
-        <select name="topics[@topicIdx].assignments[@assignIdx].brokers[@brokerIndex]">
-            @brokers.list.map { case broker =>
-            <option value="@broker.id" @if(broker.id == brokerId){selected}>Broker @broker.id</option>
-            }
-        </select>
+    <span style="background-color: @toColor(brokerId) ;">
+      <select onchange="this.parentNode.setAttribute('style', 
+        this.options[this.selectedIndex].getAttribute('style'))"
+        name="topics[@topicIdx].assignments[@assignIdx].brokers[@brokerIndex]">
+        @brokers.list.map { case broker =>
+        <option style="background-color: @toColor(broker.id); color: @reverseColor(color(broker.id));"
+        value="@broker.id" @if(broker.id == brokerId){selected}>Broker @broker.id</option>
+        }
+      </select>
+      &nbsp;&nbsp;&nbsp;</span>
     } else {
         <small style="color:red">Broker Down!</small>
         <script>window.onload = function() {disableSubmission()}</script>
