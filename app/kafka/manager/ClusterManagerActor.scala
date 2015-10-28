@@ -20,7 +20,7 @@ import org.apache.zookeeper.CreateMode
 import kafka.common.TopicAndPartition
 import kafka.manager.utils.AdminUtils
 
-import scala.collection.immutable
+import scala.collection.{mutable, immutable}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
@@ -249,11 +249,13 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           }
         }
         val eventualTopicDescription = withKafkaStateActor(KSGetTopicDescription(topic))(identity[Option[TopicDescription]])
+        val eventualTopicPartitionSizes = withBrokerViewCacheActor(BVGetBrokerTopicPartitionSizes(topic))(identity[Option[Map[Int, Map[Int, Long]]]])
         val result: Future[Option[CMTopicIdentity]] = for {
           bl <- eventualBrokerList
           tm <- eventualTopicMetrics
           tdO <- eventualTopicDescription
-        } yield tdO.map( td => CMTopicIdentity(Try(TopicIdentity.from(bl,td,tm,clusterContext,None))))
+          tp <- eventualTopicPartitionSizes
+        } yield tdO.map( td => CMTopicIdentity(Try(TopicIdentity.from(bl,td,tm,tp,clusterContext,None))))
         result pipeTo sender
 
       case CMGetLogkafkaIdentity(hostname) =>
@@ -413,7 +415,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           for {
             bl <- eventualBrokerList
             tds <- eventualDescriptions
-            tis = tds.descriptions.map(TopicIdentity.from(bl, _, None,clusterContext, None))
+            tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, None, clusterContext, None))
           } yield {
             bl.list.map(_.id.toInt)
             // check if any nonexistent broker got selected for reassignment
@@ -456,8 +458,8 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         val preferredLeaderElections = for {
           bl <- eventualBrokerList
           tds <- eventualDescriptions
-          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, clusterContext, None))
-          toElect = tis.map(ti => ti.partitionsIdentity.values.filter(!_.isPreferredLeader).map(tpi => TopicAndPartition(ti.topic, tpi.partNum))).flatten.toSet
+          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, None, clusterContext, None))
+          toElect = tis.flatMap(ti => ti.partitionsIdentity.values.filter(!_.isPreferredLeader).map(tpi => TopicAndPartition(ti.topic, tpi.partNum))).toSet
         } yield toElect
         preferredLeaderElections.map { toElect =>
           withKafkaCommandActor(KCPreferredReplicaLeaderElection(toElect)) { kcResponse: KCCommandResult =>
@@ -472,7 +474,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         val topicsAndReassignments = for {
           bl <- eventualBrokerList
           tds <- eventualDescriptions
-          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, clusterContext, None))
+          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, None, clusterContext, None))
         } yield {
           val reassignments = tis.map { ti =>
             val topicZkPath = zkPathFrom(baseTopicsZkPath, ti.topic)

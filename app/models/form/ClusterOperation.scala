@@ -40,7 +40,7 @@ object ClusterOperation {
             logkafkaEnabled: Boolean, 
             activeOffsetCacheEnabled: Boolean,
             displaySizeEnabled: Boolean): ClusterOperation = {
-    ClusterOperation(operation,ClusterConfig(name, version, zkHosts, zkMaxRetry, jmxEnabled, filterConsumers, logkafkaEnabled, activeOffsetCacheEnabled))
+    ClusterOperation(operation,ClusterConfig(name, version, zkHosts, zkMaxRetry, jmxEnabled, filterConsumers, logkafkaEnabled, activeOffsetCacheEnabled, displaySizeEnabled))
   }
 
   def customUnapply(co: ClusterOperation) : Option[(String, String, String, String, Int, Boolean, Boolean, Boolean, Boolean, Boolean)] = {

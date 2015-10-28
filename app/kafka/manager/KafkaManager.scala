@@ -194,8 +194,8 @@ class KafkaManager(akkaConfig: Config)
                  jmxEnabled: Boolean, 
                  filterConsumers: Boolean, 
                  logkafkaEnabled: Boolean = false, 
-                 activeOffsetCacheEnabled: Boolean = false): Future[ApiError \/
-    Unit] =
+                 activeOffsetCacheEnabled: Boolean = false,
+                 displaySizeEnabled: Boolean = false): Future[ApiError \/ Unit] =
   {
     val cc = ClusterConfig(
       clusterName, 
@@ -204,14 +204,21 @@ class KafkaManager(akkaConfig: Config)
       jmxEnabled = jmxEnabled, 
       filterConsumers = filterConsumers, 
       logkafkaEnabled = logkafkaEnabled, 
-      activeOffsetCacheEnabled = activeOffsetCacheEnabled)
+      activeOffsetCacheEnabled = activeOffsetCacheEnabled,
+      displaySizeEnabled = displaySizeEnabled)
     tryWithKafkaManagerActor(KMAddCluster(cc)) { result: KMCommandResult =>
       result.result.get
     }
   }
 
-  def updateCluster(clusterName: String, version: String, zkHosts: String, jmxEnabled: Boolean, filterConsumers: Boolean, logkafkaEnabled: Boolean = false, activeOffsetCacheEnabled: Boolean = false): Future[ApiError \/
-    Unit] =
+  def updateCluster(clusterName: String,
+                    version: String,
+                    zkHosts: String,
+                    jmxEnabled: Boolean,
+                    filterConsumers: Boolean,
+                    logkafkaEnabled: Boolean = false,
+                    activeOffsetCacheEnabled: Boolean = false,
+                    displaySizeEnabled: Boolean = false): Future[ApiError \/ Unit] =
   {
     val cc = ClusterConfig(
       clusterName, 
@@ -220,7 +227,8 @@ class KafkaManager(akkaConfig: Config)
       jmxEnabled = jmxEnabled, 
       filterConsumers = filterConsumers, 
       logkafkaEnabled = logkafkaEnabled, 
-      activeOffsetCacheEnabled = activeOffsetCacheEnabled)
+      activeOffsetCacheEnabled = activeOffsetCacheEnabled,
+      displaySizeEnabled = displaySizeEnabled)
     tryWithKafkaManagerActor(KMUpdateCluster(cc)) { result: KMCommandResult =>
       result.result.get
     }
@@ -256,8 +264,8 @@ class KafkaManager(akkaConfig: Config)
     }
   }
 
-  def manualPartitionAssignments( clusterName: String,
-                                  assignments: List[(String, List[(Int, List[Int])])]) = {
+  def manualPartitionAssignments(clusterName: String,
+                                 assignments: List[(String, List[(Int, List[Int])])]) = {
     implicit val ec = apiExecutionContext
     val results = tryWithKafkaManagerActor(
       KMClusterCommandRequest (
@@ -615,8 +623,8 @@ class KafkaManager(akkaConfig: Config)
       identity[Option[CMTopicIdentity]]
     )
     implicit val ec = apiExecutionContext
-    futureCMTopicIdentity.map[ApiError \/ TopicIdentity] { errOrTD =>
-      errOrTD.fold[ApiError \/ TopicIdentity](
+    futureCMTopicIdentity.map[ApiError \/ TopicIdentity] { errOrTI =>
+      errOrTI.fold[ApiError \/ TopicIdentity](
       { err: ApiError =>
         -\/[ApiError](err)
       }, { tiOption: Option[CMTopicIdentity] =>

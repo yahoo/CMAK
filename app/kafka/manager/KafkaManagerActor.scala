@@ -162,7 +162,7 @@ object ClusterConfig {
           val filterConsumers = field[Boolean]("filterConsumers")(json)
           val logkafkaEnabled = field[Boolean]("logkafkaEnabled")(json)
           val activeOffsetCacheEnabled = field[Boolean]("activeOffsetCacheEnabled")(json)
-          val displaySizeEnabled = field[Boolean]("activeOffsetCacheEnabled")(json)
+          val displaySizeEnabled = field[Boolean]("displaySizeEnabled")(json)
           ClusterConfig.apply(
             name,
             curatorConfig,
@@ -421,6 +421,8 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
         modify {
           val data: Array[Byte] = ClusterConfig.serialize(clusterConfig)
           val zkpath: String = getConfigsZkPath(clusterConfig)
+          require(!(clusterConfig.displaySizeEnabled && !clusterConfig.jmxEnabled),
+            "Display topic and broker size can only be enabled when JMX is enabled")
           require(kafkaManagerPathCache.getCurrentData(zkpath) == null,
             s"Cluster already exists : ${clusterConfig.name}")
           require(deleteClustersPathCache.getCurrentData(getDeleteClusterZkPath(clusterConfig.name)) == null,
@@ -433,6 +435,8 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
         modify {
           val data: Array[Byte] = ClusterConfig.serialize(clusterConfig)
           val zkpath: String = getConfigsZkPath(clusterConfig)
+          require(!(clusterConfig.displaySizeEnabled && !clusterConfig.jmxEnabled),
+            "Display topic and broker size can only be enabled when JMX is enabled")
           require(deleteClustersPathCache.getCurrentData(getDeleteClusterZkPath(clusterConfig.name)) == null,
             s"Cluster is marked for deletion : ${clusterConfig.name}")
           require(kafkaManagerPathCache.getCurrentData(zkpath) != null,
@@ -601,7 +605,8 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
         && newConfig.jmxEnabled == currentConfig.jmxEnabled
         && newConfig.logkafkaEnabled == currentConfig.logkafkaEnabled
         && newConfig.filterConsumers == currentConfig.filterConsumers
-        && newConfig.activeOffsetCacheEnabled == currentConfig.activeOffsetCacheEnabled) {
+        && newConfig.activeOffsetCacheEnabled == currentConfig.activeOffsetCacheEnabled
+        && newConfig.displaySizeEnabled == currentConfig.displaySizeEnabled) {
         //nothing changed
         false
       } else {

@@ -14,7 +14,7 @@
                     <td>JMX Port</td>
                     <td>Bytes In</td>
                     <td>Bytes Out</td>
-                    @if(brokerListExtended.clusterConfig.jmxEnabled && brokerListExtended.clusterConfig.displaySizeEnabled) {
+                    @if(brokerListExtended.clusterContext.config.jmxEnabled && brokerListExtended.clusterContext.config.displaySizeEnabled) {
                     <td>Size</td>
                     }
                 </tr>
@@ -36,7 +36,7 @@
                             @brokerListExtended.metrics.get(broker.id).map(_.bytesOutPerSec.formatOneMinuteRate)
                         </span>
                     </td>
-                    @if(brokerListExtended.clusterConfig.jmxEnabled && brokerListExtended.clusterConfig.displaySizeEnabled) {
+                    @if(brokerListExtended.clusterContext.config.jmxEnabled && brokerListExtended.clusterContext.config.displaySizeEnabled) {
                     <td>
                         <span class="badge">
                             @brokerListExtended.metrics.get(broker.id).map(_.size.formatSize)
