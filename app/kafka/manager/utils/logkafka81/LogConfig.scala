@@ -18,6 +18,7 @@
 package kafka.manager.utils.logkafka81
 
 import java.util.Properties
+import scala.util.matching.Regex
 import kafka.manager.utils.LogkafkaNewConfigs
 
 object Defaults {
@@ -152,6 +153,7 @@ object LogConfig extends LogkafkaNewConfigs {
   def validate(props: Properties) {
     validateNames(props)
     validateTopic(props)
+    validateRegexFilterPattern(props)
     LogConfig.fromProps(LogConfig().toProps, props) // check that we can parse the values
   }
 
@@ -163,4 +165,17 @@ object LogConfig extends LogkafkaNewConfigs {
     require(topic != null , "Topic is null")
   }
 
+  /**
+   * Check that is RegexFilterPattern reasonable
+   */
+  private def validateRegexFilterPattern(props: Properties) {
+    val regexFilterPattern = props.getProperty(RegexFilterPatternProp)
+    val valid = try {
+      s"""$regexFilterPattern""".r  
+      true
+    } catch {
+      case e: Exception => false
+    }
+    require(valid, "RegexFilterPattern is invalid")
+  }
 }
