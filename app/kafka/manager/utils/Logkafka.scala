@@ -56,10 +56,19 @@ object Logkafka {
     checkCondition(log_path.length <= maxPathLength, InvalidLogPathLength)
     illRgxPath.findFirstIn(log_path) match {
       case Some(t) =>
-        checkCondition(false, IllegalCharacterInName(log_path))
+        checkCondition(false, IllegalCharacterInPath(log_path))
       case None =>
-        checkCondition(true, IllegalCharacterInName(log_path))
+        checkCondition(true, IllegalCharacterInPath(log_path))
     }
+
+    val f = new java.io.File(log_path);
+    val valid = try {
+      f.getCanonicalPath()
+      true
+    } catch {
+      case e: Exception => false
+    }
+    checkCondition(valid, InvalidLogPath)
   }
 
   def parseJsonStr(hostname: String, jsonStr: String): Map[String, Map[String, String]] = {
@@ -93,6 +102,7 @@ object LogkafkaErrors {
   class InvalidHostname private[LogkafkaErrors] extends UtilError(s"hostname is illegal, does not match regex ${Logkafka.validHostnameRegex}")
   class InvalidHostnameLength private[LogkafkaErrors] extends UtilError(
     "hostname is illegal, can't be longer than " + Logkafka.maxNameLength + " characters")
+  class InvalidLogPath private[LogkafkaErrors] extends UtilError(s"log path is illegal")
   class InvalidLogPathLength private[LogkafkaErrors] extends UtilError(
     "log path is illegal, can't be longer than " + Logkafka.maxPathLength + " characters")
   class IllegalCharacterInName private[LogkafkaErrors] (hostname: String) extends UtilError(
@@ -107,6 +117,7 @@ object LogkafkaErrors {
   val LogPathNotAbsolute = new LogPathNotAbsolute
   val InvalidHostname = new InvalidHostname
   val InvalidHostnameLength = new InvalidHostnameLength
+  val InvalidLogPath = new InvalidLogPath
   val InvalidLogPathLength = new InvalidLogPathLength
   def IllegalCharacterInName(hostname: String) = new IllegalCharacterInName(hostname)
   def IllegalCharacterInPath(log_path: String) = new IllegalCharacterInPath(log_path)

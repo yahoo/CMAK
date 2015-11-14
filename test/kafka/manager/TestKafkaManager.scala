@@ -341,7 +341,7 @@ class TestKafkaManager extends CuratorAwareTest {
     assert(result2.isRight === true)
     assert((result2.toOption.get.pending.nonEmpty === true) ||
            (result2.toOption.get.active.find(c => c.name == "dev").get.curatorConfig.zkConnect === testServer.getConnectString))
-    Thread.sleep(3000)
+    Thread.sleep(5000)
   }
 
   test("disable cluster") {
@@ -354,7 +354,7 @@ class TestKafkaManager extends CuratorAwareTest {
     assert(result2.isRight === true)
     assert((result2.toOption.get.pending.nonEmpty === true) ||
            (result2.toOption.get.active.find(c => c.name == "dev").get.enabled === false))
-    Thread.sleep(3000)
+    Thread.sleep(5000)
   }
 
   test("enable cluster") {

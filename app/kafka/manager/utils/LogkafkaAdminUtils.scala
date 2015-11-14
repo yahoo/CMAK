@@ -59,7 +59,7 @@ class LogkafkaAdminUtils(version: KafkaVersion) {
                   hostname: String,
                   log_path: String,
                   config: Properties = new Properties,
-                  logkafkaConfigOption: Option[kafka.manager.ActorModel.LogkafkaConfig]
+                  logkafkaConfigOption: Option[kafka.manager.ActorModel.LogkafkaConfig] = None
                   ): Unit = {
     createOrUpdateLogkafkaConfigPathInZK(curator, hostname, log_path, config, logkafkaConfigOption)
   }
@@ -75,6 +75,7 @@ class LogkafkaAdminUtils(version: KafkaVersion) {
                                            ) {
     // validate arguments
     Logkafka.validateHostname(hostname)
+    Logkafka.validatePath(log_path)
 
     if (checkConfig) {
       LogkafkaNewConfigs.validate(version, config)

@@ -88,6 +88,11 @@ case class LogConfig(val valid: Boolean = Defaults.Valid,
 }
 
 object LogConfig extends LogkafkaNewConfigs {
+  import kafka.manager.utils.logkafka81.LogkafkaConfigErrors._
+  import kafka.manager.utils._
+
+  val maxRegexFilterPatternLength = 255
+
   val ValidProp = "valid"
   val FollowLastProp = "follow_last"
   val BatchSizeProp = "batchsize"
@@ -170,12 +175,25 @@ object LogConfig extends LogkafkaNewConfigs {
    */
   private def validateRegexFilterPattern(props: Properties) {
     val regexFilterPattern = props.getProperty(RegexFilterPatternProp)
+    if (regexFilterPattern == null) return
+    checkCondition(regexFilterPattern.length <= maxRegexFilterPatternLength, LogkafkaConfigErrors.InvalidRegexFilterPatternLength)
     val valid = try {
       s"""$regexFilterPattern""".r  
       true
     } catch {
       case e: Exception => false
     }
-    require(valid, "RegexFilterPattern is invalid")
+    checkCondition(valid, LogkafkaConfigErrors. InvalidRegexFilterPattern)
   }
+}
+
+object LogkafkaConfigErrors {
+  import kafka.manager.utils.UtilError
+  class InvalidRegexFilterPattern private[LogkafkaConfigErrors] extends UtilError(
+    "regex filter pattern is illegal, does not conform to pcre2")
+  class InvalidRegexFilterPatternLength private[LogkafkaConfigErrors] extends UtilError(
+    "regex filter pattern is illegal, can't be longer than " + LogConfig.maxRegexFilterPatternLength + " characters")
+
+  val InvalidRegexFilterPattern = new InvalidRegexFilterPattern
+  val InvalidRegexFilterPatternLength = new InvalidRegexFilterPatternLength 
 }
