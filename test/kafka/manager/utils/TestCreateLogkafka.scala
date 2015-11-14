@@ -124,7 +124,7 @@ class TestCreateLogkafka extends CuratorAwareTest {
     }
   }
 
-  test("create logkafka with log path too long") {
+  test("create logkafka with regex filter pattern too long") {
     val config = new Properties()
     config.put(kafka.manager.utils.logkafka82.LogConfig.TopicProp, createLogkafkaTopic)
     config.put(kafka.manager.utils.logkafka82.LogConfig.RegexFilterPatternProp, "adfasfdsafsfasdfsadfasfsdfasffsdfsadfsdfsdfsfasdfdsfdsafasdfsfdsafasdfdsfdsafsdfdsafasdfsdafasdfadsfdsfsdafsdfsadfdsfasfdfasfsdafsdfdsfdsfasdfdsfsdfsadfsdfasdfdsafasdfsadfdfdsfdsfsfsfdsfdsfdssafsdfdsafadfasdfsdafsdfasdffasfdfadsfasdfasfadfafsdfasfdssafffffffffffdsadfsafdasdfsafsfsfsdfafs")
