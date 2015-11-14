@@ -18,6 +18,7 @@
 package kafka.manager.utils.logkafka82
 
 import java.util.Properties
+import scala.util.matching.Regex
 import kafka.manager.utils.LogkafkaNewConfigs
 
 object Defaults {
@@ -30,6 +31,7 @@ object Defaults {
   val CompressionCodec= "none"
   val RequiredAcks = 1
   val MessageTimeoutMs = 0
+  val RegexFilterPattern = ""
 }
 
 /**
@@ -48,6 +50,7 @@ object Defaults {
  * @param messageTimeoutMs Local message timeout. This value is only enforced locally 
                            and limits the time a produced message waits for successful delivery.
                            A time of 0 is infinite.
+ * @param regexFilterPattern The messages matching this pattern will be dropped.
  *
  */
 case class LogConfig(val valid: Boolean = Defaults.Valid,
@@ -58,7 +61,8 @@ case class LogConfig(val valid: Boolean = Defaults.Valid,
                      val partition: Int = Defaults.Partition,
                      val compressionCodec: String = Defaults.CompressionCodec,
                      val requiredAcks: Int = Defaults.RequiredAcks,
-                     val messageTimeoutMs: Long = Defaults.MessageTimeoutMs) {
+                     val messageTimeoutMs: Long = Defaults.MessageTimeoutMs,
+                     val regexFilterPattern: String = Defaults.RegexFilterPattern) {
 
   def toProps: Properties = {
     val props = new Properties()
@@ -72,6 +76,7 @@ case class LogConfig(val valid: Boolean = Defaults.Valid,
     props.put(CompressionCodecProp, compressionCodec.toString)
     props.put(RequiredAcksProp, requiredAcks.toString)
     props.put(MessageTimeoutMsProp, messageTimeoutMs.toString)
+    props.put(RegexFilterPatternProp, regexFilterPattern.toString)
     props
   }
 
@@ -83,6 +88,11 @@ case class LogConfig(val valid: Boolean = Defaults.Valid,
 }
 
 object LogConfig extends LogkafkaNewConfigs {
+  import kafka.manager.utils.logkafka82.LogkafkaConfigErrors._
+  import kafka.manager.utils._
+
+  val maxRegexFilterPatternLength = 255
+
   val ValidProp = "valid"
   val FollowLastProp = "follow_last"
   val BatchSizeProp = "batchsize"
@@ -92,6 +102,7 @@ object LogConfig extends LogkafkaNewConfigs {
   val CompressionCodecProp  = "compression_codec"
   val RequiredAcksProp = "required_acks"
   val MessageTimeoutMsProp = "message_timeout_ms"
+  val RegexFilterPatternProp = "regex_filter_pattern"
 
   val ConfigMaps = Map(ValidProp -> Defaults.Valid.toString,
                        FollowLastProp -> Defaults.FollowLast.toString,
@@ -101,7 +112,8 @@ object LogConfig extends LogkafkaNewConfigs {
                        PartitionProp -> Defaults.Partition.toString,
                        CompressionCodecProp -> Defaults.CompressionCodec.toString,
                        RequiredAcksProp -> Defaults.RequiredAcks.toString,
-                       MessageTimeoutMsProp -> Defaults.MessageTimeoutMs.toString)
+                       MessageTimeoutMsProp -> Defaults.MessageTimeoutMs.toString,
+                       RegexFilterPatternProp -> Defaults.RegexFilterPattern.toString)
   def configMaps = ConfigMaps
   val ConfigNames = ConfigMaps.keySet
   def configNames = ConfigNames
@@ -118,7 +130,8 @@ object LogConfig extends LogkafkaNewConfigs {
                   partition = props.getProperty(PartitionProp, Defaults.Partition.toString).toInt,
                   compressionCodec = props.getProperty(CompressionCodecProp, Defaults.CompressionCodec.toString).toString,
                   requiredAcks= props.getProperty(RequiredAcksProp, Defaults.RequiredAcks.toString).toInt,
-                  messageTimeoutMs = props.getProperty(MessageTimeoutMsProp, Defaults.MessageTimeoutMs.toString).toLong)
+                  messageTimeoutMs = props.getProperty(MessageTimeoutMsProp, Defaults.MessageTimeoutMs.toString).toLong,
+                  regexFilterPattern = props.getProperty(RegexFilterPatternProp, Defaults.RegexFilterPattern.toString).toString)
   }
 
   /**
@@ -145,6 +158,7 @@ object LogConfig extends LogkafkaNewConfigs {
   def validate(props: Properties) {
     validateNames(props)
     validateTopic(props)
+    validateRegexFilterPattern(props)
     LogConfig.fromProps(LogConfig().toProps, props) // check that we can parse the values
   }
 
@@ -156,4 +170,30 @@ object LogConfig extends LogkafkaNewConfigs {
     require(topic != null , "Topic is null")
   }
 
+  /**
+   * Check that is RegexFilterPattern reasonable
+   */
+  private def validateRegexFilterPattern(props: Properties) {
+    val regexFilterPattern = props.getProperty(RegexFilterPatternProp)
+    if (regexFilterPattern == null) return
+    checkCondition(regexFilterPattern.length <= maxRegexFilterPatternLength, LogkafkaConfigErrors.InvalidRegexFilterPatternLength)
+    val valid = try {
+      s"""$regexFilterPattern""".r  
+      true
+    } catch {
+      case e: Exception => false
+    }
+    checkCondition(valid, LogkafkaConfigErrors. InvalidRegexFilterPattern)
+  }
+}
+
+object LogkafkaConfigErrors {
+  import kafka.manager.utils.UtilError
+  class InvalidRegexFilterPattern private[LogkafkaConfigErrors] extends UtilError(
+    "regex filter pattern is illegal, does not conform to pcre2")
+  class InvalidRegexFilterPatternLength private[LogkafkaConfigErrors] extends UtilError(
+    "regex filter pattern is illegal, can't be longer than " + LogConfig.maxRegexFilterPatternLength + " characters")
+
+  val InvalidRegexFilterPattern = new InvalidRegexFilterPattern
+  val InvalidRegexFilterPatternLength = new InvalidRegexFilterPatternLength 
 }
