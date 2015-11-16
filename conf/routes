@@ -54,6 +54,7 @@ POST        /clusters/:c/logkafkas/:h/:l/enableConfig     controllers.Logkafka.h
 GET         /api/status/:c/availableBrokers               controllers.api.KafkaHealthCheck.availableBrokers(c:String)
 GET         /api/status/:c/:t/underReplicatedPartitions   controllers.api.KafkaHealthCheck.underReplicatedPartitions(c:String,t:String)
 GET         /api/status/:c/:t/unavailablePartitions       controllers.api.KafkaHealthCheck.unavailablePartitions(c:String,t:String)
+GET         /api/:c/topics                                controllers.api.Topic.index(c:String)
 
 # Versioned Assets
 GET         /vassets/*file          controllers.Assets.versioned(path="/public", file: Asset)
