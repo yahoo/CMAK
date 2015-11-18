@@ -5,7 +5,8 @@
 @import scalaz.{\/}
 @(cluster:String,
   topic: String,
-  errorOrTopicIdentity: kafka.manager.ApiError \/ kafka.manager.ActorModel.TopicIdentity
+  errorOrTopicIdentity: kafka.manager.ApiError \/ kafka.manager.ActorModel.TopicIdentity,
+  optConsumerList: Option[Iterable[String]]
 )(implicit af: features.ApplicationFeatures)
 
 @theMenu = {
@@ -23,7 +24,7 @@
         <div class="panel-heading">
             <h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>@topic</h3>
         </div>
-        @errorOrTopicIdentity.fold(views.html.errors.onApiError(_),views.html.topic.topicViewContent(cluster,topic,_))
+        @errorOrTopicIdentity.fold(views.html.errors.onApiError(_),views.html.topic.topicViewContent(cluster,topic,_,optConsumerList.getOrElse(Iterable.empty[String])))
     </div>
 </div>
 }

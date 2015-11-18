@@ -4,14 +4,21 @@
  */
 package kafka.test
 
+import java.util.{UUID, Properties}
+import java.util.concurrent.{Executors, ExecutorService}
 import java.util.concurrent.atomic.AtomicInteger
 
+import kafka.consumer._
 import kafka.manager.Kafka_0_8_2_0
 import kafka.manager.utils.AdminUtils
+import kafka.message.{NoCompressionCodec, DefaultCompressionCodec}
+import kafka.producer.{KeyedMessage, ProducerConfig, Producer}
+import kafka.serializer.DefaultDecoder
 import org.apache.curator.framework.imps.CuratorFrameworkState
 import org.apache.curator.framework.{CuratorFrameworkFactory, CuratorFramework}
 import org.apache.curator.retry.ExponentialBackoffRetry
 import org.apache.curator.test.TestingServer
+import org.slf4j.LoggerFactory
 
 import scala.util.Try
 
@@ -46,7 +53,7 @@ class SeededBroker(seedTopic: String, partitions: Int) {
     }
     throw new RuntimeException("Failed to create testing server using curator!")
   }
-
+  
   private def initTestingServer(port: Int) : Try[TestingServer] = {
     Try(new TestingServer(port,true))
   }
@@ -63,10 +70,127 @@ class SeededBroker(seedTopic: String, partitions: Int) {
     }
     Try(testingServer.close())
   }
+  
+  def getSimpleConsumer : SimpleConsumer = {
+    new SimpleConsumer("localhost", broker.getPort, 10000, 64 * 1024, "test-consumer")
+  }
+  
+  def getHighLevelConsumer : HighLevelConsumer = {
+    new HighLevelConsumer(seedTopic, "test-hl-consumer", getZookeeperConnectionString)
+  }
+  
+  def getSimpleProducer : SimpleProducer = {
+    new SimpleProducer(seedTopic, getBrokerConnectionString, "test-producer")
+    
+  }
 }
 
 object SeededBroker {
   val portNum = new AtomicInteger(10000)
   
   def nextPortNum(): Int = portNum.incrementAndGet()
+}
+
+/**
+ * Borrowed from https://github.com/stealthly/scala-kafka/blob/master/src/main/scala/KafkaConsumer.scala
+ * @param topic
+ * @param groupId
+ * @param zookeeperConnect
+ * @param readFromStartOfStream
+ */
+case class HighLevelConsumer(topic: String,
+                    groupId: String,
+                    zookeeperConnect: String,
+                    readFromStartOfStream: Boolean = true) {
+
+  val log = LoggerFactory.getLogger(classOf[HighLevelConsumer])
+  val props = new Properties()
+  props.put("group.id", groupId)
+  props.put("zookeeper.connect", zookeeperConnect)
+  props.put("zookeeper.sync.time.ms", "200")
+  props.put("auto.commit.interval.ms", "1000")
+  props.put("auto.offset.reset", if(readFromStartOfStream) "smallest" else "largest")
+
+  val config = new ConsumerConfig(props)
+  val connector = Consumer.create(config)
+
+  val filterSpec = new Whitelist(topic)
+
+  log.info("setup:start topic=%s for zk=%s and groupId=%s".format(topic,zookeeperConnect,groupId))
+  val stream : KafkaStream[Array[Byte], Array[Byte]] = connector.createMessageStreamsByFilter[Array[Byte], Array[Byte]](filterSpec, 1, new DefaultDecoder(), new DefaultDecoder()).head
+  log.info("setup:complete topic=%s for zk=%s and groupId=%s".format(topic,zookeeperConnect,groupId))
+
+  def read(write: (Array[Byte])=>Unit) = {
+    log.info("reading on stream now")
+    for(messageAndTopic <- stream) {
+      try {
+        log.info("writing from stream")
+        write(messageAndTopic.message)
+        log.info("written to stream")
+      } catch {
+        case e: Throwable =>
+            log.error("Error processing message, skipping this message: ", e)
+      }
+    }
+  }
+
+  def close() {
+    connector.shutdown()
+  }
+}
+
+/**
+ * Borrowed from https://github.com/stealthly/scala-kafka/blob/master/src/main/scala/KafkaProducer.scala
+ * @param topic
+ * @param brokerList
+ * @param clientId
+ * @param synchronously
+ * @param compress
+ * @param batchSize
+ * @param messageSendMaxRetries
+ * @param requestRequiredAcks
+ */
+case class SimpleProducer(topic: String,
+                         brokerList: String,
+                         clientId: String = UUID.randomUUID().toString,
+                         synchronously: Boolean = true,
+                         compress: Boolean = true,
+                         batchSize: Integer = 200,
+                         messageSendMaxRetries: Integer = 3,
+                         requestRequiredAcks: Integer = -1
+                          ) {
+
+  val props = new Properties()
+
+  val codec = if(compress) DefaultCompressionCodec.codec else NoCompressionCodec.codec
+
+  props.put("compression.codec", codec.toString)
+  props.put("producer.type", if(synchronously) "sync" else "async")
+  props.put("metadata.broker.list", brokerList)
+  props.put("batch.num.messages", batchSize.toString)
+  props.put("message.send.max.retries", messageSendMaxRetries.toString)
+  props.put("request.required.acks",requestRequiredAcks.toString)
+  props.put("client.id",clientId.toString)
+
+  val producer = new Producer[AnyRef, AnyRef](new ProducerConfig(props))
+
+  def kafkaMesssage(message: Array[Byte], partition: Array[Byte]): KeyedMessage[AnyRef, AnyRef] = {
+    if (partition == null) {
+      new KeyedMessage(topic,message)
+    } else {
+      new KeyedMessage(topic,partition,message)
+    }
+  }
+
+  def send(message: String, partition: String = null): Unit = send(message.getBytes("UTF8"), if (partition == null) null else partition.getBytes("UTF8"))
+
+  def send(message: Array[Byte], partition: Array[Byte]): Unit = {
+    try {
+      producer.send(kafkaMesssage(message, partition))
+    } catch {
+      case e: Exception =>
+        e.printStackTrace
+        System.exit(1)
+    }
+  }
 }

@@ -63,7 +63,7 @@ class TestKafkaManagerActor extends CuratorAwareTest {
   }
 
   test("add cluster") {
-    val cc = ClusterConfig("dev","0.8.1.1",testServer.getConnectString, jmxEnabled = false)
+    val cc = ClusterConfig("dev","0.8.1.1",testServer.getConnectString, jmxEnabled = false, filterConsumers = true)
     withKafkaManagerActor(KMAddCluster(cc)) { result: KMCommandResult =>
       result.result.get
       Thread.sleep(1000)
@@ -74,7 +74,7 @@ class TestKafkaManagerActor extends CuratorAwareTest {
   }
 
   test("update cluster zkhost") {
-    val cc2 = ClusterConfig("dev","0.8.1.1",kafkaServerZkPath, jmxEnabled = false)
+    val cc2 = ClusterConfig("dev","0.8.1.1",kafkaServerZkPath, jmxEnabled = false, filterConsumers = true)
     withKafkaManagerActor(KMUpdateCluster(cc2)) { result: KMCommandResult =>
       result.result.get
       Thread.sleep(3000)
@@ -106,7 +106,7 @@ class TestKafkaManagerActor extends CuratorAwareTest {
   }
 
   test("update cluster version") {
-    val cc2 = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false)
+    val cc2 = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, filterConsumers = true)
     withKafkaManagerActor(KMUpdateCluster(cc2)) { result: KMCommandResult =>
       result.result.get
       Thread.sleep(3000)
@@ -133,7 +133,7 @@ class TestKafkaManagerActor extends CuratorAwareTest {
       println(result)
       result.msg.contains("dev")
     }
-    val cc2 = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false)
+    val cc2 = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, filterConsumers = true)
     withKafkaManagerActor(KMAddCluster(cc2)) { result: KMCommandResult =>
       result.result.get
       Thread.sleep(1000)
@@ -145,12 +145,12 @@ class TestKafkaManagerActor extends CuratorAwareTest {
 
   test("get all broker views") {
     withKafkaManagerActor(KMClusterQueryRequest("dev", BVGetViews)) {
-      result: Seq[BVView] => result.nonEmpty
+      result: Map[Int, BVView] => result.nonEmpty
     }
   }
 
   test("update cluster logkafka enabled") {
-    val cc2 = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, logkafkaEnabled = true)
+    val cc2 = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, filterConsumers = true, logkafkaEnabled = true)
     withKafkaManagerActor(KMUpdateCluster(cc2)) { result: KMCommandResult =>
       result.result.get
       Thread.sleep(3000)

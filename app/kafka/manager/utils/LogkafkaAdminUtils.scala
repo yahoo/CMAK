@@ -59,7 +59,7 @@ class LogkafkaAdminUtils(version: KafkaVersion) {
                   hostname: String,
                   log_path: String,
                   config: Properties = new Properties,
-                  logkafkaConfigOption: Option[kafka.manager.ActorModel.LogkafkaConfig]
+                  logkafkaConfigOption: Option[kafka.manager.ActorModel.LogkafkaConfig] = None
                   ): Unit = {
     createOrUpdateLogkafkaConfigPathInZK(curator, hostname, log_path, config, logkafkaConfigOption)
   }
@@ -70,11 +70,16 @@ class LogkafkaAdminUtils(version: KafkaVersion) {
                                            config: Properties = new Properties,
                                            logkafkaConfigOption: Option[kafka.manager.ActorModel.LogkafkaConfig],
                                            update: Boolean = false,
-                                           readVersion: Int = -1
+                                           readVersion: Int = -1,
+                                           checkConfig: Boolean = true 
                                            ) {
     // validate arguments
     Logkafka.validateHostname(hostname)
-    LogkafkaNewConfigs.validate(version,config)
+    Logkafka.validatePath(log_path)
+
+    if (checkConfig) {
+      LogkafkaNewConfigs.validate(version, config)
+    }
 
     val configMap: mutable.Map[String, String] = {
       import scala.collection.JavaConverters._
@@ -112,9 +117,10 @@ class LogkafkaAdminUtils(version: KafkaVersion) {
                   hostname: String,
                   log_path: String,
                   config: Properties = new Properties,
-                  logkafkaConfigOption: Option[kafka.manager.ActorModel.LogkafkaConfig]
+                  logkafkaConfigOption: Option[kafka.manager.ActorModel.LogkafkaConfig],
+                  checkConfig: Boolean = true
                   ): Unit = {
-    createOrUpdateLogkafkaConfigPathInZK(curator, hostname, log_path, config, logkafkaConfigOption, true)
+    createOrUpdateLogkafkaConfigPathInZK(curator, hostname, log_path, config, logkafkaConfigOption, true, -1, checkConfig)
   }
 
   /**

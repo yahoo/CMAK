@@ -17,6 +17,7 @@
 
 package kafka.manager.utils.zero81
 
+import kafka.common.TopicAndPartition
 import kafka.manager.utils._
 import org.apache.curator.framework.CuratorFramework
 import org.apache.zookeeper.KeeperException.NodeExistsException
