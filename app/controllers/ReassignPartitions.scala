@@ -17,6 +17,8 @@ import play.api.data.Forms._
 import play.api.data.validation.{Valid, Invalid, Constraint}
 import play.api.mvc._
 
+import scala.collection.mutable
+
 import scala.concurrent.Future
 import scalaz.{\/, \/-, -\/}
 
@@ -204,7 +206,8 @@ object ReassignPartitions extends Controller{
             bl <- blOrError
           } yield {
             Ok(views.html.topic.manualAssignments(
-              c, t, manualReassignmentForm.fill(List(flattenTopicIdentity(ti))), bl, bv, manualReassignmentForm.errors
+              //c, t, manualReassignmentForm.fill(List(flattenTopicIdentity(ti))), bl, bv, manualReassignmentForm.errors
+              c, t, List(flattenTopicIdentity(ti)), bl, bv, manualReassignmentForm.errors
             ))
           }
           errorOrResult.fold(err => {
@@ -227,18 +230,19 @@ object ReassignPartitions extends Controller{
         }, { topics: TopicListExtended =>
           kafkaManager.getBrokerList(c).flatMap { errOrCV =>
             errOrCV.fold(
-            { err: ApiError =>
-              Future.successful(Ok(views.html.topic.confirmMultipleAssignments(c, -\/(err))))
-            }, { brokers: BrokerListExtended => {
-              brokersViews.flatMap { errorOrBVs =>
-                errorOrBVs.fold(
-                { err: ApiError => Future.successful(Ok(views.html.topic.confirmMultipleAssignments(c, -\/(err))))}, { bVs: Seq[BVView] => Future {
-                  Ok(views.html.topic.manualMultipleAssignments(
-                    c, manualReassignmentForm.fill(flattenedTopicListExtended(topics)), brokers, bVs, manualReassignmentForm.errors
-                  ))
-                }
-                }
-                )
+            {err: ApiError =>
+              Future.successful( Ok(views.html.topic.confirmMultipleAssignments( c, -\/(err) )))
+            },
+            { brokers: BrokerListExtended => {
+                brokersViews.flatMap { errorOrBVs =>
+                  errorOrBVs.fold (
+                  {err: ApiError => Future.successful( Ok(views.html.topic.confirmMultipleAssignments( c, -\/(err) )))},
+                  {bVs => Future {
+                    Ok(views.html.topic.manualMultipleAssignments(
+                      c, flattenedTopicListExtended(topics), brokers , bVs, manualReassignmentForm.errors
+                    ))
+                  }}
+                  )
               }
             }
             }
@@ -283,7 +287,7 @@ object ReassignPartitions extends Controller{
         errors => kafkaManager.getClusterList.flatMap { errorOrClusterList =>
           responseScreen(
             "Manual Reassign Partitions Failure",
-            -\/(IndexedSeq(ApiError("There is something really wrong with your submitted data!")))
+            -\/(IndexedSeq(ApiError("There is something really wrong with your submitted data!\n\n" + errors.toString)))
           )
         },
         assignment => {
@@ -397,7 +401,7 @@ object ReassignPartitions extends Controller{
         ),
         cc =>
           reassignPartitionsForm.bindFromRequest.fold(
-            formWithErrors => Future.successful(BadRequest(views.html.topic.topicView(c, t, -\/(ApiError("Unknown operation!"))))),
+            formWithErrors => Future.successful(BadRequest(views.html.topic.topicView(c, t, -\/(ApiError("Unknown operation!")), None))),
             op => op match {
               case RunAssignment =>
                 implicit val clusterFeatures = cc.clusterFeatures

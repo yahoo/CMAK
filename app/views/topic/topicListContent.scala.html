@@ -13,26 +13,26 @@
 
 @getBrokersSpreadLevel(percentage: Int) = {
     @percentage match {
-        case i if i > 50 && i<=75 => {warning}
-        case i if i <=  50 => {danger}
+        case i if i > 50 && i <= 75 => {warning}
+        case i if i <= 50 => {danger}
         case i => {}
     }
 }
 
 @getBrokersSkewLevel(percentage: Int) = {
-@percentage match {
-    case i if i > 0 && i<=33 => {warning}
-    case i if i >=  66 => {danger}
-    case i => {}
-}
+    @percentage match {
+        case i if i > 0 && i <= 33 => {warning}
+        case i if i >= 34 => {danger}
+        case i => {}
+    }
 }
 
 @getUnderReplicatedLevel(percentage: Int) = {
-@percentage match {
-    case i if i > 0 && i<=33 => {warning}
-    case i if i >=  66 => {danger}
-    case i => {}
-}
+    @percentage match {
+        case i if i > 0 && i <= 33 => {warning}
+        case i if i >= 34 => {danger}
+        case i => {}
+    }
 }
 
 @getReassignmentStatus(topic: String) = {
@@ -41,7 +41,16 @@
 
 <table class="table" id="topics-table">
     <thead>
-    <tr><th>Topic</th><th># Partitions</th><th># Brokers</th><th>Brokers Spread %</th><th>Brokers Skew %</th><th># Replicas</th><th>Under Replicated %</th></tr>
+    <tr><th>Topic</th>
+        <th># Partitions</th>
+        <th># Brokers</th>
+        <th>Brokers Spread %</th>
+        <th>Brokers Skew %</th>
+        <th># Replicas</th>
+        <th>Under Replicated %</th>
+        <th>Producer Message/Sec</th>
+        <th>Summed Recent Offsets</th>
+    </tr>
     </thead>
     <tbody>
     @for( ((topic, topicIdentity), deleted) <- topics) {
@@ -53,6 +62,8 @@
           @topicIdentity.map{ ti => <td class="@getBrokersSkewLevel(ti.brokersSkewPercentage)">@ti.brokersSkewPercentage</td>}.getOrElse{<td> </td>}
           @topicIdentity.map{ ti => <td>@ti.replicationFactor</td>}.getOrElse{<td> </td>}
           @topicIdentity.map{ ti => <td class="@getUnderReplicatedLevel(ti.underReplicatedPercentage)">@ti.underReplicatedPercentage</td>}.getOrElse{<td> </td>}
+          @topicIdentity.map{ ti => <td>@ti.producerRate</td>}.getOrElse{<td> </td>}
+          @topicIdentity.map{ ti => <td>@ti.summedTopicOffsets</td>}.getOrElse{<td> </td>}
       </tr>
     }
     </tbody>

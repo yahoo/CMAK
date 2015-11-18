@@ -51,6 +51,10 @@ object Menus {
   private[this] def reassignPartitionsMenu(cluster: String, applicationFeatures: ApplicationFeatures) : Option[Menu] = {
     Option("Reassign Partitions".clusterMenu(cluster))
   }
+
+  private[this] def consumersMenu(cluster: String, applicationFeatures: ApplicationFeatures) : Option[Menu] = {
+    Option("Consumers".clusterMenu(cluster))
+  }
   
   private[this] def logKafkaMenu(cluster: String, 
                                  applicationFeatures: ApplicationFeatures, 
@@ -72,6 +76,7 @@ object Menus {
       topicMenu(cluster, applicationFeatures),
       preferredReplicaElectionMenu(cluster, applicationFeatures),
       reassignPartitionsMenu(cluster, applicationFeatures),
+      consumersMenu(cluster, applicationFeatures),
       logKafkaMenu(cluster, applicationFeatures, clusterFeatures)
     ).flatten
   }

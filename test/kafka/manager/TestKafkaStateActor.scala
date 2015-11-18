@@ -35,12 +35,13 @@ class TestKafkaStateActor extends KafkaServerInTest {
   override val kafkaServerZkPath = broker.getZookeeperConnectionString
   private[this] var kafkaStateActor : Option[ActorRef] = None
   private[this] implicit val timeout: Timeout = 10.seconds
-  private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false)
+  private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false,true)
   private[this] val defaultClusterContext = ClusterContext(ClusterFeatures.from(defaultClusterConfig), defaultClusterConfig)
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    val props = Props(classOf[KafkaStateActor],sharedCurator, defaultClusterContext)
+    val ksConfig = KafkaStateActorConfig(sharedCurator, defaultClusterContext, LongRunningPoolConfig(2,100), 5, 10000)
+    val props = Props(classOf[KafkaStateActor],ksConfig)
 
     kafkaStateActor = Some(system.actorOf(props.withDispatcher("pinned-dispatcher"),"ksa"))
   }
@@ -61,6 +62,12 @@ class TestKafkaStateActor extends KafkaServerInTest {
 
   test("get topic list") {
     withKafkaStateActor(KSGetTopics) { result: TopicList =>
+      result.list foreach println
+    }
+  }
+
+  test("get consumer list") {
+    withKafkaStateActor(KSGetConsumers) { result: ConsumerList =>
       result.list foreach println
     }
   }
@@ -91,15 +98,30 @@ class TestKafkaStateActor extends KafkaServerInTest {
       descriptions foreach println
 
       withKafkaStateActor(KSGetBrokers) { brokerList: BrokerList =>
-        val topicIdentityList : IndexedSeq[TopicIdentity] = descriptions.flatten.map(td => TopicIdentity.from(brokerList,td, None, brokerList.clusterContext))
+        val topicIdentityList : IndexedSeq[TopicIdentity] = descriptions.flatten.map(td => TopicIdentity.from(brokerList,td, None, brokerList.clusterContext, None))
         topicIdentityList foreach println
       }
     }
   }
 
-  test("get topic descriptions") {
+  test("get consumer description") {
+    withKafkaStateActor(KSGetConsumers) { result: ConsumerList =>
+      val descriptions = result.list map { consumer =>
+        withKafkaStateActor(KSGetConsumerDescription(consumer)) { optionalDesc: Option[ConsumerDescription] => optionalDesc }
+      }
+      descriptions foreach println
+    }
+  }
+
+  test("get all topic descriptions") {
     withKafkaStateActor(KSGetAllTopicDescriptions()) { td: TopicDescriptions =>
       td.descriptions foreach println
+    }
+  }
+
+  test("get all consumer descriptions") {
+    withKafkaStateActor(KSGetAllConsumerDescriptions()) { cd: ConsumerDescriptions =>
+      cd.descriptions foreach println
     }
   }
 

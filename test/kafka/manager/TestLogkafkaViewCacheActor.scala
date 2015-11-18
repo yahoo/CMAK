@@ -40,7 +40,7 @@ class TestLogkafkaViewCacheActor extends KafkaServerInTest {
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, logkafkaEnabled = true)
+    val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, filterConsumers = true, logkafkaEnabled = true)
     val clusterContext = ClusterContext(ClusterFeatures.from(clusterConfig), clusterConfig)
     val props = Props(classOf[KafkaStateActor],sharedCurator, defaultClusterContext)
 

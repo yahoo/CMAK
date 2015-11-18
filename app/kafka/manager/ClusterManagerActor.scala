@@ -17,7 +17,8 @@ import org.apache.curator.framework.recipes.cache.PathChildrenCache
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex
 import org.apache.zookeeper.CreateMode
-import kafka.manager.utils.{AdminUtils, TopicAndPartition}
+import kafka.common.TopicAndPartition
+import kafka.manager.utils.AdminUtils
 
 import scala.collection.immutable
 import scala.concurrent.{ExecutionContext, Future}
@@ -55,7 +56,9 @@ case class ClusterManagerActorConfig(pinnedDispatcherName: String,
                                 threadPoolSize: Int = 2,
                                 maxQueueSize: Int = 100,
                                 askTimeoutMillis: Long = 2000,
-                                mutexTimeoutMillis: Int = 4000)
+                                mutexTimeoutMillis: Int = 4000,
+                                partitionOffsetCacheTimeoutSecs : Int = 5,
+                                simpleConsumerSocketTimeoutMillis: Int = 10000)
 
 class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
   extends BaseQueryCommandActor with CuratorAwareActor with BaseZkPath {
@@ -90,7 +93,13 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
 
   private[this] val adminUtils = new AdminUtils(cmConfig.clusterConfig.version)
 
-  private[this] val ksProps = Props(classOf[KafkaStateActor],sharedClusterCurator, clusterContext)
+  private[this] val ksConfig = KafkaStateActorConfig(
+    sharedClusterCurator,
+    clusterContext,
+    LongRunningPoolConfig(Runtime.getRuntime.availableProcessors(), 1000),
+    cmConfig.partitionOffsetCacheTimeoutSecs,
+    cmConfig.simpleConsumerSocketTimeoutMillis)
+  private[this] val ksProps = Props(classOf[KafkaStateActor],ksConfig)
   private[this] val kafkaStateActor : ActorPath = context.actorOf(ksProps.withDispatcher(cmConfig.pinnedDispatcherName),"kafka-state").path
 
   private[this] val bvConfig = BrokerViewCacheActorConfig(
@@ -244,7 +253,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           bl <- eventualBrokerList
           tm <- eventualTopicMetrics
           tdO <- eventualTopicDescription
-        } yield tdO.map( td => CMTopicIdentity(Try(TopicIdentity.from(bl,td,tm,clusterContext))))
+        } yield tdO.map( td => CMTopicIdentity(Try(TopicIdentity.from(bl,td,tm,clusterContext,None))))
         result pipeTo sender
 
       case CMGetLogkafkaIdentity(hostname) =>
@@ -255,6 +264,25 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           lcg <- eventualLogkafkaConfig
           lct <- eventualLogkafkaClient
         } yield Some(CMLogkafkaIdentity(Try(LogkafkaIdentity.from(hostname,lcg,lct))))
+        result pipeTo sender
+
+      case CMGetConsumerIdentity(consumer) =>
+        implicit val ec = context.dispatcher
+        val eventualConsumerDescription = withKafkaStateActor(KSGetConsumerDescription(consumer))(identity[Option[ConsumerDescription]])
+        val result: Future[Option[CMConsumerIdentity]] = for {
+          cdO <- eventualConsumerDescription
+          ciO = cdO.map( cd => CMConsumerIdentity(Try(ConsumerIdentity.from(cd,clusterContext))))
+        } yield ciO
+        result pipeTo sender
+
+      case CMGetConsumedTopicState(consumer, topic) =>
+        implicit val ec = context.dispatcher
+        val eventualConsumedTopicDescription = withKafkaStateActor(
+          KSGetConsumedTopicDescription(consumer,topic)
+        )(identity[ConsumedTopicDescription])
+        val result: Future[CMConsumedTopic] = eventualConsumedTopicDescription.map{
+          ctd: ConsumedTopicDescription =>  CMConsumedTopic(Try(ConsumedTopicState.from(ctd, clusterContext)))
+        }
         result pipeTo sender
 
       case any: Any => log.warning("cma : processQueryResponse : Received unknown message: {}", any)
@@ -377,29 +405,31 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
 
       case CMGeneratePartitionAssignments(topics, brokers) =>
         implicit val ec = longRunningExecutionContext
-        val eventualBrokerList = withKafkaStateActor(KSGetBrokers)(identity[BrokerList])
-        val eventualDescriptions = withKafkaStateActor(KSGetTopicDescriptions(topics))(identity[TopicDescriptions])
-        val eventualReassignPartitions = withKafkaStateActor(KSGetReassignPartition)(identity[Option[ReassignPartitions]])
-        val generated: Future[IndexedSeq[(String, Map[Int, Seq[Int]])]] = for {
-          bl <- eventualBrokerList
-          tds <- eventualDescriptions
-          rp <- eventualReassignPartitions
-          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None,clusterContext))
-        } yield {
-          bl.list.map(_.id.toInt)
-          // check if any topic undergoing reassignment got selected for reassignment
-          val topicsUndergoingReassignment = getTopicsUnderReassignment(rp, topics)
-          require(topicsUndergoingReassignment.isEmpty, "Topic(s) already undergoing reassignment(s): [%s]".format(topicsUndergoingReassignment.mkString(", ")))
-          // check if any nonexistent broker got selected for reassignment
-          val nonExistentBrokers = getNonExistentBrokers(bl, brokers)
-          require(nonExistentBrokers.isEmpty, "Nonexistent broker(s) selected: [%s]".format(nonExistentBrokers.mkString(", ")))
-          tis.map(ti => (ti.topic, adminUtils.assignReplicasToBrokers(
-            brokers,
-            ti.partitions,
-            ti.replicationFactor)))
+        val topicCheckFutureBefore = checkTopicsUnderAssignment(topics)
+
+        val generated: Future[IndexedSeq[(String, Map[Int, Seq[Int]])]] = topicCheckFutureBefore.flatMap { _ =>
+          val eventualBrokerList = withKafkaStateActor(KSGetBrokers)(identity[BrokerList])
+          val eventualDescriptions = withKafkaStateActor(KSGetTopicDescriptions(topics))(identity[TopicDescriptions])
+          for {
+            bl <- eventualBrokerList
+            tds <- eventualDescriptions
+            tis = tds.descriptions.map(TopicIdentity.from(bl, _, None,clusterContext, None))
+          } yield {
+            bl.list.map(_.id.toInt)
+            // check if any nonexistent broker got selected for reassignment
+            val nonExistentBrokers = getNonExistentBrokers(bl, brokers)
+            require(nonExistentBrokers.isEmpty, "Nonexistent broker(s) selected: [%s]".format(nonExistentBrokers.mkString(", ")))
+            tis.map(ti => (ti.topic, adminUtils.assignReplicasToBrokers(
+              brokers,
+              ti.partitions,
+              ti.replicationFactor)))
+          }
         }
 
-        val result: Future[IndexedSeq[Try[Unit]]] = generated.map { list =>
+        val result: Future[IndexedSeq[Try[Unit]]] = for {
+          list <- generated
+          _ <- checkTopicsUnderAssignment(topics) //check again
+        } yield {
           modify {
             list.map { case (topic, assignments: Map[Int, Seq[Int]]) =>
               updateAssignmentInZk(topic, assignments)
@@ -426,7 +456,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         val preferredLeaderElections = for {
           bl <- eventualBrokerList
           tds <- eventualDescriptions
-          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, clusterContext))
+          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, clusterContext, None))
           toElect = tis.map(ti => ti.partitionsIdentity.values.filter(!_.isPreferredLeader).map(tpi => TopicAndPartition(ti.topic, tpi.partNum))).flatten.toSet
         } yield toElect
         preferredLeaderElections.map { toElect =>
@@ -442,7 +472,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         val topicsAndReassignments = for {
           bl <- eventualBrokerList
           tds <- eventualDescriptions
-          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, clusterContext))
+          tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, clusterContext, None))
         } yield {
           val reassignments = tis.map { ti =>
             val topicZkPath = zkPathFrom(baseTopicsZkPath, ti.topic)
@@ -493,11 +523,11 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
             }
         } pipeTo sender()
 
-      case CMUpdateLogkafkaConfig(hostname, log_path, config) =>
+      case CMUpdateLogkafkaConfig(hostname, log_path, config, checkConfig) =>
         implicit val ec = longRunningExecutionContext
         val eventualLogkafkaConfig = withLogkafkaStateActor(LKSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
         eventualLogkafkaConfig.map { logkafkaConfigOption =>
-            withLogkafkaCommandActor(LKCUpdateLogkafkaConfig(hostname, log_path, config, logkafkaConfigOption)) {
+            withLogkafkaCommandActor(LKCUpdateLogkafkaConfig(hostname, log_path, config, logkafkaConfigOption, checkConfig)) {
               lkcResponse: LKCCommandResult =>
                 CMCommandResult(lkcResponse.result)
             }
@@ -548,22 +578,34 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
     }
   }
 
-  def getNonExistentBrokers(availableBrokers: BrokerList, selectedBrokers: Seq[Int]): Seq[Int] = {
+  private[this] def getNonExistentBrokers(availableBrokers: BrokerList, selectedBrokers: Seq[Int]): Seq[Int] = {
     val availableBrokerIds: Set[Int] = availableBrokers.list.map(_.id.toInt).toSet
     selectedBrokers filter { b: Int => !availableBrokerIds.contains(b) }
   }
 
-  def getNonExistentBrokers(availableBrokers: BrokerList, assignments: Map[Int, Seq[Int]]): Seq[Int] = {
+  private[this] def getNonExistentBrokers(availableBrokers: BrokerList, assignments: Map[Int, Seq[Int]]): Seq[Int] = {
     val brokersAssigned = assignments.flatMap({ case  (pt, bl) => bl }).toSet.toSeq
     getNonExistentBrokers(availableBrokers, brokersAssigned)
   }
 
-  def getTopicsUnderReassignment(reassignPartitions: Option[ReassignPartitions], topicsToBeReassigned: Set[String]): Set[String] = {
+  private[this] def getTopicsUnderReassignment(reassignPartitions: Option[ReassignPartitions], topicsToBeReassigned: Set[String]): Set[String] = {
     val topicsUnderReassignment = reassignPartitions.map { asgn =>
       asgn.endTime.map(_ => Set[String]()).getOrElse{
         asgn.partitionsToBeReassigned.map { case (t,s) => t.topic}.toSet
       }
     }.getOrElse(Set[String]())
     topicsToBeReassigned.intersect(topicsUnderReassignment)
+  }
+  
+  private[this] def checkTopicsUnderAssignment(topicsToBeReassigned: Set[String])(implicit ec: ExecutionContext) : Future[Unit] = {
+    val eventualReassignPartitions = withKafkaStateActor(KSGetReassignPartition)(identity[Option[ReassignPartitions]])
+    for {
+      rp <- eventualReassignPartitions
+    } yield {
+      // check if any topic undergoing reassignment got selected for reassignment
+      val topicsUndergoingReassignment = getTopicsUnderReassignment(rp, topicsToBeReassigned)
+      require(topicsUndergoingReassignment.isEmpty, "Topic(s) already undergoing reassignment(s): [%s]"
+        .format(topicsUndergoingReassignment.mkString(", ")))
+    }
   }
 }
