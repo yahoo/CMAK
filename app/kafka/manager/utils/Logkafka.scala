@@ -29,7 +29,7 @@ object Logkafka {
   import kafka.manager.utils.LogkafkaErrors._
 
   val legalChars = "[a-zA-Z0-9\\._\\-]"
-  val validHostnameRegex = "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])$";
+  val validHostnameRegex = "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\\-]*[a-zA-Z0-9])\\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\\-]*[A-Za-z0-9])$"; // RFC 1123
   val maxNameLength = 255
   val illegalPathChars = "[\\?*:|\"<>]"
   val maxPathLength = 255
@@ -99,7 +99,7 @@ object LogkafkaErrors {
   class HostnameIsLocalhost private[LogkafkaErrors] extends UtilError("hostname is illegal, can't be localhost")
   class LogPathEmpty private[LogkafkaErrors] extends UtilError("log path is illegal, can't be empty")
   class LogPathNotAbsolute private[LogkafkaErrors] extends UtilError("log path is illegal, must be absolute")
-  class InvalidHostname private[LogkafkaErrors] extends UtilError(s"hostname is illegal, does not match regex ${Logkafka.validHostnameRegex}")
+  class InvalidHostname private[LogkafkaErrors] extends UtilError(s"hostname is illegal, does not match regex ${Logkafka.validHostnameRegex}, which conforms to RFC 1123")
   class InvalidHostnameLength private[LogkafkaErrors] extends UtilError(
     "hostname is illegal, can't be longer than " + Logkafka.maxNameLength + " characters")
   class InvalidLogPath private[LogkafkaErrors] extends UtilError(s"log path is illegal")
