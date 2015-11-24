@@ -72,7 +72,8 @@ object Cluster extends Controller {
       "jmxEnabled" -> boolean,
       "filterConsumers" -> boolean,
       "logkafkaEnabled" -> boolean,
-      "activeOffsetCacheEnabled" -> boolean
+      "activeOffsetCacheEnabled" -> boolean,
+      "displaySizeEnabled" -> boolean
     )(ClusterConfig.apply)(ClusterConfig.customUnapply)
   )
 
@@ -86,7 +87,8 @@ object Cluster extends Controller {
       "jmxEnabled" -> boolean,
       "filterConsumers" -> boolean,
       "logkafkaEnabled" -> boolean,
-      "activeOffsetCacheEnabled" -> boolean
+      "activeOffsetCacheEnabled" -> boolean,
+      "displaySizeEnabled" -> boolean
     )(ClusterOperation.apply)(ClusterOperation.customUnapply)
   )
 
@@ -127,7 +129,8 @@ object Cluster extends Controller {
             cc.jmxEnabled,
             cc.filterConsumers,
             cc.logkafkaEnabled,
-            cc.activeOffsetCacheEnabled))
+            cc.activeOffsetCacheEnabled,
+            cc.displaySizeEnabled))
         }))
       }
     }
@@ -139,7 +142,15 @@ object Cluster extends Controller {
       clusterConfigForm.bindFromRequest.fold(
         formWithErrors => Future.successful(BadRequest(views.html.cluster.addCluster(formWithErrors))),
         clusterConfig => {
-          kafkaManager.addCluster(clusterConfig.name, clusterConfig.version.toString, clusterConfig.curatorConfig.zkConnect, clusterConfig.jmxEnabled, clusterConfig.filterConsumers, clusterConfig.logkafkaEnabled, clusterConfig.activeOffsetCacheEnabled).map { errorOrSuccess =>
+          kafkaManager.addCluster(clusterConfig.name,
+            clusterConfig.version.toString,
+            clusterConfig.curatorConfig.zkConnect,
+            clusterConfig.jmxEnabled,
+            clusterConfig.filterConsumers,
+            clusterConfig.logkafkaEnabled,
+            clusterConfig.activeOffsetCacheEnabled,
+            clusterConfig.displaySizeEnabled
+          ).map { errorOrSuccess =>
             Ok(views.html.common.resultOfCommand(
               views.html.navigation.defaultMenu(),
               models.navigation.BreadCrumbs.withView("Add Cluster"),
@@ -200,7 +211,8 @@ object Cluster extends Controller {
               clusterOperation.clusterConfig.jmxEnabled,
               clusterOperation.clusterConfig.filterConsumers,
               clusterOperation.clusterConfig.logkafkaEnabled,
-              clusterOperation.clusterConfig.activeOffsetCacheEnabled
+              clusterOperation.clusterConfig.activeOffsetCacheEnabled,
+              clusterOperation.clusterConfig.displaySizeEnabled
             ).map { errorOrSuccess =>
               Ok(views.html.common.resultOfCommand(
                 views.html.navigation.defaultMenu(),

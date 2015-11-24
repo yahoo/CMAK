@@ -89,7 +89,8 @@ object ClusterConfig {
             jmxEnabled: Boolean,
             filterConsumers: Boolean,
             logkafkaEnabled: Boolean = false, 
-            activeOffsetCacheEnabled: Boolean = false) : ClusterConfig = {
+            activeOffsetCacheEnabled: Boolean = false,
+            displaySizeEnabled: Boolean = false) : ClusterConfig = {
     val kafkaVersion = KafkaVersion(version)
     //validate cluster name
     validateName(name)
@@ -104,11 +105,12 @@ object ClusterConfig {
       jmxEnabled, 
       filterConsumers, 
       logkafkaEnabled, 
-      activeOffsetCacheEnabled)
+      activeOffsetCacheEnabled,
+      displaySizeEnabled)
   }
 
-  def customUnapply(cc: ClusterConfig) : Option[(String, String, String, Int, Boolean, Boolean, Boolean, Boolean)] = {
-    Some((cc.name, cc.version.toString, cc.curatorConfig.zkConnect, cc.curatorConfig.zkMaxRetry, cc.jmxEnabled, cc.filterConsumers, cc.logkafkaEnabled, cc.activeOffsetCacheEnabled))
+  def customUnapply(cc: ClusterConfig) : Option[(String, String, String, Int, Boolean, Boolean, Boolean, Boolean, Boolean)] = {
+    Some((cc.name, cc.version.toString, cc.curatorConfig.zkConnect, cc.curatorConfig.zkMaxRetry, cc.jmxEnabled, cc.filterConsumers, cc.logkafkaEnabled, cc.activeOffsetCacheEnabled, cc.displaySizeEnabled))
   }
 
   import scalaz.{Failure,Success}
@@ -142,6 +144,7 @@ object ClusterConfig {
       :: ("filterConsumers" -> toJSON(config.filterConsumers))
       :: ("logkafkaEnabled" -> toJSON(config.logkafkaEnabled))
       :: ("activeOffsetCacheEnabled" -> toJSON(config.activeOffsetCacheEnabled))
+      :: ("displaySizeEnabled" -> toJSON(config.displaySizeEnabled))
       :: Nil)
     compact(render(json)).getBytes(StandardCharsets.UTF_8)
   }
@@ -159,6 +162,7 @@ object ClusterConfig {
           val filterConsumers = field[Boolean]("filterConsumers")(json)
           val logkafkaEnabled = field[Boolean]("logkafkaEnabled")(json)
           val activeOffsetCacheEnabled = field[Boolean]("activeOffsetCacheEnabled")(json)
+          val displaySizeEnabled = field[Boolean]("displaySizeEnabled")(json)
           ClusterConfig.apply(
             name,
             curatorConfig,
@@ -166,7 +170,9 @@ object ClusterConfig {
             jmxEnabled.getOrElse(false),
             filterConsumers.getOrElse(true),
             logkafkaEnabled.getOrElse(false), 
-            activeOffsetCacheEnabled.getOrElse(false))
+            activeOffsetCacheEnabled.getOrElse(false),
+            displaySizeEnabled.getOrElse(false)
+           )
       }
 
       result match {
@@ -189,7 +195,8 @@ case class ClusterConfig (name: String,
                           jmxEnabled: Boolean,
                           filterConsumers: Boolean,
                           logkafkaEnabled: Boolean,
-                          activeOffsetCacheEnabled: Boolean)
+                          activeOffsetCacheEnabled: Boolean,
+                          displaySizeEnabled: Boolean)
 
 object KafkaManagerActor {
   val ZkRoot : String = "/kafka-manager"
@@ -414,6 +421,8 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
         modify {
           val data: Array[Byte] = ClusterConfig.serialize(clusterConfig)
           val zkpath: String = getConfigsZkPath(clusterConfig)
+          require(!(clusterConfig.displaySizeEnabled && !clusterConfig.jmxEnabled),
+            "Display topic and broker size can only be enabled when JMX is enabled")
           require(kafkaManagerPathCache.getCurrentData(zkpath) == null,
             s"Cluster already exists : ${clusterConfig.name}")
           require(deleteClustersPathCache.getCurrentData(getDeleteClusterZkPath(clusterConfig.name)) == null,
@@ -426,6 +435,8 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
         modify {
           val data: Array[Byte] = ClusterConfig.serialize(clusterConfig)
           val zkpath: String = getConfigsZkPath(clusterConfig)
+          require(!(clusterConfig.displaySizeEnabled && !clusterConfig.jmxEnabled),
+            "Display topic and broker size can only be enabled when JMX is enabled")
           require(deleteClustersPathCache.getCurrentData(getDeleteClusterZkPath(clusterConfig.name)) == null,
             s"Cluster is marked for deletion : ${clusterConfig.name}")
           require(kafkaManagerPathCache.getCurrentData(zkpath) != null,
@@ -594,7 +605,8 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
         && newConfig.jmxEnabled == currentConfig.jmxEnabled
         && newConfig.logkafkaEnabled == currentConfig.logkafkaEnabled
         && newConfig.filterConsumers == currentConfig.filterConsumers
-        && newConfig.activeOffsetCacheEnabled == currentConfig.activeOffsetCacheEnabled) {
+        && newConfig.activeOffsetCacheEnabled == currentConfig.activeOffsetCacheEnabled
+        && newConfig.displaySizeEnabled == currentConfig.displaySizeEnabled) {
         //nothing changed
         false
       } else {

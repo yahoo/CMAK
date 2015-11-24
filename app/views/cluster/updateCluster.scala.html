@@ -12,6 +12,17 @@
     @views.html.navigation.defaultMenu(views.html.navigation.menuNav("Cluster","Update Cluster",models.navigation.Menus.indexMenu))
 }
 
+@checkboxWithLink(field: play.api.data.Field) = {
+@b3.inputFormGroup(field, withFeedback = false, withLabelFor = false, b3.Args.withDefault(Seq(), 'disabled -> false)) { fieldInfo =>
+<div class="checkbox">
+    <label for="@fieldInfo.id">
+        <input type="checkbox" id="@fieldInfo.id" name="@fieldInfo.name" value="true" @if(fieldInfo.value == Some("true")){checked} @toHtmlArgs(fieldInfo.innerArgsMap)>
+        Display Broker and Topic Size (only works after applying <a href="https://issues.apache.org/jira/browse/KAFKA-1614">this patch</a>)
+    </label>
+</div>
+}
+}
+
 @drawForm(form : Form[models.form.ClusterOperation]) = {
     @b3.form(routes.Cluster.handleUpdateCluster(clusterName)) {
     <fieldset>
@@ -23,6 +34,7 @@
         @b3.checkbox(form("filterConsumers"), '_text -> "Filter out inactive consumers")
         @b3.checkbox(form("logkafkaEnabled"), '_text -> "Enable Logkafka")
         @b3.checkbox(form("activeOffsetCacheEnabled"), '_text -> "Enable Active OffsetCache (Not recommended for large # of consumers)")
+        @checkboxWithLink(form("displaySizeEnabled"))
         @b3.submit('class -> "submit-button btn btn-primary btn"){ Save }
         <a href="@routes.Application.index()" class="cancel-button btn btn-default" role="button">Cancel</a>
     </fieldset>

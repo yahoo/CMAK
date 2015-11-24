@@ -118,7 +118,7 @@ class TestClusterManagerActor extends CuratorAwareTest {
       descriptions foreach println
 
       withClusterManagerActor(KSGetBrokers) { brokerList: BrokerList =>
-        val topicIdentityList : IndexedSeq[TopicIdentity] = descriptions.flatten.map(td => TopicIdentity.from(brokerList,td, None, brokerList.clusterContext, None))
+        val topicIdentityList : IndexedSeq[TopicIdentity] = descriptions.flatten.map(td => TopicIdentity.from(brokerList, td, None, None, brokerList.clusterContext, None))
         topicIdentityList foreach println
       }
     }

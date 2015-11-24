@@ -21,6 +21,7 @@ sealed trait ClusterFeature extends KMFeature
 case object KMLogKafkaFeature extends ClusterFeature
 case object KMDeleteTopicFeature extends ClusterFeature
 case object KMJMXMetricsFeature extends ClusterFeature
+case object KMDisplaySizeFeature extends ClusterFeature
 
 object ClusterFeature {
   private lazy val log = LoggerFactory.getLogger(classOf[ClusterFeature])
@@ -62,6 +63,9 @@ object ClusterFeatures {
 
     if(clusterConfig.jmxEnabled)
       buffer+=KMJMXMetricsFeature
+
+    if(clusterConfig.displaySizeEnabled)
+      buffer+=KMDisplaySizeFeature
     
     if(clusterConfig.version != Kafka_0_8_1_1)
       buffer+=KMDeleteTopicFeature

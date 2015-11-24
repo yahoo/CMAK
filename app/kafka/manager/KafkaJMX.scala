@@ -5,13 +5,21 @@
 
 package kafka.manager
 
+import java.io.File
+import java.{util => ju}
+
 import javax.management._
 import javax.management.remote.{JMXConnectorFactory, JMXServiceURL}
 
+import scala.collection.JavaConverters._
+import scala.util.matching.Regex
+
+import com.yammer.metrics.reporting.JmxReporter.GaugeMBean
 import kafka.manager.ActorModel.BrokerMetrics
 import org.slf4j.LoggerFactory
 
 import scala.util.{Failure, Try}
+import scala.math
 
 object KafkaJMX {
   
@@ -98,6 +106,7 @@ object KafkaMetrics {
     new ObjectName(s"${sep}kafka.server${sep}:type=${sep}BrokerTopicMetrics${sep},name=$topicAndName")
   }
 
+
   /* Gauge, Value : 0 */
   private val replicaFetcherManagerMinFetchRate = new ObjectName(
     "kafka.server:type=ReplicaFetcherManager,name=MinFetchRate,clientId=Replica")
@@ -121,6 +130,20 @@ object KafkaMetrics {
   /* Operating System */
   private val operatingSystemObjectName = new ObjectName("java.lang:type=OperatingSystem")
 
+  /* Log Segments */
+  private val logSegmentObjectName = new ObjectName("kafka.log:type=Log,name=*-LogSegments")
+
+  private val directoryObjectName = new ObjectName("kafka.log:type=Log,name=*-Directory")
+
+  private val LogSegmentsNameRegex = new Regex("%s-LogSegments".format("""(.*)-(\d*)"""), "topic", "partition")
+
+  private val DirectoryNameRegex = new Regex("%s-Directory".format("""(.*)-(\d*)"""), "topic", "partition")
+
+  val LogSegmentRegex = new Regex(
+    "baseOffset=(.*), created=(.*), logSize=(.*), indexSize=(.*)",
+    "baseOffset", "created", "logSize", "indexSize"
+  )
+
   private def getOSMetric(mbsc: MBeanServerConnection) = {
     import scala.collection.JavaConverters._
     try {
@@ -137,7 +160,7 @@ object KafkaMetrics {
     }
   }
   
-  private def getMeterMetric(mbsc: MBeanServerConnection, name:ObjectName) = {
+  private def getMeterMetric(mbsc: MBeanServerConnection, name: ObjectName) = {
     import scala.collection.JavaConverters._
     try {
       val attributeList = mbsc.getAttributes(name, Array("Count", "FifteenMinuteRate", "FiveMinuteRate", "OneMinuteRate", "MeanRate"))
@@ -160,7 +183,103 @@ object KafkaMetrics {
     attributes.find(_.getName == name).map(_.getValue.asInstanceOf[Double]).getOrElse(0D)
   }
 
-  def getBrokerMetrics(kafkaVersion: KafkaVersion, mbsc: MBeanServerConnection, topic: Option[String] = None) : BrokerMetrics = {
+  private def topicAndPartition(name: String, regex: Regex) = {
+    try {
+      val matches = regex.findAllIn(name).matchData.toSeq
+      require(matches.size == 1)
+      val m = matches.head
+
+      val topic = m.group("topic")
+      val partition = m.group("partition").toInt
+
+      (topic, partition)
+    }
+    catch {
+      case e: Exception =>
+        throw new IllegalStateException("Can't parse topic and partition from: <%s>".format(name), e)
+    }
+  }
+
+  private def queryValues[K, V](
+    mbsc: MBeanServerConnection,
+    objectName: ObjectName,
+    keyConverter: String => K,
+    valueConverter: Object => V
+    ) = {
+    val logsSizeObjectNames = mbsc.queryNames(objectName, null).asScala.toSeq
+    logsSizeObjectNames.par.map {
+      objectName => queryValue(mbsc, objectName, keyConverter, valueConverter)
+    }.seq.toSeq
+  }
+
+  private def queryValue[K, V](
+    mbsc: MBeanServerConnection,
+    objectName: ObjectName,
+    keyConverter: String => K,
+    valueConverter: Object => V
+    ) = {
+    val name = objectName.getKeyProperty("name")
+    val mbean = MBeanServerInvocationHandler.newProxyInstance(mbsc, objectName, classOf[GaugeMBean], true)
+    (keyConverter(name), valueConverter(mbean.getValue))
+  }
+
+  private def parseLogSegment(str: String): LogSegment = {
+    try {
+      val matches = LogSegmentRegex.findAllIn(str).matchData.toSeq
+      require(matches.size == 1)
+      val m = matches.head
+
+      LogSegment(
+        baseOffset = m.group("baseOffset").toLong,
+        created = m.group("created").toLong,
+        logBytes = m.group("logSize").toLong,
+        indexBytes = m.group("indexSize").toLong
+      )
+    } catch {
+      case e: Exception =>
+        throw new IllegalStateException("Can't parse segment info from: <%s>".format(str), e)
+    }
+  }
+
+  def getLogSegmentsInfo(mbsc: MBeanServerConnection) = {
+    val logSegmentsMap = {
+      queryValues(
+        mbsc,
+        logSegmentObjectName,
+        key => topicAndPartition(key, LogSegmentsNameRegex),
+        value => {
+          val lst = value.asInstanceOf[ju.List[String]]
+          lst.asScala.map(parseLogSegment).toSeq
+        }
+      )
+    }.toMap
+
+    val directoryMap = {
+      queryValues(
+        mbsc,
+        directoryObjectName,
+        key => topicAndPartition(key, DirectoryNameRegex),
+        value => value.asInstanceOf[String]
+      )
+    }.toMap
+
+    val stats: Seq[(String, (Int, LogInfo))] = for (
+      key <- (logSegmentsMap.keySet ++ directoryMap.keySet).toSeq;
+      directory <- directoryMap.get(key);
+      logSegments <- logSegmentsMap.get(key)
+    ) yield {
+        val directoryFile = new File(directory)
+        val dir = directoryFile.getParentFile.getAbsolutePath
+
+        val (topic, partition) = key
+
+        (topic, (partition, LogInfo(dir, logSegments)))
+      }
+
+    stats.groupBy(_._1).mapValues(_.map(_._2).toMap).toMap
+  }
+
+  def getBrokerMetrics(kafkaVersion: KafkaVersion, mbsc: MBeanServerConnection, shouldGetBrokerSize: Boolean, topic: Option[String] = None) : BrokerMetrics = {
     BrokerMetrics(
       KafkaMetrics.getBytesInPerSec(kafkaVersion, mbsc, topic),
       KafkaMetrics.getBytesOutPerSec(kafkaVersion, mbsc, topic),
@@ -168,7 +287,19 @@ object KafkaMetrics {
       KafkaMetrics.getFailedFetchRequestsPerSec(kafkaVersion, mbsc, topic),
       KafkaMetrics.getFailedProduceRequestsPerSec(kafkaVersion, mbsc, topic),
       KafkaMetrics.getMessagesInPerSec(kafkaVersion, mbsc, topic),
-      KafkaMetrics.getOSMetric(mbsc))
+      KafkaMetrics.getOSMetric(mbsc),
+      KafkaMetrics.getSegmentsMetric(mbsc, shouldGetBrokerSize)
+    )
+  }
+
+  // always contains the total bytes size a broker has
+  def getSegmentsMetric(mbsc: MBeanServerConnection, shouldGetBrokerSize: Boolean) : SegmentsMetric = {
+    if (shouldGetBrokerSize) {
+      val segmentsInfo = getLogSegmentsInfo(mbsc)
+      SegmentsMetric(segmentsInfo.values.map(_.values.map(_.bytes).sum).sum)
+    } else {
+      SegmentsMetric(0L)
+    }
   }
 }
 
@@ -183,6 +314,16 @@ case class OSMetric(processCpuLoad: Double,
 
   def formatSystemCpuLoad = {
     FormatMetric.rateFormat(systemCpuLoad, 0)
+  }
+}
+
+case class SegmentsMetric(bytes: Long) {
+  def +(o: SegmentsMetric) : SegmentsMetric = {
+    SegmentsMetric(o.bytes + bytes)
+  }
+
+  def formatSize = {
+    FormatMetric.sizeFormat(bytes)
   }
 }
 
@@ -218,6 +359,20 @@ case class MeterMetric(count: Long,
   }
 }
 
+case class LogInfo(dir: String, logSegments: Seq[LogSegment]) {
+
+  val bytes = logSegments.map(_.bytes).sum
+}
+
+case class LogSegment(
+  baseOffset: Long,
+  created: Long,
+  logBytes: Long,
+  indexBytes: Long) {
+
+  val bytes = logBytes + indexBytes
+}
+
 object FormatMetric {
   private[this] val UNIT = Array[Char]('k', 'm', 'b', 't')
 
@@ -241,6 +396,18 @@ object FormatMetric {
       else {
         rateFormat(value, iteration + 1)
       }
+    }
+  }
+
+  // See: http://stackoverflow.com/a/3758880
+  def sizeFormat(bytes: Long): String = {
+    val unit = 1000
+    if (bytes < unit) {
+      bytes + " B"
+    } else {
+      val exp = (math.log(bytes) / math.log(unit)).toInt
+      val pre = "kMGTPE".charAt(exp-1)
+      "%.1f %sB".format(bytes / math.pow(unit, exp), pre)
     }
   }
 }
