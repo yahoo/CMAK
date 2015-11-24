@@ -525,11 +525,11 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
             }
         } pipeTo sender()
 
-      case CMUpdateLogkafkaConfig(hostname, log_path, config) =>
+      case CMUpdateLogkafkaConfig(hostname, log_path, config, checkConfig) =>
         implicit val ec = longRunningExecutionContext
         val eventualLogkafkaConfig = withLogkafkaStateActor(LKSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
         eventualLogkafkaConfig.map { logkafkaConfigOption =>
-            withLogkafkaCommandActor(LKCUpdateLogkafkaConfig(hostname, log_path, config, logkafkaConfigOption)) {
+            withLogkafkaCommandActor(LKCUpdateLogkafkaConfig(hostname, log_path, config, logkafkaConfigOption, checkConfig)) {
               lkcResponse: LKCCommandResult =>
                 CMCommandResult(lkcResponse.result)
             }

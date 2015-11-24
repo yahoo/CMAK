@@ -233,4 +233,40 @@ object Logkafka extends Controller{
       )
     }
   }
+
+  def handleEnableConfig(clusterName: String, hostname: String, log_path: String) = Action.async { implicit request =>
+    clusterFeatureGate(clusterName, KMLogKafkaFeature) { clusterContext =>
+      implicit val clusterFeatures = clusterContext.clusterFeatures
+      val props = new Properties();
+      props.put("valid", true.toString);
+      kafkaManager.updateLogkafkaConfig(clusterName, hostname, log_path, props, false).map { errorOrSuccess =>
+        Ok(views.html.common.resultOfCommand(
+          views.html.navigation.clusterMenu(clusterName, "Logkafka", "Logkafka View", Menus.clusterMenus(clusterName)),
+          models.navigation.BreadCrumbs.withNamedViewAndClusterAndLogkafka("Logkafka View", clusterName, hostname, log_path, "Update Config"),
+          errorOrSuccess,
+          "Enable Config",
+          FollowLink("Go to logkafka view.", routes.Logkafka.logkafka(clusterName, hostname, log_path).toString()),
+          FollowLink("Try again.", routes.Logkafka.updateConfig(clusterName, hostname, log_path).toString())
+        ))
+      }
+    }
+  }
+
+  def handleDisableConfig(clusterName: String, hostname: String, log_path: String) = Action.async { implicit request =>
+    clusterFeatureGate(clusterName, KMLogKafkaFeature) { clusterContext =>
+      implicit val clusterFeatures = clusterContext.clusterFeatures
+      val props = new Properties();
+      props.put("valid", false.toString);
+      kafkaManager.updateLogkafkaConfig(clusterName, hostname, log_path, props, false).map { errorOrSuccess =>
+        Ok(views.html.common.resultOfCommand(
+          views.html.navigation.clusterMenu(clusterName, "Logkafka", "Logkafka View", Menus.clusterMenus(clusterName)),
+          models.navigation.BreadCrumbs.withNamedViewAndClusterAndLogkafka("Logkafka View", clusterName, hostname, log_path, "Update Config"),
+          errorOrSuccess,
+          "Disable Config",
+          FollowLink("Go to logkafka view.", routes.Logkafka.logkafka(clusterName, hostname, log_path).toString()),
+          FollowLink("Try again.", routes.Logkafka.updateConfig(clusterName, hostname, log_path).toString())
+        ))
+      }
+    }
+  }
 }

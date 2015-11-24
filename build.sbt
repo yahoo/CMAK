@@ -13,12 +13,14 @@ scalacOptions ++= Seq("-Xlint:-missing-interpolator","-Xfatal-warnings","-deprec
 
 // From https://www.playframework.com/documentation/2.3.x/ProductionDist
 assemblyMergeStrategy in assembly := {
+  case "logger.xml" => MergeStrategy.first
   case "play/core/server/ServerWithStop.class" => MergeStrategy.first
   case other => (assemblyMergeStrategy in assembly).value(other)
 }
 
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-actor" % "2.3.10",
+  "com.typesafe.akka" %% "akka-actor" % "2.3.14",
+  "com.typesafe.akka" %% "akka-slf4j" % "2.3.14",
   "com.google.code.findbugs" % "jsr305" % "2.0.1",
   "org.webjars" %% "webjars-play" % "2.3.0-2",
   "org.webjars" % "bootstrap" % "3.3.4",
@@ -82,7 +84,3 @@ rpmUrl := Some("https://github.com/yahoo/kafka-manager")
 rpmLicense := Some("Apache")
 
 /* End RPM Settings */
-
-
-
-
