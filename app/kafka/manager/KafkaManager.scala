@@ -440,14 +440,15 @@ class KafkaManager(akkaConfig: Config)
                          clusterName: String,
                          hostname: String,
                          log_path: String,
-                         config: Properties
+                         config: Properties,
+                         checkConfig: Boolean = true
                          ): Future[ApiError \/ ClusterContext] =
   {
     implicit val ec = apiExecutionContext
     withKafkaManagerActor(
       KMClusterCommandRequest(
         clusterName,
-        CMUpdateLogkafkaConfig(hostname, log_path, config)
+        CMUpdateLogkafkaConfig(hostname, log_path, config, checkConfig)
       )
     ) {
       result: Future[CMCommandResult] =>
