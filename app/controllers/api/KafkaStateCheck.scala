@@ -9,17 +9,30 @@ import controllers.KafkaManagerContext
 import play.api.libs.json._
 import play.api.mvc._
 
-object KafkaHealthCheck extends Controller {
+/**
+ * @author jisookim0513
+ */
+
+object KafkaStateCheck extends Controller {
 
   import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
   private[this] val kafkaManager = KafkaManagerContext.getKafkaManager
 
-  def availableBrokers(c: String) = Action.async { implicit request =>
+  def brokers(c: String) = Action.async { implicit request =>
     kafkaManager.getBrokerList(c).map { errorOrBrokerList =>
       errorOrBrokerList.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
-        brokerList => Ok(Json.obj("availableBrokers" -> brokerList.list.map(bi => bi.id)))
+        brokerList => Ok(Json.obj("brokers" -> brokerList.list.map(bi => bi.id).sorted))
+      )
+    }
+  }
+
+  def topics(c: String) = Action.async { implicit request =>
+    kafkaManager.getTopicList(c).map { errorOrTopicList =>
+      errorOrTopicList.fold(
+        error => BadRequest(Json.obj("msg" -> error.msg)),
+        topicList => Ok(Json.obj("topics" -> topicList.list.sorted))
       )
     }
   }

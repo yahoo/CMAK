@@ -6,7 +6,7 @@
 package controller.api
 
 import controllers.KafkaManagerContext
-import controllers.api.KafkaHealthCheck
+import controllers.api.KafkaStateCheck
 import kafka.manager.utils.{CuratorAwareTest, KafkaServerInTest}
 import kafka.test.SeededBroker
 import play.api.Play
@@ -20,13 +20,13 @@ import scala.concurrent.duration._
 import scala.util.Try
 
 
-class TestKafkaHealthCheck extends CuratorAwareTest with KafkaServerInTest {
+class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest {
   private[this] val broker = new SeededBroker("controller-api-test",4)
   override val kafkaServerZkPath = broker.getZookeeperConnectionString
   private[this] val duration = FiniteDuration(10,SECONDS)
 
-  private[this] val testClusterName = "kafka-hc-test-cluster"
-  private[this] val testTopicName = "kafka-hc-test-topic"
+  private[this] val testClusterName = "kafka-sc-test-cluster"
+  private[this] val testTopicName = "kafka-sc-test-topic"
 
   override protected def beforeAll() : Unit = {
     super.beforeAll()
@@ -77,36 +77,47 @@ class TestKafkaHealthCheck extends CuratorAwareTest with KafkaServerInTest {
     Thread.sleep(3000)
   }
 
-  test("get available brokers") {
-    val future = KafkaHealthCheck.availableBrokers(testClusterName).apply(FakeRequest())
+  test("get brokers") {
+    val future = KafkaStateCheck.brokers(testClusterName).apply(FakeRequest())
     assert(status(future) === OK)
-    assert(contentAsJson(future) === Json.obj("availableBrokers" -> Seq(0)))
+    assert(contentAsJson(future) === Json.obj("brokers" -> Seq(0)))
   }
 
   test("get available brokers in non-existing cluster") {
-    val future = KafkaHealthCheck.availableBrokers("non-existent").apply(FakeRequest())
+    val future = KafkaStateCheck.brokers("non-existent").apply(FakeRequest())
+    assert(status(future) === BAD_REQUEST)
+  }
+
+  test("get topics") {
+    val future = KafkaStateCheck.topics(testClusterName).apply(FakeRequest())
+    assert(status(future) === OK)
+    assert(contentAsJson(future) === Json.obj("topics" -> Seq(testTopicName, "controller-api-test").sorted))
+  }
+
+  test("get topics in non-existing cluster") {
+    val future = KafkaStateCheck.topics("non-existent").apply(FakeRequest())
     assert(status(future) === BAD_REQUEST)
   }
 
   test("get under-replicated partitions") {
-    val future = KafkaHealthCheck.underReplicatedPartitions(testClusterName, testTopicName).apply(FakeRequest())
+    val future = KafkaStateCheck.underReplicatedPartitions(testClusterName, testTopicName).apply(FakeRequest())
     assert(status(future) === OK)
     assert(contentAsJson(future) === Json.obj("topic" -> testTopicName, "underReplicatedPartitions" -> Seq.empty[Int]))
   }
 
   test("get under-replicated partitions of non-existing topic in non-existing cluster") {
-    val future = KafkaHealthCheck.underReplicatedPartitions("non-existent", "weird").apply(FakeRequest())
+    val future = KafkaStateCheck.underReplicatedPartitions("non-existent", "weird").apply(FakeRequest())
     assert(status(future) === BAD_REQUEST)
   }
 
   test("get unavailable partitions") {
-    val future = KafkaHealthCheck.unavailablePartitions(testClusterName, testTopicName).apply(FakeRequest())
+    val future = KafkaStateCheck.unavailablePartitions(testClusterName, testTopicName).apply(FakeRequest())
     assert(status(future) == OK)
     assert(contentAsJson(future) == Json.obj("topic" -> testTopicName, "unavailablePartitions" -> Seq.empty[Int]))
   }
 
   test("get unavailable partitions of non-existing topic in non-existing cluster") {
-    val future = KafkaHealthCheck.unavailablePartitions("non-existent", "weird").apply(FakeRequest())
+    val future = KafkaStateCheck.unavailablePartitions("non-existent", "weird").apply(FakeRequest())
     assert(status(future) === BAD_REQUEST)
   }
 }
