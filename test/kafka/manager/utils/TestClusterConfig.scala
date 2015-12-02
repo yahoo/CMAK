@@ -24,7 +24,7 @@ class TestClusterConfig extends FunSuite with Matchers {
     }
   }
 
-  test("serialize and deserialize") {
+  test("serialize and deserialize 0.8.1.1") {
     val cc = ClusterConfig("qa","0.8.2.0","localhost:2181", jmxEnabled = true, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None)
     val serialize: String = ClusterConfig.serialize(cc)
     val deserialize = ClusterConfig.deserialize(serialize)
@@ -32,8 +32,32 @@ class TestClusterConfig extends FunSuite with Matchers {
     assert(cc == deserialize.get)
   }
 
-  test("serialize and deserialize +jmx credentials") {
+  test("serialize and deserialize 0.8.2.0 +jmx credentials") {
     val cc = ClusterConfig("qa","0.8.2.0","localhost:2181", jmxEnabled = true, jmxUser = Some("mario"), jmxPass = Some("rossi"), pollConsumers = true, filterConsumers = true)
+    val serialize: String = ClusterConfig.serialize(cc)
+    val deserialize = ClusterConfig.deserialize(serialize)
+    assert(deserialize.isSuccess === true)
+    assert(cc == deserialize.get)
+  }
+
+  test("serialize and deserialize 0.8.2.0") {
+    val cc = ClusterConfig("qa","0.8.2.0","localhost:2181", jmxEnabled = true, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None)
+    val serialize: String = ClusterConfig.serialize(cc)
+    val deserialize = ClusterConfig.deserialize(serialize)
+    assert(deserialize.isSuccess === true)
+    assert(cc == deserialize.get)
+  }
+
+  test("serialize and deserialize 0.8.2.1") {
+    val cc = ClusterConfig("qa","0.8.2.1","localhost:2181", jmxEnabled = true, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None)
+    val serialize: String = ClusterConfig.serialize(cc)
+    val deserialize = ClusterConfig.deserialize(serialize)
+    assert(deserialize.isSuccess === true)
+    assert(cc == deserialize.get)
+  }
+
+  test("serialize and deserialize 0.8.2.2") {
+    val cc = ClusterConfig("qa","0.8.2.2","localhost:2181", jmxEnabled = true, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None)
     val serialize: String = ClusterConfig.serialize(cc)
     val deserialize = ClusterConfig.deserialize(serialize)
     assert(deserialize.isSuccess === true)
