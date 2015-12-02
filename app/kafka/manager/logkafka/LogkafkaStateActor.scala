@@ -3,20 +3,23 @@
  * See accompanying LICENSE file.
  */
 
-package kafka.manager
+package kafka.manager.logkafka
 
+import kafka.manager.model.{ClusterContext, ActorModel}
+import ActorModel._
+import kafka.manager._
+import kafka.manager.base.BaseQueryCommandActor
 import kafka.manager.features.KMLogKafkaFeature
-import org.apache.curator.framework.recipes.cache._
+import kafka.manager.utils.LogkafkaZkUtils
 import org.apache.curator.framework.CuratorFramework
-import org.joda.time.{DateTimeZone, DateTime}
-import kafka.manager.utils.{LogkafkaZkUtils}
+import org.apache.curator.framework.recipes.cache._
+import org.joda.time.{DateTime, DateTimeZone}
 
-import scala.util.{Success, Failure, Try}
+import scala.util.{Failure, Success, Try}
 
 /**
  * @author hiral
  */
-import ActorModel._
 import scala.collection.JavaConverters._
 class LogkafkaStateActor(curator: CuratorFramework, 
                       clusterContext: ClusterContext) extends BaseQueryCommandActor {

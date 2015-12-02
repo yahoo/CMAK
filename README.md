@@ -109,7 +109,7 @@ please use the following (the example assumes oracle java8):
 
     $ PATH=/usr/local/oracle-java-8/bin:$PATH \
       JAVA_HOME=/usr/local/oracle-java-8 \
-      /path/to/sbt -java-home /usr/local/oracle-java-8 dist clean
+      /path/to/sbt -java-home /usr/local/oracle-java-8 clean dist
 
 This ensures that the 'java' and 'javac' binaries in your path are first looked up in the
 oracle java8 release. Next, for all downstream tools that only listen to JAVA_HOME, it points

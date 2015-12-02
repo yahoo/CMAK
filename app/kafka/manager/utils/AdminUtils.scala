@@ -19,11 +19,11 @@ package kafka.manager.utils
 
 import java.util.Properties
 
-import kafka.manager.{Kafka_0_8_2_0, KafkaVersion}
+import grizzled.slf4j.Logging
+import kafka.manager.model.KafkaVersion
 import org.apache.curator.framework.CuratorFramework
 import org.apache.zookeeper.CreateMode
 import org.apache.zookeeper.KeeperException.NodeExistsException
-import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
 import scala.util.Random
@@ -32,9 +32,7 @@ import scala.util.Random
  * Borrowed from kafka 0.8.1.1, adapted to use curator framework
  * https://git-wip-us.apache.org/repos/asf?p=kafka.git;a=blob;f=core/src/main/scala/kafka/admin/AdminUtils.scala
  */
-class AdminUtils(version: KafkaVersion) {
-
-  private[this] lazy val logger = LoggerFactory.getLogger(this.getClass)
+class AdminUtils(version: KafkaVersion) extends Logging {
 
   val rand = new Random
   val TopicConfigChangeZnodePrefix = "config_change_"
@@ -157,10 +155,10 @@ class AdminUtils(version: KafkaVersion) {
       val jsonPartitionData = ZkUtils.replicaAssignmentZkData(replicaAssignment.map(e => (e._1.toString -> e._2)))
 
       if (!update) {
-        logger.info("Topic creation {}", jsonPartitionData.toString)
+        logger.info(s"Topic creation ${jsonPartitionData.toString}")
         ZkUtils.createPersistentPath(curator, zkPath, jsonPartitionData)
       } else {
-        logger.info("Topic update {}", jsonPartitionData.toString)
+        logger.info(s"Topic update ${jsonPartitionData.toString}")
         ZkUtils.updatePersistentPath(curator, zkPath, jsonPartitionData, readVersion)
       }
       logger.debug("Updated path %s with %s for replica assignment".format(zkPath, jsonPartitionData))

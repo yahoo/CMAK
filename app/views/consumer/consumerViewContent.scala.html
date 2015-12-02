@@ -3,7 +3,7 @@
 * See accompanying LICENSE file.
 *@
 @import b3.vertical.fieldConstructor
-@(cluster:String, consumer: String, consumerIdentity: kafka.manager.ActorModel.ConsumerIdentity)
+@(cluster:String, consumer: String, consumerIdentity: kafka.manager.model.ActorModel.ConsumerIdentity)
 
 @getTopicCoverage(percentage: Int) = {
     @percentage match {
@@ -21,7 +21,7 @@
                 <tr><th>Topic</th><th>Partitions Covered %</th><th>Total Lag</th></tr>
                 </thead>
                 <tbody>
-                @for((topic: String, state: kafka.manager.ActorModel.ConsumedTopicState) <- consumerIdentity.topicMap) {
+                @for((topic: String, state: kafka.manager.model.ActorModel.ConsumedTopicState) <- consumerIdentity.topicMap) {
                 <tr>
                     <td><a href="@routes.Consumer.consumerAndTopic(cluster, consumer, topic)">@topic</a></td>
                     <td class="@getTopicCoverage(state.percentageCovered)">

@@ -5,11 +5,11 @@
 package kafka.test
 
 import java.util.{UUID, Properties}
-import java.util.concurrent.{Executors, ExecutorService}
 import java.util.concurrent.atomic.AtomicInteger
 
+import grizzled.slf4j.Logging
 import kafka.consumer._
-import kafka.manager.Kafka_0_8_2_0
+import kafka.manager.model.Kafka_0_8_2_0
 import kafka.manager.utils.AdminUtils
 import kafka.message.{NoCompressionCodec, DefaultCompressionCodec}
 import kafka.producer.{KeyedMessage, ProducerConfig, Producer}
@@ -18,7 +18,6 @@ import org.apache.curator.framework.imps.CuratorFrameworkState
 import org.apache.curator.framework.{CuratorFrameworkFactory, CuratorFramework}
 import org.apache.curator.retry.ExponentialBackoffRetry
 import org.apache.curator.test.TestingServer
-import org.slf4j.LoggerFactory
 
 import scala.util.Try
 
@@ -101,9 +100,8 @@ object SeededBroker {
 case class HighLevelConsumer(topic: String,
                     groupId: String,
                     zookeeperConnect: String,
-                    readFromStartOfStream: Boolean = true) {
+                    readFromStartOfStream: Boolean = true) extends Logging {
 
-  val log = LoggerFactory.getLogger(classOf[HighLevelConsumer])
   val props = new Properties()
   props.put("group.id", groupId)
   props.put("zookeeper.connect", zookeeperConnect)
@@ -116,20 +114,20 @@ case class HighLevelConsumer(topic: String,
 
   val filterSpec = new Whitelist(topic)
 
-  log.info("setup:start topic=%s for zk=%s and groupId=%s".format(topic,zookeeperConnect,groupId))
+  info("setup:start topic=%s for zk=%s and groupId=%s".format(topic,zookeeperConnect,groupId))
   val stream : KafkaStream[Array[Byte], Array[Byte]] = connector.createMessageStreamsByFilter[Array[Byte], Array[Byte]](filterSpec, 1, new DefaultDecoder(), new DefaultDecoder()).head
-  log.info("setup:complete topic=%s for zk=%s and groupId=%s".format(topic,zookeeperConnect,groupId))
+  info("setup:complete topic=%s for zk=%s and groupId=%s".format(topic,zookeeperConnect,groupId))
 
   def read(write: (Array[Byte])=>Unit) = {
-    log.info("reading on stream now")
+    info("reading on stream now")
     for(messageAndTopic <- stream) {
       try {
-        log.info("writing from stream")
+        info("writing from stream")
         write(messageAndTopic.message)
-        log.info("written to stream")
+        info("written to stream")
       } catch {
         case e: Throwable =>
-            log.error("Error processing message, skipping this message: ", e)
+            error("Error processing message, skipping this message: ", e)
       }
     }
   }

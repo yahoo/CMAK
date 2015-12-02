@@ -5,7 +5,8 @@
 
 package models.form
 
-import kafka.manager.ActorModel.BrokerIdentity
+import kafka.manager.model.ActorModel
+import ActorModel.BrokerIdentity
 
 /**
  * @author hiral

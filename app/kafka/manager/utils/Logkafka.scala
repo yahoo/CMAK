@@ -18,14 +18,15 @@
 package kafka.manager.utils
 
 
+import grizzled.slf4j.Logging
+
 import scala.util.matching.Regex
-import org.slf4j.LoggerFactory
 
 /**
  * Borrowed from kafka 0.8.1.1
  * https://git-wip-us.apache.org/repos/asf?p=kafka.git;a=blob;f=core/src/main/scala/kafka/common/Logkafka.scala
  */
-object Logkafka {
+object Logkafka extends Logging {
   import kafka.manager.utils.LogkafkaErrors._
 
   val legalChars = "[a-zA-Z0-9\\._\\-]"
@@ -35,7 +36,6 @@ object Logkafka {
   val maxPathLength = 255
   private val rgx = new Regex(legalChars + "+")
   private val illRgxPath = new Regex(illegalPathChars)
-  lazy val logger = LoggerFactory.getLogger(this.getClass)
 
   def validateHostname(hostname: String) {
     checkCondition(hostname.length > 0, HostnameEmpty)

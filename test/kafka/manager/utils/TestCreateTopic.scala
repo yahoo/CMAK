@@ -7,9 +7,10 @@ package kafka.manager.utils
 import java.util.Properties
 
 import TopicErrors._
-import kafka.manager.ActorModel.{PartitionOffsetsCapture, TopicIdentity, TopicDescription}
+import kafka.manager.model.ActorModel
+import ActorModel.{PartitionOffsetsCapture, TopicIdentity, TopicDescription}
 import kafka.manager.features.ClusterFeatures
-import kafka.manager.{ClusterContext, ClusterConfig, Kafka_0_8_2_0}
+import kafka.manager.model.{ClusterContext, ClusterConfig, Kafka_0_8_2_0}
 import org.apache.zookeeper.data.Stat
 import scala.concurrent.Future
 /**

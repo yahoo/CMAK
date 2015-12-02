@@ -19,18 +19,14 @@ package kafka.manager.utils
 
 import java.util.Properties
 
-import kafka.manager.{Kafka_0_8_2_0, KafkaVersion}
+import grizzled.slf4j.Logging
+import kafka.manager.model.{Kafka_0_8_2_0, KafkaVersion, ActorModel}
 import org.apache.curator.framework.CuratorFramework
-import org.apache.zookeeper.CreateMode
-import org.apache.zookeeper.KeeperException.NodeExistsException
-import org.slf4j.LoggerFactory
 
 import scala.collection.mutable
 import scala.util.Random
 
-class LogkafkaAdminUtils(version: KafkaVersion) {
-
-  private[this] lazy val logger = LoggerFactory.getLogger(this.getClass)
+class LogkafkaAdminUtils(version: KafkaVersion) extends Logging {
 
   val rand = new Random
 
@@ -44,7 +40,7 @@ class LogkafkaAdminUtils(version: KafkaVersion) {
   def deleteLogkafka(curator: CuratorFramework, 
                    logkafka_id: String, 
                    log_path: String, 
-                   logkafkaConfigOption: Option[kafka.manager.ActorModel.LogkafkaConfig]): Unit = {
+                   logkafkaConfigOption: Option[ActorModel.LogkafkaConfig]): Unit = {
     logkafkaConfigOption.map { lcg =>
       lcg.config.map { c => 
         val configMap =kafka.manager.utils.Logkafka.parseJsonStr(logkafka_id, c)
@@ -59,7 +55,7 @@ class LogkafkaAdminUtils(version: KafkaVersion) {
                   logkafka_id: String,
                   log_path: String,
                   config: Properties = new Properties,
-                  logkafkaConfigOption: Option[kafka.manager.ActorModel.LogkafkaConfig] = None
+                  logkafkaConfigOption: Option[ActorModel.LogkafkaConfig] = None
                   ): Unit = {
     createOrUpdateLogkafkaConfigPathInZK(curator, logkafka_id, log_path, config, logkafkaConfigOption)
   }
@@ -68,7 +64,7 @@ class LogkafkaAdminUtils(version: KafkaVersion) {
                                            logkafka_id: String,
                                            log_path: String,
                                            config: Properties = new Properties,
-                                           logkafkaConfigOption: Option[kafka.manager.ActorModel.LogkafkaConfig],
+                                           logkafkaConfigOption: Option[ActorModel.LogkafkaConfig],
                                            update: Boolean = false,
                                            readVersion: Int = -1,
                                            checkConfig: Boolean = true 
@@ -117,7 +113,7 @@ class LogkafkaAdminUtils(version: KafkaVersion) {
                   logkafka_id: String,
                   log_path: String,
                   config: Properties = new Properties,
-                  logkafkaConfigOption: Option[kafka.manager.ActorModel.LogkafkaConfig],
+                  logkafkaConfigOption: Option[ActorModel.LogkafkaConfig],
                   checkConfig: Boolean = true
                   ): Unit = {
     createOrUpdateLogkafkaConfigPathInZK(curator, logkafka_id, log_path, config, logkafkaConfigOption, true, -1, checkConfig)

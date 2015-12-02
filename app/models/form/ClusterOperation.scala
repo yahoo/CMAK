@@ -5,7 +5,7 @@
 
 package models.form
 
-import kafka.manager.ClusterConfig
+import kafka.manager.model.ClusterConfig
 
 /**
  * @author hiral

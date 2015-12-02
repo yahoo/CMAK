@@ -6,7 +6,7 @@
 @import b3.vertical.fieldConstructor
 @(cluster: String,
   topic: String,
-  errorOrForm: kafka.manager.ApiError \/ (Form[models.form.GenerateAssignment], kafka.manager.ClusterContext)
+  errorOrForm: kafka.manager.ApiError \/ (Form[models.form.GenerateAssignment], kafka.manager.model.ClusterContext)
 )(implicit af: features.ApplicationFeatures)
 
 @theMenu = {

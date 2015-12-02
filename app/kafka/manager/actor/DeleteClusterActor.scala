@@ -3,13 +3,16 @@
  * See accompanying LICENSE file.
  */
 
-package kafka.manager
+package kafka.manager.actor
 
 import akka.actor.Cancellable
-import ActorModel.{DCUpdateState, CommandRequest, ActorResponse}
+import kafka.manager.model.ActorModel
+import ActorModel.{ActorResponse, CommandRequest, DCUpdateState}
+import kafka.manager._
+import kafka.manager.base.BaseCommandActor
 import org.apache.curator.framework.CuratorFramework
-import org.apache.curator.framework.recipes.cache.{PathChildrenCacheEvent, PathChildrenCacheListener, PathChildrenCache}
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
+import org.apache.curator.framework.recipes.cache.{PathChildrenCache, PathChildrenCacheEvent, PathChildrenCacheListener}
 
 import scala.concurrent.duration._
 import scala.util.Try

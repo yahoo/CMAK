@@ -7,7 +7,7 @@ package kafka.manager.utils
 
 import java.util.Properties
 
-import kafka.manager.{Kafka_0_8_2_1, Kafka_0_8_2_0, Kafka_0_8_1_1, KafkaVersion}
+import kafka.manager.model.{Kafka_0_8_2_1, Kafka_0_8_2_0, Kafka_0_8_1_1, KafkaVersion}
 
 trait LogkafkaNewConfigs {
   def configNames : Set[String]

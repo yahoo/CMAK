@@ -17,19 +17,18 @@
 
 package kafka.manager.utils.zero81
 
+import grizzled.slf4j.Logging
 import kafka.common.TopicAndPartition
 import kafka.manager.utils._
 import org.apache.curator.framework.CuratorFramework
 import org.apache.zookeeper.KeeperException.NodeExistsException
 import org.json4s.JsonAST._
-import org.slf4j.LoggerFactory
 
 /**
  * Borrowed from kafka 0.8.1.1, adapted to use curator framework
  * https://git-wip-us.apache.org/repos/asf?p=kafka.git;a=blob;f=core/src/main/scala/kafka/admin/PreferredReplicaLeaderElectionCommand.scala
  */
-object PreferredReplicaLeaderElectionCommand {
-  private[this] val logger = LoggerFactory.getLogger(this.getClass)
+object PreferredReplicaLeaderElectionCommand extends Logging {
 
   def parsePreferredReplicaElectionData(jsonString: String): Set[TopicAndPartition] = {
     parseJson(jsonString).findField(_._1 == "partitions") match {

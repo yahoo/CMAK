@@ -3,17 +3,15 @@
  * See accompanying LICENSE file.
  */
 
-package kafka.manager
+package kafka.manager.base
 
-import org.apache.curator.framework.{CuratorFrameworkFactory, CuratorFramework}
+import kafka.manager.model.CuratorConfig
+import org.apache.curator.framework.{CuratorFramework, CuratorFrameworkFactory}
 import org.apache.curator.retry.BoundedExponentialBackoffRetry
 
 import scala.util.Try
 
-/**
- * @author hiral
- */
-case class CuratorConfig(zkConnect: String, zkMaxRetry: Int = 100, baseSleepTimeMs : Int = 100, maxSleepTimeMs: Int = 1000)
+
 trait CuratorAwareActor extends BaseActor {
   
   protected def curatorConfig: CuratorConfig

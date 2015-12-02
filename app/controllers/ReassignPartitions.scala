@@ -6,9 +6,9 @@
 package controllers
 
 import features.{KMReassignPartitionsFeature, ApplicationFeatures}
-import kafka.manager.ActorModel._
-import kafka.manager.features.ClusterFeatures
-import kafka.manager.{BrokerListExtended, ApiError, TopicListExtended}
+import kafka.manager.model.ActorModel
+import ActorModel._
+import kafka.manager.ApiError
 import models.navigation.Menus
 import models.{navigation, FollowLink}
 import models.form._

@@ -4,7 +4,7 @@
 *@
 @import scalaz.{\/}
 @(cluster: String, logkafka_id: String, log_path: String,
-errorOrForm: kafka.manager.ApiError \/ (Form[models.form.UpdateLogkafkaConfig], kafka.manager.ClusterContext)
+errorOrForm: kafka.manager.ApiError \/ (Form[models.form.UpdateLogkafkaConfig], kafka.manager.model.ClusterContext)
 )(implicit af: features.ApplicationFeatures)
 
 @import helper._

@@ -3,7 +3,7 @@
 * See accompanying LICENSE file.
 *@
 @import scalaz.{\/}
-@(cluster:String, errorOrLogkafkas: kafka.manager.ApiError \/ (kafka.manager.LogkafkaListExtended, kafka.manager.ClusterContext)
+@(cluster:String, errorOrLogkafkas: kafka.manager.ApiError \/ (kafka.manager.LogkafkaListExtended, kafka.manager.model.ClusterContext)
 )(implicit af: features.ApplicationFeatures)
 
 @theMenu = {

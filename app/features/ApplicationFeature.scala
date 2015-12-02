@@ -6,8 +6,8 @@
 package features
 
 import com.typesafe.config.Config
+import grizzled.slf4j.Logging
 import kafka.manager.features.KMFeature
-import org.slf4j.LoggerFactory
 
 import scala.util.{Success, Failure, Try}
 
@@ -19,8 +19,7 @@ case object KMPreferredReplicaElectionFeature extends ApplicationFeature
 case object KMReassignPartitionsFeature extends ApplicationFeature
 case object KMBootstrapClusterConfigFeature extends ApplicationFeature
 
-object ApplicationFeature {
-  private lazy val log = LoggerFactory.getLogger(classOf[ApplicationFeature])
+object ApplicationFeature extends Logging {
   import scala.reflect.runtime.universe
 
   val runtimeMirror = universe.runtimeMirror(getClass.getClassLoader)
@@ -38,7 +37,7 @@ object ApplicationFeature {
       }
     } match {
       case Failure(t) =>
-        log.error(s"Unknown application feature $s")
+        error(s"Unknown application feature $s")
         None
       case Success(f) => Option(f)
     }
@@ -48,10 +47,9 @@ object ApplicationFeature {
 
 case class ApplicationFeatures(features: Set[ApplicationFeature])
 
-object ApplicationFeatures {
+object ApplicationFeatures extends Logging {
   import play.api.Play.current
-  private lazy val log = LoggerFactory.getLogger(classOf[ApplicationFeatures])
-  
+
   lazy val default : List[String] = List(
     KMClusterManagerFeature,
     KMTopicManagerFeature,
@@ -67,7 +65,7 @@ object ApplicationFeatures {
     val configFeatures: Option[List[String]] = Try(config.getStringList("application.features").asScala.toList).toOption
     
     if(configFeatures.isEmpty) {
-      log.warn(s"application.features not found in conf file, using default values $default")
+      warn(s"application.features not found in conf file, using default values $default")
     }
 
     val f = configFeatures.getOrElse(default).map(ApplicationFeature.from).flatten

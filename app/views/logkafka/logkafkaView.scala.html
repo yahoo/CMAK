@@ -6,7 +6,7 @@
 @(cluster:String,
   logkafka_id: String,
   log_path: String,
-  errorOrLogkafkaIdentity: kafka.manager.ApiError \/ (kafka.manager.ActorModel.LogkafkaIdentity, kafka.manager.ClusterContext)
+  errorOrLogkafkaIdentity: kafka.manager.ApiError \/ (kafka.manager.model.ActorModel.LogkafkaIdentity, kafka.manager.model.ClusterContext)
 )(implicit af: features.ApplicationFeatures)
 
 @theMenu = {

@@ -3,18 +3,20 @@
  * See accompanying LICENSE file.
  */
 
-package kafka.manager
+package kafka.manager.model
 
 import java.util.Properties
 
-import org.joda.time.DateTime
+import grizzled.slf4j.Logging
 import kafka.common.TopicAndPartition
-import org.slf4j.LoggerFactory
+import kafka.manager.jmx._
+import kafka.manager.utils
+import org.joda.time.DateTime
 
 import scala.collection.immutable.Queue
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
-import scala.util.{Try, Success, Failure}
+import scala.concurrent.{Await, Future}
+import scala.util.{Failure, Success, Try}
 import scalaz.{NonEmptyList, Validation}
 
 /**
@@ -205,11 +207,12 @@ object ActorModel {
   case class BrokerIdentity(id: Int, host: String, port: Int, jmxPort: Int)
 
   object BrokerIdentity {
-    import scalaz.syntax.applicative._
     import org.json4s.jackson.JsonMethods._
     import org.json4s.scalaz.JsonScalaz
     import org.json4s.scalaz.JsonScalaz._
-    import scala.language.reflectiveCalls
+
+import scala.language.reflectiveCalls
+    import scalaz.syntax.applicative._
 
     implicit def from(id: Int, config: String): Validation[NonEmptyList[JsonScalaz.Error],BrokerIdentity]= {
       val json = parse(config)
@@ -230,14 +233,14 @@ object ActorModel {
                                     isUnderReplicated: Boolean = false,
                                     leaderSize: Option[Long] = None,
                                     size: Option[String] = None)
-  object TopicPartitionIdentity {
 
-    lazy val logger = LoggerFactory.getLogger(this.getClass)
+  object TopicPartitionIdentity extends Logging {
 
-    import scalaz.syntax.applicative._
     import org.json4s.jackson.JsonMethods._
     import org.json4s.scalaz.JsonScalaz._
-    import scala.language.reflectiveCalls
+
+import scala.language.reflectiveCalls
+    import scalaz.syntax.applicative._
 
     implicit def from(partition: Int,
                       state:Option[String],
@@ -349,13 +352,12 @@ object ActorModel {
     val producerRate: String = BigDecimal(partitionsIdentity.map(_._2.rateOfChange.getOrElse(0D)).sum).setScale(2, BigDecimal.RoundingMode.HALF_UP).toString()
   }
 
-  object TopicIdentity {
-
-    lazy val logger = LoggerFactory.getLogger(this.getClass)
+  object TopicIdentity extends Logging {
 
     import org.json4s.jackson.JsonMethods._
     import org.json4s.scalaz.JsonScalaz._
-    import scala.language.reflectiveCalls
+
+import scala.language.reflectiveCalls
     
     private[this] def getPartitionReplicaMap(td: TopicDescription) : Map[String, List[Int]] = {
       // Get the topic description information
@@ -530,8 +532,7 @@ object ActorModel {
   case class ConsumerIdentity(consumerGroup:String,
                               topicMap: Map[String, ConsumedTopicState],
                               clusterContext: ClusterContext)
-  object ConsumerIdentity {
-    lazy val logger = LoggerFactory.getLogger(this.getClass)
+  object ConsumerIdentity extends Logging {
     import scala.language.reflectiveCalls
 
     implicit def from(cd: ConsumerDescription,
@@ -628,9 +629,7 @@ object ActorModel {
                               identityMap: Map[String, (Option[Map[String, String]], Option[Map[String, String]])]) {
   }
 
-  object LogkafkaIdentity {
-
-    lazy val logger = LoggerFactory.getLogger(this.getClass)
+  object LogkafkaIdentity extends Logging {
 
     implicit def from(logkafka_id: String, lcg: Option[LogkafkaConfig], lct: Option[LogkafkaClient]) : LogkafkaIdentity = {
       val configJsonStr = lcg match {

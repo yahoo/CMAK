@@ -5,7 +5,7 @@
 @import scalaz.{\/}
 @(cluster:String,
   consumer: String,
-  errorOrConsumerIdentity: kafka.manager.ApiError \/ kafka.manager.ActorModel.ConsumerIdentity
+  errorOrConsumerIdentity: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.ConsumerIdentity
 )(implicit af: features.ApplicationFeatures)
 
 @theMenu = {

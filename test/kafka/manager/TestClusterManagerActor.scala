@@ -11,6 +11,8 @@ import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.pattern._
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
+import kafka.manager.actor.cluster.{ClusterManagerActorConfig, ClusterManagerActor}
+import kafka.manager.model.{ClusterConfig, CuratorConfig, ActorModel}
 import kafka.manager.utils.zero81.PreferredLeaderElectionErrors
 import kafka.test.SeededBroker
 import kafka.manager.utils.{CuratorAwareTest, ZkUtils}

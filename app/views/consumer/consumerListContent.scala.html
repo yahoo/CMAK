@@ -2,9 +2,9 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@(cluster: String, consumers: IndexedSeq[(String, Option[kafka.manager.ActorModel.ConsumerIdentity])], clusterContext: kafka.manager.ClusterContext)
+@(cluster: String, consumers: IndexedSeq[(String, Option[kafka.manager.model.ActorModel.ConsumerIdentity])], clusterContext: kafka.manager.model.ClusterContext)
 
-@getConsumedTopicSummary(state: kafka.manager.ActorModel.ConsumedTopicState) = {
+@getConsumedTopicSummary(state: kafka.manager.model.ActorModel.ConsumedTopicState) = {
     @state.percentageCovered match {
         case i if i <=  99 => {
             <span style="background-color: #F2DEDE">
@@ -14,33 +14,31 @@
         case i => {(@state.percentageCovered% coverage, @state.totalLag.getOrElse("Lag unavailable") lag)}
     }
 }
-@if(clusterContext.config.pollConsumers) {
     <table class="table" id="consumer-table">
         <thead>
         <tr><th>Consumer</th>
+            @if(clusterContext.config.pollConsumers) {
             <th>Topics it consumes from</th>
+            }
         </tr>
         </thead>
         <tbody>
         @for( (consumer, consumerIdentityOpt) <- consumers) {
             <tr>
                 <td><a href="@routes.Consumer.consumer(cluster,consumer)">@consumer</a></td>
+                @if(clusterContext.config.pollConsumers) {
                 <td>
                     @consumerIdentityOpt.fold{
                         No details available for this consumer at this time
-                    }{ a:kafka.manager.ActorModel.ConsumerIdentity =>
-                        @for((topic: String, state: kafka.manager.ActorModel.ConsumedTopicState) <- a.topicMap) {
+                    }{ a:kafka.manager.model.ActorModel.ConsumerIdentity =>
+                        @for((topic: String, state: kafka.manager.model.ActorModel.ConsumedTopicState) <- a.topicMap) {
                             <a href="@routes.Consumer.consumerAndTopic(cluster,consumer,topic)">@topic</a>:
                             @getConsumedTopicSummary(state) <br>
                         }
                     }
                 </td>
+                }
             </tr>
         }
         </tbody>
     </table>
-} else {
-    <div class="alert alert-info" role="alert">
-        Please enable consumer polling <a href="@routes.Cluster.updateCluster(cluster)" class="alert-link">here</a>.
-    </div>
-}

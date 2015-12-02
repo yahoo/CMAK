@@ -6,7 +6,7 @@
 @(cluster:String,
   consumer: String,
   topic: String,
-  errorOrConsumedTopicState: kafka.manager.ApiError \/ kafka.manager.ActorModel.ConsumedTopicState
+  errorOrConsumedTopicState: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.ConsumedTopicState
 )(implicit af: features.ApplicationFeatures)
 
 @theMenu = {

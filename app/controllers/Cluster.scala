@@ -6,7 +6,8 @@
 package controllers
 
 import features.{KMClusterManagerFeature, ApplicationFeatures}
-import kafka.manager.{KafkaVersion, ApiError, ClusterConfig}
+import kafka.manager.model.{KafkaVersion, ClusterConfig}
+import kafka.manager.ApiError
 import models.FollowLink
 import models.form._
 import play.api.data.Form

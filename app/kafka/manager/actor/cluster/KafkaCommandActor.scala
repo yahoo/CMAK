@@ -3,34 +3,32 @@
  * See accompanying LICENSE file.
  */
 
-package kafka.manager
+package kafka.manager.actor.cluster
 
-import java.util.concurrent.{LinkedBlockingQueue, TimeUnit, ThreadPoolExecutor}
-
-import akka.pattern._
-import akka.util.Timeout
+import kafka.manager.base.cluster.BaseClusterCommandActor
+import kafka.manager.base.{LongRunningPoolActor, LongRunningPoolConfig}
 import kafka.manager.features.KMDeleteTopicFeature
-import kafka.manager.utils.zero81.{ReassignPartitionCommand, PreferredReplicaLeaderElectionCommand}
-import org.apache.curator.framework.CuratorFramework
+import kafka.manager.model.ActorModel._
+import kafka.manager.model.ClusterContext
+import kafka.manager.utils.zero81.{PreferredReplicaLeaderElectionCommand, ReassignPartitionCommand}
 import kafka.manager.utils.{AdminUtils, ZkUtils}
+import org.apache.curator.framework.CuratorFramework
 
-import scala.concurrent.{Future, ExecutionContext}
-import scala.concurrent.duration._
+import scala.concurrent.Future
 import scala.util.{Failure, Try}
 
 /**
  * @author hiral
  */
 
-import ActorModel._
-
 case class KafkaCommandActorConfig(curator: CuratorFramework, 
                                    longRunningPoolConfig: LongRunningPoolConfig,
                                    askTimeoutMillis: Long = 400, 
                                    clusterContext: ClusterContext, 
                                    adminUtils: AdminUtils)
-class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extends BaseCommandActor with LongRunningPoolActor {
+class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extends BaseClusterCommandActor with LongRunningPoolActor {
 
+  protected implicit val clusterContext: ClusterContext = kafkaCommandActorConfig.clusterContext
   //private[this] val askTimeout: Timeout = kafkaCommandActorConfig.askTimeoutMillis.milliseconds
 
   private[this] val reassignPartitionCommand = new ReassignPartitionCommand(kafkaCommandActorConfig.adminUtils)
@@ -68,7 +66,13 @@ class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extend
     implicit val ec = longRunningExecutionContext
     request match {
       case KCDeleteTopic(topic) =>
-        if(kafkaCommandActorConfig.clusterContext.clusterFeatures.features(KMDeleteTopicFeature)) {
+        featureGateFold(KMDeleteTopicFeature)(
+        {
+          val result : KCCommandResult = KCCommandResult(Failure(new UnsupportedOperationException(
+            s"Delete topic not supported for kafka version ${kafkaCommandActorConfig.clusterContext.config.version}")))
+          sender ! result
+        },
+        {
           longRunning {
             Future {
               KCCommandResult(Try {
@@ -77,11 +81,7 @@ class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extend
               })
             }
           }
-        } else {
-          val result : KCCommandResult = KCCommandResult(Failure(new UnsupportedOperationException(
-            s"Delete topic not supported for kafka version ${kafkaCommandActorConfig.clusterContext.config.version}")))
-          sender ! result
-        }
+        })
       case KCCreateTopic(topic, brokers, partitions, replicationFactor, config) =>
         longRunning {
           Future {

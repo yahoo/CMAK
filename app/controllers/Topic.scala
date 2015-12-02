@@ -8,10 +8,11 @@ package controllers
 import java.util.Properties
 
 import features.{KMTopicManagerFeature, ApplicationFeatures}
-import kafka.manager.ActorModel.TopicIdentity
+import kafka.manager.model.{Kafka_0_8_2_1, Kafka_0_8_2_0, Kafka_0_8_1_1, ActorModel}
+import ActorModel.TopicIdentity
 import kafka.manager.features.ClusterFeatures
 import kafka.manager.utils.TopicConfigs
-import kafka.manager.{Kafka_0_8_2_1, ApiError, Kafka_0_8_2_0, Kafka_0_8_1_1, TopicListExtended}
+import kafka.manager.ApiError
 import models.FollowLink
 import models.form._
 import models.navigation.Menus

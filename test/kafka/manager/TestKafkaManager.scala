@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 import com.typesafe.config.{Config, ConfigFactory}
 import kafka.manager.features.KMDeleteTopicFeature
+import kafka.manager.model.{Kafka_0_8_1_1, ActorModel}
 import kafka.manager.utils.CuratorAwareTest
 import ActorModel.TopicList
 import kafka.test.{SimpleProducer, HighLevelConsumer, SeededBroker}

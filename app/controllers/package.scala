@@ -3,7 +3,8 @@
  * See accompanying LICENSE file.
  */
 import features.{ApplicationFeatures, ApplicationFeature}
-import kafka.manager.{ClusterContext, KafkaManager, ApiError}
+import kafka.manager.model.ClusterContext
+import kafka.manager.{KafkaManager, ApiError}
 import kafka.manager.features.{ClusterFeatures, ClusterFeature}
 import play.api.mvc._
 import play.api.mvc.Results._

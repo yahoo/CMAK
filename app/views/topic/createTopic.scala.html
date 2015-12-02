@@ -3,7 +3,7 @@
 * See accompanying LICENSE file.
 *@
 @import scalaz.{\/}
-@(cluster: String, errorOrForm: kafka.manager.ApiError \/ (Form[models.form.CreateTopic], kafka.manager.ClusterContext)
+@(cluster: String, errorOrForm: kafka.manager.ApiError \/ (Form[models.form.CreateTopic], kafka.manager.model.ClusterContext)
 )(implicit af: features.ApplicationFeatures)
 
 @import helper._

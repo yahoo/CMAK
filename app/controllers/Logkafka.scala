@@ -8,7 +8,8 @@ package controllers
 import java.util.Properties
 
 import _root_.features.ApplicationFeatures
-import kafka.manager.ActorModel.LogkafkaIdentity
+import kafka.manager.model._
+import ActorModel.LogkafkaIdentity
 import kafka.manager.features.KMLogKafkaFeature
 import kafka.manager.utils.LogkafkaNewConfigs
 import kafka.manager._

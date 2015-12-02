@@ -5,7 +5,7 @@
 @import scalaz.{\/}
 @(cluster:String,
   topic: String,
-  errorOrTopicIdentity: kafka.manager.ApiError \/ kafka.manager.ActorModel.TopicIdentity,
+  errorOrTopicIdentity: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.TopicIdentity,
   optConsumerList: Option[Iterable[String]]
 )(implicit af: features.ApplicationFeatures)
 

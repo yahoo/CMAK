@@ -3,19 +3,20 @@
  * See accompanying LICENSE file.
  */
 
-package kafka.manager
+package kafka.manager.logkafka
 
-import akka.actor.{ActorRef, Cancellable, ActorPath}
+import akka.actor.{ActorPath, Cancellable}
+import kafka.manager.model.{ClusterContext, ActorModel}
+import ActorModel._
+import kafka.manager.base.{LongRunningPoolActor, LongRunningPoolConfig}
 import kafka.manager.features.KMLogKafkaFeature
-import scala.collection.mutable
-import scala.concurrent.Future
+
 import scala.concurrent.duration._
 import scala.util.Try
 
 /**
  * @author hiral
  */
-import ActorModel._
 case class LogkafkaViewCacheActorConfig(logkafkaStateActorPath: ActorPath, 
                                       clusterContext: ClusterContext,
                                       longRunningPoolConfig: LongRunningPoolConfig, 

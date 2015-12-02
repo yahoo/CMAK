@@ -3,10 +3,11 @@
  * See accompanying LICENSE file.
  */
 
-package kafka.manager
+package kafka.manager.base
 
-import akka.actor.{ActorLogging, Actor}
-import ActorModel.{ActorErrorResponse, ActorResponse, ActorRequest}
+import akka.actor.{Actor, ActorLogging}
+import kafka.manager.model.ActorModel
+import ActorModel.{ActorErrorResponse, ActorRequest, ActorResponse}
 
 /**
  * @author hiral
