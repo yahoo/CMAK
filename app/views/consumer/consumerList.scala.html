@@ -30,7 +30,7 @@
             <div class="panel-heading"><h3>Consumers</h3></div>
             @errorOrConsumers.fold(
                 views.html.errors.onApiError(_),
-                cl => views.html.consumer.consumerListContent(cluster,cl.list))
+                cl => views.html.consumer.consumerListContent(cluster,cl.list,cl.clusterContext))
         </div>
     </div>
 }

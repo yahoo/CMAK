@@ -36,17 +36,18 @@ object ClusterOperation {
             zkHosts: String,
             zkMaxRetry: Int,
             jmxEnabled: Boolean,
+            pollConsumers: Boolean,
             filterConsumers: Boolean,
             logkafkaEnabled: Boolean, 
             activeOffsetCacheEnabled: Boolean,
             displaySizeEnabled: Boolean): ClusterOperation = {
-    ClusterOperation(operation,ClusterConfig(name, version, zkHosts, zkMaxRetry, jmxEnabled, filterConsumers, logkafkaEnabled, activeOffsetCacheEnabled, displaySizeEnabled))
+    ClusterOperation(operation,ClusterConfig(name, version, zkHosts, zkMaxRetry, jmxEnabled, pollConsumers, filterConsumers, logkafkaEnabled, activeOffsetCacheEnabled, displaySizeEnabled))
   }
 
-  def customUnapply(co: ClusterOperation) : Option[(String, String, String, String, Int, Boolean, Boolean, Boolean, Boolean, Boolean)] = {
+  def customUnapply(co: ClusterOperation) : Option[(String, String, String, String, Int, Boolean, Boolean, Boolean, Boolean, Boolean, Boolean)] = {
     Option((co.op.toString, co.clusterConfig.name, co.clusterConfig.version.toString,
             co.clusterConfig.curatorConfig.zkConnect, co.clusterConfig.curatorConfig.zkMaxRetry,
-            co.clusterConfig.jmxEnabled, co.clusterConfig.filterConsumers, co.clusterConfig.logkafkaEnabled, co.clusterConfig.activeOffsetCacheEnabled, co.clusterConfig.displaySizeEnabled))
+            co.clusterConfig.jmxEnabled, co.clusterConfig.pollConsumers, co.clusterConfig.filterConsumers, co.clusterConfig.logkafkaEnabled, co.clusterConfig.activeOffsetCacheEnabled, co.clusterConfig.displaySizeEnabled))
   }
 }
 
