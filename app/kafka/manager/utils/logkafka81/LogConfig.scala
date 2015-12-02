@@ -32,6 +32,8 @@ object Defaults {
   val RequiredAcks = 1
   val MessageTimeoutMs = 0
   val RegexFilterPattern = ""
+  val LaggingMaxBytes = 0
+  val RotateLaggingMaxSec = 0
 }
 
 /**
@@ -62,7 +64,9 @@ case class LogConfig(val valid: Boolean = Defaults.Valid,
                      val compressionCodec: String = Defaults.CompressionCodec,
                      val requiredAcks: Int = Defaults.RequiredAcks,
                      val messageTimeoutMs: Long = Defaults.MessageTimeoutMs,
-                     val regexFilterPattern: String = Defaults.RegexFilterPattern) {
+                     val regexFilterPattern: String = Defaults.RegexFilterPattern,
+                     val laggingMaxBytes: Long = Defaults.LaggingMaxBytes,
+                     val rotateLaggingMaxSec: Long = Defaults.RotateLaggingMaxSec) {
 
   def toProps: Properties = {
     val props = new Properties()
@@ -103,6 +107,8 @@ object LogConfig extends LogkafkaNewConfigs {
   val RequiredAcksProp = "required_acks"
   val MessageTimeoutMsProp = "message_timeout_ms"
   val RegexFilterPatternProp = "regex_filter_pattern"
+  val LaggingMaxBytesProp = "lagging_max_bytes"
+  val RotateLaggingMaxSecProp = "rotate_lagging_max_sec"
 
   val ConfigMaps = Map(ValidProp -> Defaults.Valid.toString,
                        FollowLastProp -> Defaults.FollowLast.toString,
@@ -113,7 +119,9 @@ object LogConfig extends LogkafkaNewConfigs {
                        CompressionCodecProp -> Defaults.CompressionCodec.toString,
                        RequiredAcksProp -> Defaults.RequiredAcks.toString,
                        MessageTimeoutMsProp -> Defaults.MessageTimeoutMs.toString,
-                       RegexFilterPatternProp -> Defaults.RegexFilterPattern.toString)
+                       RegexFilterPatternProp -> Defaults.RegexFilterPattern.toString,
+                       LaggingMaxBytesProp -> Defaults.LaggingMaxBytes.toString,
+                       RotateLaggingMaxSecProp -> Defaults.RotateLaggingMaxSec.toString)
   def configMaps = ConfigMaps
   val ConfigNames = ConfigMaps.keySet
   def configNames = ConfigNames
@@ -131,7 +139,9 @@ object LogConfig extends LogkafkaNewConfigs {
                   compressionCodec = props.getProperty(CompressionCodecProp, Defaults.CompressionCodec.toString).toString,
                   requiredAcks= props.getProperty(RequiredAcksProp, Defaults.RequiredAcks.toString).toInt,
                   messageTimeoutMs = props.getProperty(MessageTimeoutMsProp, Defaults.MessageTimeoutMs.toString).toLong,
-                  regexFilterPattern = props.getProperty(RegexFilterPatternProp, Defaults.RegexFilterPattern.toString).toString)
+                  regexFilterPattern = props.getProperty(RegexFilterPatternProp, Defaults.RegexFilterPattern.toString).toString,
+                  laggingMaxBytes = props.getProperty(LaggingMaxBytesProp, Defaults.LaggingMaxBytes.toString).toLong,
+                  rotateLaggingMaxSec = props.getProperty(RotateLaggingMaxSecProp, Defaults.RotateLaggingMaxSec.toString).toLong)
   }
 
   /**

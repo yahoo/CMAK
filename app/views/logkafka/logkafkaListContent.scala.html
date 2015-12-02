@@ -17,9 +17,13 @@
     @if(flag) {@s1} else {@s2}
 }
 
+@getTime(timestamp: Long) = {
+    @((new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")).format(timestamp*1000))
+}
+
 <table class="table" id="logkafkas-table">
     <thead>
-        <tr><th>Hostname</th><th>Log Path</th><th># Real Path</th><th># File Pos</th><th># File Size</th><th># Topic</th><th>Operations</th></tr>
+        <tr><th>Hostname</th><th>Log Path</th><th># Real Path</th><th># Last Rotate Time</th><th># File Inode</th><th># File Pos</th><th># File Size</th><th># Topic</th><th>Operations</th></tr>
     </thead>
     <tbody>
     @for( ((hostname, logkafkaIdentity), deleted) <- logkafkas) {
@@ -43,6 +47,18 @@
                         @getLogkafkaStatus(li.active,"scanning for new file", "logkafka is inactive") 
                     </td>
                 }
+
+                @im._2.map { c =>
+                    @c.get("last_rotate_time_sec").map { d =>
+                        <td>@getTime(d.toLong)</td>
+                    }.getOrElse{<td> </td>}
+                }.getOrElse{<td> </td>}
+
+                @im._2.map { c =>
+                    @c.get("inode").map { d =>
+                        <td>@d</td>
+                    }.getOrElse{<td> </td>}
+                }.getOrElse{<td> </td>}
 
                 @im._2.map { c =>
                     @c.get("filepos").map { d =>
