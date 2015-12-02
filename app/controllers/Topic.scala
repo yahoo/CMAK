@@ -8,7 +8,7 @@ package controllers
 import java.util.Properties
 
 import features.{KMTopicManagerFeature, ApplicationFeatures}
-import kafka.manager.model.{Kafka_0_8_2_1, Kafka_0_8_2_0, Kafka_0_8_1_1, ActorModel}
+import kafka.manager.model._
 import ActorModel.TopicIdentity
 import kafka.manager.features.ClusterFeatures
 import kafka.manager.utils.TopicConfigs
@@ -47,6 +47,7 @@ object Topic extends Controller{
   val kafka_0_8_1_1_Default = CreateTopic("",1,1,TopicConfigs.configNames(Kafka_0_8_1_1).map(n => TConfig(n,None)).toList)
   val kafka_0_8_2_0_Default = CreateTopic("",1,1,TopicConfigs.configNames(Kafka_0_8_2_0).map(n => TConfig(n,None)).toList)
   val kafka_0_8_2_1_Default = CreateTopic("",1,1,TopicConfigs.configNames(Kafka_0_8_2_1).map(n => TConfig(n,None)).toList)
+  val kafka_0_8_2_2_Default = CreateTopic("",1,1,TopicConfigs.configNames(Kafka_0_8_2_2).map(n => TConfig(n,None)).toList)
 
   val defaultCreateForm = Form(
     mapping(
@@ -128,6 +129,7 @@ object Topic extends Controller{
           case Kafka_0_8_1_1 => (defaultCreateForm.fill(kafka_0_8_1_1_Default), clusterContext)
           case Kafka_0_8_2_0 => (defaultCreateForm.fill(kafka_0_8_2_0_Default), clusterContext)
           case Kafka_0_8_2_1 => (defaultCreateForm.fill(kafka_0_8_2_1_Default), clusterContext)
+          case Kafka_0_8_2_2 => (defaultCreateForm.fill(kafka_0_8_2_2_Default), clusterContext)
         }
       }
     }
@@ -344,6 +346,7 @@ object Topic extends Controller{
           case Kafka_0_8_1_1 => TopicConfigs.configNames(Kafka_0_8_1_1).map(n => (n,TConfig(n,None))).toMap
           case Kafka_0_8_2_0 => TopicConfigs.configNames(Kafka_0_8_2_0).map(n => (n,TConfig(n,None))).toMap
           case Kafka_0_8_2_1 => TopicConfigs.configNames(Kafka_0_8_2_1).map(n => (n,TConfig(n,None))).toMap
+          case Kafka_0_8_2_2 => TopicConfigs.configNames(Kafka_0_8_2_2).map(n => (n,TConfig(n,None))).toMap
         }
         val combinedMap = defaultConfigMap ++ ti.config.toMap.map(tpl => tpl._1 -> TConfig(tpl._1,Option(tpl._2)))
         (defaultUpdateConfigForm.fill(UpdateTopicConfig(ti.topic,combinedMap.toList.map(_._2),ti.configReadVersion)),
