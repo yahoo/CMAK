@@ -48,17 +48,12 @@ object ApplicationFeature extends Logging {
 case class ApplicationFeatures(features: Set[ApplicationFeature])
 
 object ApplicationFeatures extends Logging {
-  import play.api.Play.current
 
   lazy val default : List[String] = List(
     KMClusterManagerFeature,
     KMTopicManagerFeature,
     KMPreferredReplicaElectionFeature, 
     KMReassignPartitionsFeature).map(_.getClass.getSimpleName)
-  
-  lazy val features = {
-    getApplicationFeatures(play.api.Play.configuration.underlying)
-  }
   
   def getApplicationFeatures(config: Config) : ApplicationFeatures = {
     import scala.collection.JavaConverters._

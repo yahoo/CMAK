@@ -4,11 +4,10 @@
 *@
 @import scalaz.{\/}
 @(cluster:String, brokerId: Int, errorOrBrokerView: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.BVView
-)(implicit af: features.ApplicationFeatures)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
 
 @theMenu = {
-    @views.html.navigation.clusterMenu(cluster,"Brokers","",models.navigation.Menus.clusterMenus(cluster)(
-        af,
+    @views.html.navigation.clusterMenu(cluster,"Brokers","",menus.clusterMenus(cluster)(
         errorOrBrokerView.toOption.map(_.clusterContext.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
 }
 

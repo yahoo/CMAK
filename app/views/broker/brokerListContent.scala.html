@@ -3,7 +3,7 @@
 * See accompanying LICENSE file.
 *@
 @import kafka.manager.model.ActorModel.BrokerIdentity
-@(cluster:String, brokerListExtended: kafka.manager.BrokerListExtended)
+@(cluster:String, brokerListExtended: kafka.manager.BrokerListExtended)(implicit messages: play.api.i18n.Messages)
 
             <table class="table">
                 <thead>

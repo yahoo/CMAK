@@ -3,7 +3,8 @@
 * See accompanying LICENSE file.
 *@
 @import b3.vertical.fieldConstructor
-@(cluster:String, consumer: String, topic: String, state: kafka.manager.model.ActorModel.ConsumedTopicState)
+@(cluster:String, consumer: String, topic: String, state: kafka.manager.model.ActorModel.ConsumedTopicState
+)(implicit messages: play.api.i18n.Messages)
 
 
 @getTopicCoverage(percentage: Int) = {

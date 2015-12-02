@@ -10,10 +10,12 @@ import kafka.manager.model.{KafkaVersion, ClusterConfig}
 import kafka.manager.ApiError
 import models.FollowLink
 import models.form._
+import models.navigation.Menus
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.data.validation.{Valid, Invalid, Constraint}
 import play.api.data.validation.Constraints._
+import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.mvc._
 
 import scala.concurrent.Future
@@ -23,11 +25,11 @@ import scalaz.{-\/, \/-}
 /**
  * @author hiral
  */
-object Cluster extends Controller {
+class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManagerContext)
+              (implicit af: ApplicationFeatures, menus: Menus) extends Controller with I18nSupport {
   import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
-  private[this] val kafkaManager = KafkaManagerContext.getKafkaManager
-  private[this] implicit val af: ApplicationFeatures = ApplicationFeatures.features
+  private[this] val kafkaManager = kafkaManagerContext.getKafkaManager
 
   val validateName : Constraint[String] = Constraint("validate name") { name =>
     Try {

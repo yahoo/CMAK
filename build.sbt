@@ -22,26 +22,26 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.3.14",
   "com.typesafe.akka" %% "akka-slf4j" % "2.3.14",
   "com.google.code.findbugs" % "jsr305" % "2.0.1",
-  "org.webjars" %% "webjars-play" % "2.3.0-2",
-  "org.webjars" % "bootstrap" % "3.3.4",
+  "org.webjars" %% "webjars-play" % "2.4.0",
+  "org.webjars" % "bootstrap" % "3.3.5",
   "org.webjars" % "jquery" % "2.1.4",
-  "org.webjars" % "backbonejs" % "1.1.2-4",
+  "org.webjars" % "backbonejs" % "1.2.3",
   "org.webjars" % "underscorejs" % "1.8.3",
   "org.webjars" % "dustjs-linkedin" % "2.6.1",
-  "org.apache.curator" % "curator-framework" % "2.7.1" exclude("log4j","log4j") force(),
-  "org.apache.curator" % "curator-recipes" % "2.7.1" exclude("log4j","log4j") force(),
+  "org.apache.curator" % "curator-framework" % "2.9.1" exclude("log4j","log4j") force(),
+  "org.apache.curator" % "curator-recipes" % "2.9.1" exclude("log4j","log4j") force(),
   "org.json4s" %% "json4s-jackson" % "3.2.11",
   "org.json4s" %% "json4s-scalaz" % "3.2.11",
-  "org.slf4j" % "log4j-over-slf4j" % "1.7.7",
-  "com.adrianhurt" %% "play-bootstrap3" % "0.4",
+  "org.slf4j" % "log4j-over-slf4j" % "1.7.12",
+  "com.adrianhurt" %% "play-bootstrap3" % "0.4.5-P24",
   "org.clapper" %% "grizzled-slf4j" % "1.0.2",
-  "org.apache.kafka" %% "kafka" % "0.8.2.1" exclude("log4j","log4j") force(),
+  "org.apache.kafka" %% "kafka" % "0.8.2.2" exclude("log4j","log4j") force(),
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
-  "org.apache.curator" % "curator-test" % "2.7.1" % "test",
+  "org.apache.curator" % "curator-test" % "2.9.1" % "test",
   "com.yammer.metrics" % "metrics-core" % "2.1.2" force()
 )
 
-net.virtualvoid.sbt.graph.Plugin.graphSettings
+routesGenerator := InjectedRoutesGenerator
 
 LessKeys.compress in Assets := true
 
@@ -51,7 +51,7 @@ includeFilter in (Assets, LessKeys.less) := "*.less"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
 
-ScoverageSbtPlugin.ScoverageKeys.coverageExcludedPackages := "<empty>;controllers.*;views.*;models.*"
+coverageExcludedPackages := "<empty>;controllers.*;views.*;models.*"
 
 /*
  * Allow packaging as part of the build

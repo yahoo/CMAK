@@ -20,6 +20,7 @@ import play.api.data.Form
 import play.api.data.Forms._
 import play.api.data.validation.{Valid, Invalid, Constraint}
 import play.api.data.validation.Constraints._
+import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.mvc._
 
 import scala.concurrent.Future
@@ -29,11 +30,11 @@ import scalaz.{\/-, -\/}
 /**
  * @author hiral
  */
-object Logkafka extends Controller{
+class Logkafka (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManagerContext)
+               (implicit af: ApplicationFeatures, menus: Menus)  extends Controller with I18nSupport {
   import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
-  implicit private[this] val kafkaManager = KafkaManagerContext.getKafkaManager
-  private[this] implicit val af: ApplicationFeatures = ApplicationFeatures.features
+  implicit private[this] val kafkaManager = kafkaManagerContext.getKafkaManager
 
   val validateLogkafkaId: Constraint[String] = Constraint("validate logkafka id") { id =>
     Try {
@@ -144,7 +145,7 @@ object Logkafka extends Controller{
           cl.configs.filter(_.value.isDefined).foreach(c => props.setProperty(c.name, c.value.get))
           kafkaManager.createLogkafka(clusterName, cl.logkafka_id, cl.log_path, props).map { errorOrSuccess =>
             Ok(views.html.common.resultOfCommand(
-              views.html.navigation.clusterMenu(clusterName, "Logkafka", "Create", Menus.clusterMenus(clusterName)),
+              views.html.navigation.clusterMenu(clusterName, "Logkafka", "Create", menus.clusterMenus(clusterName)),
               models.navigation.BreadCrumbs.withNamedViewAndCluster("Logkafkas", clusterName, "Create Logkafka"),
               errorOrSuccess,
               "Create Logkafka",
@@ -170,7 +171,7 @@ object Logkafka extends Controller{
         deleteLogkafka => {
           kafkaManager.deleteLogkafka(clusterName, deleteLogkafka.logkafka_id, deleteLogkafka.log_path).map { errorOrSuccess =>
             Ok(views.html.common.resultOfCommand(
-              views.html.navigation.clusterMenu(clusterName, "Logkafka", "Logkafka View", Menus.clusterMenus(clusterName)),
+              views.html.navigation.clusterMenu(clusterName, "Logkafka", "Logkafka View", menus.clusterMenus(clusterName)),
               models.navigation.BreadCrumbs.withNamedViewAndClusterAndLogkafka("Logkafka View", clusterName, logkafka_id, log_path, "Delete Logkafka"),
               errorOrSuccess,
               "Delete Logkafka",
@@ -226,7 +227,7 @@ object Logkafka extends Controller{
           updateLogkafkaConfig.configs.filter(_.value.isDefined).foreach(c => props.setProperty(c.name, c.value.get))
           kafkaManager.updateLogkafkaConfig(clusterName, updateLogkafkaConfig.logkafka_id, updateLogkafkaConfig.log_path, props).map { errorOrSuccess =>
             Ok(views.html.common.resultOfCommand(
-              views.html.navigation.clusterMenu(clusterName, "Logkafka", "Logkafka View", Menus.clusterMenus(clusterName)),
+              views.html.navigation.clusterMenu(clusterName, "Logkafka", "Logkafka View", menus.clusterMenus(clusterName)),
               models.navigation.BreadCrumbs.withNamedViewAndClusterAndLogkafka("Logkafka View", clusterName, logkafka_id, log_path, "Update Config"),
               errorOrSuccess,
               "Update Config",
@@ -246,7 +247,7 @@ object Logkafka extends Controller{
       props.put("valid", true.toString);
       kafkaManager.updateLogkafkaConfig(clusterName, logkafka_id, log_path, props, false).map { errorOrSuccess =>
         Ok(views.html.common.resultOfCommand(
-          views.html.navigation.clusterMenu(clusterName, "Logkafka", "Logkafka View", Menus.clusterMenus(clusterName)),
+          views.html.navigation.clusterMenu(clusterName, "Logkafka", "Logkafka View", menus.clusterMenus(clusterName)),
           models.navigation.BreadCrumbs.withNamedViewAndClusterAndLogkafka("Logkafka View", clusterName, logkafka_id, log_path, "Update Config"),
           errorOrSuccess,
           "Enable Config",
@@ -264,7 +265,7 @@ object Logkafka extends Controller{
       props.put("valid", false.toString);
       kafkaManager.updateLogkafkaConfig(clusterName, logkafka_id, log_path, props, false).map { errorOrSuccess =>
         Ok(views.html.common.resultOfCommand(
-          views.html.navigation.clusterMenu(clusterName, "Logkafka", "Logkafka View", Menus.clusterMenus(clusterName)),
+          views.html.navigation.clusterMenu(clusterName, "Logkafka", "Logkafka View", menus.clusterMenus(clusterName)),
           models.navigation.BreadCrumbs.withNamedViewAndClusterAndLogkafka("Logkafka View", clusterName, logkafka_id, log_path, "Update Config"),
           errorOrSuccess,
           "Disable Config",

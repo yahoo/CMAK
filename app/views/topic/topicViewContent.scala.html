@@ -7,7 +7,7 @@
   topic: String,
   topicIdentity: kafka.manager.model.ActorModel.TopicIdentity,
   consumerList: Iterable[String]
-)(implicit af: features.ApplicationFeatures)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages)
 
 @getUnderReplicatedLevel(percentage: Int) = {
     @percentage match {

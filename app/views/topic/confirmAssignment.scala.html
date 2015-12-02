@@ -7,11 +7,10 @@
 @(cluster: String,
   topic: String,
   errorOrForm: kafka.manager.ApiError \/ (Form[models.form.GenerateAssignment], kafka.manager.model.ClusterContext)
-)(implicit af: features.ApplicationFeatures)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
 
 @theMenu = {
-    @views.html.navigation.clusterMenu(cluster,"Topic","Confirm Assignment",models.navigation.Menus.clusterMenus(cluster)(
-        af,
+    @views.html.navigation.clusterMenu(cluster,"Topic","Confirm Assignment",menus.clusterMenus(cluster)(
         errorOrForm.toOption.map(_._2.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
 }
 

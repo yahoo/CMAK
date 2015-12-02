@@ -8,7 +8,7 @@
   errorOrSuccess: kafka.manager.ApiError \/ Any,
   actionTitle: String,
   successLink: models.FollowLink,
-  errorLink: models.FollowLink)
+  errorLink: models.FollowLink)(implicit messages: play.api.i18n.Messages)
 
 @link(followLink: FollowLink) = {
     <div class="alert alert-success" role="alert">Done!</div>

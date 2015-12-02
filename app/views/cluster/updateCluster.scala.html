@@ -3,13 +3,14 @@
 * See accompanying LICENSE file.
 *@
 @import scalaz.{\/}
-@(clusterName: String, errorOrForm: kafka.manager.ApiError \/ Form[models.form.ClusterOperation])(implicit request: RequestHeader)
+@(clusterName: String, errorOrForm: kafka.manager.ApiError \/ Form[models.form.ClusterOperation]
+)(implicit request: RequestHeader, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
 
 @import b3.vertical.fieldConstructor
 @import controllers.routes
 
 @theMenu = {
-    @views.html.navigation.defaultMenu(views.html.navigation.menuNav("Cluster","Update Cluster",models.navigation.Menus.indexMenu))
+    @views.html.navigation.defaultMenu(views.html.navigation.menuNav("Cluster","Update Cluster",menus.indexMenu))
 }
 
 @checkboxWithLink(field: play.api.data.Field) = {

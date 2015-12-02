@@ -5,11 +5,10 @@
 @import kafka.manager.model.ActorModel.BrokerIdentity
 @import scalaz.{\/}
 @(cluster:String, errorOrBrokers: kafka.manager.ApiError \/ kafka.manager.BrokerListExtended
-)(implicit af: features.ApplicationFeatures)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
 
 @theMenu = {
-    @views.html.navigation.clusterMenu(cluster,"Brokers","",models.navigation.Menus.clusterMenus(cluster)(
-        af,
+    @views.html.navigation.clusterMenu(cluster,"Brokers","",menus.clusterMenus(cluster)(
         errorOrBrokers.toOption.map(_.clusterContext.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
 
 }

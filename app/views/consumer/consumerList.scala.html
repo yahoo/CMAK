@@ -4,11 +4,10 @@
 *@
 @import scalaz.{\/}
 @(cluster:String, errorOrConsumers: kafka.manager.ApiError \/ kafka.manager.ConsumerListExtended
-)(implicit af: features.ApplicationFeatures)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
 
 @theMenu = {
-    @views.html.navigation.clusterMenu(cluster,"Consumer","List",models.navigation.Menus.clusterMenus(cluster)(
-        af,
+    @views.html.navigation.clusterMenu(cluster,"Consumer","List",menus.clusterMenus(cluster)(
         errorOrConsumers.toOption.map(_.clusterContext.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
 }
 

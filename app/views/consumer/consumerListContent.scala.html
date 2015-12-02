@@ -2,7 +2,7 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@(cluster: String, consumers: IndexedSeq[(String, Option[kafka.manager.model.ActorModel.ConsumerIdentity])], clusterContext: kafka.manager.model.ClusterContext)
+@(cluster: String, consumers: IndexedSeq[(String, Option[kafka.manager.model.ActorModel.ConsumerIdentity])], clusterContext: kafka.manager.model.ClusterContext)(implicit messages: play.api.i18n.Messages)
 
 @getConsumedTopicSummary(state: kafka.manager.model.ActorModel.ConsumedTopicState) = {
     @state.percentageCovered match {

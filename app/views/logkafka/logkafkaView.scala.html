@@ -7,11 +7,10 @@
   logkafka_id: String,
   log_path: String,
   errorOrLogkafkaIdentity: kafka.manager.ApiError \/ (kafka.manager.model.ActorModel.LogkafkaIdentity, kafka.manager.model.ClusterContext)
-)(implicit af: features.ApplicationFeatures)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
 
 @theMenu = {
-    @views.html.navigation.clusterMenu(cluster,"Logkafka","",models.navigation.Menus.clusterMenus(cluster)(
-        af,
+    @views.html.navigation.clusterMenu(cluster,"Logkafka","",menus.clusterMenus(cluster)(
         errorOrLogkafkaIdentity.toOption.map(_._2.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
 }
 

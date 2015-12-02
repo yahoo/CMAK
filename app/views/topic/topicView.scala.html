@@ -7,11 +7,10 @@
   topic: String,
   errorOrTopicIdentity: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.TopicIdentity,
   optConsumerList: Option[Iterable[String]]
-)(implicit af: features.ApplicationFeatures)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
 
 @theMenu = {
-    @views.html.navigation.clusterMenu(cluster,"Topic","",models.navigation.Menus.clusterMenus(cluster)(
-        af,
+    @views.html.navigation.clusterMenu(cluster,"Topic","",menus.clusterMenus(cluster)(
         errorOrTopicIdentity.toOption.map(_.clusterContext.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
 }
 
