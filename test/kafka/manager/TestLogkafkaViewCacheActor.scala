@@ -35,12 +35,12 @@ class TestLogkafkaViewCacheActor extends KafkaServerInTest {
   private[this] implicit val timeout: Timeout = 10.seconds
 
   private[this] var logkafkaViewCacheActor : Option[ActorRef] = None
-  private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false,true)
+  private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false,true,true)
   private[this] val defaultClusterContext = ClusterContext(ClusterFeatures.from(defaultClusterConfig), defaultClusterConfig)
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, filterConsumers = true, logkafkaEnabled = true)
+    val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, logkafkaEnabled = true)
     val clusterContext = ClusterContext(ClusterFeatures.from(clusterConfig), clusterConfig)
     val props = Props(classOf[KafkaStateActor],sharedCurator, defaultClusterContext)
 

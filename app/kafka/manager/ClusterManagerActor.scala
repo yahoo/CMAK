@@ -20,7 +20,6 @@ import org.apache.zookeeper.CreateMode
 import kafka.common.TopicAndPartition
 import kafka.manager.utils.AdminUtils
 
-import scala.collection.{mutable, immutable}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag

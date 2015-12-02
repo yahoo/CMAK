@@ -128,8 +128,10 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
         //ask for topic descriptions
         val lastUpdateMillisOption: Option[Long] = topicDescriptionsOption.map(_.lastUpdateMillis)
         context.actorSelection(config.kafkaStateActorPath).tell(KSGetAllTopicDescriptions(lastUpdateMillisOption), self)
-        context.actorSelection(config.kafkaStateActorPath).tell(KSGetAllConsumerDescriptions(lastUpdateMillisOption), self)
         context.actorSelection(config.kafkaStateActorPath).tell(KSGetBrokers, self)
+        if (config.clusterContext.config.pollConsumers) {
+          context.actorSelection(config.kafkaStateActorPath).tell(KSGetAllConsumerDescriptions(lastUpdateMillisOption), self)
+        }
 
       case BVGetViews =>
         sender ! allBrokerViews()
@@ -200,26 +202,21 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
       case td: TopicDescriptions =>
         previousTopicDescriptionsOption = topicDescriptionsOption
         topicDescriptionsOption = Some(td)
-        updateView()
+        updateViewForBrokersAndTopics()
 
       case cd: ConsumerDescriptions =>
         consumerDescriptionsOption = Some(cd)
-        updateView()
+        updateViewsForConsumers()
 
       case bl: BrokerList =>
         brokerListOption = Some(bl)
-        updateView()
+        updateViewForBrokersAndTopics()
 
       case any: Any => log.warning("bvca : processActorResponse : Received unknown message: {}", any)
     }
   }
 
   implicit def queue2finitequeue[A](q: Queue[A]): FiniteQueue[A] = new FiniteQueue[A](q)
-
-  private[this] def updateView(): Unit = {
-    updateViewForBrokersAndTopics()
-    updateViewsForConsumers()
-  }
 
   private[this] def updateViewForBrokersAndTopics(): Unit = {
     for {

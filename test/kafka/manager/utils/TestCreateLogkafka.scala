@@ -20,7 +20,7 @@ class TestCreateLogkafka extends CuratorAwareTest {
   import logkafka82.LogkafkaConfigErrors._ 
   
   private[this] val adminUtils  = new LogkafkaAdminUtils(Kafka_0_8_2_0)
-  private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false,true)
+  private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false,true,true)
   private[this] val defaultClusterContext = ClusterContext(ClusterFeatures.from(defaultClusterConfig), defaultClusterConfig)
   private[this] val createLogkafkaHostname = "km-unit-test-logkafka-hostname"
   private[this] val createLogkafkaLogPath = "/km-unit-test-logkafka-logpath"
