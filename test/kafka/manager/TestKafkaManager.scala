@@ -38,7 +38,7 @@ class TestKafkaManager extends CuratorAwareTest {
   private[this] val duration = FiniteDuration(10,SECONDS)
   private[this] val createTopicNameA = "km-unit-test-a"
   private[this] val createTopicNameB = "km-unit-test-b"
-  private[this] val createLogkafkaHostname = "km-unit-test-logkafka-hostname"
+  private[this] val createLogkafkaLogkafkaId = "km-unit-test-logkafka-logkafka_id"
   private[this] val createLogkafkaLogPath = "/km-unit-test-logkafka-logpath"
   private[this] val createLogkafkaTopic = "km-unit-test-logkafka-topic"
   private[this] var hlConsumer : Option[HighLevelConsumer] = None
@@ -420,39 +420,39 @@ class TestKafkaManager extends CuratorAwareTest {
   test("create logkafka") {
     val config = new Properties()
     config.put(kafka.manager.utils.logkafka82.LogConfig.TopicProp,createLogkafkaTopic)
-    val future = kafkaManager.createLogkafka("dev",createLogkafkaHostname,createLogkafkaLogPath,config)
+    val future = kafkaManager.createLogkafka("dev",createLogkafkaLogkafkaId,createLogkafkaLogPath,config)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
     Thread.sleep(2000)
   }
 
   test("get logkafka identity") {
-    val future = kafkaManager.getLogkafkaHostnameList("dev")
+    val future = kafkaManager.getLogkafkaLogkafkaIdList("dev")
     val result = Await.result(future,duration)
     assert(result.isRight === true)
     assert(result.toOption.get.list.nonEmpty === true)
-    result.toOption.get.list.foreach { hostname =>
-      val future2 = kafkaManager.getLogkafkaIdentity("dev",hostname)
+    result.toOption.get.list.foreach { logkafka_id =>
+      val future2 = kafkaManager.getLogkafkaIdentity("dev",logkafka_id)
       val result2 = Await.result(future2, duration)
       assert(result2.isRight === true)
     }
   }
 
   test("update logkafka config") {
-    val liFuture= kafkaManager.getLogkafkaIdentity("dev",createLogkafkaHostname)
+    val liFuture= kafkaManager.getLogkafkaIdentity("dev",createLogkafkaLogkafkaId)
     val liOrError = Await.result(liFuture, duration)
     assert(liOrError.isRight, "Failed to get logkafka identity!")
     val li = liOrError.toOption.get
     val config = new Properties()
     config.put(kafka.manager.utils.logkafka82.LogConfig.TopicProp,createLogkafkaTopic)
     config.put(kafka.manager.utils.logkafka82.LogConfig.PartitionProp,"1")
-    val future = kafkaManager.updateLogkafkaConfig("dev",createLogkafkaHostname,createLogkafkaLogPath,config)
+    val future = kafkaManager.updateLogkafkaConfig("dev",createLogkafkaLogkafkaId,createLogkafkaLogPath,config)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
 
     //check new logkafka config
     {
-      val liFuture= kafkaManager.getLogkafkaIdentity("dev",createLogkafkaHostname)
+      val liFuture= kafkaManager.getLogkafkaIdentity("dev",createLogkafkaLogkafkaId)
       val liOrError = Await.result(liFuture, duration)
       assert(liOrError.isRight, "Failed to get logkafka identity!")
       val li = liOrError.toOption.get
@@ -461,10 +461,10 @@ class TestKafkaManager extends CuratorAwareTest {
   }
 
   test("delete logkafka") {
-    val future = kafkaManager.deleteLogkafka("dev",createLogkafkaHostname,createLogkafkaLogPath)
+    val future = kafkaManager.deleteLogkafka("dev",createLogkafkaLogkafkaId,createLogkafkaLogPath)
     val result = Await.result(future,duration)
     assert(result.isRight === true, result)
-    val liFuture= kafkaManager.getLogkafkaIdentity("dev",createLogkafkaHostname)
+    val liFuture= kafkaManager.getLogkafkaIdentity("dev",createLogkafkaLogkafkaId)
     val liOrError = Await.result(liFuture, duration)
     assert(liOrError.isRight, "Failed to get logkafka identity!")
     val li = liOrError.toOption.get

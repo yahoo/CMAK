@@ -257,14 +257,14 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         } yield tdO.map( td => CMTopicIdentity(Try(TopicIdentity.from(bl,td,tm,tp,clusterContext,None))))
         result pipeTo sender
 
-      case CMGetLogkafkaIdentity(hostname) =>
+      case CMGetLogkafkaIdentity(logkafka_id) =>
         implicit val ec = context.dispatcher
-        val eventualLogkafkaConfig= withLogkafkaStateActor(LKSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
-        val eventualLogkafkaClient= withLogkafkaStateActor(LKSGetLogkafkaClient(hostname))(identity[Option[LogkafkaClient]])
+        val eventualLogkafkaConfig= withLogkafkaStateActor(LKSGetLogkafkaConfig(logkafka_id))(identity[Option[LogkafkaConfig]])
+        val eventualLogkafkaClient= withLogkafkaStateActor(LKSGetLogkafkaClient(logkafka_id))(identity[Option[LogkafkaClient]])
         val result: Future[Option[CMLogkafkaIdentity]] = for {
           lcg <- eventualLogkafkaConfig
           lct <- eventualLogkafkaClient
-        } yield Some(CMLogkafkaIdentity(Try(LogkafkaIdentity.from(hostname,lcg,lct))))
+        } yield Some(CMLogkafkaIdentity(Try(LogkafkaIdentity.from(logkafka_id,lcg,lct))))
         result pipeTo sender
 
       case CMGetConsumerIdentity(consumer) =>
@@ -500,35 +500,35 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           }
         } pipeTo sender()
 
-      case CMDeleteLogkafka(hostname, log_path) =>
+      case CMDeleteLogkafka(logkafka_id, log_path) =>
         implicit val ec = longRunningExecutionContext
-        val eventualLogkafkaConfig = withLogkafkaStateActor(LKSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
+        val eventualLogkafkaConfig = withLogkafkaStateActor(LKSGetLogkafkaConfig(logkafka_id))(identity[Option[LogkafkaConfig]])
         eventualLogkafkaConfig.map { logkafkaConfigOption =>
           logkafkaConfigOption.fold {
-            Future.successful(CMCommandResult(Failure(new IllegalArgumentException(s"Hostname doesn't exists : $hostname"))))
+            Future.successful(CMCommandResult(Failure(new IllegalArgumentException(s"LogkafkaId doesn't exists : $logkafka_id"))))
           } { td =>
-            withLogkafkaCommandActor(LKCDeleteLogkafka(hostname, log_path, logkafkaConfigOption)) {
+            withLogkafkaCommandActor(LKCDeleteLogkafka(logkafka_id, log_path, logkafkaConfigOption)) {
               lkcResponse: LKCCommandResult =>
                 CMCommandResult(lkcResponse.result)
             }
           }
         } pipeTo sender()
 
-      case CMCreateLogkafka(hostname, log_path, config) =>
+      case CMCreateLogkafka(logkafka_id, log_path, config) =>
         implicit val ec = longRunningExecutionContext
-        val eventualLogkafkaConfig = withLogkafkaStateActor(LKSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
+        val eventualLogkafkaConfig = withLogkafkaStateActor(LKSGetLogkafkaConfig(logkafka_id))(identity[Option[LogkafkaConfig]])
         eventualLogkafkaConfig.map { logkafkaConfigOption =>
-            withLogkafkaCommandActor(LKCCreateLogkafka(hostname, log_path, config, logkafkaConfigOption)) {
+            withLogkafkaCommandActor(LKCCreateLogkafka(logkafka_id, log_path, config, logkafkaConfigOption)) {
               lkcResponse: LKCCommandResult =>
                 CMCommandResult(lkcResponse.result)
             }
         } pipeTo sender()
 
-      case CMUpdateLogkafkaConfig(hostname, log_path, config, checkConfig) =>
+      case CMUpdateLogkafkaConfig(logkafka_id, log_path, config, checkConfig) =>
         implicit val ec = longRunningExecutionContext
-        val eventualLogkafkaConfig = withLogkafkaStateActor(LKSGetLogkafkaConfig(hostname))(identity[Option[LogkafkaConfig]])
+        val eventualLogkafkaConfig = withLogkafkaStateActor(LKSGetLogkafkaConfig(logkafka_id))(identity[Option[LogkafkaConfig]])
         eventualLogkafkaConfig.map { logkafkaConfigOption =>
-            withLogkafkaCommandActor(LKCUpdateLogkafkaConfig(hostname, log_path, config, logkafkaConfigOption, checkConfig)) {
+            withLogkafkaCommandActor(LKCUpdateLogkafkaConfig(logkafka_id, log_path, config, logkafkaConfigOption, checkConfig)) {
               lkcResponse: LKCCommandResult =>
                 CMCommandResult(lkcResponse.result)
             }

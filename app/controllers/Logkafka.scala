@@ -34,18 +34,18 @@ object Logkafka extends Controller{
   implicit private[this] val kafkaManager = KafkaManagerContext.getKafkaManager
   private[this] implicit val af: ApplicationFeatures = ApplicationFeatures.features
 
-  val validateHostname : Constraint[String] = Constraint("validate name") { name =>
+  val validateLogkafkaId: Constraint[String] = Constraint("validate logkafka id") { id =>
     Try {
-      kafka.manager.utils.Logkafka.validateHostname(name)
+      kafka.manager.utils.Logkafka.validateLogkafkaId(id)
     } match {
       case Failure(t) => Invalid(t.getMessage)
       case Success(_) => Valid
     }
   }
 
-  val validatePath: Constraint[String] = Constraint("validate path") { name =>
+  val validatePath: Constraint[String] = Constraint("validate path") { path =>
     Try {
-      kafka.manager.utils.Logkafka.validatePath(name)
+      kafka.manager.utils.Logkafka.validatePath(path)
     } match {
       case Failure(t) => Invalid(t.getMessage)
       case Success(_) => Valid
@@ -61,7 +61,7 @@ object Logkafka extends Controller{
 
   val defaultCreateForm = Form(
     mapping(
-      "hostname" -> nonEmptyText.verifying(maxLength(250), validateHostname),
+      "logkafka_id" -> nonEmptyText.verifying(maxLength(250), validateLogkafkaId),
       "log_path" -> nonEmptyText.verifying(maxLength(250), validatePath),
       "configs" -> list(
         mapping(
@@ -74,14 +74,14 @@ object Logkafka extends Controller{
   
   val defaultDeleteForm = Form(
     mapping(
-      "hostname" -> nonEmptyText.verifying(maxLength(250), validateHostname),
+      "logkafka_id" -> nonEmptyText.verifying(maxLength(250), validateLogkafkaId),
       "log_path" -> nonEmptyText.verifying(maxLength(250), validatePath)
     )(DeleteLogkafka.apply)(DeleteLogkafka.unapply)
   )
 
   val defaultUpdateConfigForm = Form(
     mapping(
-      "hostname" -> nonEmptyText.verifying(maxLength(250), validateHostname),
+      "logkafka_id" -> nonEmptyText.verifying(maxLength(250), validateLogkafkaId),
       "log_path" -> nonEmptyText.verifying(maxLength(250), validatePath),
       "configs" -> list(
         mapping(
@@ -138,13 +138,13 @@ object Logkafka extends Controller{
         cl => {
           val props = new Properties()
           cl.configs.filter(_.value.isDefined).foreach(c => props.setProperty(c.name, c.value.get))
-          kafkaManager.createLogkafka(clusterName, cl.hostname, cl.log_path, props).map { errorOrSuccess =>
+          kafkaManager.createLogkafka(clusterName, cl.logkafka_id, cl.log_path, props).map { errorOrSuccess =>
             Ok(views.html.common.resultOfCommand(
               views.html.navigation.clusterMenu(clusterName, "Logkafka", "Create", Menus.clusterMenus(clusterName)),
               models.navigation.BreadCrumbs.withNamedViewAndCluster("Logkafkas", clusterName, "Create Logkafka"),
               errorOrSuccess,
               "Create Logkafka",
-              FollowLink("Go to hostname view.", routes.Logkafka.logkafka(clusterName, cl.hostname, cl.log_path).toString()),
+              FollowLink("Go to logkafka id view.", routes.Logkafka.logkafka(clusterName, cl.logkafka_id, cl.log_path).toString()),
               FollowLink("Try again.", routes.Logkafka.createLogkafka(clusterName).toString())
             ))
           }
@@ -153,25 +153,25 @@ object Logkafka extends Controller{
     }
   }
 
-  def handleDeleteLogkafka(clusterName: String, hostname: String, log_path: String) = Action.async { implicit request =>
+  def handleDeleteLogkafka(clusterName: String, logkafka_id: String, log_path: String) = Action.async { implicit request =>
     clusterFeatureGate(clusterName, KMLogKafkaFeature) { clusterContext =>
       implicit val clusterFeatures = clusterContext.clusterFeatures
       defaultDeleteForm.bindFromRequest.fold(
         formWithErrors => Future.successful(
           BadRequest(views.html.logkafka.logkafkaView(
             clusterName,
-            hostname,
+            logkafka_id,
             log_path,
             -\/(ApiError(formWithErrors.error("logkafka").map(_.toString).getOrElse("Unknown error deleting logkafka!")))))),
         deleteLogkafka => {
-          kafkaManager.deleteLogkafka(clusterName, deleteLogkafka.hostname, deleteLogkafka.log_path).map { errorOrSuccess =>
+          kafkaManager.deleteLogkafka(clusterName, deleteLogkafka.logkafka_id, deleteLogkafka.log_path).map { errorOrSuccess =>
             Ok(views.html.common.resultOfCommand(
               views.html.navigation.clusterMenu(clusterName, "Logkafka", "Logkafka View", Menus.clusterMenus(clusterName)),
-              models.navigation.BreadCrumbs.withNamedViewAndClusterAndLogkafka("Logkafka View", clusterName, hostname, log_path, "Delete Logkafka"),
+              models.navigation.BreadCrumbs.withNamedViewAndClusterAndLogkafka("Logkafka View", clusterName, logkafka_id, log_path, "Delete Logkafka"),
               errorOrSuccess,
               "Delete Logkafka",
               FollowLink("Go to logkafka list.", routes.Logkafka.logkafkas(clusterName).toString()),
-              FollowLink("Try again.", routes.Logkafka.logkafka(clusterName, hostname, log_path).toString())
+              FollowLink("Try again.", routes.Logkafka.logkafka(clusterName, logkafka_id, log_path).toString())
             ))
           }
         }
@@ -191,42 +191,42 @@ object Logkafka extends Controller{
       if (configOption.isDefined) {
         val config: Map[String, String] = configOption.get
         val combinedMap = defaultConfigMap ++ config.map(tpl => tpl._1 -> LKConfig(tpl._1,Option(tpl._2)))
-        defaultUpdateConfigForm.fill(UpdateLogkafkaConfig(li.hostname,log_path,combinedMap.toList.map(_._2)))
+        defaultUpdateConfigForm.fill(UpdateLogkafkaConfig(li.logkafka_id,log_path,combinedMap.toList.map(_._2)))
       } else {
-        defaultUpdateConfigForm.fill(UpdateLogkafkaConfig(li.hostname,log_path,List(LKConfig("",None))))
+        defaultUpdateConfigForm.fill(UpdateLogkafkaConfig(li.logkafka_id,log_path,List(LKConfig("",None))))
       }
     } else {
-      defaultUpdateConfigForm.fill(UpdateLogkafkaConfig(li.hostname,log_path,List(LKConfig("",None))))
+      defaultUpdateConfigForm.fill(UpdateLogkafkaConfig(li.logkafka_id,log_path,List(LKConfig("",None))))
     }
   }
 
-  def updateConfig(clusterName: String, hostname: String, log_path: String) = Action.async { implicit request =>
+  def updateConfig(clusterName: String, logkafka_id: String, log_path: String) = Action.async { implicit request =>
     clusterFeatureGate(clusterName, KMLogKafkaFeature) { clusterContext =>
-      val errorOrFormFuture = kafkaManager.getLogkafkaIdentity(clusterName, hostname).map(
+      val errorOrFormFuture = kafkaManager.getLogkafkaIdentity(clusterName, logkafka_id).map(
           _.map(lki => (updateConfigForm(clusterContext, log_path, lki), clusterContext))
       )
       errorOrFormFuture.map { errorOrForm =>
-        Ok(views.html.logkafka.updateConfig(clusterName, hostname, log_path, errorOrForm))
+        Ok(views.html.logkafka.updateConfig(clusterName, logkafka_id, log_path, errorOrForm))
       }
     }
   }
 
-  def handleUpdateConfig(clusterName: String, hostname: String, log_path: String) = Action.async { implicit request =>
+  def handleUpdateConfig(clusterName: String, logkafka_id: String, log_path: String) = Action.async { implicit request =>
     clusterFeatureGate(clusterName, KMLogKafkaFeature) { clusterContext =>
       implicit val clusterFeatures = clusterContext.clusterFeatures
       defaultUpdateConfigForm.bindFromRequest.fold(
-        formWithErrors => Future.successful(BadRequest(views.html.logkafka.updateConfig(clusterName, hostname, log_path, \/-((formWithErrors, clusterContext))))),
+        formWithErrors => Future.successful(BadRequest(views.html.logkafka.updateConfig(clusterName, logkafka_id, log_path, \/-((formWithErrors, clusterContext))))),
         updateLogkafkaConfig => {
           val props = new Properties()
           updateLogkafkaConfig.configs.filter(_.value.isDefined).foreach(c => props.setProperty(c.name, c.value.get))
-          kafkaManager.updateLogkafkaConfig(clusterName, updateLogkafkaConfig.hostname, updateLogkafkaConfig.log_path, props).map { errorOrSuccess =>
+          kafkaManager.updateLogkafkaConfig(clusterName, updateLogkafkaConfig.logkafka_id, updateLogkafkaConfig.log_path, props).map { errorOrSuccess =>
             Ok(views.html.common.resultOfCommand(
               views.html.navigation.clusterMenu(clusterName, "Logkafka", "Logkafka View", Menus.clusterMenus(clusterName)),
-              models.navigation.BreadCrumbs.withNamedViewAndClusterAndLogkafka("Logkafka View", clusterName, hostname, log_path, "Update Config"),
+              models.navigation.BreadCrumbs.withNamedViewAndClusterAndLogkafka("Logkafka View", clusterName, logkafka_id, log_path, "Update Config"),
               errorOrSuccess,
               "Update Config",
-              FollowLink("Go to logkafka view.", routes.Logkafka.logkafka(clusterName, updateLogkafkaConfig.hostname, updateLogkafkaConfig.log_path).toString()),
-              FollowLink("Try again.", routes.Logkafka.updateConfig(clusterName, hostname, log_path).toString())
+              FollowLink("Go to logkafka view.", routes.Logkafka.logkafka(clusterName, updateLogkafkaConfig.logkafka_id, updateLogkafkaConfig.log_path).toString()),
+              FollowLink("Try again.", routes.Logkafka.updateConfig(clusterName, logkafka_id, log_path).toString())
             ))
           }
         }
@@ -234,37 +234,37 @@ object Logkafka extends Controller{
     }
   }
 
-  def handleEnableConfig(clusterName: String, hostname: String, log_path: String) = Action.async { implicit request =>
+  def handleEnableConfig(clusterName: String, logkafka_id: String, log_path: String) = Action.async { implicit request =>
     clusterFeatureGate(clusterName, KMLogKafkaFeature) { clusterContext =>
       implicit val clusterFeatures = clusterContext.clusterFeatures
       val props = new Properties();
       props.put("valid", true.toString);
-      kafkaManager.updateLogkafkaConfig(clusterName, hostname, log_path, props, false).map { errorOrSuccess =>
+      kafkaManager.updateLogkafkaConfig(clusterName, logkafka_id, log_path, props, false).map { errorOrSuccess =>
         Ok(views.html.common.resultOfCommand(
           views.html.navigation.clusterMenu(clusterName, "Logkafka", "Logkafka View", Menus.clusterMenus(clusterName)),
-          models.navigation.BreadCrumbs.withNamedViewAndClusterAndLogkafka("Logkafka View", clusterName, hostname, log_path, "Update Config"),
+          models.navigation.BreadCrumbs.withNamedViewAndClusterAndLogkafka("Logkafka View", clusterName, logkafka_id, log_path, "Update Config"),
           errorOrSuccess,
           "Enable Config",
-          FollowLink("Go to logkafka view.", routes.Logkafka.logkafka(clusterName, hostname, log_path).toString()),
-          FollowLink("Try again.", routes.Logkafka.updateConfig(clusterName, hostname, log_path).toString())
+          FollowLink("Go to logkafka view.", routes.Logkafka.logkafka(clusterName, logkafka_id, log_path).toString()),
+          FollowLink("Try again.", routes.Logkafka.updateConfig(clusterName, logkafka_id, log_path).toString())
         ))
       }
     }
   }
 
-  def handleDisableConfig(clusterName: String, hostname: String, log_path: String) = Action.async { implicit request =>
+  def handleDisableConfig(clusterName: String, logkafka_id: String, log_path: String) = Action.async { implicit request =>
     clusterFeatureGate(clusterName, KMLogKafkaFeature) { clusterContext =>
       implicit val clusterFeatures = clusterContext.clusterFeatures
       val props = new Properties();
       props.put("valid", false.toString);
-      kafkaManager.updateLogkafkaConfig(clusterName, hostname, log_path, props, false).map { errorOrSuccess =>
+      kafkaManager.updateLogkafkaConfig(clusterName, logkafka_id, log_path, props, false).map { errorOrSuccess =>
         Ok(views.html.common.resultOfCommand(
           views.html.navigation.clusterMenu(clusterName, "Logkafka", "Logkafka View", Menus.clusterMenus(clusterName)),
-          models.navigation.BreadCrumbs.withNamedViewAndClusterAndLogkafka("Logkafka View", clusterName, hostname, log_path, "Update Config"),
+          models.navigation.BreadCrumbs.withNamedViewAndClusterAndLogkafka("Logkafka View", clusterName, logkafka_id, log_path, "Update Config"),
           errorOrSuccess,
           "Disable Config",
-          FollowLink("Go to logkafka view.", routes.Logkafka.logkafka(clusterName, hostname, log_path).toString()),
-          FollowLink("Try again.", routes.Logkafka.updateConfig(clusterName, hostname, log_path).toString())
+          FollowLink("Go to logkafka view.", routes.Logkafka.logkafka(clusterName, logkafka_id, log_path).toString()),
+          FollowLink("Try again.", routes.Logkafka.updateConfig(clusterName, logkafka_id, log_path).toString())
         ))
       }
     }

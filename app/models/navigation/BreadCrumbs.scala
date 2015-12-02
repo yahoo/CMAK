@@ -159,8 +159,8 @@ object BreadCrumbs {
     renderWithClusterAndTopic(s, clusterName,topic) :+ BCActive(name)
   }
 
-  private[this] def renderWithClusterAndLogkafka(s: String, clusterName: String, hostname: String, log_path: String) : IndexedSeq[BreadCrumbRendered] = {
-    val hl = hostname + "?" + log_path
+  private[this] def renderWithClusterAndLogkafka(s: String, clusterName: String, logkafka_id: String, log_path: String) : IndexedSeq[BreadCrumbRendered] = {
+    val hl = logkafka_id + "?" + log_path
     logkafkaBreadCrumbs.getOrElse(s,IndexedSeq.empty[BreadCrumb]) map {
       case BCStaticLink(n,c) => BCLink(n,c.toString())
       case BCDynamicNamedLink(cn, cl) => BCLink(cn(clusterName),cl(clusterName).toString())
@@ -170,8 +170,8 @@ object BreadCrumbs {
     }
   }
 
-  def withNamedViewAndClusterAndLogkafka(s: String, clusterName: String, hostname: String, log_path: String, name: String) : IndexedSeq[BreadCrumbRendered] = {
-    renderWithClusterAndLogkafka(s, clusterName, hostname, log_path) :+ BCActive(name)
+  def withNamedViewAndClusterAndLogkafka(s: String, clusterName: String, logkafka_id: String, log_path: String, name: String) : IndexedSeq[BreadCrumbRendered] = {
+    renderWithClusterAndLogkafka(s, clusterName, logkafka_id, log_path) :+ BCActive(name)
   }
   def withNamedViewAndClusterAndConsumer(s: String, clusterName: String, consumer: String, name: String) : IndexedSeq[BreadCrumbRendered] = {
     renderWithClusterAndConsumer(s, clusterName, consumer) :+ BCActive(name)

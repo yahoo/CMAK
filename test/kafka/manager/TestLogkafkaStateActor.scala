@@ -59,25 +59,25 @@ class TestLogkafkaStateActor extends KafkaServerInTest {
     fn(result)
   }
 
-  test("get logkafka hostname list") {
-    withLogkafkaStateActor(LKSGetLogkafkaHostnames) { result: LogkafkaHostnameList =>
+  test("get logkafka logkafka id list") {
+    withLogkafkaStateActor(LKSGetLogkafkaLogkafkaIds) { result: LogkafkaLogkafkaIdList =>
       result.list foreach println
     }
   }
 
   test("get logkafka config") {
-    withLogkafkaStateActor(LKSGetLogkafkaHostnames) { result: LogkafkaHostnameList =>
-      val configs = result.list map { hostname =>
-        withLogkafkaStateActor(LKSGetLogkafkaConfig(hostname)) { logkafkaConfig: LogkafkaConfig => logkafkaConfig }
+    withLogkafkaStateActor(LKSGetLogkafkaLogkafkaIds) { result: LogkafkaLogkafkaIdList =>
+      val configs = result.list map { logkafka_id =>
+        withLogkafkaStateActor(LKSGetLogkafkaConfig(logkafka_id)) { logkafkaConfig: LogkafkaConfig => logkafkaConfig }
       }
       configs foreach println
     }
   }
 
   test("get logkafka client") {
-    withLogkafkaStateActor(LKSGetLogkafkaHostnames) { result: LogkafkaHostnameList =>
-      val clients = result.list map { hostname =>
-        withLogkafkaStateActor(LKSGetLogkafkaClient(hostname)) { logkafkaClient: LogkafkaClient => logkafkaClient }
+    withLogkafkaStateActor(LKSGetLogkafkaLogkafkaIds) { result: LogkafkaLogkafkaIdList =>
+      val clients = result.list map { logkafka_id =>
+        withLogkafkaStateActor(LKSGetLogkafkaClient(logkafka_id)) { logkafkaClient: LogkafkaClient => logkafkaClient }
       }
       clients foreach println
     }

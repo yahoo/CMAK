@@ -23,7 +23,7 @@
         <tbody>
         <tr>
             <td>
-                @b3.text(createLogkafkaForm("hostname"), '_label -> "Hostname", 'placeholder -> "test.logkafka.net", 'autofocus -> true )
+                @b3.text(createLogkafkaForm("logkafka_id"), '_label -> "Logkafka Id", 'placeholder -> "test.logkafka.net", 'autofocus -> true )
                 @b3.text(createLogkafkaForm("log_path"), '_label -> "Log Path", 'placeholder -> "/usr/local/apache2/logs/access_log.%Y%m%d")
                 @b3.submit('class -> "submit-button btn btn-primary"){ Create }
                 <a href="@routes.Logkafka.logkafkas(cluster)" class="cancel-button btn btn-default" role="button">Cancel</a>

@@ -155,7 +155,7 @@ class TestKafkaManagerActor extends CuratorAwareTest {
       result.result.get
       Thread.sleep(3000)
     }
-    withKafkaManagerActor(KMClusterQueryRequest("dev",LKSGetLogkafkaHostnames)) { result: LogkafkaHostnameList =>
+    withKafkaManagerActor(KMClusterQueryRequest("dev",LKSGetLogkafkaLogkafkaIds)) { result: LogkafkaLogkafkaIdList =>
       result.list.nonEmpty
     }
   }

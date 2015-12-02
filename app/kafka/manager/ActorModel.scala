@@ -87,18 +87,18 @@ object ActorModel {
 
   //these are used by Logkafka
   //##########
-  case class CMGetLogkafkaIdentity(hostname: String) extends QueryRequest
+  case class CMGetLogkafkaIdentity(logkafka_id: String) extends QueryRequest
   case class CMLogkafkaIdentity(logkafkaIdentity: Try[LogkafkaIdentity]) extends QueryResponse
-  case class CMCreateLogkafka(hostname: String,
+  case class CMCreateLogkafka(logkafka_id: String,
                               log_path: String,
                               config: Properties = new Properties
                               ) extends CommandRequest
-  case class CMUpdateLogkafkaConfig(hostname: String, 
+  case class CMUpdateLogkafkaConfig(logkafka_id: String, 
                                     log_path: String, 
                                     config: Properties,
                                     checkConfig: Boolean = true
                                     ) extends CommandRequest
-  case class CMDeleteLogkafka(hostname: String, log_path: String) extends CommandRequest
+  case class CMDeleteLogkafka(logkafka_id: String, log_path: String) extends CommandRequest
   //##########
 
   case class CMCommandResult(result: Try[ClusterContext]) extends CommandResponse
@@ -591,14 +591,14 @@ object ActorModel {
   case object LKVForceUpdate extends CommandRequest
   case object LKVGetLogkafkaIdentities extends LKVRequest
 
-  case class LKCCreateLogkafka(hostname: String,
+  case class LKCCreateLogkafka(logkafka_id: String,
                                log_path: String,
                                config: Properties,
                                logkafkaConfig: Option[LogkafkaConfig]) extends CommandRequest
-  case class LKCDeleteLogkafka(hostname: String,
+  case class LKCDeleteLogkafka(logkafka_id: String,
                                log_path: String,
                                logkafkaConfig: Option[LogkafkaConfig]) extends CommandRequest
-  case class LKCUpdateLogkafkaConfig(hostname: String,
+  case class LKCUpdateLogkafkaConfig(logkafka_id: String,
                                      log_path: String,
                                      config: Properties,
                                      logkafkaConfig: Option[LogkafkaConfig],
@@ -608,22 +608,22 @@ object ActorModel {
   case class LKCCommandResult(result: Try[Unit]) extends CommandResponse
 
   sealed trait LKSRequest extends QueryRequest
-  case object LKSGetLogkafkaHostnames extends LKSRequest
-  case class LKSGetLogkafkaConfig(hostname: String) extends LKSRequest
-  case class LKSGetLogkafkaClient(hostname: String) extends LKSRequest
-  case class LKSGetLogkafkaConfigs(hostnames: Set[String]) extends LKSRequest
-  case class LKSGetLogkafkaClients(hostnames: Set[String]) extends LKSRequest
+  case object LKSGetLogkafkaLogkafkaIds extends LKSRequest
+  case class LKSGetLogkafkaConfig(logkafka_id: String) extends LKSRequest
+  case class LKSGetLogkafkaClient(logkafka_id: String) extends LKSRequest
+  case class LKSGetLogkafkaConfigs(logkafka_ids: Set[String]) extends LKSRequest
+  case class LKSGetLogkafkaClients(logkafka_ids: Set[String]) extends LKSRequest
   case class LKSGetAllLogkafkaConfigs(lastUpdateMillis: Option[Long]= None) extends LKSRequest
   case class LKSGetAllLogkafkaClients(lastUpdateMillis: Option[Long]= None) extends LKSRequest
 
-  case class LogkafkaHostnameList(list: IndexedSeq[String], deleteSet: Set[String]) extends QueryResponse
-  case class LogkafkaConfig(hostname: String, config: Option[String]) extends QueryResponse
-  case class LogkafkaClient(hostname: String, client: Option[String]) extends QueryResponse
+  case class LogkafkaLogkafkaIdList(list: IndexedSeq[String], deleteSet: Set[String]) extends QueryResponse
+  case class LogkafkaConfig(logkafka_id: String, config: Option[String]) extends QueryResponse
+  case class LogkafkaClient(logkafka_id: String, client: Option[String]) extends QueryResponse
   case class LogkafkaConfigs(configs: IndexedSeq[LogkafkaConfig], lastUpdateMillis: Long) extends QueryResponse
   case class LogkafkaClients(clients: IndexedSeq[LogkafkaClient], lastUpdateMillis: Long) extends QueryResponse
 
 
-  case class LogkafkaIdentity(hostname: String,
+  case class LogkafkaIdentity(logkafka_id: String,
                               active: Boolean,
                               identityMap: Map[String, (Option[Map[String, String]], Option[Map[String, String]])]) {
   }
@@ -632,26 +632,26 @@ object ActorModel {
 
     lazy val logger = LoggerFactory.getLogger(this.getClass)
 
-    implicit def from(hostname: String, lcg: Option[LogkafkaConfig], lct: Option[LogkafkaClient]) : LogkafkaIdentity = {
+    implicit def from(logkafka_id: String, lcg: Option[LogkafkaConfig], lct: Option[LogkafkaClient]) : LogkafkaIdentity = {
       val configJsonStr = lcg match {
         case Some(l) => l.config.getOrElse[String]("{}")
         case None => "{}"
       }
 
-      val configMap: Map[String, Map[String, String]] = utils.Logkafka.parseJsonStr(hostname, configJsonStr)
+      val configMap: Map[String, Map[String, String]] = utils.Logkafka.parseJsonStr(logkafka_id, configJsonStr)
 
       val clientJsonStr = lct match {
         case Some(l) => l.client.getOrElse[String]("{}")
         case None => "{}"
       }
 
-      val clientMap: Map[String, Map[String, String]]  = utils.Logkafka.parseJsonStr(hostname, clientJsonStr)
+      val clientMap: Map[String, Map[String, String]]  = utils.Logkafka.parseJsonStr(logkafka_id, clientJsonStr)
 
-      val hostnameSet = configMap.keySet ++ clientMap.keySet
-      val identitySet = if (!hostnameSet.isEmpty) {
-        hostnameSet map { l => l -> ((if(!configMap.isEmpty) configMap.get(l) else None, if(!clientMap.isEmpty) clientMap.get(l) else None)) }
+      val logkafkaIdSet = configMap.keySet ++ clientMap.keySet
+      val identitySet = if (!logkafkaIdSet.isEmpty) {
+        logkafkaIdSet map { l => l -> ((if(!configMap.isEmpty) configMap.get(l) else None, if(!clientMap.isEmpty) clientMap.get(l) else None)) }
       } else { Set() }
-      LogkafkaIdentity(hostname, lct.isDefined, identitySet.toMap)
+      LogkafkaIdentity(logkafka_id, lct.isDefined, identitySet.toMap)
     }
   }
 }
