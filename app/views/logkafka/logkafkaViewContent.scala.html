@@ -3,7 +3,7 @@
 * See accompanying LICENSE file.
 *@
 @import b3.vertical.fieldConstructor
-@(cluster:String, hostname: String, log_path: String, logkafkaIdentity: kafka.manager.ActorModel.LogkafkaIdentity)
+@(cluster:String, logkafka_id: String, log_path: String, logkafkaIdentity: kafka.manager.ActorModel.LogkafkaIdentity)
 
 <div class="row">
     <div class="col-md-8">
@@ -12,8 +12,8 @@
             <table class="table">
                 <tbody>
                 <tr>
-                    <td>Hostname</td>
-                    <td>@hostname</td>
+                    <td>Logkafka Id</td>
+                    <td>@logkafka_id</td>
                 <tr>
                     <td>Log Path</td>
                     <td>@log_path</td>
@@ -50,9 +50,9 @@
                 <tbody>
                 <tr>
                     <td>
-                        @b3.form(routes.Logkafka.handleDeleteLogkafka(cluster, hostname, log_path)) {
+                        @b3.form(routes.Logkafka.handleDeleteLogkafka(cluster, logkafka_id, log_path)) {
                         <fieldset>
-                            @b3.hidden("hostname", hostname)
+                            @b3.hidden("logkafka_id", logkafka_id)
                             @b3.hidden("log_path", log_path)
                             @b3.submit('class -> "submit-button btn btn-primary"){ Delete Logkafka }
                         </fieldset>
@@ -61,7 +61,7 @@
                 </tr>
                 <tr>
                     <td>
-                        <a href="@routes.Logkafka.updateConfig(cluster,hostname,log_path)" class="submit-button btn btn-primary" role="button">Update Config</a>
+                        <a href="@routes.Logkafka.updateConfig(cluster,logkafka_id,log_path)" class="submit-button btn btn-primary" role="button">Update Config</a>
                     </td>
                 </tr>
                 </tbody>

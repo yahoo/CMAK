@@ -96,8 +96,8 @@ class LogkafkaViewCacheActor(config: LogkafkaViewCacheActorConfig) extends LongR
       logkafkaConfigs <- logkafkaConfigsOption
       logkafkaClients <- logkafkaClientsOption
     } {
-      val lcgMap = Map(logkafkaConfigs.configs map { a => a.hostname -> a }: _*)
-      val lctMap = Map(logkafkaClients.clients map { a => a.hostname -> a }: _*)
+      val lcgMap = Map(logkafkaConfigs.configs map { a => a.logkafka_id -> a }: _*)
+      val lctMap = Map(logkafkaClients.clients map { a => a.logkafka_id -> a }: _*)
       logkafkaIdentities = lcgMap.map (kv =>
         kv._1 -> LogkafkaIdentity.from(kv._1, Some(kv._2), lctMap.get(kv._1)))
     }

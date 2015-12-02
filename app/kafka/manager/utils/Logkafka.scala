@@ -42,12 +42,24 @@ object Logkafka {
     checkCondition(hostname.length <= maxNameLength, InvalidHostnameLength)
     rgx.findFirstIn(hostname) match {
       case Some(t) =>
-        checkCondition(t.equals(hostname), IllegalCharacterInName(hostname))
+        checkCondition(t.equals(hostname), IllegalCharacterInHostname(hostname))
       case None =>
-        checkCondition(false, IllegalCharacterInName(hostname))
+        checkCondition(false, IllegalCharacterInHostname(hostname))
     }
     checkCondition(!hostname.matches("^localhost$"), HostnameIsLocalhost)
     checkCondition(hostname.matches(validHostnameRegex), InvalidHostname)
+  }
+
+  def validateLogkafkaId(logkafka_id: String) {
+    checkCondition(logkafka_id.length > 0, LogkafkaIdEmpty)
+    checkCondition(!(logkafka_id.equals(".") || logkafka_id.equals("..")), InvalidLogkafkaId)
+    checkCondition(logkafka_id.length <= maxNameLength, InvalidLogkafkaIdLength)
+    rgx.findFirstIn(logkafka_id) match {
+      case Some(t) =>
+        checkCondition(t.equals(logkafka_id), IllegalCharacterInLogkafkaId(logkafka_id))
+      case None =>
+        checkCondition(false, IllegalCharacterInLogkafkaId(logkafka_id))
+    }
   }
 
   def validatePath(log_path: String) {
@@ -71,7 +83,7 @@ object Logkafka {
     checkCondition(valid, InvalidLogPath)
   }
 
-  def parseJsonStr(hostname: String, jsonStr: String): Map[String, Map[String, String]] = {
+  def parseJsonStr(logkafka_id: String, jsonStr: String): Map[String, Map[String, String]] = {
     import org.json4s.jackson.JsonMethods._
     import org.json4s.scalaz.JsonScalaz._
     import scala.language.reflectiveCalls
@@ -88,7 +100,7 @@ object Logkafka {
       collection.immutable.Map(mapMutable.toList: _*)
     } catch {
       case e: Exception =>
-          logger.error(s"[hostname=${hostname}] Failed to parse logkafka hostname config : ${jsonStr}",e)
+          logger.error(s"[logkafka_id=${logkafka_id}] Failed to parse logkafka logkafka_id config : ${jsonStr}",e)
           Map.empty
     }
   }
@@ -97,30 +109,42 @@ object Logkafka {
 object LogkafkaErrors {
   class HostnameEmpty private[LogkafkaErrors] extends UtilError("hostname is illegal, can't be empty")
   class HostnameIsLocalhost private[LogkafkaErrors] extends UtilError("hostname is illegal, can't be localhost")
+  class LogkafkaIdEmpty private[LogkafkaErrors] extends UtilError("logkafka id is illegal, can't be empty")
   class LogPathEmpty private[LogkafkaErrors] extends UtilError("log path is illegal, can't be empty")
   class LogPathNotAbsolute private[LogkafkaErrors] extends UtilError("log path is illegal, must be absolute")
   class InvalidHostname private[LogkafkaErrors] extends UtilError(s"hostname is illegal, does not match regex ${Logkafka.validHostnameRegex}, which conforms to RFC 1123")
   class InvalidHostnameLength private[LogkafkaErrors] extends UtilError(
     "hostname is illegal, can't be longer than " + Logkafka.maxNameLength + " characters")
+  class InvalidLogkafkaId private[LogkafkaErrors] extends UtilError("logkafka id is illegal, cannot be \".\" or \"..\"")
+  class InvalidLogkafkaIdLength private[LogkafkaErrors] extends UtilError(
+    "logkafka id is illegal, can't be longer than " + Logkafka.maxNameLength + " characters")
   class InvalidLogPath private[LogkafkaErrors] extends UtilError(s"log path is illegal")
   class InvalidLogPathLength private[LogkafkaErrors] extends UtilError(
     "log path is illegal, can't be longer than " + Logkafka.maxPathLength + " characters")
-  class IllegalCharacterInName private[LogkafkaErrors] (hostname: String) extends UtilError(
+  class IllegalCharacterInHostname private[LogkafkaErrors] (hostname: String) extends UtilError(
     "hostname " + hostname + " is illegal, contains a character other than ASCII alphanumerics, '.', '_' and '-'")
+  class IllegalCharacterInLogkafkaId private[LogkafkaErrors] (logkafka_id: String) extends UtilError(
+    "logkafka id " + logkafka_id + " is illegal, contains a character other than ASCII alphanumerics, '.', '_' and '-'")
   class IllegalCharacterInPath private[LogkafkaErrors] (log_path: String) extends UtilError(
     "log path " + log_path + " is illegal, contains a character in " + Logkafka.illegalPathChars)
   class HostnameNotExists private[LogkafkaErrors] (hostname: String) extends UtilError(s"Hostname not exists : $hostname")
+  class LogkafkaIdNotExists private[LogkafkaErrors] (logkafka_id: String) extends UtilError(s"LogkafkaId not exists : $logkafka_id")
 
   val HostnameEmpty = new HostnameEmpty
   val HostnameIsLocalhost = new HostnameIsLocalhost
+  val LogkafkaIdEmpty = new LogkafkaIdEmpty
   val LogPathEmpty = new LogPathEmpty 
   val LogPathNotAbsolute = new LogPathNotAbsolute
   val InvalidHostname = new InvalidHostname
   val InvalidHostnameLength = new InvalidHostnameLength
+  val InvalidLogkafkaId = new InvalidLogkafkaId
+  val InvalidLogkafkaIdLength = new InvalidLogkafkaIdLength
   val InvalidLogPath = new InvalidLogPath
   val InvalidLogPathLength = new InvalidLogPathLength
-  def IllegalCharacterInName(hostname: String) = new IllegalCharacterInName(hostname)
+  def IllegalCharacterInHostname(hostname: String) = new IllegalCharacterInHostname(hostname)
+  def IllegalCharacterInLogkafkaId(logkafka_id: String) = new IllegalCharacterInLogkafkaId(logkafka_id)
   def IllegalCharacterInPath(log_path: String) = new IllegalCharacterInPath(log_path)
   def HostnameNotExists(hostname: String) = new HostnameNotExists(hostname)
+  def LogkafkaIdNotExists(logkafka_id: String) = new LogkafkaIdNotExists(logkafka_id)
 }
 

@@ -28,9 +28,9 @@ object LogkafkaZkUtils {
   val LogkafkaConfigPath = "/logkafka/config"
   val LogkafkaClientPath = "/logkafka/client"
 
-  def getLogkafkaConfigPath(hostname: String): String =
-    LogkafkaConfigPath + "/" + hostname 
+  def getLogkafkaConfigPath(logkafka_id: String): String =
+    LogkafkaConfigPath + "/" + logkafka_id
 
-  def getLogkafkaClientPath(hostname: String): String =
-    LogkafkaClientPath + "/" + hostname 
+  def getLogkafkaClientPath(logkafka_id: String): String =
+    LogkafkaClientPath + "/" + logkafka_id
 }

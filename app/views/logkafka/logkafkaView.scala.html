@@ -4,7 +4,7 @@
 *@
 @import scalaz.{\/}
 @(cluster:String,
-  hostname: String,
+  logkafka_id: String,
   log_path: String,
   errorOrLogkafkaIdentity: kafka.manager.ApiError \/ (kafka.manager.ActorModel.LogkafkaIdentity, kafka.manager.ClusterContext)
 )(implicit af: features.ApplicationFeatures)
@@ -18,13 +18,13 @@
 @main(
     "Logkafka View",
     menu = theMenu,
-    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndCluster("Logkafka View",cluster,hostname))) {
+    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndCluster("Logkafka View",cluster,logkafka_id))) {
 <div class="col-md-12 un-pad-me">
     <div class="panel panel-default">
         <div class="panel-heading">
-            <h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>@hostname<br/>@log_path</h3>
+            <h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>@logkafka_id<br/>@log_path</h3>
         </div>
-        @errorOrLogkafkaIdentity.fold(views.html.errors.onApiError(_), t => views.html.logkafka.logkafkaViewContent(cluster,hostname,log_path,t._1))
+        @errorOrLogkafkaIdentity.fold(views.html.errors.onApiError(_), t => views.html.logkafka.logkafkaViewContent(cluster,logkafka_id,log_path,t._1))
     </div>
 </div>
 }

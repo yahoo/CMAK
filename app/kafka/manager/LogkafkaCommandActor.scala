@@ -65,27 +65,27 @@ class LogkafkaCommandActor(logkafkaCommandActorConfig: LogkafkaCommandActorConfi
   override def processCommandRequest(request: CommandRequest): Unit = {
     implicit val ec = longRunningExecutionContext
     request match {
-      case LKCDeleteLogkafka(hostname, log_path, logkafkaConfig) =>
+      case LKCDeleteLogkafka(logkafka_id, log_path, logkafkaConfig) =>
         longRunning {
           Future {
             LKCCommandResult(Try {
-              logkafkaAdminUtils.deleteLogkafka(logkafkaCommandActorConfig.curator, hostname, log_path, logkafkaConfig)
+              logkafkaAdminUtils.deleteLogkafka(logkafkaCommandActorConfig.curator, logkafka_id, log_path, logkafkaConfig)
             })
           }
         }
-      case LKCCreateLogkafka(hostname, log_path, config, logkafkaConfig) =>
+      case LKCCreateLogkafka(logkafka_id, log_path, config, logkafkaConfig) =>
         longRunning {
           Future {
             LKCCommandResult(Try {
-              logkafkaAdminUtils.createLogkafka(logkafkaCommandActorConfig.curator, hostname, log_path, config, logkafkaConfig)
+              logkafkaAdminUtils.createLogkafka(logkafkaCommandActorConfig.curator, logkafka_id, log_path, config, logkafkaConfig)
             })
           }
         }
-      case LKCUpdateLogkafkaConfig(hostname, log_path, config, logkafkaConfig, checkConfig) =>
+      case LKCUpdateLogkafkaConfig(logkafka_id, log_path, config, logkafkaConfig, checkConfig) =>
         longRunning {
           Future {
             LKCCommandResult(Try {
-              logkafkaAdminUtils.changeLogkafkaConfig(logkafkaCommandActorConfig.curator, hostname, log_path, config, logkafkaConfig, checkConfig)
+              logkafkaAdminUtils.changeLogkafkaConfig(logkafkaCommandActorConfig.curator, logkafka_id, log_path, config, logkafkaConfig, checkConfig)
             })
           }
         }

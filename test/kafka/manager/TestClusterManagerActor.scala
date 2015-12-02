@@ -36,7 +36,7 @@ class TestClusterManagerActor extends CuratorAwareTest {
   private[this] var clusterManagerActor : Option[ActorRef] = None
   private[this] implicit val timeout: Timeout = 10.seconds
   private[this] val createTopicName = "cm-unit-test"
-  private[this] val createLogkafkaHostname = "km-unit-test-logkafka-hostname"
+  private[this] val createLogkafkaLogkafkaId = "km-unit-test-logkafka-logkafka_id"
   private[this] val createLogkafkaLogPath = "/km-unit-test-logkafka-logpath"
   private[this] val createLogkafkaTopic = "km-unit-test-logkafka-topic"
 
@@ -247,7 +247,7 @@ class TestClusterManagerActor extends CuratorAwareTest {
   test("create logkafka") {
     val config = new Properties()
     config.put(kafka.manager.utils.logkafka82.LogConfig.TopicProp,createLogkafkaTopic)
-    withClusterManagerActor(CMCreateLogkafka(createLogkafkaHostname,createLogkafkaLogPath,config)) { cmResultFuture: Future[CMCommandResult] =>
+    withClusterManagerActor(CMCreateLogkafka(createLogkafkaLogkafkaId,createLogkafkaLogPath,config)) { cmResultFuture: Future[CMCommandResult] =>
       val cmResult = Await.result(cmResultFuture,10 seconds)
       if(cmResult.result.isFailure) {
         cmResult.result.get
@@ -255,33 +255,33 @@ class TestClusterManagerActor extends CuratorAwareTest {
       Thread.sleep(500)
     }
 
-    withClusterManagerActor(LKSGetLogkafkaHostnames) { result: LogkafkaHostnameList =>
-      assert(result.list.contains(createLogkafkaHostname),"Failed to create logkafka")
+    withClusterManagerActor(LKSGetLogkafkaLogkafkaIds) { result: LogkafkaLogkafkaIdList =>
+      assert(result.list.contains(createLogkafkaLogkafkaId),"Failed to create logkafka")
     }
 
-    withClusterManagerActor(CMGetLogkafkaIdentity(createLogkafkaHostname)) { result: Option[CMLogkafkaIdentity] =>
+    withClusterManagerActor(CMGetLogkafkaIdentity(createLogkafkaLogkafkaId)) { result: Option[CMLogkafkaIdentity] =>
       assert(result.get.logkafkaIdentity.get.identityMap.contains(createLogkafkaLogPath),"Failed to create logkafka")
     }
   }
 
-  test("get logkafka hostname list") {
-    withClusterManagerActor(LKSGetLogkafkaHostnames) { result: LogkafkaHostnameList =>
-      assert(result.list.nonEmpty,"Failed to get logkafka hostname list")
+  test("get logkafka logkafka id list") {
+    withClusterManagerActor(LKSGetLogkafkaLogkafkaIds) { result: LogkafkaLogkafkaIdList =>
+      assert(result.list.nonEmpty,"Failed to get logkafka logkafka_id list")
       result.list foreach println
     }
   }
 
   test("get logkafka config") {
-    withClusterManagerActor(LKSGetLogkafkaHostnames) { result: LogkafkaHostnameList =>
-      val configs = result.list map { hostname =>
-        withClusterManagerActor(LKSGetLogkafkaConfig(hostname)) { logkafkaConfigOption: Option[LogkafkaConfig] => logkafkaConfigOption.get }
+    withClusterManagerActor(LKSGetLogkafkaLogkafkaIds) { result: LogkafkaLogkafkaIdList =>
+      val configs = result.list map { logkafka_id =>
+        withClusterManagerActor(LKSGetLogkafkaConfig(logkafka_id)) { logkafkaConfigOption: Option[LogkafkaConfig] => logkafkaConfigOption.get }
       }
       configs foreach println
     }
   }
 
   test("delete logkafka") {
-    withClusterManagerActor(CMDeleteLogkafka(createLogkafkaHostname,createLogkafkaLogPath)) { cmResultFuture: Future[CMCommandResult] =>
+    withClusterManagerActor(CMDeleteLogkafka(createLogkafkaLogkafkaId,createLogkafkaLogPath)) { cmResultFuture: Future[CMCommandResult] =>
       val cmResult = Await.result(cmResultFuture,10 seconds)
       if(cmResult.result.isFailure) {
         cmResult.result.get
@@ -289,7 +289,7 @@ class TestClusterManagerActor extends CuratorAwareTest {
       Thread.sleep(500)
     }
 
-    withClusterManagerActor(CMGetLogkafkaIdentity(createLogkafkaHostname)) { result: Option[CMLogkafkaIdentity] =>
+    withClusterManagerActor(CMGetLogkafkaIdentity(createLogkafkaLogkafkaId)) { result: Option[CMLogkafkaIdentity] =>
       assert(!result.get.logkafkaIdentity.get.identityMap.contains(createLogkafkaLogPath),"Failed to delete logkafka")
     }
   }
