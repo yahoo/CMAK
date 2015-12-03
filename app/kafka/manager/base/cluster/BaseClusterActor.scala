@@ -1,3 +1,8 @@
+/**
+ * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+ * See accompanying LICENSE file.
+ */
+
 package kafka.manager.base.cluster
 
 import kafka.manager.base.{BaseQueryCommandActor, BaseQueryActor, BaseCommandActor, BaseActor}

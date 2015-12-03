@@ -1,6 +1,11 @@
+/**
+ * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+ * See accompanying LICENSE file.
+ */
+
 package loader
 
-import controllers.{WebJarAssets, KafkaManagerContext}
+import controllers.KafkaManagerContext
 import features.ApplicationFeatures
 import models.navigation.Menus
 import play.api.ApplicationLoader

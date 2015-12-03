@@ -1,3 +1,8 @@
+/**
+ * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+ * See accompanying LICENSE file.
+ */
+
 package kafka.manager.actor
 
 import kafka.manager.features.{ClusterFeatures, ClusterFeature}
