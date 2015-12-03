@@ -32,7 +32,7 @@ class ApplicationComponents(context: Context) extends BuiltInComponentsFromConte
   private[this] lazy val reassignPartitionsC = new controllers.ReassignPartitions(messagesApi, kafkaManagerContext)
   private[this] lazy val kafkaStateCheckC = new controllers.api.KafkaStateCheck(messagesApi, kafkaManagerContext)
   private[this] lazy val assetsC = new controllers.Assets(httpErrorHandler)
-  private[this] lazy val webJarsAssetsC = new controllers.KMWebJarAssets(httpErrorHandler, context.initialConfiguration)
+  private[this] lazy val webJarsAssetsC = new controllers.WebJarAssets(httpErrorHandler, context.initialConfiguration, context.environment)
 
   override val router: Router = new Routes(
     httpErrorHandler, 

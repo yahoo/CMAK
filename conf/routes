@@ -63,4 +63,4 @@ GET         /vassets/*file          controllers.Assets.versioned(path="/public",
 GET         /assets/*file           controllers.Assets.at(path="/public", file)
 
 # WebJars
-GET         /webjars/*file          controllers.KMWebJarAssets.at(file)
+GET         /webjars/*file          controllers.WebJarAssets.at(file)
