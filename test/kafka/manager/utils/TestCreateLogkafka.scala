@@ -27,6 +27,7 @@ class TestCreateLogkafka extends CuratorAwareTest {
   private[this] val createLogkafkaTopic = "km-unit-test-logkafka-topic"
   private[this] val createLogkafkaRegexFilterPattern = "km-unit-test-logkafka-regex-filter-pattern"
   private[this] val createLogkafkaInvalidLogkafkaIds = List(".", "..")
+  private[this] val createLogkafkaInvalidLineDelimiters = List("-1", "256")
 
   test("create logkafka with empty logkafka id") {
     val config = new Properties()
@@ -128,6 +129,19 @@ class TestCreateLogkafka extends CuratorAwareTest {
     checkError[InvalidRegexFilterPatternLength] {
       withCurator { curator =>
         adminUtils.createLogkafka(curator, createLogkafkaLogkafkaId, createLogkafkaLogPath, config)
+      }
+    }
+  }
+
+  test("create logkafka with invalid line delimiter") {
+    val config = new Properties()
+    config.put(kafka.manager.utils.logkafka82.LogConfig.TopicProp, createLogkafkaTopic)
+    withCurator { curator =>
+      createLogkafkaInvalidLineDelimiters foreach { invalidLineDelimiter =>
+        config.put(kafka.manager.utils.logkafka82.LogConfig.LineDelimiterProp, invalidLineDelimiter)
+        checkError[InvalidLineDelimiter] {
+          adminUtils.createLogkafka(curator, createLogkafkaLogkafkaId, createLogkafkaLogPath, config)
+        }
       }
     }
   }

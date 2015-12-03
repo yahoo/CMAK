@@ -25,6 +25,8 @@ object Defaults {
   val Valid = true
   val FollowLast = true
   val BatchSize = 200
+  val LineDelimiter = 10 // 10 means ascii '\n'
+  val RemoveDelimiter = true
   val Topic = ""
   val Key = ""
   val Partition = -1
@@ -42,6 +44,8 @@ object Defaults {
  * @param followLast If set to "false", when restarting logkafka process, the log_path formatted with current time will be collect; 
                      If set to "true", when restarting logkafka process, the last collecting file will be collected continually
  * @param batchSize The batch size of messages to be sent 
+ * @param lineDelimiter Delimiter of log file lines
+ * @param removeDelimiter Remove delimiter or not when collecting log file lines
  * @param topic The topic of messages to be sent
  * @param key The key of messages to be sent
  * @param partition The partition of messages to be sent. 
@@ -58,6 +62,8 @@ object Defaults {
 case class LogConfig(val valid: Boolean = Defaults.Valid,
                      val followLast: Boolean = Defaults.FollowLast,
                      val batchSize: Long = Defaults.BatchSize,
+                     val lineDelimiter: Int = Defaults.LineDelimiter,
+                     val removeDelimiter: Boolean = Defaults.RemoveDelimiter,
                      val topic: String = Defaults.Topic,
                      val key: String = Defaults.Key,
                      val partition: Int = Defaults.Partition,
@@ -74,6 +80,8 @@ case class LogConfig(val valid: Boolean = Defaults.Valid,
     props.put(ValidProp, valid.toString)
     props.put(FollowLastProp, followLast.toString)
     props.put(BatchSizeProp, batchSize.toString)
+    props.put(LineDelimiterProp, lineDelimiter.toString)
+    props.put(RemoveDelimiterProp, removeDelimiter.toString)
     props.put(TopicProp, topic.toString)
     props.put(KeyProp, key.toString)
     props.put(PartitionProp, partition.toString)
@@ -95,11 +103,15 @@ object LogConfig extends LogkafkaNewConfigs {
   import kafka.manager.utils.logkafka81.LogkafkaConfigErrors._
   import kafka.manager.utils._
 
+  val minLineDelimiter = 0
+  val maxLineDelimiter = 255
   val maxRegexFilterPatternLength = 255
 
   val ValidProp = "valid"
   val FollowLastProp = "follow_last"
   val BatchSizeProp = "batchsize"
+  val LineDelimiterProp = "line_delimiter"
+  val RemoveDelimiterProp = "remove_delimiter"
   val TopicProp = "topic"
   val KeyProp = "key"
   val PartitionProp = "partition"
@@ -113,6 +125,8 @@ object LogConfig extends LogkafkaNewConfigs {
   val ConfigMaps = Map(ValidProp -> Defaults.Valid.toString,
                        FollowLastProp -> Defaults.FollowLast.toString,
                        BatchSizeProp -> Defaults.BatchSize.toString,
+                       LineDelimiterProp -> Defaults.LineDelimiter.toString,
+                       RemoveDelimiterProp -> Defaults.RemoveDelimiter.toString,
                        TopicProp -> Defaults.Topic.toString,
                        KeyProp -> Defaults.Key.toString,
                        PartitionProp -> Defaults.Partition.toString,
@@ -133,6 +147,8 @@ object LogConfig extends LogkafkaNewConfigs {
     new LogConfig(valid = props.getProperty(ValidProp, Defaults.Valid.toString).toBoolean,
                   followLast = props.getProperty(FollowLastProp, Defaults.FollowLast.toString).toBoolean,
                   batchSize = props.getProperty(BatchSizeProp, Defaults.BatchSize.toString).toLong,
+                  lineDelimiter = props.getProperty(LineDelimiterProp, Defaults.LineDelimiter.toString).toInt,
+                  removeDelimiter = props.getProperty(RemoveDelimiterProp, Defaults.RemoveDelimiter.toString).toBoolean,
                   topic = props.getProperty(TopicProp, Defaults.Topic.toString).toString,
                   key = props.getProperty(KeyProp, Defaults.Key.toString).toString,
                   partition = props.getProperty(PartitionProp, Defaults.Partition.toString).toInt,
@@ -167,9 +183,19 @@ object LogConfig extends LogkafkaNewConfigs {
    */
   def validate(props: Properties) {
     validateNames(props)
+    validateLineDelimiter(props)
     validateTopic(props)
     validateRegexFilterPattern(props)
     LogConfig.fromProps(LogConfig().toProps, props) // check that we can parse the values
+  }
+
+  /**
+   * Check that LineDelimiter is reasonable
+   */
+  private def validateLineDelimiter(props: Properties) {
+    val lineDelimiter = props.getProperty(LineDelimiterProp)
+    if (lineDelimiter == null) return
+    checkCondition(lineDelimiter.toInt >= minLineDelimiter && lineDelimiter.toInt <= maxLineDelimiter, LogkafkaConfigErrors.InvalidLineDelimiter)
   }
 
   /**
@@ -199,11 +225,14 @@ object LogConfig extends LogkafkaNewConfigs {
 
 object LogkafkaConfigErrors {
   import kafka.manager.utils.UtilError
+  class InvalidLineDelimiter private[LogkafkaConfigErrors] extends UtilError(
+    "line delimiter is illegal, should be an decimal number between 0 and 255")
   class InvalidRegexFilterPattern private[LogkafkaConfigErrors] extends UtilError(
     "regex filter pattern is illegal, does not conform to pcre2")
   class InvalidRegexFilterPatternLength private[LogkafkaConfigErrors] extends UtilError(
     "regex filter pattern is illegal, can't be longer than " + LogConfig.maxRegexFilterPatternLength + " characters")
 
+  val InvalidLineDelimiter = new InvalidLineDelimiter
   val InvalidRegexFilterPattern = new InvalidRegexFilterPattern
   val InvalidRegexFilterPatternLength = new InvalidRegexFilterPatternLength 
 }
