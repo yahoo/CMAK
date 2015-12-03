@@ -38,6 +38,7 @@ libraryDependencies ++= Seq(
   "org.apache.kafka" %% "kafka" % "0.8.2.2" exclude("log4j","log4j") force(),
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "org.apache.curator" % "curator-test" % "2.9.1" % "test",
+  "org.mockito" % "mockito-core" % "1.10.19" % "test",
   "com.yammer.metrics" % "metrics-core" % "2.1.2" force()
 )
 

@@ -450,6 +450,8 @@ class TestKafkaManager extends CuratorAwareTest {
     val future = kafkaManager.updateLogkafkaConfig("dev",createLogkafkaLogkafkaId,createLogkafkaLogPath,config)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
+    
+    Thread.sleep(1000)
 
     //check new logkafka config
     {
