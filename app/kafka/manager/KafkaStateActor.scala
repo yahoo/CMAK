@@ -117,9 +117,7 @@ trait OffsetCache {
     futureMap
   }
 
-  private[this] def emptyPartitionOffsetsCapture: Future[PartitionOffsetsCapture] = Future {
-    PartitionOffsetsCapture(System.currentTimeMillis(), Map())
-  }
+  private[this] def emptyPartitionOffsetsCapture: Future[PartitionOffsetsCapture] = Future.successful(PartitionOffsetsCapture(System.currentTimeMillis(), Map()))
   
   protected def getTopicPartitionLeaders(topic: String) : Option[List[(Int, Option[BrokerIdentity])]]
 
