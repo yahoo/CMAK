@@ -24,6 +24,7 @@ import kafka.manager.utils.LogkafkaNewConfigs
 object Defaults {
   val Valid = true
   val FollowLast = true
+  val ReadFromHead = true
   val BatchSize = 200
   val LineDelimiter = 10 // 10 means ascii '\n'
   val RemoveDelimiter = true
@@ -43,6 +44,8 @@ object Defaults {
  * @param valid Enable now or not
  * @param followLast If set to "false", when restarting logkafka process, the log_path formatted with current time will be collect; 
                      If set to "true", when restarting logkafka process, the last collecting file will be collected continually
+ * @param readFromHead If set to "false", the first file will be collected from tail;
+                     If set to "true", the first file will be collected from head
  * @param batchSize The batch size of messages to be sent 
  * @param lineDelimiter Delimiter of log file lines
  * @param removeDelimiter Remove delimiter or not when collecting log file lines
@@ -61,6 +64,7 @@ object Defaults {
  */
 case class LogConfig(val valid: Boolean = Defaults.Valid,
                      val followLast: Boolean = Defaults.FollowLast,
+                     val readFromHead: Boolean = Defaults.ReadFromHead,
                      val batchSize: Long = Defaults.BatchSize,
                      val lineDelimiter: Int = Defaults.LineDelimiter,
                      val removeDelimiter: Boolean = Defaults.RemoveDelimiter,
@@ -79,6 +83,7 @@ case class LogConfig(val valid: Boolean = Defaults.Valid,
     import LogConfig._
     props.put(ValidProp, valid.toString)
     props.put(FollowLastProp, followLast.toString)
+    props.put(ReadFromHeadProp, readFromHead.toString)
     props.put(BatchSizeProp, batchSize.toString)
     props.put(LineDelimiterProp, lineDelimiter.toString)
     props.put(RemoveDelimiterProp, removeDelimiter.toString)
@@ -109,6 +114,7 @@ object LogConfig extends LogkafkaNewConfigs {
 
   val ValidProp = "valid"
   val FollowLastProp = "follow_last"
+  val ReadFromHeadProp = "read_from_head"
   val BatchSizeProp = "batchsize"
   val LineDelimiterProp = "line_delimiter"
   val RemoveDelimiterProp = "remove_delimiter"
@@ -124,6 +130,7 @@ object LogConfig extends LogkafkaNewConfigs {
 
   val ConfigMaps = Map(ValidProp -> Defaults.Valid.toString,
                        FollowLastProp -> Defaults.FollowLast.toString,
+                       ReadFromHeadProp -> Defaults.ReadFromHead.toString,
                        BatchSizeProp -> Defaults.BatchSize.toString,
                        LineDelimiterProp -> Defaults.LineDelimiter.toString,
                        RemoveDelimiterProp -> Defaults.RemoveDelimiter.toString,
@@ -146,6 +153,7 @@ object LogConfig extends LogkafkaNewConfigs {
   def fromProps(props: Properties): LogConfig = {
     new LogConfig(valid = props.getProperty(ValidProp, Defaults.Valid.toString).toBoolean,
                   followLast = props.getProperty(FollowLastProp, Defaults.FollowLast.toString).toBoolean,
+                  readFromHead = props.getProperty(ReadFromHeadProp, Defaults.ReadFromHead.toString).toBoolean,
                   batchSize = props.getProperty(BatchSizeProp, Defaults.BatchSize.toString).toLong,
                   lineDelimiter = props.getProperty(LineDelimiterProp, Defaults.LineDelimiter.toString).toInt,
                   removeDelimiter = props.getProperty(RemoveDelimiterProp, Defaults.RemoveDelimiter.toString).toBoolean,
