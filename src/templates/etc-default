@@ -20,8 +20,8 @@
 
 # Setting JAVA_OPTS
 # -----------------
-JAVA_OPTS="-Dpidfile.path=/var/run/${{app_name}}/play.pid -Dconfig.file=/etc/${{app_name}}/application.conf -Dlogger.file=/etc/${{app_name}}/logger.xml $JAVA_OPTS"
+JAVA_OPTS="-Dpidfile.path=/var/run/${{app_name}}.pid -Dconfig.file=/etc/${{app_name}}/application.conf -Dlogger.file=/etc/${{app_name}}/logger.xml $JAVA_OPTS"
 
 # Setting PIDFILE
 # ---------------
-PIDFILE="/var/run/${{app_name}}/play.pid"
+PIDFILE="/var/run/${{app_name}}.pid"
