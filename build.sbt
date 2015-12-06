@@ -28,18 +28,18 @@ libraryDependencies ++= Seq(
   "org.webjars" % "backbonejs" % "1.2.3",
   "org.webjars" % "underscorejs" % "1.8.3",
   "org.webjars" % "dustjs-linkedin" % "2.6.1",
-  "org.apache.curator" % "curator-framework" % "2.9.1" exclude("log4j","log4j") force(),
-  "org.apache.curator" % "curator-recipes" % "2.9.1" exclude("log4j","log4j") force(),
+  "org.apache.curator" % "curator-framework" % "2.9.1" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
+  "org.apache.curator" % "curator-recipes" % "2.9.1" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
   "org.json4s" %% "json4s-jackson" % "3.2.11",
   "org.json4s" %% "json4s-scalaz" % "3.2.11",
   "org.slf4j" % "log4j-over-slf4j" % "1.7.12",
   "com.adrianhurt" %% "play-bootstrap3" % "0.4.5-P24",
   "org.clapper" %% "grizzled-slf4j" % "1.0.2",
-  "org.apache.kafka" %% "kafka" % "0.8.2.2" exclude("log4j","log4j") force(),
+  "org.apache.kafka" %% "kafka" % "0.8.2.2" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "org.apache.curator" % "curator-test" % "2.9.1" % "test",
   "org.mockito" % "mockito-core" % "1.10.19" % "test",
-  "com.yammer.metrics" % "metrics-core" % "2.1.2" force()
+  "com.yammer.metrics" % "metrics-core" % "2.2.0" force()
 )
 
 routesGenerator := InjectedRoutesGenerator
