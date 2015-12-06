@@ -42,13 +42,18 @@ trait OffsetCache {
   
   protected[this] lazy val log : Logger = LoggerFactory.getLogger(this.getClass)
 
+  protected[this] val loadOffsets: Boolean
+
   // Caches a map of partitions to offsets at a key that is the topic's name.
   private[this] val partitionOffsetsCache: LoadingCache[String, Future[PartitionOffsetsCapture]] = CacheBuilder.newBuilder()
     .expireAfterWrite(getCacheTimeoutSecs,TimeUnit.SECONDS) // TODO - update more or less often maybe, or make it configurable
     .build(
       new CacheLoader[String,Future[PartitionOffsetsCapture]] {
         def load(topic: String): Future[PartitionOffsetsCapture] = {
-          loadPartitionOffsets(topic)
+          if (loadOffsets)
+            loadPartitionOffsets(topic)
+          else
+            emptyPartitionOffsetsCapture
         }
       }
     )
@@ -111,6 +116,8 @@ trait OffsetCache {
     }
     futureMap
   }
+
+  private[this] def emptyPartitionOffsetsCapture: Future[PartitionOffsetsCapture] = Future.successful(PartitionOffsetsCapture(System.currentTimeMillis(), Map()))
   
   protected def getTopicPartitionLeaders(topic: String) : Option[List[(Int, Option[BrokerIdentity])]]
 
@@ -142,6 +149,8 @@ case class OffsetCacheActive(curator: CuratorFramework,
   def getCacheTimeoutSecs: Int = cacheTimeoutSecs
 
   def getSimpleConsumerSocketTimeoutMillis: Int = socketTimeoutMillis
+
+  val loadOffsets = clusterContext.config.pollConsumers
 
   private[this] val consumersTreeCacheListener = new TreeCacheListener {
     override def childEvent(client: CuratorFramework, event: TreeCacheEvent): Unit = {
@@ -249,6 +258,8 @@ case class OffsetCachePassive(curator: CuratorFramework,
   def getCacheTimeoutSecs: Int = cacheTimeoutSecs
 
   def getSimpleConsumerSocketTimeoutMillis: Int = socketTimeoutMillis
+
+  val loadOffsets = clusterContext.config.pollConsumers
 
   private[this] val consumersPathChildrenCacheListener = new PathChildrenCacheListener {
     override def childEvent(client: CuratorFramework, event: PathChildrenCacheEvent): Unit = {
@@ -492,9 +503,11 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseQueryCommandAct
     topicsTreeCache.getListenable.addListener(topicsTreeCacheListener)
     log.info("Adding admin path cache listener...")
     adminPathCache.getListenable.addListener(adminPathCacheListener)
-    
-    log.info("Starting offset cache...")
-    offsetCache.start()
+
+    if (config.clusterContext.config.pollConsumers) {
+      log.info("Starting offset cache...")
+      offsetCache.start()
+    }
   }
 
   @scala.throws[Exception](classOf[Exception])
@@ -508,9 +521,11 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseQueryCommandAct
   @scala.throws[Exception](classOf[Exception])
   override def postStop(): Unit = {
     log.info("Stopped actor %s".format(self.path))
-    
-    log.info("Stopping offset cache...")
-    Try(offsetCache.stop())
+
+    if (config.clusterContext.config.pollConsumers) {
+      log.info("Stopping offset cache...")
+      Try(offsetCache.stop())
+    }
 
     log.info("Removing admin path cache listener...")
     Try(adminPathCache.getListenable.removeListener(adminPathCacheListener))
