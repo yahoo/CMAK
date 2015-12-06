@@ -77,7 +77,6 @@ class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extend
             Future {
               KCCommandResult(Try {
                 kafkaCommandActorConfig.adminUtils.deleteTopic(kafkaCommandActorConfig.curator, topic) //this should work in 0.8.2
-                kafkaCommandActorConfig.curator.delete().deletingChildrenIfNeeded().forPath(ZkUtils.getTopicPath(topic))
               })
             }
           }
