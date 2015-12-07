@@ -37,24 +37,6 @@ object Cluster extends Controller {
     }
   }
 
-  val validateJmxUser : Constraint[String] = Constraint("validate jmxUser") { jmxUser =>
-    Try {
-      ClusterConfig.validateJmxUser(jmxUser)
-    } match {
-      case Failure(t) => Invalid(t.getMessage)
-      case Success(_) => Valid
-    }
-  }
-
-  val validateJmxPass : Constraint[String] = Constraint("validate jmxPass") { jmxPass =>
-    Try {
-      ClusterConfig.validateJmxPass(jmxPass)
-    } match {
-      case Failure(t) => Invalid(t.getMessage)
-      case Success(_) => Valid
-    }
-  }
-
   val validateZkHosts : Constraint[String] = Constraint("validate zookeeper hosts") { zkHosts =>
     Try {
       ClusterConfig.validateZkHosts(zkHosts)
@@ -88,8 +70,8 @@ object Cluster extends Controller {
       "zkHosts" -> nonEmptyText.verifying(validateZkHosts),
       "zkMaxRetry" -> ignored(100 : Int),
       "jmxEnabled" -> boolean,
-      "jmxUser" -> nonEmptyText.verifying(maxLength(32), validateName),
-      "jmxPass" -> nonEmptyText.verifying(maxLength(32), validateName),
+      "jmxUser" -> ignored(Some("") : Option[String]),
+      "jmxPass" -> ignored(Some("") : Option[String]),
       "pollConsumers" -> boolean,
       "filterConsumers" -> boolean,
       "logkafkaEnabled" -> boolean,
@@ -106,8 +88,8 @@ object Cluster extends Controller {
       "zkHosts" -> nonEmptyText.verifying(validateZkHosts),
       "zkMaxRetry" -> ignored(100 : Int),
       "jmxEnabled" -> boolean,
-      "jmxUser" -> nonEmptyText.verifying(maxLength(32), validateName),
-      "jmxPass" -> nonEmptyText.verifying(maxLength(32), validateName),
+      "jmxUser" -> ignored(Some("") : Option[String]),
+      "jmxPass" -> ignored(Some("") : Option[String]),
       "pollConsumers" -> boolean,
       "filterConsumers" -> boolean,
       "logkafkaEnabled" -> boolean,

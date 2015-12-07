@@ -25,12 +25,12 @@ object KafkaJMX {
   
   private[this] lazy val logger = LoggerFactory.getLogger(this.getClass)
   
-  def doWithConnection[T](jmxHost: String, jmxPort: Int, jmxUser: String, jmxPass: String)(fn: MBeanServerConnection => T) : Try[T] = {
+  def doWithConnection[T](jmxHost: String, jmxPort: Int, jmxUser: Option[String], jmxPass: Option[String])(fn: MBeanServerConnection => T) : Try[T] = {
     val urlString = s"service:jmx:rmi:///jndi/rmi://$jmxHost:$jmxPort/jmxrmi"
     val url = new JMXServiceURL(urlString)
     try {
       require(jmxPort > 0, "No jmx port but jmx polling enabled!")
-      val creds: List[String] = List(jmxUser, jmxPass)
+      val creds: List[Option[String]] = List(jmxUser, jmxPass)
       val jmxConnectorProperties : java.util.Map[String, _] = {
         import scala.collection.JavaConverters._
         Map(

@@ -78,9 +78,6 @@ object ClusterConfig {
     }
   }
 
-  def validateJmxUser(jmxUser: String) { }
-  def validateJmxPass(jmxPass: String) { }
-
   def validateZkHosts(zkHosts: String): Unit = {
     require(zkHosts.length > 0, "cluster zk hosts is illegal, can't be empty!")
   }
@@ -90,8 +87,8 @@ object ClusterConfig {
             zkHosts: String,
             zkMaxRetry: Int = 100,
             jmxEnabled: Boolean,
-            jmxUser: String,
-            jmxPass: String,
+            jmxUser: Option[String] = Some(""),
+            jmxPass: Option[String] = Some(""),
             pollConsumers: Boolean,
             filterConsumers: Boolean,
             logkafkaEnabled: Boolean = false, 
@@ -103,8 +100,7 @@ object ClusterConfig {
     //validate zk hosts
     validateZkHosts(zkHosts)
     //validate and convert type
-    validateJmxUser(jmxUser)
-    validateJmxPass(jmxPass)
+
     val cleanZkHosts = zkHosts.replaceAll(" ","")
     new ClusterConfig(
       name, 
@@ -122,10 +118,10 @@ object ClusterConfig {
   }
 
   def customUnapply(cc: ClusterConfig) : Option[(
-    String, String, String, Int, Boolean, String, String,
+    String, String, String, Int, Boolean, Option[String], Option[String],
     Boolean, Boolean, Boolean, Boolean, Boolean)] = {
     Some((cc.name, cc.version.toString, cc.curatorConfig.zkConnect, cc.curatorConfig.zkMaxRetry,
-      cc.jmxEnabled, cc.jmxUser.toString, cc.jmxPass, cc.pollConsumers, cc.filterConsumers,
+      cc.jmxEnabled, cc.jmxUser, cc.jmxPass, cc.pollConsumers, cc.filterConsumers,
       cc.logkafkaEnabled, cc.activeOffsetCacheEnabled, cc.displaySizeEnabled))
   }
 
@@ -172,14 +168,15 @@ object ClusterConfig {
     Try {
       val json = parse(kafka.manager.utils.deserializeString(ba))
 
-      val result = (field[String]("name")(json) |@| field[CuratorConfig]("curatorConfig")(json) |@| field[Boolean]("enabled")(json) |@| field[String]("jmxUser")(json) |@| field[String]("jmxPass")(json))
+      val result = (field[String]("name")(json) |@| field[CuratorConfig]("curatorConfig")(json) |@| field[Boolean]("enabled")(json)
+       |@| field[Option[String]]("jmxUser")(json) |@| field[Option[String]]("jmxPass")(json))
       {
-        (name:String,curatorConfig:CuratorConfig,enabled:Boolean,jmxUser:String,jmxPass:String) =>
+        (name:String,curatorConfig:CuratorConfig,enabled:Boolean,jmxUser:Option[String],jmxPass:Option[String]) =>
           val versionString = field[String]("kafkaVersion")(json)
           val version = versionString.map(KafkaVersion.apply).getOrElse(Kafka_0_8_1_1)
           val jmxEnabled = field[Boolean]("jmxEnabled")(json)
-          val jmxUser = field[String]("jmxUser")(json)
-          val jmxPass = field[String]("jmxPass")(json)
+          val jmxUser = field[Option[String]]("jmxUser")(json)
+          val jmxPass = field[Option[String]]("jmxPass")(json)
           val pollConsumers = field[Boolean]("pollConsumers")(json)
           val filterConsumers = field[Boolean]("filterConsumers")(json)
           val logkafkaEnabled = field[Boolean]("logkafkaEnabled")(json)
@@ -190,8 +187,8 @@ object ClusterConfig {
             curatorConfig,
             enabled,version,
             jmxEnabled.getOrElse(false),
-            jmxUser,
-            jmxPass,
+            jmxUser.getOrElse(Some("")),
+            jmxPass.getOrElse(Some("")),
             pollConsumers.getOrElse(false),
             filterConsumers.getOrElse(true),
             logkafkaEnabled.getOrElse(false), 
@@ -218,8 +215,8 @@ case class ClusterConfig (name: String,
                           enabled: Boolean,
                           version: KafkaVersion,
                           jmxEnabled: Boolean,
-                          jmxUser: String,
-                          jmxPass: String,
+                          jmxUser: Option[String],
+                          jmxPass: Option[String],
                           pollConsumers: Boolean,
                           filterConsumers: Boolean,
                           logkafkaEnabled: Boolean,
