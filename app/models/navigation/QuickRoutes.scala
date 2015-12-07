@@ -79,8 +79,8 @@ object QuickRoutes {
     def topicRouteMenuItem(c: String, t: String): (String, Call) = {
       s -> topicRoutes(s)(c,t)
     }
-    def topicRoute(c: String, t: String): Call = {
-      topicRoutes(s)(c,t)
+    def topicRoute(c: String, t: List[String]): Call = {
+      topicRoutes(s)(c,t.head)
     }
   }
 
@@ -88,8 +88,8 @@ object QuickRoutes {
     def consumerRouteMenuItem(cluster: String, consumer: String): (String, Call) = {
       s -> consumerRoutes(s)(cluster,consumer)
     }
-    def consumerRoute(cluster: String, consumer: String): Call = {
-      consumerRoutes(s)(cluster,consumer)
+    def consumerRoute(cluster: String, consumer: List[String]): Call = {
+      consumerRoutes(s)(cluster,consumer.head)
     }
   }
 
@@ -97,9 +97,10 @@ object QuickRoutes {
     def logkafkaRouteMenuItem(c: String, h: String, l:String): (String, Call) = {
       s -> logkafkaRoutes(s)(c,h,l)
     }
-    def logkafkaRoute(c: String, hl: String): Call = {
-      val hlArray = hl.split("\\?")
-      logkafkaRoutes(s)(c,hlArray(0),hlArray(1))
+    def logkafkaRoute(c: String, hl: List[String]): Call = {
+      val logkafka_id = hl(0)
+      val log_path = hl(1)
+      logkafkaRoutes(s)(c,logkafka_id,log_path)
     }
   }
 }
