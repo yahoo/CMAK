@@ -33,7 +33,7 @@ class TestClusterConfig extends FunSuite with Matchers {
   }
 
   test("serialize and deserialize +jmx credentials") {
-    val cc = ClusterConfig("qa","0.8.2.0","localhost:2181", jmxEnabled = true, jmxUser = Some("mario"), jmxPass = Some("rossi"))
+    val cc = ClusterConfig("qa","0.8.2.0","localhost:2181", jmxEnabled = true, jmxUser = Some("mario"), jmxPass = Some("rossi"), pollConsumers = true, filterConsumers = true)
     val serialize: String = ClusterConfig.serialize(cc)
     val deserialize = ClusterConfig.deserialize(serialize)
     assert(deserialize.isSuccess === true)
