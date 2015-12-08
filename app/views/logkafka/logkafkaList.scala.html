@@ -15,7 +15,9 @@
 @logkafkaScripts = {
     <script ype="text/javascript">
     $(document).ready(function() {
-        $('#logkafkas-table').DataTable();
+        $('#logkafkas-table').DataTable({
+           "iDisplayLength": 100
+        });
     } );
     </script>
 }
