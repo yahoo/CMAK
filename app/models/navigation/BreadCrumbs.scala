@@ -15,7 +15,7 @@ object BreadCrumbs {
   sealed trait BreadCrumb
   final case class BCDynamicText(cn: String => String) extends BreadCrumb
   final case class BCDynamicNamedLink(cn: String => String, cl : String => Call) extends BreadCrumb
-  final case class BCDynamicMultiNamedLink(cn: String => String, cl : (String,String) => Call) extends BreadCrumb
+  final case class BCDynamicMultiNamedLink(cn: String => String, cl : (String, List[String]) => Call) extends BreadCrumb
   final case class BCDynamicLink(s: String, cl : String => Call) extends BreadCrumb
   final case class BCStaticLink(s: String, c: Call) extends BreadCrumb
 
@@ -139,7 +139,7 @@ object BreadCrumbs {
     topicBreadCrumbs.getOrElse(s,IndexedSeq.empty[BreadCrumb]) map {
       case BCStaticLink(n,c) => BCLink(n,c.toString())
       case BCDynamicNamedLink(cn, cl) => BCLink(cn(clusterName),cl(clusterName).toString())
-      case BCDynamicMultiNamedLink(cn, cl) => BCLink(cn(topic),cl(clusterName,topic).toString())
+      case BCDynamicMultiNamedLink(cn, cl) => BCLink(cn(topic),cl(clusterName,List(topic)).toString())
       case BCDynamicLink(cn, cl) => BCLink(cn,cl(clusterName).toString())
       case BCDynamicText(cn) => BCText(cn(clusterName))
     }
@@ -149,7 +149,7 @@ object BreadCrumbs {
     consumerBreadCrumbs.getOrElse(s,IndexedSeq.empty[BreadCrumb]) map {
       case BCStaticLink(n,c) => BCLink(n,c.toString())
       case BCDynamicNamedLink(cn, cl) => BCLink(cn(clusterName),cl(clusterName).toString())
-      case BCDynamicMultiNamedLink(cn, cl) => BCLink(cn(consumer),cl(clusterName,consumer).toString())
+      case BCDynamicMultiNamedLink(cn, cl) => BCLink(cn(consumer),cl(clusterName,List(consumer)).toString())
       case BCDynamicLink(cn, cl) => BCLink(cn,cl(clusterName).toString())
       case BCDynamicText(cn) => BCText(cn(clusterName))
     }
@@ -164,7 +164,7 @@ object BreadCrumbs {
     logkafkaBreadCrumbs.getOrElse(s,IndexedSeq.empty[BreadCrumb]) map {
       case BCStaticLink(n,c) => BCLink(n,c.toString())
       case BCDynamicNamedLink(cn, cl) => BCLink(cn(clusterName),cl(clusterName).toString())
-      case BCDynamicMultiNamedLink(cn, cl) => BCLink(cn(hl),cl(clusterName,hl).toString())
+      case BCDynamicMultiNamedLink(cn, cl) => BCLink(cn(hl),cl(clusterName,List(logkafka_id, log_path)).toString())
       case BCDynamicLink(cn, cl) => BCLink(cn,cl(clusterName).toString())
       case BCDynamicText(cn) => BCText(cn(clusterName))
     }
