@@ -315,7 +315,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
       broker =>
         longRunning {
           Future {
-            val tryResult = KafkaJMX.doWithConnection(broker.host, broker.jmxPort) {
+            val tryResult = KafkaJMX.doWithConnection(broker.host, broker.jmxPort, config.clusterConfig.jmxUser, config.clusterConfig.jmxPass) {
               mbsc =>
                 KafkaMetrics.getBrokerMetrics(config.clusterContext.config.version, mbsc, shouldGetBrokerSize)
             }
@@ -337,7 +337,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
       broker =>
         longRunning {
           Future {
-            val tryResult = KafkaJMX.doWithConnection(broker.host, broker.jmxPort) {
+            val tryResult = KafkaJMX.doWithConnection(broker.host, broker.jmxPort, config.clusterConfig.jmxUser, config.clusterConfig.jmxPass) {
               mbsc =>
                 KafkaMetrics.getLogSegmentsInfo(mbsc)
             }

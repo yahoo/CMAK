@@ -236,17 +236,16 @@ object Cluster extends Controller {
                 FollowLink("Try again.", routes.Cluster.updateCluster(c).toString())
               ))
             }
-          case Unknown(opString) =>
-            Future.successful(Ok(views.html.common.resultOfCommand(
-              views.html.navigation.defaultMenu(),
-              models.navigation.BreadCrumbs.withViewAndCluster("Unknown Cluster Operation", c),
-              -\/(ApiError(s"Unknown operation $opString")),
-              "Unknown Cluster Operation",
-              FollowLink("Back to cluster list.", routes.Application.index().toString()),
-              FollowLink("Back to cluster list.", routes.Application.index().toString())
+        case Unknown(opString) =>
+          Future.successful(Ok(views.html.common.resultOfCommand(
+            views.html.navigation.defaultMenu(),
+            models.navigation.BreadCrumbs.withViewAndCluster("Unknown Cluster Operation", c),
+            -\/(ApiError(s"Unknown operation $opString")),
+            "Unknown Cluster Operation",
+            FollowLink("Back to cluster list.", routes.Application.index().toString()),
+            FollowLink("Back to cluster list.", routes.Application.index().toString())
             )))
-        }
-      )
-    }
+      }
+    )
   }
 }
