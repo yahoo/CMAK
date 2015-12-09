@@ -30,18 +30,26 @@ object KafkaJMX {
     val url = new JMXServiceURL(urlString)
     try {
       require(jmxPort > 0, "No jmx port but jmx polling enabled!")
-      val creds: List[Option[String]] = List(jmxUser, jmxPass)
-      val jmxConnectorProperties : java.util.Map[String, _] = {
+      val defaultJmxConnectorProperties : java.util.Map[String, _] = {
         import scala.collection.JavaConverters._
         Map(
           "jmx.remote.x.request.waiting.timeout" -> "3000",
           "jmx.remote.x.notification.fetch.timeout" -> "3000",
           "sun.rmi.transport.connectionTimeout" -> "3000",
           "sun.rmi.transport.tcp.handshakeTimeout" -> "3000",
-          "sun.rmi.transport.tcp.responseTimeout" -> "3000",
-          //"com.sun.management.jmxremote.ssl" -> "false",
-          JMXConnector.CREDENTIALS -> creds
+          "sun.rmi.transport.tcp.responseTimeout" -> "3000"
+          //"com.sun.management.jmxremote.ssl" -> "false"
         ).asJava
+      }
+      val jmxConnectorProperties : java.util.Map[String, _] = {
+        val withCreds: Option[java.util.Map[String, _]] = for {
+          user <- jmxUser
+          pass <- jmxPass
+        } yield {
+          val creds: Array[String] = Array(user, pass)
+          (defaultJmxConnectorProperties.asScala ++ Map(JMXConnector.CREDENTIALS -> creds)).asJava
+        }
+        withCreds.getOrElse(defaultJmxConnectorProperties)
       }
       val jmxc = JMXConnectorFactory.connect(url, jmxConnectorProperties)
       try {

@@ -143,6 +143,7 @@ object Cluster extends Controller {
         }))
       }
     }
+
   }
 
   def handleAddCluster = Action.async { implicit request =>
@@ -177,50 +178,51 @@ object Cluster extends Controller {
   }
 
   def handleUpdateCluster(c: String) = Action.async { implicit request =>
-    updateForm.bindFromRequest.fold(
-      formWithErrors => Future.successful(BadRequest(views.html.cluster.updateCluster(c,\/-(formWithErrors)))),
-      clusterOperation => clusterOperation.op match {
-        case Enable =>
-          kafkaManager.enableCluster(c).map { errorOrSuccess =>
-            Ok(views.html.common.resultOfCommand(
-              views.html.navigation.defaultMenu(),
-              models.navigation.BreadCrumbs.withViewAndCluster("Enable Cluster",c),
-              errorOrSuccess,
-              "Enable Cluster",
-              FollowLink("Go to cluster list.",routes.Application.index().toString()),
-              FollowLink("Back to cluster list.",routes.Application.index().toString())
-            ))
-          }
-        case Disable =>
-          kafkaManager.disableCluster(c).map { errorOrSuccess =>
-            Ok(views.html.common.resultOfCommand(
-              views.html.navigation.defaultMenu(),
-              models.navigation.BreadCrumbs.withViewAndCluster("Disable Cluster",c),
-              errorOrSuccess,
-              "Disable Cluster",
-              FollowLink("Back to cluster list.",routes.Application.index().toString()),
-              FollowLink("Back to cluster list.",routes.Application.index().toString())
-            ))
-          }
-        case Delete =>
-          kafkaManager.deleteCluster(c).map { errorOrSuccess =>
-            Ok(views.html.common.resultOfCommand(
-              views.html.navigation.defaultMenu(),
-              models.navigation.BreadCrumbs.withViewAndCluster("Delete Cluster",c),
-              errorOrSuccess,
-              "Delete Cluster",
-              FollowLink("Back to cluster list.",routes.Application.index().toString()),
-              FollowLink("Back to cluster list.",routes.Application.index().toString())
-            ))
-          }
-        case Update =>
-          kafkaManager.updateCluster(
-            clusterOperation.clusterConfig.name,
-            clusterOperation.clusterConfig.version.toString,
-            clusterOperation.clusterConfig.curatorConfig.zkConnect,
-            clusterOperation.clusterConfig.jmxEnabled,
-            clusterOperation.clusterConfig.jmxUser,
-            clusterOperation.clusterConfig.jmxPass,
+    featureGate(KMClusterManagerFeature) {
+      updateForm.bindFromRequest.fold(
+        formWithErrors => Future.successful(BadRequest(views.html.cluster.updateCluster(c, \/-(formWithErrors)))),
+        clusterOperation => clusterOperation.op match {
+          case Enable =>
+            kafkaManager.enableCluster(c).map { errorOrSuccess =>
+              Ok(views.html.common.resultOfCommand(
+                views.html.navigation.defaultMenu(),
+                models.navigation.BreadCrumbs.withViewAndCluster("Enable Cluster", c),
+                errorOrSuccess,
+                "Enable Cluster",
+                FollowLink("Go to cluster list.", routes.Application.index().toString()),
+                FollowLink("Back to cluster list.", routes.Application.index().toString())
+              ))
+            }
+          case Disable =>
+            kafkaManager.disableCluster(c).map { errorOrSuccess =>
+              Ok(views.html.common.resultOfCommand(
+                views.html.navigation.defaultMenu(),
+                models.navigation.BreadCrumbs.withViewAndCluster("Disable Cluster", c),
+                errorOrSuccess,
+                "Disable Cluster",
+                FollowLink("Back to cluster list.", routes.Application.index().toString()),
+                FollowLink("Back to cluster list.", routes.Application.index().toString())
+              ))
+            }
+          case Delete =>
+            kafkaManager.deleteCluster(c).map { errorOrSuccess =>
+              Ok(views.html.common.resultOfCommand(
+                views.html.navigation.defaultMenu(),
+                models.navigation.BreadCrumbs.withViewAndCluster("Delete Cluster", c),
+                errorOrSuccess,
+                "Delete Cluster",
+                FollowLink("Back to cluster list.", routes.Application.index().toString()),
+                FollowLink("Back to cluster list.", routes.Application.index().toString())
+              ))
+            }
+          case Update =>
+            kafkaManager.updateCluster(
+              clusterOperation.clusterConfig.name,
+              clusterOperation.clusterConfig.version.toString,
+              clusterOperation.clusterConfig.curatorConfig.zkConnect,
+              clusterOperation.clusterConfig.jmxEnabled,
+              clusterOperation.clusterConfig.jmxUser,
+              clusterOperation.clusterConfig.jmxPass,
               clusterOperation.clusterConfig.pollConsumers,
               clusterOperation.clusterConfig.filterConsumers,
               clusterOperation.clusterConfig.logkafkaEnabled,
@@ -236,16 +238,17 @@ object Cluster extends Controller {
                 FollowLink("Try again.", routes.Cluster.updateCluster(c).toString())
               ))
             }
-        case Unknown(opString) =>
-          Future.successful(Ok(views.html.common.resultOfCommand(
-            views.html.navigation.defaultMenu(),
-            models.navigation.BreadCrumbs.withViewAndCluster("Unknown Cluster Operation", c),
-            -\/(ApiError(s"Unknown operation $opString")),
-            "Unknown Cluster Operation",
-            FollowLink("Back to cluster list.", routes.Application.index().toString()),
-            FollowLink("Back to cluster list.", routes.Application.index().toString())
+          case Unknown(opString) =>
+            Future.successful(Ok(views.html.common.resultOfCommand(
+              views.html.navigation.defaultMenu(),
+              models.navigation.BreadCrumbs.withViewAndCluster("Unknown Cluster Operation", c),
+              -\/(ApiError(s"Unknown operation $opString")),
+              "Unknown Cluster Operation",
+              FollowLink("Back to cluster list.", routes.Application.index().toString()),
+              FollowLink("Back to cluster list.", routes.Application.index().toString())
             )))
-      }
-    )
+        }
+      )
+    }
   }
 }
