@@ -24,23 +24,23 @@ import scala.math
 object KafkaJMX {
   
   private[this] lazy val logger = LoggerFactory.getLogger(this.getClass)
-  
+
+  private[this] val defaultJmxConnectorProperties : java.util.Map[String, _] = {
+    import scala.collection.JavaConverters._
+    Map(
+      "jmx.remote.x.request.waiting.timeout" -> "3000",
+      "jmx.remote.x.notification.fetch.timeout" -> "3000",
+      "sun.rmi.transport.connectionTimeout" -> "3000",
+      "sun.rmi.transport.tcp.handshakeTimeout" -> "3000",
+      "sun.rmi.transport.tcp.responseTimeout" -> "3000"
+    ).asJava
+  }
+
   def doWithConnection[T](jmxHost: String, jmxPort: Int, jmxUser: Option[String], jmxPass: Option[String])(fn: MBeanServerConnection => T) : Try[T] = {
     val urlString = s"service:jmx:rmi:///jndi/rmi://$jmxHost:$jmxPort/jmxrmi"
     val url = new JMXServiceURL(urlString)
     try {
       require(jmxPort > 0, "No jmx port but jmx polling enabled!")
-      val defaultJmxConnectorProperties : java.util.Map[String, _] = {
-        import scala.collection.JavaConverters._
-        Map(
-          "jmx.remote.x.request.waiting.timeout" -> "3000",
-          "jmx.remote.x.notification.fetch.timeout" -> "3000",
-          "sun.rmi.transport.connectionTimeout" -> "3000",
-          "sun.rmi.transport.tcp.handshakeTimeout" -> "3000",
-          "sun.rmi.transport.tcp.responseTimeout" -> "3000"
-          //"com.sun.management.jmxremote.ssl" -> "false"
-        ).asJava
-      }
       val jmxConnectorProperties : java.util.Map[String, _] = {
         val withCreds: Option[java.util.Map[String, _]] = for {
           user <- jmxUser
