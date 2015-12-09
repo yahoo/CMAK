@@ -70,6 +70,8 @@ object Cluster extends Controller {
       "zkHosts" -> nonEmptyText.verifying(validateZkHosts),
       "zkMaxRetry" -> ignored(100 : Int),
       "jmxEnabled" -> boolean,
+      "jmxUser" -> optional(text),
+      "jmxPass" -> optional(text),
       "pollConsumers" -> boolean,
       "filterConsumers" -> boolean,
       "logkafkaEnabled" -> boolean,
@@ -86,6 +88,8 @@ object Cluster extends Controller {
       "zkHosts" -> nonEmptyText.verifying(validateZkHosts),
       "zkMaxRetry" -> ignored(100 : Int),
       "jmxEnabled" -> boolean,
+      "jmxUser" -> optional(text),
+      "jmxPass" -> optional(text),
       "pollConsumers" -> boolean,
       "filterConsumers" -> boolean,
       "logkafkaEnabled" -> boolean,
@@ -99,7 +103,7 @@ object Cluster extends Controller {
       Ok(views.html.cluster.clusterView(c,errorOrClusterView))
     }
   }
-  
+
   def brokers(c: String) = Action.async {
     kafkaManager.getBrokerList(c).map { errorOrBrokerList =>
       Ok(views.html.broker.brokerList(c,errorOrBrokerList))
@@ -111,7 +115,7 @@ object Cluster extends Controller {
       Ok(views.html.broker.brokerView(c,b,errorOrBrokerView))
     }
   }
-  
+
   def addCluster = Action.async { implicit request =>
     featureGate(KMClusterManagerFeature) {
       Future.successful(Ok(views.html.cluster.addCluster(clusterConfigForm)))
@@ -129,6 +133,8 @@ object Cluster extends Controller {
             cc.curatorConfig.zkConnect,
             cc.curatorConfig.zkMaxRetry,
             cc.jmxEnabled,
+            cc.jmxUser,
+            cc.jmxPass,
             cc.pollConsumers,
             cc.filterConsumers,
             cc.logkafkaEnabled,
@@ -137,7 +143,7 @@ object Cluster extends Controller {
         }))
       }
     }
-      
+
   }
 
   def handleAddCluster = Action.async { implicit request =>
@@ -149,6 +155,8 @@ object Cluster extends Controller {
             clusterConfig.version.toString,
             clusterConfig.curatorConfig.zkConnect,
             clusterConfig.jmxEnabled,
+            clusterConfig.jmxUser,
+            clusterConfig.jmxPass,
             clusterConfig.pollConsumers,
             clusterConfig.filterConsumers,
             clusterConfig.logkafkaEnabled,
@@ -213,6 +221,8 @@ object Cluster extends Controller {
               clusterOperation.clusterConfig.version.toString,
               clusterOperation.clusterConfig.curatorConfig.zkConnect,
               clusterOperation.clusterConfig.jmxEnabled,
+              clusterOperation.clusterConfig.jmxUser,
+              clusterOperation.clusterConfig.jmxPass,
               clusterOperation.clusterConfig.pollConsumers,
               clusterOperation.clusterConfig.filterConsumers,
               clusterOperation.clusterConfig.logkafkaEnabled,

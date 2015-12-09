@@ -9,7 +9,7 @@ import java.io.File
 import java.{util => ju}
 
 import javax.management._
-import javax.management.remote.{JMXConnectorFactory, JMXServiceURL}
+import javax.management.remote.{JMXConnectorFactory, JMXServiceURL, JMXConnector}
 
 import scala.collection.JavaConverters._
 import scala.util.matching.Regex
@@ -24,8 +24,8 @@ import scala.math
 object KafkaJMX {
   
   private[this] lazy val logger = LoggerFactory.getLogger(this.getClass)
-  
-  private[this] val jmxConnectorProperties : java.util.Map[String, _] = {
+
+  private[this] val defaultJmxConnectorProperties : java.util.Map[String, _] = {
     import scala.collection.JavaConverters._
     Map(
       "jmx.remote.x.request.waiting.timeout" -> "3000",
@@ -36,11 +36,21 @@ object KafkaJMX {
     ).asJava
   }
 
-  def doWithConnection[T](jmxHost: String, jmxPort: Int)(fn: MBeanServerConnection => T) : Try[T] = {
+  def doWithConnection[T](jmxHost: String, jmxPort: Int, jmxUser: Option[String], jmxPass: Option[String])(fn: MBeanServerConnection => T) : Try[T] = {
     val urlString = s"service:jmx:rmi:///jndi/rmi://$jmxHost:$jmxPort/jmxrmi"
     val url = new JMXServiceURL(urlString)
     try {
       require(jmxPort > 0, "No jmx port but jmx polling enabled!")
+      val jmxConnectorProperties : java.util.Map[String, _] = {
+        val withCreds: Option[java.util.Map[String, _]] = for {
+          user <- jmxUser
+          pass <- jmxPass
+        } yield {
+          val creds: Array[String] = Array(user, pass)
+          (defaultJmxConnectorProperties.asScala ++ Map(JMXConnector.CREDENTIALS -> creds)).asJava
+        }
+        withCreds.getOrElse(defaultJmxConnectorProperties)
+      }
       val jmxc = JMXConnectorFactory.connect(url, jmxConnectorProperties)
       try {
         Try {
