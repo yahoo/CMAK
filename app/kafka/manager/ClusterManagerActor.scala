@@ -57,7 +57,9 @@ case class ClusterManagerActorConfig(pinnedDispatcherName: String,
                                 askTimeoutMillis: Long = 2000,
                                 mutexTimeoutMillis: Int = 4000,
                                 partitionOffsetCacheTimeoutSecs : Int = 5,
-                                simpleConsumerSocketTimeoutMillis: Int = 10000)
+                                simpleConsumerSocketTimeoutMillis: Int = 10000,
+                                brokerViewThreadPoolSize: Int = 2,
+                                brokerViewMaxQueueSize: Int = 1000)
 
 class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
   extends BaseQueryCommandActor with CuratorAwareActor with BaseZkPath {
@@ -101,10 +103,12 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
   private[this] val ksProps = Props(classOf[KafkaStateActor],ksConfig)
   private[this] val kafkaStateActor : ActorPath = context.actorOf(ksProps.withDispatcher(cmConfig.pinnedDispatcherName),"kafka-state").path
 
+  // TODO: make this config pluggable
+  println(cmConfig.brokerViewThreadPoolSize)
   private[this] val bvConfig = BrokerViewCacheActorConfig(
     kafkaStateActor, 
     clusterContext,
-    LongRunningPoolConfig(Runtime.getRuntime.availableProcessors(), 1000),
+    LongRunningPoolConfig(cmConfig.brokerViewThreadPoolSize, cmConfig.brokerViewMaxQueueSize),
     cmConfig.updatePeriod)
   private[this] val bvcProps = Props(classOf[BrokerViewCacheActor],bvConfig)
   private[this] val brokerViewCacheActor : ActorPath = context.actorOf(bvcProps,"broker-view").path
