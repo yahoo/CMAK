@@ -125,10 +125,10 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
     request match {
       case BVForceUpdate =>
         log.info("Updating broker view...")
-        //ask for topic descriptions
+        // ask for topic descriptions
         val lastUpdateMillisOption: Option[Long] = topicDescriptionsOption.map(_.lastUpdateMillis)
+        // upon receiving topic descriptions, it will ask for broker list
         context.actorSelection(config.kafkaStateActorPath).tell(KSGetAllTopicDescriptions(lastUpdateMillisOption), self)
-        context.actorSelection(config.kafkaStateActorPath).tell(KSGetBrokers, self)
         if (config.clusterContext.config.pollConsumers) {
           context.actorSelection(config.kafkaStateActorPath).tell(KSGetAllConsumerDescriptions(lastUpdateMillisOption), self)
         }
@@ -202,7 +202,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
       case td: TopicDescriptions =>
         previousTopicDescriptionsOption = topicDescriptionsOption
         topicDescriptionsOption = Some(td)
-        updateViewForBrokersAndTopics()
+        context.actorSelection(config.kafkaStateActorPath).tell(KSGetBrokers, self)
 
       case cd: ConsumerDescriptions =>
         consumerDescriptionsOption = Some(cd)
