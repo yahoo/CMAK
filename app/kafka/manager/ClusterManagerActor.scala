@@ -103,8 +103,6 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
   private[this] val ksProps = Props(classOf[KafkaStateActor],ksConfig)
   private[this] val kafkaStateActor : ActorPath = context.actorOf(ksProps.withDispatcher(cmConfig.pinnedDispatcherName),"kafka-state").path
 
-  // TODO: make this config pluggable
-  println(cmConfig.brokerViewThreadPoolSize)
   private[this] val bvConfig = BrokerViewCacheActorConfig(
     kafkaStateActor, 
     clusterContext,

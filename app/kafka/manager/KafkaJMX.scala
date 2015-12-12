@@ -289,7 +289,8 @@ object KafkaMetrics {
     stats.groupBy(_._1).mapValues(_.map(_._2).toMap).toMap
   }
 
-  def getBrokerMetrics(kafkaVersion: KafkaVersion, mbsc: MBeanServerConnection, shouldGetBrokerSize: Boolean, topic: Option[String] = None) : BrokerMetrics = {
+  // return broker metrics with segment metric only when it's provided. if not, it will contain segment metric with value 0L
+  def getBrokerMetrics(kafkaVersion: KafkaVersion, mbsc: MBeanServerConnection, segmentsMetric: Option[SegmentsMetric] = None, topic: Option[String] = None) : BrokerMetrics = {
     BrokerMetrics(
       KafkaMetrics.getBytesInPerSec(kafkaVersion, mbsc, topic),
       KafkaMetrics.getBytesOutPerSec(kafkaVersion, mbsc, topic),
@@ -298,18 +299,8 @@ object KafkaMetrics {
       KafkaMetrics.getFailedProduceRequestsPerSec(kafkaVersion, mbsc, topic),
       KafkaMetrics.getMessagesInPerSec(kafkaVersion, mbsc, topic),
       KafkaMetrics.getOSMetric(mbsc),
-      KafkaMetrics.getSegmentsMetric(mbsc, shouldGetBrokerSize)
+      segmentsMetric.getOrElse(SegmentsMetric(0L))
     )
-  }
-
-  // always contains the total bytes size a broker has
-  def getSegmentsMetric(mbsc: MBeanServerConnection, shouldGetBrokerSize: Boolean) : SegmentsMetric = {
-    if (shouldGetBrokerSize) {
-      val segmentsInfo = getLogSegmentsInfo(mbsc)
-      SegmentsMetric(segmentsInfo.values.map(_.values.map(_.bytes).sum).sum)
-    } else {
-      SegmentsMetric(0L)
-    }
   }
 }
 

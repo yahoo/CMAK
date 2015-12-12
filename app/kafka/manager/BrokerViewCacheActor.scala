@@ -184,6 +184,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
         })
 
       case BVUpdateBrokerTopicPartitionSizes(id, logInfo) =>
+        // put topic sizes
         for ((topic, partitions) <- logInfo) {
           val tMap = brokerTopicPartitionSizes.getOrElse(topic, new mutable.HashMap[Int, mutable.Map[Int, Long]])
           for ((partition, info) <- partitions; pMap = tMap.getOrElse(partition, new mutable.HashMap[Int, Long])) {
@@ -191,6 +192,23 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
             tMap.put(partition, pMap)
           }
           brokerTopicPartitionSizes.put(topic, tMap)
+        }
+
+        // update broker metrics and view to reflect topics sizes it has
+        val metrics = brokerMetrics.get(id)
+        metrics foreach { case bm =>
+          val brokerSize = logInfo.map{case (t, p) => p.values.map(_.bytes).sum}.sum
+          val newBm = BrokerMetrics(
+            bm.bytesInPerSec,
+            bm.bytesOutPerSec,
+            bm.bytesRejectedPerSec,
+            bm.failedFetchRequestsPerSec,
+            bm.failedProduceRequestsPerSec,
+            bm.messagesInPerSec,
+            bm.oSystemMetrics,
+            SegmentsMetric(brokerSize)
+          )
+          brokerMetrics += (id -> newBm)
         }
 
       case any: Any => log.warning("bvca : processActorRequest : Received unknown message: {}", any)
@@ -237,8 +255,8 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
       //check for 3*broker list size since we schedule 3 jmx calls for each broker
       if (config.clusterContext.clusterFeatures.features(KMJMXMetricsFeature) && config.clusterContext.clusterFeatures.features(KMDisplaySizeFeature) && hasCapacityFor(3*brokerListOption.size)) {
         implicit val ec = longRunningExecutionContext
-        updateTopicMetrics(brokerList, topicPartitionByBroker, shouldGetBrokerSize = true)
-        updateBrokerMetrics(brokerList, shouldGetBrokerSize = true)
+        updateTopicMetrics(brokerList, topicPartitionByBroker)
+        updateBrokerMetrics(brokerList)
         updateBrokerTopicPartitionsSize(brokerList)
       } else if (config.clusterContext.clusterFeatures.features(KMJMXMetricsFeature) && hasCapacityFor(2*brokerListOption.size)) {
         implicit val ec = longRunningExecutionContext
@@ -275,8 +293,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
   }
 
   private def updateTopicMetrics(brokerList: BrokerList,
-    topicPartitionByBroker: Map[Int, IndexedSeq[(TopicIdentity, Int, IndexedSeq[Int])]],
-    shouldGetBrokerSize: Boolean = false
+    topicPartitionByBroker: Map[Int, IndexedSeq[(TopicIdentity, Int, IndexedSeq[Int])]]
     )(implicit ec: ExecutionContext): Unit = {
     val brokerLookup = brokerList.list.map(bi => bi.id -> bi).toMap
     topicPartitionByBroker.foreach {
@@ -293,7 +310,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
                     topicPartitions.map {
                       case (topic, id, partitions) =>
                         (topic.topic,
-                          KafkaMetrics.getBrokerMetrics(config.clusterContext.config.version, mbsc, shouldGetBrokerSize, Option(topic.topic)))
+                          KafkaMetrics.getBrokerMetrics(config.clusterContext.config.version, mbsc, None, Option(topic.topic)))
                     }
                 }
                 val result = tryResult match {
@@ -312,7 +329,8 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
     }
   }
 
-  private def updateBrokerMetrics(brokerList: BrokerList, shouldGetBrokerSize: Boolean = false)(implicit ec: ExecutionContext): Unit = {
+  // this only updates broker metrics except for broker size
+  private def updateBrokerMetrics(brokerList: BrokerList)(implicit ec: ExecutionContext): Unit = {
     brokerList.list.foreach {
       broker =>
         longRunning {
@@ -321,7 +339,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
               config.clusterContext.config.jmxUser, config.clusterContext.config.jmxPass
             ) {
               mbsc =>
-                KafkaMetrics.getBrokerMetrics(config.clusterContext.config.version, mbsc, shouldGetBrokerSize)
+                KafkaMetrics.getBrokerMetrics(config.clusterContext.config.version, mbsc, brokerMetrics.get(broker.id).map(_.size))
             }
 
             val result = tryResult match {
