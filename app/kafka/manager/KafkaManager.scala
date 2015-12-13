@@ -68,6 +68,8 @@ object KafkaManager {
   val ClusterActorsAskTimeoutMillis = "kafka-manager.cluster-actors-ask-timeout-millis"
   val PartitionOffsetCacheTimeoutSecs = "kafka-manager.partition-offset-cache-timeout-secs"
   val SimpleConsumerSocketTimeoutMillis = "kafka-manager.simple-consumer-socket-timeout-millis"
+  val BrokerViewThreadPoolSize = "kafka-manager.broker-view-thread-pool-size"
+  val BrokerViewMaxQueueSize = "kafka-manager.broker-view-max-queue-size"
 
   val DefaultConfig: Config = {
     val defaults: Map[String, _ <: AnyRef] = Map(
@@ -84,7 +86,9 @@ object KafkaManager {
       ApiTimeoutMillis -> "5000",
       ClusterActorsAskTimeoutMillis -> "2000",
       PartitionOffsetCacheTimeoutSecs -> "5",
-      SimpleConsumerSocketTimeoutMillis -> "10000"
+      SimpleConsumerSocketTimeoutMillis -> "10000",
+      BrokerViewThreadPoolSize -> Runtime.getRuntime.availableProcessors().toString,
+      BrokerViewMaxQueueSize -> "1000"
     )
     import scala.collection.JavaConverters._
     ConfigFactory.parseMap(defaults.asJava)
@@ -115,7 +119,9 @@ class KafkaManager(akkaConfig: Config)
       deletionBatchSize = configWithDefaults.getInt(DeletionBatchSize),
       clusterActorsAskTimeoutMillis = configWithDefaults.getInt(ClusterActorsAskTimeoutMillis),
       partitionOffsetCacheTimeoutSecs = configWithDefaults.getInt(PartitionOffsetCacheTimeoutSecs),
-      simpleConsumerSocketTimeoutMillis =  configWithDefaults.getInt(SimpleConsumerSocketTimeoutMillis)
+      simpleConsumerSocketTimeoutMillis =  configWithDefaults.getInt(SimpleConsumerSocketTimeoutMillis),
+      brokerViewThreadPoolSize = configWithDefaults.getInt(BrokerViewThreadPoolSize),
+      brokerViewMaxQueueSize = configWithDefaults.getInt(BrokerViewMaxQueueSize)
     )
   }
 
