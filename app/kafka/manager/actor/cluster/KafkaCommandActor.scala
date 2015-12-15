@@ -76,6 +76,7 @@ class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extend
           longRunning {
             Future {
               KCCommandResult(Try {
+                log.info(s"Deleting topic : $topic")
                 kafkaCommandActorConfig.adminUtils.deleteTopic(kafkaCommandActorConfig.curator, topic) //this should work in 0.8.2
               })
             }

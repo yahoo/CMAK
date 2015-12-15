@@ -311,6 +311,7 @@ class TestKafkaManager extends CuratorAwareTest {
     val futureA = kafkaManager.deleteTopic("dev",createTopicNameA)
     val resultA = Await.result(futureA,duration)
     assert(resultA.isRight === true, resultA)
+    Thread.sleep(1000)
     val futureA2 = kafkaManager.getTopicList("dev")
     val resultA2 = Await.result(futureA2,duration)
     assert(resultA2.isRight === true, resultA2)
@@ -319,11 +320,11 @@ class TestKafkaManager extends CuratorAwareTest {
     val futureB = kafkaManager.deleteTopic("dev",createTopicNameB)
     val resultB = Await.result(futureB,duration)
     assert(resultB.isRight === true, resultB)
+    Thread.sleep(1000)
     val futureB2 = kafkaManager.getTopicList("dev")
     val resultB2 = Await.result(futureB2,duration)
     assert(resultB2.isRight === true, resultB2)
     assert(resultB2.toOption.get.deleteSet(createTopicNameB),"Topic not in delete set")
-    Thread.sleep(2000)
   }
 
   test("fail to delete non-existent topic") {
