@@ -1,0 +1,58 @@
+@(schedulers: IndexedSeq[kafka.manager.SchedulerConfig])
+
+@import b3.vertical.fieldConstructor
+@import scheduler.controllers.routes
+
+<table class="table">
+    <thead>
+    <tr><th>Active</th><th>Operations</th><th>Version</th></tr>
+    </thead>
+    <tbody>
+    @for(scheduler <- schedulers) {
+    <tr>
+        <td>
+            @if(scheduler.enabled) {
+            <a href="@routes.SchedulerApplication.getScheduler(scheduler.name)">@scheduler.name</a>
+            } else {
+            @scheduler.name
+            }
+        </td>
+        <td>
+            @*
+            *<div class="btn-group-horizontal" role="group" aria-label="...">
+            *    @if(scheduler.enabled) {
+            *    <a href="@controllers.routes.Cluster.updateCluster(scheduler.name)" class="btn btn-default ops-button" role="button">Modify</a>
+            *    @b3.form(controllers.routes.Cluster.handleUpdateCluster(scheduler.name)) {
+            *    <input type="hidden" name="name" value="@scheduler.name">
+            *    <input type="hidden" name="kafkaVersion" value="@scheduler.version.toString">
+            *    <input type="hidden" name="zkHosts" value="@scheduler.curatorConfig.zkConnect">
+            *    <input type="hidden" name="operation" value="Disable">
+            *    @b3.submit('class -> "btn btn-warning ops-button"){ Disable }
+            *    }
+            *    } else {
+            *    @b3.form(controllers.routes.Cluster.handleUpdateCluster(scheduler.name)) {
+            *    <input type="hidden" name="name" value="@scheduler.name">
+            *    <input type="hidden" name="kafkaVersion" value="@scheduler.version.toString">
+            *    <input type="hidden" name="zkHosts" value="@scheduler.curatorConfig.zkConnect">
+            *    <input type="hidden" name="operation" value="Enable">
+            *    @b3.submit('class -> "btn btn-success ops-button"){ Enable }
+            *    }
+            *    @b3.form(controllers.routes.Cluster.handleUpdateCluster(scheduler.name)) {
+            *    <input type="hidden" name="name" value="@scheduler.name">
+            *    <input type="hidden" name="kafkaVersion" value="@scheduler.version.toString">
+            *    <input type="hidden" name="zkHosts" value="@scheduler.curatorConfig.zkConnect">
+            *    <input type="hidden" name="operation" value="Delete">
+            *    @b3.submit('class -> "btn btn-danger ops-button"){ Delete }
+            *    }
+            *    }
+            *</div>
+            *@
+        </td>
+        <td>
+            @scheduler.version.toString
+        </td>
+    </tr>
+    }
+    </tbody>
+</table>
+

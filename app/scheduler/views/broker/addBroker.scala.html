@@ -1,0 +1,57 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import helper._
+@import b3.vertical.fieldConstructor
+@import scheduler.controllers.routes
+@import scalaz.{\/}
+@(schedulerName: String, errorOrForm: kafka.manager.ApiError \/ Form[scheduler.models.form.AddBroker])(implicit request: RequestHeader)
+
+@theMenu = {
+@views.html.navigation.schedulerMenu(schedulerName,"Broker","Add Broker",models.navigation.Menus.schedulerMenus(schedulerName))
+}
+
+@renderForm(addBrokerForm: Form[scheduler.models.form.AddBroker]) = {
+<div class="panel-body">
+    @b3.form(routes.Broker.handleAddBroker(schedulerName)) {
+    <table class="table">
+        <tbody>
+        <tr>
+            <td>
+                @b3.text(addBrokerForm("id"), '_label -> "ID", 'placeholder -> "", 'autofocus -> true )
+                @b3.text(addBrokerForm("cpus"), '_label -> "CPU", 'placeholder -> "")
+                @b3.text(addBrokerForm("mem"), '_label -> "Memory", 'placeholder -> "")
+                @b3.text(addBrokerForm("heap"), '_label -> "Heap", 'placeholder -> "")
+                @b3.text(addBrokerForm("port"), '_label -> "Port", 'placeholder -> "")
+                @b3.text(addBrokerForm("bindAddress"), '_label -> "Bind Address", 'placeholder -> "")
+                @b3.text(addBrokerForm("stickinessPeriod"), '_label -> "Stickiness Period", 'placeholder -> "")
+                @b3.text(addBrokerForm("constraints"), '_label -> "Constraints", 'placeholder -> "")
+                @b3.text(addBrokerForm("jvmOptions"), '_label -> "Jvm Options", 'placeholder -> "")
+                @b3.text(addBrokerForm("options"), '_label -> "Options", 'placeholder -> "")
+                @b3.text(addBrokerForm("log4jOptions"), '_label -> "Log4j Options", 'placeholder -> "")
+                @b3.text(addBrokerForm("failoverDelay"), '_label -> "Failover Delay", 'placeholder -> "")
+                @b3.text(addBrokerForm("failoverMaxDelay"), '_label -> "Failover Max Delay", 'placeholder -> "")
+                @b3.text(addBrokerForm("failoverMaxTries"), '_label -> "Failover Max Tries", 'placeholder -> "")
+                @b3.submit('class -> "submit-button btn btn-primary"){ Add }
+                <a href="@routes.SchedulerApplication.brokers(schedulerName)" class="cancel-button btn btn-default" role="button">Cancel</a>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+    }
+</div>
+}
+
+@main(
+"Add Broker",
+menu = theMenu,
+breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndScheduler("Add Broker",schedulerName))) {
+<div class="col-md-6 un-pad-me">
+    <div class="panel panel-default">
+        <div class="panel-heading"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>Add Broker</h3></div>
+        @errorOrForm.fold( views.html.errors.onApiError(_), renderForm(_))
+    </div>
+</div>
+}
+

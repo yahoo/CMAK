@@ -1,0 +1,46 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import kafka.manager.ActorModel.BrokerIdentity
+@import scalaz.{\/}
+@(schedulerName:String, errorOrBrokers: kafka.manager.ApiError \/ kafka.manager.SchedulerBrokerListExtended)
+
+@theMenu = {
+@views.html.navigation.schedulerMenu(schedulerName,"Brokers","",models.navigation.Menus.schedulerMenus(schedulerName))
+}
+
+@renderBrokerMetrics(bl: kafka.manager.SchedulerBrokerListExtended) = {
+@if(bl.schedulerConfig.jmxEnabled) {
+@views.html.common.brokerMetrics(bl.combinedMetric)
+} else {
+<div class="alert alert-info" role="alert">
+    Please enable JMX polling <a href="@routes.Cluster.updateCluster(schedulerName)" class="alert-link">here</a>.
+</div>
+}
+}
+
+@main(
+"Broker List",
+menu = theMenu,
+breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndScheduler("Brokers",schedulerName))) {
+<div class="col-md-7 un-pad-me">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3>
+                <button type="button" class="btn btn-link" onclick="goBack()">
+                    <span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span>
+                </button>Brokers
+            </h3>
+        </div>
+        @errorOrBrokers.fold( views.html.errors.onApiError(_), scheduler.views.html.broker.brokerListContent(schedulerName,_) )
+    </div>
+</div>
+<div class="col-md-5 un-pad-me">
+    <div class="panel panel-default">
+        <div class="panel-heading"><h3>Combined Metrics</h3></div>
+        @errorOrBrokers.fold( views.html.errors.onApiError(_), bl => renderBrokerMetrics(bl))
+    </div>
+</div>
+
+}

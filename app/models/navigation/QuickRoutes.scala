@@ -15,8 +15,10 @@ object QuickRoutes {
 
   val baseRoutes : Map[String, Call] = Map(
     "Clusters" -> controllers.routes.Application.index(),
+    "Schedulers" -> controllers.routes.Application.index(),
     "List" -> controllers.routes.Application.index(),
-    "Add Cluster" -> controllers.routes.Cluster.addCluster()
+    "Add Cluster" -> controllers.routes.Cluster.addCluster(),
+    "Add Scheduler" -> controllers.routes.Cluster.addScheduler()
   )
   val clusterRoutes : Map[String, String => Call] = Map(
     "Update Cluster" -> controllers.routes.Cluster.updateCluster,
@@ -32,6 +34,15 @@ object QuickRoutes {
     "List Logkafka" -> controllers.routes.Logkafka.logkafkas,
     "Create Logkafka" -> controllers.routes.Logkafka.createLogkafka
   )
+
+  val schedulerRoutes : Map[String, String => Call] = Map(
+    "Update Scheduler" -> controllers.routes.Cluster.updateCluster,
+    "Summary" -> scheduler.controllers.routes.SchedulerApplication.getScheduler,
+    "Brokers" -> scheduler.controllers.routes.SchedulerApplication.brokers,
+    "Add Broker" -> scheduler.controllers.routes.Broker.addBroker,
+    "Rebalance Topics" -> scheduler.controllers.routes.RebalanceTopics.rebalanceTopics
+  )
+
   val topicRoutes : Map[String, (String, String) => Call] = Map(
     "Topic View" -> controllers.routes.Topic.topic,
     "Add Partitions" -> controllers.routes.Topic.addPartitions,
@@ -72,6 +83,21 @@ object QuickRoutes {
     }
     def clusterRouteBreadCrumb : BCDynamicLink = {
       BCDynamicLink( s, clusterRoutes(s))
+    }
+  }
+
+  implicit class SchedulerRoute(s: String) {
+    def schedulerRouteMenuItem(c: String): (String, Call) = {
+      s -> schedulerRoutes(s)(c)
+    }
+    def schedulerRoute(c: String): Call = {
+      schedulerRoutes(s)(c)
+    }
+    def schedulerMenu(c: String): Menu = {
+      Menu(s,IndexedSeq.empty,Some(schedulerRoute(c)))
+    }
+    def schedulerRouteBreadCrumb : BCDynamicLink = {
+      BCDynamicLink( s, schedulerRoutes(s))
     }
   }
 

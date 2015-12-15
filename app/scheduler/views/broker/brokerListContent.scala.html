@@ -1,0 +1,33 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import kafka.manager.ActorModel.SchedulerBrokerIdentity
+@(schedulerName:String, brokerListExtended: kafka.manager.SchedulerBrokerListExtended)
+
+<table class="table">
+    <thead>
+    <tr><td>Id</td><td>Host</td><td>Port</td><td>State</td><td>Bytes In</td><td>Bytes Out</td></tr>
+    </thead>
+    <tbody>
+    @for(broker <- brokerListExtended.list.sortBy(_.id)) {
+    <tr>
+        <td><a href="@scheduler.controllers.routes.SchedulerApplication.broker(schedulerName,broker.id.toInt)">@broker.id</a></td>
+        <td>@broker.actualHost().getOrElse("-")</td>
+        <td>@broker.actualPort().getOrElse("-")</td>
+        <td>@broker.state()</td>
+        <td>
+                        <span class="badge">
+                            @brokerListExtended.metrics.get(broker.id).map(_.bytesInPerSec.formatOneMinuteRate)
+                        </span>
+        </td>
+        <td>
+                        <span class="badge">
+                            @brokerListExtended.metrics.get(broker.id).map(_.bytesOutPerSec.formatOneMinuteRate)
+                        </span>
+        </td>
+    </tr>
+    }
+    </tbody>
+</table>
+
