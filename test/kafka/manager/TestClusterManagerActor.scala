@@ -238,10 +238,6 @@ class TestClusterManagerActor extends CuratorAwareTest {
         cmResult.result.get
       }
     }
-    Thread.sleep(3000)
-    withClusterManagerActor(KSGetTopics) { result: TopicList =>
-      assert(!result.list.contains(createTopicName),"Failed to delete topic")
-    }
   }
 
   test("create logkafka") {
