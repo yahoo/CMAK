@@ -95,6 +95,20 @@ You can optionally enable/disable the following functionality by modifying the d
  - KMPreferredReplicaElectionFeature - allows running of preferred replica election for a Kafka cluster
  - KMReassignPartitionsFeature - allows generating partition assignments and reassigning partitions
 
+Consider setting these parameters for larger clusters with jmx enabled :
+
+ - kafka-manager.broker-view-thread-pool-size=< 3 * number_of_brokers>
+ - kafka-manager.broker-view-max-queue-size=< 3 * total # of partitions across all topics>
+ - kafka-manager.broker-view-update-seconds=< kafka-manager.broker-view-max-queue-size / (10 * number_of_brokers) >
+
+Here is an example for a kafka cluster with 10 brokers, 100 topics, with each topic having 10 partitions giving 1000 total partitions with JMX enabled :
+
+ - kafka-manager.broker-view-thread-pool-size=30
+ - kafka-manager.broker-view-max-queue-size=3000
+ - kafka-manager.broker-view-update-seconds=30
+
+You may also want to increase the above three if you have consumer polling enabled depending on the # of consumers you have reporting through Zookeeper.
+
 Deployment
 ----------
 
