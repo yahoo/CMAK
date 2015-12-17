@@ -16,7 +16,7 @@ import kafka.consumer.SimpleConsumer
 import kafka.manager._
 import kafka.manager.base.cluster.BaseClusterQueryCommandActor
 import kafka.manager.base.{LongRunningPoolActor, LongRunningPoolConfig}
-import kafka.manager.features.KMDeleteTopicFeature
+import kafka.manager.features.{KMPollConsumersFeature, KMDeleteTopicFeature}
 import kafka.manager.model.ActorModel._
 import kafka.manager.model.{ClusterContext, KafkaVersion, Kafka_0_8_1_1}
 import kafka.manager.utils.ZkUtils
@@ -252,7 +252,7 @@ case class OffsetCacheActive(curator: CuratorFramework,
 
   def getSimpleConsumerSocketTimeoutMillis: Int = socketTimeoutMillis
 
-  val loadOffsets = clusterContext.config.pollConsumers
+  val loadOffsets = featureGateFold(KMPollConsumersFeature)(false, true)
 
   private[this] val consumersTreeCacheListener = new TreeCacheListener {
     override def childEvent(client: CuratorFramework, event: TreeCacheEvent): Unit = {
@@ -380,7 +380,7 @@ case class OffsetCachePassive(curator: CuratorFramework,
 
   def getSimpleConsumerSocketTimeoutMillis: Int = socketTimeoutMillis
 
-  val loadOffsets = clusterContext.config.pollConsumers
+  val loadOffsets = featureGateFold(KMPollConsumersFeature)(false, true)
 
   private[this] val consumersPathChildrenCacheListener = new PathChildrenCacheListener {
     override def childEvent(client: CuratorFramework, event: PathChildrenCacheEvent): Unit = {
@@ -616,10 +616,9 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
     log.info("Adding admin path cache listener...")
     adminPathCache.getListenable.addListener(adminPathCacheListener)
 
-    if (config.clusterContext.config.pollConsumers) {
-      log.info("Starting offset cache...")
-      offsetCache.start()
-    }
+    //the offset cache does not poll on its own so it can be started safely
+    log.info("Starting offset cache...")
+    offsetCache.start()
   }
 
   @scala.throws[Exception](classOf[Exception])
@@ -634,10 +633,8 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
   override def postStop(): Unit = {
     log.info("Stopped actor %s".format(self.path))
 
-    if (config.clusterContext.config.pollConsumers) {
-      log.info("Stopping offset cache...")
-      Try(offsetCache.stop())
-    }
+    log.info("Stopping offset cache...")
+    Try(offsetCache.stop())
 
     log.info("Removing admin path cache listener...")
     Try(adminPathCache.getListenable.removeListener(adminPathCacheListener))
