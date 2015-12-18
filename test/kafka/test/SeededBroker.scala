@@ -38,7 +38,7 @@ class SeededBroker(seedTopic: String, partitions: Int) {
 
   //seed with table
   {
-    adminUtils.createTopic(zookeeper,IndexedSeq(0),seedTopic,partitions,1)
+    adminUtils.createTopic(zookeeper, Set(0),seedTopic,partitions,1)
   }
 
   private def getTestingServer : TestingServer = {

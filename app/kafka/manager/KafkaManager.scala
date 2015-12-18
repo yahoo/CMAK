@@ -308,7 +308,7 @@ class KafkaManager(akkaConfig: Config)
   def generatePartitionAssignments(
                                     clusterName: String,
                                     topics: Set[String],
-                                    brokers: Seq[Int]
+                                    brokers: Set[Int]
                                     ): Future[IndexedSeq[ApiError] \/ Unit] =
   {
     val results = tryWithKafkaManagerActor(
@@ -393,7 +393,7 @@ class KafkaManager(akkaConfig: Config)
   def addMultipleTopicsPartitions(
                               clusterName: String,
                               topics: Seq[String],
-                              brokers: Seq[Int],
+                              brokers: Set[Int],
                               partitions: Int,
                               readVersions: Map[String, Int]
                               ): Future[ApiError \/ ClusterContext] =
@@ -670,6 +670,12 @@ class KafkaManager(akkaConfig: Config)
     futureTopicConsumerMap.map[Option[Iterable[String]]] { errOrTCM =>
       errOrTCM.fold[Option[Iterable[String]]] (_ => None, _.get(topic))
     }
+  }
+
+  def getGeneratedAssignments(clusterName: String, topic: String): Future[ApiError \/ GeneratedPartitionAssignments] = {
+    tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, CMGetGeneratedPartitionAssignments(topic)))(
+      identity[GeneratedPartitionAssignments]
+    )
   }
 
   def getConsumerIdentity(clusterName: String, consumer: String): Future[ApiError \/ ConsumerIdentity] = {

@@ -66,6 +66,7 @@ object ActorModel {
   case class CMTopicIdentity(topicIdentity: Try[TopicIdentity]) extends QueryResponse
   case class CMConsumerIdentity(consumerIdentity: Try[ConsumerIdentity]) extends QueryResponse
   case class CMConsumedTopic(ctIdentity: Try[ConsumedTopicState]) extends QueryResponse
+  case class CMGetGeneratedPartitionAssignments(topic: String) extends QueryRequest
   case object CMShutdown extends CommandRequest
   case class CMCreateTopic(topic: String,
                            partitions: Int,
@@ -77,14 +78,14 @@ object ActorModel {
                                   partitionReplicaList: Map[Int, Seq[Int]],
                                   readVersion: Int) extends CommandRequest
   case class CMAddMultipleTopicsPartitions(topicsAndReplicas: Seq[(String, Map[Int, Seq[Int]])],
-                                           brokers: Seq[Int],
+                                           brokers: Set[Int],
                                            partitions: Int,
                                            readVersions: Map[String,Int]) extends CommandRequest
   case class CMUpdateTopicConfig(topic: String, config: Properties, readVersion: Int) extends CommandRequest
   case class CMDeleteTopic(topic: String) extends CommandRequest
   case class CMRunPreferredLeaderElection(topics: Set[String]) extends CommandRequest
   case class CMRunReassignPartition(topics: Set[String]) extends CommandRequest
-  case class CMGeneratePartitionAssignments(topics: Set[String], brokers: Seq[Int]) extends CommandRequest
+  case class CMGeneratePartitionAssignments(topics: Set[String], brokers: Set[Int]) extends CommandRequest
   case class CMManualPartitionAssignments(assignments: List[(String, List[(Int, List[Int])])]) extends CommandRequest
 
   //these are used by Logkafka
@@ -107,17 +108,17 @@ object ActorModel {
   case class CMCommandResults(result: IndexedSeq[Try[Unit]]) extends CommandResponse
 
   case class KCCreateTopic(topic: String,
-                           brokers: Seq[Int],
+                           brokers: Set[Int],
                            partitions: Int,
                            replicationFactor:Int,
                            config: Properties) extends CommandRequest
   case class KCAddTopicPartitions(topic: String,
-                           brokers: Seq[Int],
+                           brokers: Set[Int],
                            partitions: Int,
                            partitionReplicaList: Map[Int, Seq[Int]],
                            readVersion: Int) extends CommandRequest
   case class KCAddMultipleTopicsPartitions(topicsAndReplicas: Seq[(String, Map[Int, Seq[Int]])],
-                                           brokers: Seq[Int],
+                                           brokers: Set[Int],
                                            partitions: Int,
                                            readVersions: Map[String, Int]) extends CommandRequest
   case class KCUpdateTopicConfig(topic: String, config: Properties, readVersion: Int) extends CommandRequest
@@ -204,6 +205,7 @@ object ActorModel {
 
   case object DCUpdateState extends CommandRequest
 
+  case class GeneratedPartitionAssignments(topic: String, assignments: Map[Int, Seq[Int]], nonExistentBrokers: Set[Int])
   case class BrokerIdentity(id: Int, host: String, port: Int, jmxPort: Int)
 
   object BrokerIdentity {

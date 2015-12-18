@@ -16,7 +16,7 @@ import kafka.consumer.SimpleConsumer
 import kafka.manager._
 import kafka.manager.base.cluster.BaseClusterQueryCommandActor
 import kafka.manager.base.{LongRunningPoolActor, LongRunningPoolConfig}
-import kafka.manager.features.{KMPollConsumersFeature, KMDeleteTopicFeature}
+import kafka.manager.features.{ClusterFeatures, KMPollConsumersFeature, KMDeleteTopicFeature}
 import kafka.manager.model.ActorModel._
 import kafka.manager.model.{ClusterContext, KafkaVersion, Kafka_0_8_1_1}
 import kafka.manager.utils.ZkUtils
@@ -61,6 +61,8 @@ trait OffsetCache extends Logging {
   def getSimpleConsumerSocketTimeoutMillis: Int
 
   protected[this] implicit def ec: ExecutionContext
+  
+  protected[this] implicit def cf: ClusterFeatures
   
   protected[this] val loadOffsets: Boolean
 
@@ -244,7 +246,7 @@ case class OffsetCacheActive(curator: CuratorFramework,
                                   cacheTimeoutSecs: Int,
                                   socketTimeoutMillis: Int,
                                   kafkaVersion: KafkaVersion)
-                                 (implicit protected[this] val ec: ExecutionContext) extends OffsetCache {
+                                 (implicit protected[this] val ec: ExecutionContext, val cf: ClusterFeatures) extends OffsetCache {
 
   def getKafkaVersion: KafkaVersion = kafkaVersion
 
@@ -372,7 +374,7 @@ case class OffsetCachePassive(curator: CuratorFramework,
                              cacheTimeoutSecs: Int,
                              socketTimeoutMillis: Int,
                              kafkaVersion: KafkaVersion)
-                            (implicit protected[this] val ec: ExecutionContext) extends OffsetCache {
+                            (implicit protected[this] val ec: ExecutionContext, val cf: ClusterFeatures) extends OffsetCache {
 
   def getKafkaVersion: KafkaVersion = kafkaVersion
 
@@ -484,6 +486,8 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
 
   protected implicit val clusterContext: ClusterContext = config.clusterContext
 
+  protected implicit val cf: ClusterFeatures = clusterContext.clusterFeatures
+
   override protected def longRunningPoolConfig: LongRunningPoolConfig = config.longRunningPoolConfig
 
   override protected def longRunningQueueFull(): Unit = {
@@ -584,7 +588,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
         getTopicDescription,
         config.partitionOffsetCacheTimeoutSecs,
         config.simpleConsumerSocketTimeoutMillis,
-        config.clusterContext.config.version)(longRunningExecutionContext)
+        config.clusterContext.config.version)(longRunningExecutionContext, cf)
     else
       new OffsetCachePassive(
         config.curator,
@@ -593,7 +597,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
         getTopicDescription,
         config.partitionOffsetCacheTimeoutSecs,
         config .simpleConsumerSocketTimeoutMillis,
-        config.clusterContext.config.version)(longRunningExecutionContext)
+        config.clusterContext.config.version)(longRunningExecutionContext, cf)
   }
 
   @scala.throws[Exception](classOf[Exception])

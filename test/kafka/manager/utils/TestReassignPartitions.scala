@@ -26,7 +26,7 @@ class TestReassignPartitions extends CuratorAwareTest {
   
   private[this] val reassignPartitionCommand = new ReassignPartitionCommand(adminUtils)
 
-  private[this] val brokerList = IndexedSeq(1,2,3)
+  private[this] val brokerList = Set(1,2,3)
 
   private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None)
   private[this] val defaultClusterContext = ClusterContext(ClusterFeatures.from(defaultClusterConfig), defaultClusterConfig)

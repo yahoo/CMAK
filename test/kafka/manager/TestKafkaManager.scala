@@ -218,7 +218,7 @@ class TestKafkaManager extends CuratorAwareTest {
 
   test("generate partition assignments") {
     val topicList = getTopicList()
-    val future = kafkaManager.generatePartitionAssignments("dev",topicList.list.toSet,Seq(0))
+    val future = kafkaManager.generatePartitionAssignments("dev",topicList.list.toSet,Set(0))
     val result = Await.result(future,duration)
     assert(result.isRight === true)
   }
@@ -266,7 +266,7 @@ class TestKafkaManager extends CuratorAwareTest {
     val tiA = tiOrErrorA.toOption.get
     val tiB = tiOrErrorB.toOption.get
     val newPartitionNum = tiA.partitions + 1
-    val future = kafkaManager.addMultipleTopicsPartitions("dev",Seq(createTopicNameA, createTopicNameB),Seq(0),newPartitionNum,Map(createTopicNameA->tiA.readVersion,createTopicNameB->tiB.readVersion))
+    val future = kafkaManager.addMultipleTopicsPartitions("dev",Seq(createTopicNameA, createTopicNameB),Set(0),newPartitionNum,Map(createTopicNameA->tiA.readVersion,createTopicNameB->tiB.readVersion))
     val result = Await.result(future,duration)
     assert(result.isRight === true)
 

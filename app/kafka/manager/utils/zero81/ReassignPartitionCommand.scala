@@ -35,7 +35,7 @@ import kafka.manager.utils.zero81.ReassignPartitionErrors._
 
 class ReassignPartitionCommand(adminUtils: AdminUtils) extends Logging {
 
-  def generateAssignment(brokerList: Seq[Int], currentTopicIdentity: TopicIdentity): Try[TopicIdentity] = {
+  def generateAssignment(brokerList: Set[Int], currentTopicIdentity: TopicIdentity): Try[TopicIdentity] = {
     Try {
       val assignedReplicas = adminUtils.assignReplicasToBrokers(
         brokerList,

@@ -299,6 +299,16 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         }
         result pipeTo sender
 
+      case CMGetGeneratedPartitionAssignments(topic) =>
+        implicit val ec = context.dispatcher
+        val eventualBrokerList = withKafkaStateActor(KSGetBrokers)(identity[BrokerList])
+        val topicIdentityAndNonExistingBrokers = for {
+          bl <- eventualBrokerList
+          assignments = getGeneratedPartitionAssignments(topic)
+          nonExistentBrokers = getNonExistentBrokers(bl, assignments)
+        } yield GeneratedPartitionAssignments(topic, assignments, nonExistentBrokers)
+        topicIdentityAndNonExistingBrokers pipeTo sender
+
       case any: Any => log.warning("cma : processQueryResponse : Received unknown message: {}", any)
     }
   }
@@ -322,6 +332,15 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
   implicit private def toTryClusterContext(t: Try[Unit]) : Try[ClusterContext] = {
     t.map(_ => clusterContext)
   }
+  
+  private[this] def getGeneratedPartitionAssignments(topic: String) : Map[Int, Seq[Int]] = {
+    val topicZkPath = zkPathFrom(baseTopicsZkPath, topic)
+    Option(clusterManagerTopicsPathCache.getCurrentData(topicZkPath)).fold {
+      throw new IllegalArgumentException(s"No generated assignment found for topic ${topic}")
+    } { childData =>
+      deserializeAssignments(childData.getData)
+    }
+  }
 
   override def processCommandRequest(request: CommandRequest): Unit = {
     request match {
@@ -344,7 +363,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         eventualTopicDescription.map { topicDescriptionOption =>
           topicDescriptionOption.fold {
             eventualBrokerList.flatMap {
-              bl => withKafkaCommandActor(KCCreateTopic(topic, bl.list.map(_.id.toInt), partitions, replication, config)) {
+              bl => withKafkaCommandActor(KCCreateTopic(topic, bl.list.map(_.id).toSet, partitions, replication, config)) {
                 kcResponse: KCCommandResult =>
                   CMCommandResult(kcResponse.result)
               }
@@ -365,7 +384,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
             eventualBrokerList.flatMap {
               bl => {
                 val brokerSet = bl.list.map(_.id).toSet
-                withKafkaCommandActor(KCAddTopicPartitions(topic, brokers.filter(brokerSet.apply), partitions, partitionReplicaList, readVersion))
+                withKafkaCommandActor(KCAddTopicPartitions(topic, brokers.filter(brokerSet.apply).toSet, partitions, partitionReplicaList, readVersion))
                 {
                   kcResponse: KCCommandResult =>
                     CMCommandResult(kcResponse.result)
@@ -429,7 +448,6 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
             tds <- eventualDescriptions
             tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, None, clusterContext, None))
           } yield {
-            bl.list.map(_.id.toInt)
             // check if any nonexistent broker got selected for reassignment
             val nonExistentBrokers = getNonExistentBrokers(bl, brokers)
             require(nonExistentBrokers.isEmpty, "Nonexistent broker(s) selected: [%s]".format(nonExistentBrokers.mkString(", ")))
@@ -491,15 +509,12 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           val reassignments = tis.map { ti =>
             val topicZkPath = zkPathFrom(baseTopicsZkPath, ti.topic)
             Try {
-              Option(clusterManagerTopicsPathCache.getCurrentData(topicZkPath)).fold {
-                throw new IllegalArgumentException(s"No generated assignment found for topic ${ti.topic}")
-              } { childData =>
-                val assignments = deserializeAssignments(childData.getData)
-                // check if any nonexistent broker got selected for reassignment
-                val nonExistentBrokers = getNonExistentBrokers(bl, assignments)
-                require(nonExistentBrokers.isEmpty, "The assignments contain nonexistent broker(s): [%s]".format(nonExistentBrokers.mkString(", ")))
-                TopicIdentity.reassignReplicas(ti, assignments)
-              }
+              val assignments = getGeneratedPartitionAssignments(ti.topic)
+              val nonExistentBrokers = getNonExistentBrokers(bl, assignments)
+              require(nonExistentBrokers.isEmpty, "The assignments contain nonexistent broker(s): [%s]".format(nonExistentBrokers.mkString(", ")))
+              for {
+              newTi <- TopicIdentity.reassignReplicas(ti, assignments)
+              } yield newTi
             }.flatten
           }
           (tis, reassignments)
@@ -592,13 +607,13 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
     }
   }
 
-  private[this] def getNonExistentBrokers(availableBrokers: BrokerList, selectedBrokers: Seq[Int]): Seq[Int] = {
-    val availableBrokerIds: Set[Int] = availableBrokers.list.map(_.id.toInt).toSet
+  private[this] def getNonExistentBrokers(availableBrokers: BrokerList, selectedBrokers: Set[Int]): Set[Int] = {
+    val availableBrokerIds: Set[Int] = availableBrokers.list.map(_.id).toSet
     selectedBrokers filter { b: Int => !availableBrokerIds.contains(b) }
   }
 
-  private[this] def getNonExistentBrokers(availableBrokers: BrokerList, assignments: Map[Int, Seq[Int]]): Seq[Int] = {
-    val brokersAssigned = assignments.flatMap({ case  (pt, bl) => bl }).toSet.toSeq
+  private[this] def getNonExistentBrokers(availableBrokers: BrokerList, assignments: Map[Int, Seq[Int]]): Set[Int] = {
+    val brokersAssigned = assignments.flatMap({ case  (pt, bl) => bl }).toSet
     getNonExistentBrokers(availableBrokers, brokersAssigned)
   }
 

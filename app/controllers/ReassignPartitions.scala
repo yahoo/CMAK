@@ -130,12 +130,15 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
           err => Future.successful(
             Ok(views.html.errors.onApiError(err, Option(FollowLink("Try Again", routes.ReassignPartitions.confirmAssignment(c, t).toString()))))
           ),
-          cc => Future.successful(
-            Ok(views.html.topic.confirmAssignment(
-              c, t, errorOrSuccess.map(l => 
-                (generateAssignmentsForm.fill(GenerateAssignment(l.list.map(BrokerSelect.from))), cc))
-            ))
-          )
+          cc =>
+            kafkaManager.getGeneratedAssignments(c, t).map { errorOrAssignments =>
+              Ok(views.html.topic.confirmAssignment(
+                c, t, errorOrSuccess.map(l =>
+                  (generateAssignmentsForm.fill(GenerateAssignment(l.list.map(BrokerSelect.from))), cc)
+                ),
+                errorOrAssignments
+              ))
+            }
         )
       }
     }
@@ -313,9 +316,13 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
         ),
         cc =>
           generateAssignmentsForm.bindFromRequest.fold(
-            errors => Future.successful(Ok(views.html.topic.confirmAssignment(c, t, \/-((errors, cc))))),
+            errors => {
+              kafkaManager.getGeneratedAssignments(c, t).map { errorOrAssignments =>
+                Ok(views.html.topic.confirmAssignment(c, t, \/-((errors, cc)), errorOrAssignments))
+              }
+            },
             assignment => {
-              kafkaManager.generatePartitionAssignments(c, Set(t), assignment.brokers.filter(_.selected).map(_.id)).map { errorOrSuccess =>
+              kafkaManager.generatePartitionAssignments(c, Set(t), assignment.brokers.filter(_.selected).map(_.id).toSet).map { errorOrSuccess =>
                 implicit val clusterFeatures = cc.clusterFeatures
                 Ok(views.html.common.resultsOfCommand(
                   views.html.navigation.clusterMenu(c, "Reassign Partitions", "", menus.clusterMenus(c)),
@@ -343,7 +350,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
           generateMultipleAssignmentsForm.bindFromRequest.fold(
             errors => Future.successful(Ok(views.html.topic.confirmMultipleAssignments(c, \/-((errors, cc))))),
             assignment => {
-              kafkaManager.generatePartitionAssignments(c, assignment.topics.filter(_.selected).map(_.name).toSet, assignment.brokers.filter(_.selected).map(_.id)).map { errorOrSuccess =>
+              kafkaManager.generatePartitionAssignments(c, assignment.topics.filter(_.selected).map(_.name).toSet, assignment.brokers.filter(_.selected).map(_.id).toSet).map { errorOrSuccess =>
                 implicit val clusterFeatures = cc.clusterFeatures
                 Ok(views.html.common.resultsOfCommand(
                   views.html.navigation.clusterMenu(c, "Reassign Partitions", "", menus.clusterMenus(c)),

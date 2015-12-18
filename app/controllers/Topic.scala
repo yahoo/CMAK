@@ -322,7 +322,7 @@ class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManager
         },
         addMultipleTopicsPartitions => {
           val topics = addMultipleTopicsPartitions.topics.filter(_.selected).map(_.name)
-          val brokers = addMultipleTopicsPartitions.brokers.filter(_.selected).map(_.id)
+          val brokers = addMultipleTopicsPartitions.brokers.filter(_.selected).map(_.id).toSet
           val readVersions = addMultipleTopicsPartitions.readVersions.map { rv => (rv.topic, rv.version)}.toMap
           kafkaManager.addMultipleTopicsPartitions(clusterName, topics, brokers, addMultipleTopicsPartitions.partitions, readVersions).map { errorOrSuccess =>
             implicit val clusterFeatures = errorOrSuccess.toOption.map(_.clusterFeatures).getOrElse(ClusterFeatures.default)

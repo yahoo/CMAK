@@ -155,7 +155,7 @@ class TestClusterManagerActor extends CuratorAwareTest {
   test("generate partition assignments for topic") {
     withClusterManagerActor(KSGetTopics) { result : TopicList =>
       val topicSet = result.list.toSet
-      val brokers = Seq(0)
+      val brokers = Set(0)
       withClusterManagerActor(CMGeneratePartitionAssignments(topicSet, brokers)) { cmResults: CMCommandResults =>
         cmResults.result.foreach { t =>
           if(t.isFailure) {
@@ -163,12 +163,23 @@ class TestClusterManagerActor extends CuratorAwareTest {
           }
         }
       }
-      Thread.sleep(2000)
+      Thread.sleep(1000)
       withCurator { curator =>
         topicSet.foreach { topic =>
           val data =  curator.getData.forPath(s"/kafka-manager/clusters/dev/topics/$topic")
           assert(data != null)
           println(s"$topic -> " + ClusterManagerActor.deserializeAssignments(data))
+        }
+      }
+    }
+  }
+
+  test("get partition assignments for topic") {
+    withClusterManagerActor(KSGetTopics) { result : TopicList =>
+      result.list.foreach { topic =>
+        val brokers = Set(0)
+        withClusterManagerActor(CMGetGeneratedPartitionAssignments(topic)) { gpa: GeneratedPartitionAssignments =>
+          assert(gpa.assignments.nonEmpty)
         }
       }
     }

@@ -25,7 +25,7 @@ class TestCreateTopic extends CuratorAwareTest {
   test("create topic with empty name") {
     checkError[TopicNameEmpty] {
       withCurator { curator =>
-        val brokerList = IndexedSeq(1,2)
+        val brokerList = Set(1,2)
         adminUtils.createTopic(curator,brokerList,"",10,2)
       }
     }
@@ -33,7 +33,7 @@ class TestCreateTopic extends CuratorAwareTest {
 
   test("create topic with invalid name") {
       withCurator { curator =>
-        val brokerList = IndexedSeq(1,2)
+        val brokerList = Set(1,2)
         checkError[InvalidTopicName] {
           adminUtils.createTopic(curator,brokerList,".",10,2)
         }
@@ -46,7 +46,7 @@ class TestCreateTopic extends CuratorAwareTest {
   test("create topic with name too long") {
     checkError[InvalidTopicLength] {
       withCurator { curator =>
-        val brokerList = IndexedSeq(1,2)
+        val brokerList = Set(1,2)
         adminUtils.createTopic(curator,brokerList,"adfasfdsafsfasdfsadfasfsdfasffsdfsadfsdfsdfsfasdfdsfdsafasdfsfdsafasdfdsfdsafsdfdsafasdfsdafasdfadsfdsfsdafsdfsadfdsfasfdfasfsdafsdfdsfdsfasdfdsfsdfsadfsdfasdfdsafasdfsadfdfdsfdsfsfsfdsfdsfdssafsdfdsafadfasdfsdafsdfasdffasfdfadsfasdfasfadfafsdfasfdssafffffffffffdsadfsafdasdfsafsfsfsdfafs",10,2)
       }
     }
@@ -55,7 +55,7 @@ class TestCreateTopic extends CuratorAwareTest {
   test("create topic with bad chars in name") {
     checkError[IllegalCharacterInName] {
       withCurator { curator =>
-        val brokerList = IndexedSeq(1,2)
+        val brokerList = Set(1,2)
         adminUtils.createTopic(curator,brokerList,"bad!Topic!",10,2)
       }
     }
@@ -64,7 +64,7 @@ class TestCreateTopic extends CuratorAwareTest {
   test("create topic with invalid partitions") {
     checkError[PartitionsGreaterThanZero] {
       withCurator { curator =>
-        val brokerList = IndexedSeq(1,2)
+        val brokerList = Set(1,2)
         adminUtils.createTopic(curator,brokerList,"mytopic",0,2)
       }
     }
@@ -73,7 +73,7 @@ class TestCreateTopic extends CuratorAwareTest {
   test("create topic with invalid replication") {
     checkError[ReplicationGreaterThanZero] {
       withCurator { curator =>
-        val brokerList = IndexedSeq(1,2)
+        val brokerList = Set(1,2)
         adminUtils.createTopic(curator,brokerList,"mytopic",10,0)
       }
     }
@@ -82,7 +82,7 @@ class TestCreateTopic extends CuratorAwareTest {
   test("create topic with # of brokers < replication") {
     checkError[ReplicationGreaterThanNumBrokers] {
       withCurator { curator =>
-        val brokerList = IndexedSeq.empty[Int]
+        val brokerList = Set.empty[Int]
         adminUtils.createTopic(curator,brokerList,"mytopic",10,3)
       }
     }
@@ -90,7 +90,7 @@ class TestCreateTopic extends CuratorAwareTest {
 
   test("create topic") {
     withCurator { curator =>
-      val brokerList = IndexedSeq(1,2,3)
+      val brokerList = Set(1,2,3)
       val properties = new Properties()
       properties.setProperty(kafka.manager.utils.zero82.LogConfig.RententionMsProp,"1800000")
       adminUtils.createTopic(curator,brokerList,"mytopic",10,3, properties)
@@ -106,7 +106,7 @@ class TestCreateTopic extends CuratorAwareTest {
   test("create topic - topic already exists") {
     checkError[TopicAlreadyExists] {
       withCurator { curator =>
-        val brokerList = IndexedSeq(1,2,3)
+        val brokerList = Set(1,2,3)
         adminUtils.createTopic(curator, brokerList, "mytopic", 10, 3)
         val json: String = curator.getData.forPath(ZkUtils.getTopicPath("mytopic"))
         assert(json == "{\"version\":1,\"partitions\":{\"8\":[2,3,1],\"4\":[1,3,2],\"9\":[3,2,1],\"5\":[2,1,3],\"6\":[3,1,2],\"1\":[1,2,3],\"0\":[3,1,2],\"2\":[2,3,1],\"7\":[1,2,3],\"3\":[3,2,1]}}")
@@ -117,7 +117,7 @@ class TestCreateTopic extends CuratorAwareTest {
   test("alter topic - cannot add zero partitions") {
     checkError[CannotAddZeroPartitions] {
       withCurator { curator =>
-        val brokerList = IndexedSeq(1,2,3)
+        val brokerList = Set(1,2,3)
         val stat = new Stat
         val json:String = curator.getData.storingStatIn(stat).forPath(ZkUtils.getTopicPath("mytopic"))
         val configJson : String = curator.getData.forPath(ZkUtils.getTopicConfigPath("mytopic"))
@@ -131,7 +131,7 @@ class TestCreateTopic extends CuratorAwareTest {
   test("alter topic - replication factor greater than num brokers") {
     checkError[ReplicationGreaterThanNumBrokers] {
       withCurator { curator =>
-        val brokerList = IndexedSeq(1,2)
+        val brokerList = Set(1,2)
         val stat = new Stat
         val json:String = curator.getData.storingStatIn(stat).forPath(ZkUtils.getTopicPath("mytopic"))
         val configJson : String = curator.getData.forPath(ZkUtils.getTopicConfigPath("mytopic"))
@@ -144,7 +144,7 @@ class TestCreateTopic extends CuratorAwareTest {
 
   test("alter topic - add partitions") {
     withCurator { curator =>
-      val brokerList = IndexedSeq(1,2,3)
+      val brokerList = Set(1,2,3)
       val stat = new Stat
       val json:String = curator.getData.storingStatIn(stat).forPath(ZkUtils.getTopicPath("mytopic"))
       val configJson : String = curator.getData.forPath(ZkUtils.getTopicConfigPath("mytopic"))
@@ -165,7 +165,7 @@ class TestCreateTopic extends CuratorAwareTest {
 
   test("alter topic - update config") {
     withCurator { curator =>
-      val brokerList = IndexedSeq(1,2,3)
+      val brokerList = Set(1,2,3)
       val stat = new Stat
       val json:String = curator.getData.storingStatIn(stat).forPath(ZkUtils.getTopicPath("mytopic"))
       val configStat = new Stat
