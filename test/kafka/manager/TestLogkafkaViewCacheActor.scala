@@ -10,7 +10,11 @@ import akka.actor.{ActorRef, ActorSystem, Kill, Props}
 import akka.pattern._
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
+import kafka.manager.actor.cluster.KafkaStateActor
+import kafka.manager.base.LongRunningPoolConfig
 import kafka.manager.features.ClusterFeatures
+import kafka.manager.logkafka.{LogkafkaViewCacheActorConfig, LogkafkaViewCacheActor}
+import kafka.manager.model.{ClusterContext, ClusterConfig, ActorModel}
 import kafka.manager.utils.KafkaServerInTest
 import ActorModel._
 import kafka.test.SeededBroker

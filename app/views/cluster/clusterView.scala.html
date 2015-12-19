@@ -3,12 +3,11 @@
 * See accompanying LICENSE file.
 *@
 @import scalaz.{\/}
-@(cluster: String, errorOrClusterView: kafka.manager.ApiError \/ kafka.manager.ActorModel.CMView
-)(implicit af: features.ApplicationFeatures)
+@(cluster: String, errorOrClusterView: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.CMView
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
 
 @theMenu = {
-    @views.html.navigation.clusterMenu(cluster,"Cluster","Summary",models.navigation.Menus.clusterMenus(cluster)( 
-        af,
+    @views.html.navigation.clusterMenu(cluster,"Cluster","Summary",menus.clusterMenus(cluster)(
         errorOrClusterView.toOption.map(_.clusterContext.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
 }
 

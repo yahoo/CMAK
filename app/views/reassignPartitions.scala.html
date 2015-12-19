@@ -4,16 +4,15 @@
 *@
 @import scalaz.{\/}
 @import b3.vertical.fieldConstructor
-@(cluster:String, errorOrStatus: kafka.manager.ApiError \/ Option[kafka.manager.ActorModel.ReassignPartitions]
-)(implicit af: features.ApplicationFeatures)
+@(cluster:String, errorOrStatus: kafka.manager.ApiError \/ Option[kafka.manager.model.ActorModel.ReassignPartitions]
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
 
 @theMenu = {
-@views.html.navigation.clusterMenu(cluster,"Reassign Partitions","",models.navigation.Menus.clusterMenus(cluster)(
-    af,
+@views.html.navigation.clusterMenu(cluster,"Reassign Partitions","",menus.clusterMenus(cluster)(
     errorOrStatus.toOption.flatten.map(_.clusterContext.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
 }
 
-@renderView(c: String, viewOption: Option[kafka.manager.ActorModel.ReassignPartitions]) = {
+@renderView(c: String, viewOption: Option[kafka.manager.model.ActorModel.ReassignPartitions]) = {
 @viewOption.fold {
 <div class="row">
     <div class="alert alert-warning" role="alert">

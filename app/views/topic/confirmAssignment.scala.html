@@ -6,12 +6,12 @@
 @import b3.vertical.fieldConstructor
 @(cluster: String,
   topic: String,
-  errorOrForm: kafka.manager.ApiError \/ (Form[models.form.GenerateAssignment], kafka.manager.ClusterContext)
-)(implicit af: features.ApplicationFeatures)
+  errorOrForm: kafka.manager.ApiError \/ (Form[models.form.GenerateAssignment], kafka.manager.model.ClusterContext),
+  errorOrCurrentAssignments: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.GeneratedPartitionAssignments
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
 
 @theMenu = {
-    @views.html.navigation.clusterMenu(cluster,"Topic","Confirm Assignment",models.navigation.Menus.clusterMenus(cluster)(
-        af,
+    @views.html.navigation.clusterMenu(cluster,"Topic","Confirm Assignment",menus.clusterMenus(cluster)(
         errorOrForm.toOption.map(_._2.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
 }
 
@@ -44,6 +44,21 @@
         <a href="@routes.Topic.topic(cluster,topic)" class="cancel-button btn btn-default" role="button">Cancel</a>
     }
 }
+        
+@renderAssignments(gpa: kafka.manager.model.ActorModel.GeneratedPartitionAssignments) = {
+    <h4>Current Assignments</h4>
+    <table class="table">
+        <thead>
+        <tr><th>Partition</th><th>Replicas</th></tr>
+        </thead>
+        @for((partNum, replicas) <- gpa.assignments.toList.sortBy(_._1) ) {
+        <tr>
+            <td>@partNum</td>
+            <td style="word-wrap: break-word">@replicas.mkString("(", ",", ")")</td>
+        </tr>
+        }
+    </table>
+}
 
 @main(
   "Confirm Assignment",
@@ -54,6 +69,13 @@
         <div class="panel-heading"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>Confirm Assignment</h3></div>
         <div class="panel-body">
             @errorOrForm.fold( views.html.errors.onApiError(_), t => renderForm(t._1))
+        </div>
+    </div>
+</div>
+<div class="col-md-6 un-pad-me">
+    <div class="panel panel-default">
+        <div class="panel-body">
+            @errorOrCurrentAssignments.fold( views.html.errors.onApiError(_), t => renderAssignments(t))
         </div>
     </div>
 </div>

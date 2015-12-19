@@ -6,6 +6,9 @@
 package controllers.api
 
 import controllers.KafkaManagerContext
+import features.ApplicationFeatures
+import models.navigation.Menus
+import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.json._
 import play.api.mvc._
 
@@ -13,11 +16,12 @@ import play.api.mvc._
  * @author jisookim0513
  */
 
-object KafkaStateCheck extends Controller {
+class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManagerContext)
+                      (implicit af: ApplicationFeatures, menus: Menus) extends Controller with I18nSupport {
 
   import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
-  private[this] val kafkaManager = KafkaManagerContext.getKafkaManager
+  private[this] val kafkaManager = kafkaManagerContext.getKafkaManager
 
   def brokers(c: String) = Action.async { implicit request =>
     kafkaManager.getBrokerList(c).map { errorOrBrokerList =>

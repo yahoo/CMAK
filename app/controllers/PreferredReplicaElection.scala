@@ -14,6 +14,7 @@ import models.form.{UnknownPREO, RunElection, PreferredReplicaElectionOperation}
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.data.validation.{Valid, Invalid, Constraint}
+import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.mvc._
 
 import scala.concurrent.Future
@@ -22,11 +23,11 @@ import scalaz.-\/
 /**
  * @author hiral
  */
-object PreferredReplicaElection extends Controller{
+class PreferredReplicaElection (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManagerContext)
+                               (implicit af: ApplicationFeatures, menus: Menus) extends Controller with I18nSupport {
   import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
-  private[this] val kafkaManager = KafkaManagerContext.getKafkaManager
-  private[this] implicit val af: ApplicationFeatures = ApplicationFeatures.features
+  private[this] val kafkaManager = kafkaManagerContext.getKafkaManager
   private[this] implicit val cf: ClusterFeatures = ClusterFeatures.default
 
 
@@ -63,7 +64,7 @@ object PreferredReplicaElection extends Controller{
             }
             errorOrSuccessFuture.map { errorOrSuccess =>
               Ok(views.html.common.resultOfCommand(
-                views.html.navigation.clusterMenu(c, "Preferred Replica Election", "", navigation.Menus.clusterMenus(c)),
+                views.html.navigation.clusterMenu(c, "Preferred Replica Election", "", menus.clusterMenus(c)),
                 models.navigation.BreadCrumbs.withViewAndCluster("Run Election", c),
                 errorOrSuccess,
                 "Run Election",
@@ -73,7 +74,7 @@ object PreferredReplicaElection extends Controller{
             }
           case UnknownPREO(opString) =>
             Future.successful(Ok(views.html.common.resultOfCommand(
-              views.html.navigation.clusterMenu(c, "Preferred Replica Election", "", Menus.clusterMenus(c)),
+              views.html.navigation.clusterMenu(c, "Preferred Replica Election", "", menus.clusterMenus(c)),
               models.navigation.BreadCrumbs.withNamedViewAndCluster("Preferred Replica Election", c, "Unknown Operation"),
               -\/(ApiError(s"Unknown operation $opString")),
               "Unknown Preferred Replica Election Operation",

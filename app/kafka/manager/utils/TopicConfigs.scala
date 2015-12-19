@@ -7,7 +7,8 @@ package kafka.manager.utils
 
 import java.util.Properties
 
-import kafka.manager.{Kafka_0_8_2_1, Kafka_0_8_2_0, Kafka_0_8_1_1, KafkaVersion}
+import kafka.manager.model._
+
 
 trait TopicConfigs {
   def configNames : Set[String]
@@ -19,7 +20,8 @@ object TopicConfigs {
   val topicConfigsByVersion : Map[KafkaVersion, TopicConfigs] = Map(
     Kafka_0_8_1_1 -> zero81.LogConfig, 
     Kafka_0_8_2_0 -> zero82.LogConfig,
-    Kafka_0_8_2_1 -> zero82.LogConfig
+    Kafka_0_8_2_1 -> zero82.LogConfig,
+    Kafka_0_8_2_2 -> zero82.LogConfig
     )
 
   def configNames(version: KafkaVersion) : Set[String] = {

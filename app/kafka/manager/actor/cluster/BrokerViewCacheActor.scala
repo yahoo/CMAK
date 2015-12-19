@@ -3,28 +3,34 @@
  * See accompanying LICENSE file.
  */
 
-package kafka.manager
+package kafka.manager.actor.cluster
 
-import akka.actor.{ActorRef, Cancellable, ActorPath}
-import kafka.manager.features.{KMDisplaySizeFeature, KMJMXMetricsFeature}
+import akka.actor.{ActorPath, ActorRef, Cancellable}
+import kafka.manager.base.cluster.BaseClusterActor
+import kafka.manager.base.{LongRunningPoolActor, LongRunningPoolConfig}
+import kafka.manager.features.{KMPollConsumersFeature, KMDisplaySizeFeature, KMJMXMetricsFeature}
+import kafka.manager.jmx.{SegmentsMetric, KafkaJMX, KafkaMetrics, LogInfo}
+import kafka.manager.model.ClusterContext
 import kafka.manager.utils.FiniteQueue
 import org.joda.time.DateTime
 
 import scala.collection.immutable.Queue
 import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.Try
 
 /**
  * @author hiral
  */
-import ActorModel._
+import kafka.manager.model.ActorModel._
 case class BrokerViewCacheActorConfig(kafkaStateActorPath: ActorPath,
                                       clusterContext: ClusterContext,
                                       longRunningPoolConfig: LongRunningPoolConfig,
                                       updatePeriod: FiniteDuration = 10 seconds)
-class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunningPoolActor {
+class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunningPoolActor with BaseClusterActor {
+
+  protected implicit val clusterContext: ClusterContext = config.clusterContext
 
   private[this] val ZERO = BigDecimal(0)
 
@@ -129,7 +135,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
         val lastUpdateMillisOption: Option[Long] = topicDescriptionsOption.map(_.lastUpdateMillis)
         // upon receiving topic descriptions, it will ask for broker list
         context.actorSelection(config.kafkaStateActorPath).tell(KSGetAllTopicDescriptions(lastUpdateMillisOption), self)
-        if (config.clusterContext.config.pollConsumers) {
+        featureGate(KMPollConsumersFeature) {
           context.actorSelection(config.kafkaStateActorPath).tell(KSGetAllConsumerDescriptions(lastUpdateMillisOption), self)
         }
 
@@ -252,18 +258,30 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
       val topicPartitionByBroker = topicIdentity.flatMap(
         ti => ti.partitionsByBroker.map(btp => (ti,btp.id,btp.partitions))).groupBy(_._2)
 
-      //check for 3*broker list size since we schedule 3 jmx calls for each broker
-      if (config.clusterContext.clusterFeatures.features(KMJMXMetricsFeature) && config.clusterContext.clusterFeatures.features(KMDisplaySizeFeature) && hasCapacityFor(3*brokerListOption.size)) {
+      featureGate(KMJMXMetricsFeature) {
         implicit val ec = longRunningExecutionContext
-        updateTopicMetrics(brokerList, topicPartitionByBroker)
-        updateBrokerMetrics(brokerList)
-        updateBrokerTopicPartitionsSize(brokerList)
-      } else if (config.clusterContext.clusterFeatures.features(KMJMXMetricsFeature) && hasCapacityFor(2*brokerListOption.size)) {
-        implicit val ec = longRunningExecutionContext
-        updateTopicMetrics(brokerList, topicPartitionByBroker)
-        updateBrokerMetrics(brokerList)
-      } else if(config.clusterContext.clusterFeatures.features(KMJMXMetricsFeature)) {
-        log.warning("Not scheduling update of JMX for all brokers, not enough capacity!")
+        featureGateFold[Unit](KMDisplaySizeFeature)(
+        {
+          //check for 2*broker list size since we schedule 2 jmx calls for each broker
+          if (hasCapacityFor(2*brokerList.list.size)) {
+            updateTopicMetrics(brokerList, topicPartitionByBroker)
+            updateBrokerMetrics(brokerList)
+          } else {
+            log.warning("Not scheduling update of JMX for all brokers, not enough capacity!")
+          }
+        }
+        ,
+        {
+          //check for 3*broker list size since we schedule 3 jmx calls for each broker
+          if (hasCapacityFor(3*brokerList.list.size)) {
+            updateTopicMetrics(brokerList, topicPartitionByBroker)
+            updateBrokerMetrics(brokerList)
+            updateBrokerTopicPartitionsSize(brokerList)
+          } else {
+            log.warning("Not scheduling update of JMX for all brokers, not enough capacity!")
+          }
+        })
+
       }
 
       topicPartitionByBroker.foreach {

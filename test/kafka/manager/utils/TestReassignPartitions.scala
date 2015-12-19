@@ -6,9 +6,10 @@ package kafka.manager.utils
 
 import java.util.Properties
 
-import kafka.manager.ActorModel._
+import kafka.manager.model.ActorModel
+import ActorModel._
 import kafka.manager.features.ClusterFeatures
-import kafka.manager.{ClusterContext, ClusterConfig, Kafka_0_8_2_0}
+import kafka.manager.model.{ClusterContext, ClusterConfig, Kafka_0_8_2_0}
 import kafka.manager.utils.zero81._
 import org.apache.zookeeper.data.Stat
 
@@ -25,7 +26,7 @@ class TestReassignPartitions extends CuratorAwareTest {
   
   private[this] val reassignPartitionCommand = new ReassignPartitionCommand(adminUtils)
 
-  private[this] val brokerList = IndexedSeq(1,2,3)
+  private[this] val brokerList = Set(1,2,3)
 
   private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None)
   private[this] val defaultClusterContext = ClusterContext(ClusterFeatures.from(defaultClusterConfig), defaultClusterConfig)

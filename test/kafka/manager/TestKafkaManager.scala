@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 import com.typesafe.config.{Config, ConfigFactory}
 import kafka.manager.features.KMDeleteTopicFeature
+import kafka.manager.model.{Kafka_0_8_1_1, ActorModel}
 import kafka.manager.utils.CuratorAwareTest
 import ActorModel.TopicList
 import kafka.test.{SimpleProducer, HighLevelConsumer, SeededBroker}
@@ -217,7 +218,7 @@ class TestKafkaManager extends CuratorAwareTest {
 
   test("generate partition assignments") {
     val topicList = getTopicList()
-    val future = kafkaManager.generatePartitionAssignments("dev",topicList.list.toSet,Seq(0))
+    val future = kafkaManager.generatePartitionAssignments("dev",topicList.list.toSet,Set(0))
     val result = Await.result(future,duration)
     assert(result.isRight === true)
   }
@@ -265,7 +266,7 @@ class TestKafkaManager extends CuratorAwareTest {
     val tiA = tiOrErrorA.toOption.get
     val tiB = tiOrErrorB.toOption.get
     val newPartitionNum = tiA.partitions + 1
-    val future = kafkaManager.addMultipleTopicsPartitions("dev",Seq(createTopicNameA, createTopicNameB),Seq(0),newPartitionNum,Map(createTopicNameA->tiA.readVersion,createTopicNameB->tiB.readVersion))
+    val future = kafkaManager.addMultipleTopicsPartitions("dev",Seq(createTopicNameA, createTopicNameB),Set(0),newPartitionNum,Map(createTopicNameA->tiA.readVersion,createTopicNameB->tiB.readVersion))
     val result = Await.result(future,duration)
     assert(result.isRight === true)
 
@@ -310,6 +311,7 @@ class TestKafkaManager extends CuratorAwareTest {
     val futureA = kafkaManager.deleteTopic("dev",createTopicNameA)
     val resultA = Await.result(futureA,duration)
     assert(resultA.isRight === true, resultA)
+    Thread.sleep(1000)
     val futureA2 = kafkaManager.getTopicList("dev")
     val resultA2 = Await.result(futureA2,duration)
     assert(resultA2.isRight === true, resultA2)
@@ -318,11 +320,11 @@ class TestKafkaManager extends CuratorAwareTest {
     val futureB = kafkaManager.deleteTopic("dev",createTopicNameB)
     val resultB = Await.result(futureB,duration)
     assert(resultB.isRight === true, resultB)
+    Thread.sleep(1000)
     val futureB2 = kafkaManager.getTopicList("dev")
     val resultB2 = Await.result(futureB2,duration)
     assert(resultB2.isRight === true, resultB2)
     assert(resultB2.toOption.get.deleteSet(createTopicNameB),"Topic not in delete set")
-    Thread.sleep(2000)
   }
 
   test("fail to delete non-existent topic") {
@@ -449,6 +451,8 @@ class TestKafkaManager extends CuratorAwareTest {
     val future = kafkaManager.updateLogkafkaConfig("dev",createLogkafkaLogkafkaId,createLogkafkaLogPath,config)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
+    
+    Thread.sleep(1000)
 
     //check new logkafka config
     {

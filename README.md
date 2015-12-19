@@ -65,7 +65,7 @@ Broker View
 Requirements
 ------------
 
-1. [Kafka 0.8.1.1 or 0.8.2.1](http://kafka.apache.org/downloads.html)
+1. [Kafka 0.8.1.1 or 0.8.2.*](http://kafka.apache.org/downloads.html)
 2. [sbt 0.13.x](http://www.scala-sbt.org/download.html)
 3. Java 8+
 
@@ -95,6 +95,20 @@ You can optionally enable/disable the following functionality by modifying the d
  - KMPreferredReplicaElectionFeature - allows running of preferred replica election for a Kafka cluster
  - KMReassignPartitionsFeature - allows generating partition assignments and reassigning partitions
 
+Consider setting these parameters for larger clusters with jmx enabled :
+
+ - kafka-manager.broker-view-thread-pool-size=< 3 * number_of_brokers>
+ - kafka-manager.broker-view-max-queue-size=< 3 * total # of partitions across all topics>
+ - kafka-manager.broker-view-update-seconds=< kafka-manager.broker-view-max-queue-size / (10 * number_of_brokers) >
+
+Here is an example for a kafka cluster with 10 brokers, 100 topics, with each topic having 10 partitions giving 1000 total partitions with JMX enabled :
+
+ - kafka-manager.broker-view-thread-pool-size=30
+ - kafka-manager.broker-view-max-queue-size=3000
+ - kafka-manager.broker-view-update-seconds=30
+
+You may also want to increase the above three if you have consumer polling enabled depending on the # of consumers you have reporting through Zookeeper.
+
 Deployment
 ----------
 
@@ -109,7 +123,7 @@ please use the following (the example assumes oracle java8):
 
     $ PATH=/usr/local/oracle-java-8/bin:$PATH \
       JAVA_HOME=/usr/local/oracle-java-8 \
-      /path/to/sbt -java-home /usr/local/oracle-java-8 dist clean
+      /path/to/sbt -java-home /usr/local/oracle-java-8 clean dist
 
 This ensures that the 'java' and 'javac' binaries in your path are first looked up in the
 oracle java8 release. Next, for all downstream tools that only listen to JAVA_HOME, it points

@@ -3,11 +3,11 @@
 * See accompanying LICENSE file.
 *@
 @(cluster: String,
-  topics: IndexedSeq[((String, Option[kafka.manager.ActorModel.TopicIdentity]),Boolean)],
+  topics: IndexedSeq[((String, Option[kafka.manager.model.ActorModel.TopicIdentity]),Boolean)],
   topicsUnderReassignment: IndexedSeq[String],
   pollConsumers: Boolean,
   displayTopicSize: Boolean
-)
+)(implicit messages: play.api.i18n.Messages)
 
 @getDeletedLevel(deleted: Boolean) = {
     @deleted match {

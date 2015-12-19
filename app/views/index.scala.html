@@ -3,12 +3,12 @@
 * See accompanying LICENSE file.
 *@
 @import scalaz.{\/}
-@(errorOrClusters: kafka.manager.ApiError \/ kafka.manager.ActorModel.KMClusterList
-)(implicit af: features.ApplicationFeatures)
+@(errorOrClusters: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.KMClusterList
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
 
 @main(
     "Kafka Manager",
-    views.html.navigation.defaultMenu(views.html.navigation.menuNav("Cluster","List",models.navigation.Menus.indexMenu)),
+    views.html.navigation.defaultMenu(views.html.navigation.menuNav("Cluster","List",menus.indexMenu)),
     views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withView("Clusters"))) {
 <div class="col-md-6 un-pad-me">
     <div class="panel panel-default">

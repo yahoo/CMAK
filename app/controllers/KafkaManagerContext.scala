@@ -6,17 +6,21 @@
 package controllers
 
 import kafka.manager.KafkaManager
+import play.api.Configuration
+import play.api.inject.ApplicationLifecycle
+
+import scala.concurrent.Future
 
 /**
  * @author hiral
  */
-object KafkaManagerContext {
+class KafkaManagerContext (lifecycle: ApplicationLifecycle, configuration: Configuration) {
 
-  import play.api.Play.current
-
-  private[this] val kafkaManager : KafkaManager = new KafkaManager(play.api.Play.configuration.underlying)
-  def getKafkaManager : KafkaManager = kafkaManager
-  def shutdown() : Unit = {
-    kafkaManager.shutdown()
+  private[this] val kafkaManager : KafkaManager = new KafkaManager(configuration.underlying)
+  
+  lifecycle.addStopHook { () =>
+    Future.successful(kafkaManager.shutdown())
   }
+
+  def getKafkaManager : KafkaManager = kafkaManager
 }

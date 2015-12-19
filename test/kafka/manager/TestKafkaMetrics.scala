@@ -5,6 +5,8 @@
 
 package kafka.manager
 
+import kafka.manager.jmx.KafkaMetrics
+import kafka.manager.model.{Kafka_0_8_2_1, Kafka_0_8_1_1}
 import org.scalatest.FunSuite
 
 /**

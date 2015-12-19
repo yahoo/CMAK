@@ -5,17 +5,16 @@
 @import scalaz.{\/}
 @import b3.vertical.fieldConstructor
 @(cluster:String,
-errorOrStatus: kafka.manager.ApiError \/ Option[kafka.manager.ActorModel.PreferredReplicaElection],
+errorOrStatus: kafka.manager.ApiError \/ Option[kafka.manager.model.ActorModel.PreferredReplicaElection],
 operationForm: Form[models.form.PreferredReplicaElectionOperation]
-)(implicit af: features.ApplicationFeatures)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
 
 @theMenu = {
-@views.html.navigation.clusterMenu(cluster,"Preferred Replica Election","",models.navigation.Menus.clusterMenus(cluster)(
-    af,
+@views.html.navigation.clusterMenu(cluster,"Preferred Replica Election","",menus.clusterMenus(cluster)(
     errorOrStatus.toOption.flatten.map(_.clusterContext.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
 }
 
-@renderView(c: String, viewOption: Option[kafka.manager.ActorModel.PreferredReplicaElection]) = {
+@renderView(c: String, viewOption: Option[kafka.manager.model.ActorModel.PreferredReplicaElection]) = {
 @viewOption.fold {
 <div class="row">
     <div class="alert alert-warning" role="alert">

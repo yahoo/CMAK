@@ -5,7 +5,7 @@
 
 @import scalaz.{\/}
 @import b3.vertical.fieldConstructor
-@import kafka.manager.ActorModel._
+@import kafka.manager.model.ActorModel._
 @import kafka.manager.{BrokerListExtended}
 @import kafka.manager.utils._
 @import helper._
@@ -17,10 +17,11 @@
   brokers: BrokerListExtended,
   brokersViews: Map[Int, BVView],
   formErrors: Seq[FormError]
-)(implicit af: features.ApplicationFeatures, cf: kafka.manager.features.ClusterFeatures)
+)(implicit af: features.ApplicationFeatures, 
+cf: kafka.manager.features.ClusterFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
 
 @theMenu = {
-@views.html.navigation.clusterMenu(cluster,"Topic","Manual Partition Assignments",models.navigation.Menus.clusterMenus(cluster))
+@views.html.navigation.clusterMenu(cluster,"Topic","Manual Partition Assignments",menus.clusterMenus(cluster))
 }
 @color(brokerId: Int) = @{
   java.security.MessageDigest.getInstance("MD5").digest("" + brokerId).map("%02X".format(_)).mkString.substring(0,6)

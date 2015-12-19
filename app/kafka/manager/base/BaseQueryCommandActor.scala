@@ -3,24 +3,27 @@
  * See accompanying LICENSE file.
  */
 
-package kafka.manager
+package kafka.manager.base
 
-import ActorModel.{QueryRequest, ActorRequest}
+import kafka.manager.model.ActorModel
+import ActorModel.{ActorRequest, CommandRequest, QueryRequest}
 
 /**
  * @author hiral
  */
-abstract class BaseQueryActor extends BaseActor {
-
+abstract class BaseQueryCommandActor extends BaseActor {
   final def processActorRequest(request: ActorRequest): Unit = {
     request match  {
       case queryRequest: QueryRequest =>
         processQueryRequest(queryRequest)
-      case any: Any => log.warning("bqa : processActorRequest : Received unknown message: {}", any)
+      case queryRequest: CommandRequest =>
+        processCommandRequest(queryRequest)
     }
   }
 
   def processQueryRequest(request: QueryRequest): Unit
+
+  def processCommandRequest(request: CommandRequest): Unit
 
   @scala.throws[Exception](classOf[Exception])
   override def preStart(): Unit = super.preStart()
@@ -30,4 +33,5 @@ abstract class BaseQueryActor extends BaseActor {
 
   @scala.throws[Exception](classOf[Exception])
   override def preRestart(reason: Throwable, message: Option[Any]): Unit = super.preRestart(reason, message)
+
 }

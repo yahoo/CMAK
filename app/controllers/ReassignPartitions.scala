@@ -6,18 +6,17 @@
 package controllers
 
 import features.{KMReassignPartitionsFeature, ApplicationFeatures}
-import kafka.manager.ActorModel._
-import kafka.manager.features.ClusterFeatures
-import kafka.manager.{BrokerListExtended, ApiError, TopicListExtended}
+import kafka.manager.model.ActorModel
+import ActorModel._
+import kafka.manager.ApiError
 import models.navigation.Menus
 import models.{navigation, FollowLink}
 import models.form._
 import play.api.data.Form
 import play.api.data.Forms._
 import play.api.data.validation.{Valid, Invalid, Constraint}
+import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.mvc._
-
-import scala.collection.mutable
 
 import scala.concurrent.Future
 import scalaz.{\/, \/-, -\/}
@@ -25,11 +24,11 @@ import scalaz.{\/, \/-, -\/}
 /**
  * @author hiral
  */
-object ReassignPartitions extends Controller{
+class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManagerContext)
+                         (implicit af: ApplicationFeatures, menus: Menus)  extends Controller with I18nSupport {
   import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
-  private[this] implicit val kafkaManager = KafkaManagerContext.getKafkaManager
-  private[this] implicit val af: ApplicationFeatures = ApplicationFeatures.features
+  private[this] implicit val kafkaManager = kafkaManagerContext.getKafkaManager
 
   val validateOperation : Constraint[String] = Constraint("validate operation value") {
     case "confirm" => Valid
@@ -131,12 +130,15 @@ object ReassignPartitions extends Controller{
           err => Future.successful(
             Ok(views.html.errors.onApiError(err, Option(FollowLink("Try Again", routes.ReassignPartitions.confirmAssignment(c, t).toString()))))
           ),
-          cc => Future.successful(
-            Ok(views.html.topic.confirmAssignment(
-              c, t, errorOrSuccess.map(l => 
-                (generateAssignmentsForm.fill(GenerateAssignment(l.list.map(BrokerSelect.from))), cc))
-            ))
-          )
+          cc =>
+            kafkaManager.getGeneratedAssignments(c, t).map { errorOrAssignments =>
+              Ok(views.html.topic.confirmAssignment(
+                c, t, errorOrSuccess.map(l =>
+                  (generateAssignmentsForm.fill(GenerateAssignment(l.list.map(BrokerSelect.from))), cc)
+                ),
+                errorOrAssignments
+              ))
+            }
         )
       }
     }
@@ -273,7 +275,7 @@ object ReassignPartitions extends Controller{
             Option(FollowLink("Try Again", routes.ReassignPartitions.manualAssignments(c, t).toString())))))
         }, implicit clusterFeatures => {
           Future.successful(Ok(views.html.common.resultsOfCommand(
-            views.html.navigation.clusterMenu(c, title, "", Menus.clusterMenus(c)),
+            views.html.navigation.clusterMenu(c, title, "", menus.clusterMenus(c)),
             models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Manual Reassignment View", c, "", title),
             errorOrResult,
             title,
@@ -314,12 +316,16 @@ object ReassignPartitions extends Controller{
         ),
         cc =>
           generateAssignmentsForm.bindFromRequest.fold(
-            errors => Future.successful(Ok(views.html.topic.confirmAssignment(c, t, \/-((errors, cc))))),
+            errors => {
+              kafkaManager.getGeneratedAssignments(c, t).map { errorOrAssignments =>
+                Ok(views.html.topic.confirmAssignment(c, t, \/-((errors, cc)), errorOrAssignments))
+              }
+            },
             assignment => {
-              kafkaManager.generatePartitionAssignments(c, Set(t), assignment.brokers.filter(_.selected).map(_.id)).map { errorOrSuccess =>
+              kafkaManager.generatePartitionAssignments(c, Set(t), assignment.brokers.filter(_.selected).map(_.id).toSet).map { errorOrSuccess =>
                 implicit val clusterFeatures = cc.clusterFeatures
                 Ok(views.html.common.resultsOfCommand(
-                  views.html.navigation.clusterMenu(c, "Reassign Partitions", "", Menus.clusterMenus(c)),
+                  views.html.navigation.clusterMenu(c, "Reassign Partitions", "", menus.clusterMenus(c)),
                   models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View", c, t, "Generate Partition Assignments"),
                   errorOrSuccess,
                   s"Generate Partition Assignments - $t",
@@ -344,10 +350,10 @@ object ReassignPartitions extends Controller{
           generateMultipleAssignmentsForm.bindFromRequest.fold(
             errors => Future.successful(Ok(views.html.topic.confirmMultipleAssignments(c, \/-((errors, cc))))),
             assignment => {
-              kafkaManager.generatePartitionAssignments(c, assignment.topics.filter(_.selected).map(_.name).toSet, assignment.brokers.filter(_.selected).map(_.id)).map { errorOrSuccess =>
+              kafkaManager.generatePartitionAssignments(c, assignment.topics.filter(_.selected).map(_.name).toSet, assignment.brokers.filter(_.selected).map(_.id).toSet).map { errorOrSuccess =>
                 implicit val clusterFeatures = cc.clusterFeatures
                 Ok(views.html.common.resultsOfCommand(
-                  views.html.navigation.clusterMenu(c, "Reassign Partitions", "", Menus.clusterMenus(c)),
+                  views.html.navigation.clusterMenu(c, "Reassign Partitions", "", menus.clusterMenus(c)),
                   models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View", c, "", "Generate Partition Assignments"),
                   errorOrSuccess,
                   s"Generate Partition Assignments",
@@ -378,7 +384,7 @@ object ReassignPartitions extends Controller{
                 implicit val clusterFeatures = cc.clusterFeatures
                 Ok(
                   views.html.common.resultsOfCommand(
-                    views.html.navigation.clusterMenu(c, "Reassign Partitions", "", navigation.Menus.clusterMenus(c)),
+                    views.html.navigation.clusterMenu(c, "Reassign Partitions", "", menus.clusterMenus(c)),
                     models.navigation.BreadCrumbs.withNamedViewAndCluster("Topics", c, "Reassign Partitions"),
                     errorOrSuccess,
                     s"Run Reassign Partitions",
@@ -407,7 +413,7 @@ object ReassignPartitions extends Controller{
                 implicit val clusterFeatures = cc.clusterFeatures
                 kafkaManager.runReassignPartitions(c, Set(t)).map { errorOrSuccess =>
                   Ok(views.html.common.resultsOfCommand(
-                    views.html.navigation.clusterMenu(c, "Reassign Partitions", "", navigation.Menus.clusterMenus(c)),
+                    views.html.navigation.clusterMenu(c, "Reassign Partitions", "", menus.clusterMenus(c)),
                     models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View", c, t, "Run Reassign Partitions"),
                     errorOrSuccess,
                     s"Run Reassign Partitions - $t",
@@ -418,7 +424,7 @@ object ReassignPartitions extends Controller{
               case UnknownRPO(opString) =>
                 implicit val clusterFeatures = cc.clusterFeatures
                 Future.successful(Ok(views.html.common.resultOfCommand(
-                  views.html.navigation.clusterMenu(c, "Reassign Partitions", "", navigation.Menus.clusterMenus(c)),
+                  views.html.navigation.clusterMenu(c, "Reassign Partitions", "", menus.clusterMenus(c)),
                   models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View", c, t, "Unknown Reassign Partitions Operation"),
                   -\/(ApiError(s"Unknown operation $opString")),
                   "Unknown Reassign Partitions Operation",

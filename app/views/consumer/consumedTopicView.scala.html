@@ -6,12 +6,11 @@
 @(cluster:String,
   consumer: String,
   topic: String,
-  errorOrConsumedTopicState: kafka.manager.ApiError \/ kafka.manager.ActorModel.ConsumedTopicState
-)(implicit af: features.ApplicationFeatures)
+  errorOrConsumedTopicState: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.ConsumedTopicState
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
 
 @theMenu = {
-    @views.html.navigation.clusterMenu(cluster,"Topic Consumption","",models.navigation.Menus.clusterMenus(cluster)(
-        af,
+    @views.html.navigation.clusterMenu(cluster,"Topic Consumption","",menus.clusterMenus(cluster)(
         errorOrConsumedTopicState.toOption.map(_.clusterContext.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
 }
 

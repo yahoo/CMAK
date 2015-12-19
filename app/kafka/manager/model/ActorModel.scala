@@ -3,18 +3,20 @@
  * See accompanying LICENSE file.
  */
 
-package kafka.manager
+package kafka.manager.model
 
 import java.util.Properties
 
-import org.joda.time.DateTime
+import grizzled.slf4j.Logging
 import kafka.common.TopicAndPartition
-import org.slf4j.LoggerFactory
+import kafka.manager.jmx._
+import kafka.manager.utils
+import org.joda.time.DateTime
 
 import scala.collection.immutable.Queue
-import scala.concurrent.{Await, Future}
 import scala.concurrent.duration.Duration
-import scala.util.{Try, Success, Failure}
+import scala.concurrent.{Await, Future}
+import scala.util.{Failure, Success, Try}
 import scalaz.{NonEmptyList, Validation}
 
 /**
@@ -64,6 +66,7 @@ object ActorModel {
   case class CMTopicIdentity(topicIdentity: Try[TopicIdentity]) extends QueryResponse
   case class CMConsumerIdentity(consumerIdentity: Try[ConsumerIdentity]) extends QueryResponse
   case class CMConsumedTopic(ctIdentity: Try[ConsumedTopicState]) extends QueryResponse
+  case class CMGetGeneratedPartitionAssignments(topic: String) extends QueryRequest
   case object CMShutdown extends CommandRequest
   case class CMCreateTopic(topic: String,
                            partitions: Int,
@@ -75,14 +78,14 @@ object ActorModel {
                                   partitionReplicaList: Map[Int, Seq[Int]],
                                   readVersion: Int) extends CommandRequest
   case class CMAddMultipleTopicsPartitions(topicsAndReplicas: Seq[(String, Map[Int, Seq[Int]])],
-                                           brokers: Seq[Int],
+                                           brokers: Set[Int],
                                            partitions: Int,
                                            readVersions: Map[String,Int]) extends CommandRequest
   case class CMUpdateTopicConfig(topic: String, config: Properties, readVersion: Int) extends CommandRequest
   case class CMDeleteTopic(topic: String) extends CommandRequest
   case class CMRunPreferredLeaderElection(topics: Set[String]) extends CommandRequest
   case class CMRunReassignPartition(topics: Set[String]) extends CommandRequest
-  case class CMGeneratePartitionAssignments(topics: Set[String], brokers: Seq[Int]) extends CommandRequest
+  case class CMGeneratePartitionAssignments(topics: Set[String], brokers: Set[Int]) extends CommandRequest
   case class CMManualPartitionAssignments(assignments: List[(String, List[(Int, List[Int])])]) extends CommandRequest
 
   //these are used by Logkafka
@@ -105,17 +108,17 @@ object ActorModel {
   case class CMCommandResults(result: IndexedSeq[Try[Unit]]) extends CommandResponse
 
   case class KCCreateTopic(topic: String,
-                           brokers: Seq[Int],
+                           brokers: Set[Int],
                            partitions: Int,
                            replicationFactor:Int,
                            config: Properties) extends CommandRequest
   case class KCAddTopicPartitions(topic: String,
-                           brokers: Seq[Int],
+                           brokers: Set[Int],
                            partitions: Int,
                            partitionReplicaList: Map[Int, Seq[Int]],
                            readVersion: Int) extends CommandRequest
   case class KCAddMultipleTopicsPartitions(topicsAndReplicas: Seq[(String, Map[Int, Seq[Int]])],
-                                           brokers: Seq[Int],
+                                           brokers: Set[Int],
                                            partitions: Int,
                                            readVersions: Map[String, Int]) extends CommandRequest
   case class KCUpdateTopicConfig(topic: String, config: Properties, readVersion: Int) extends CommandRequest
@@ -202,14 +205,16 @@ object ActorModel {
 
   case object DCUpdateState extends CommandRequest
 
+  case class GeneratedPartitionAssignments(topic: String, assignments: Map[Int, Seq[Int]], nonExistentBrokers: Set[Int])
   case class BrokerIdentity(id: Int, host: String, port: Int, jmxPort: Int)
 
   object BrokerIdentity {
-    import scalaz.syntax.applicative._
     import org.json4s.jackson.JsonMethods._
     import org.json4s.scalaz.JsonScalaz
     import org.json4s.scalaz.JsonScalaz._
-    import scala.language.reflectiveCalls
+
+import scala.language.reflectiveCalls
+    import scalaz.syntax.applicative._
 
     implicit def from(id: Int, config: String): Validation[NonEmptyList[JsonScalaz.Error],BrokerIdentity]= {
       val json = parse(config)
@@ -230,14 +235,14 @@ object ActorModel {
                                     isUnderReplicated: Boolean = false,
                                     leaderSize: Option[Long] = None,
                                     size: Option[String] = None)
-  object TopicPartitionIdentity {
 
-    lazy val logger = LoggerFactory.getLogger(this.getClass)
+  object TopicPartitionIdentity extends Logging {
 
-    import scalaz.syntax.applicative._
     import org.json4s.jackson.JsonMethods._
     import org.json4s.scalaz.JsonScalaz._
-    import scala.language.reflectiveCalls
+
+import scala.language.reflectiveCalls
+    import scalaz.syntax.applicative._
 
     implicit def from(partition: Int,
                       state:Option[String],
@@ -349,13 +354,12 @@ object ActorModel {
     val producerRate: String = BigDecimal(partitionsIdentity.map(_._2.rateOfChange.getOrElse(0D)).sum).setScale(2, BigDecimal.RoundingMode.HALF_UP).toString()
   }
 
-  object TopicIdentity {
-
-    lazy val logger = LoggerFactory.getLogger(this.getClass)
+  object TopicIdentity extends Logging {
 
     import org.json4s.jackson.JsonMethods._
     import org.json4s.scalaz.JsonScalaz._
-    import scala.language.reflectiveCalls
+
+import scala.language.reflectiveCalls
     
     private[this] def getPartitionReplicaMap(td: TopicDescription) : Map[String, List[Int]] = {
       // Get the topic description information
@@ -530,8 +534,7 @@ object ActorModel {
   case class ConsumerIdentity(consumerGroup:String,
                               topicMap: Map[String, ConsumedTopicState],
                               clusterContext: ClusterContext)
-  object ConsumerIdentity {
-    lazy val logger = LoggerFactory.getLogger(this.getClass)
+  object ConsumerIdentity extends Logging {
     import scala.language.reflectiveCalls
 
     implicit def from(cd: ConsumerDescription,
@@ -628,9 +631,7 @@ object ActorModel {
                               identityMap: Map[String, (Option[Map[String, String]], Option[Map[String, String]])]) {
   }
 
-  object LogkafkaIdentity {
-
-    lazy val logger = LoggerFactory.getLogger(this.getClass)
+  object LogkafkaIdentity extends Logging {
 
     implicit def from(logkafka_id: String, lcg: Option[LogkafkaConfig], lct: Option[LogkafkaClient]) : LogkafkaIdentity = {
       val configJsonStr = lcg match {

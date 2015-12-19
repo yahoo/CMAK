@@ -5,12 +5,11 @@
 @import scalaz.{\/}
 @(cluster:String,
   consumer: String,
-  errorOrConsumerIdentity: kafka.manager.ApiError \/ kafka.manager.ActorModel.ConsumerIdentity
-)(implicit af: features.ApplicationFeatures)
+  errorOrConsumerIdentity: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.ConsumerIdentity
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
 
 @theMenu = {
-    @views.html.navigation.clusterMenu(cluster,"Consumer","",models.navigation.Menus.clusterMenus(cluster)(
-        af,
+    @views.html.navigation.clusterMenu(cluster,"Consumer","",menus.clusterMenus(cluster)(
         errorOrConsumerIdentity.toOption.map(_.clusterContext.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
 }
 

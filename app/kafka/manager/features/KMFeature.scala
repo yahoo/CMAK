@@ -4,8 +4,8 @@
  */
 package kafka.manager.features
 
-import kafka.manager.{Kafka_0_8_1_1, ClusterConfig}
-import org.slf4j.LoggerFactory
+import grizzled.slf4j.Logging
+import kafka.manager.model.{Kafka_0_8_1_1, ClusterConfig}
 
 import scala.collection.mutable.ListBuffer
 import scala.util.{Success, Failure, Try}
@@ -22,9 +22,9 @@ case object KMLogKafkaFeature extends ClusterFeature
 case object KMDeleteTopicFeature extends ClusterFeature
 case object KMJMXMetricsFeature extends ClusterFeature
 case object KMDisplaySizeFeature extends ClusterFeature
+case object KMPollConsumersFeature extends ClusterFeature
 
-object ClusterFeature {
-  private lazy val log = LoggerFactory.getLogger(classOf[ClusterFeature])
+object ClusterFeature extends Logging {
   import scala.reflect.runtime.universe
 
   val runtimeMirror = universe.runtimeMirror(getClass.getClassLoader)
@@ -42,7 +42,7 @@ object ClusterFeature {
           }
         } match {
       case Failure(t) =>
-        log.error(s"Unknown application feature $s")
+        error(s"Unknown application feature $s")
         None
       case Success(f) => Option(f)
     }
@@ -69,6 +69,9 @@ object ClusterFeatures {
     
     if(clusterConfig.version != Kafka_0_8_1_1)
       buffer+=KMDeleteTopicFeature
+
+    if(clusterConfig.pollConsumers)
+      buffer+=KMPollConsumersFeature
 
     ClusterFeatures(buffer.toSet)
   }

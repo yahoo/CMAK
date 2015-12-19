@@ -6,19 +6,19 @@
 package controllers
 
 import features.ApplicationFeatures
-import kafka.manager.features.ClusterFeatures
+import models.navigation.Menus
+import play.api.i18n.{MessagesApi, I18nSupport}
 import play.api.mvc._
 
 /**
  * @author hiral
  */
-object Application extends Controller {
+class Application (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManagerContext)
+                  (implicit af: ApplicationFeatures, menus: Menus) extends Controller with I18nSupport {
 
   import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
-  private[this] val kafkaManager = KafkaManagerContext.getKafkaManager
-
-  private[this] implicit val af: ApplicationFeatures = ApplicationFeatures.features
+  private[this] val kafkaManager = kafkaManagerContext.getKafkaManager
 
   def index = Action.async {
     kafkaManager.getClusterList.map { errorOrClusterList =>

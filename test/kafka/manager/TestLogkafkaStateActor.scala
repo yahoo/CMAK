@@ -12,6 +12,8 @@ import akka.util.Timeout
 import akka.util.Timeout._
 import com.typesafe.config.{Config, ConfigFactory}
 import kafka.manager.features.ClusterFeatures
+import kafka.manager.logkafka.LogkafkaStateActor
+import kafka.manager.model.{ClusterContext, ClusterConfig, ActorModel}
 import kafka.manager.utils.KafkaServerInTest
 import ActorModel._
 import kafka.test.SeededBroker

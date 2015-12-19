@@ -17,12 +17,13 @@
 
 package kafka.manager.utils.zero81
 
+import grizzled.slf4j.Logging
 import kafka.common.TopicAndPartition
+import kafka.manager.model.ActorModel
 import kafka.manager.utils._
-import kafka.manager.ActorModel.{TopicPartitionIdentity, TopicIdentity}
+import ActorModel.{TopicPartitionIdentity, TopicIdentity}
 import org.apache.curator.framework.CuratorFramework
 import org.apache.zookeeper.KeeperException.NodeExistsException
-import org.slf4j.LoggerFactory
 
 import scala.util.Try
 
@@ -32,12 +33,9 @@ import scala.util.Try
  */
 import kafka.manager.utils.zero81.ReassignPartitionErrors._
 
-class ReassignPartitionCommand(adminUtils: AdminUtils) {
+class ReassignPartitionCommand(adminUtils: AdminUtils) extends Logging {
 
-
-  private[this] val logger = LoggerFactory.getLogger(this.getClass)
-
-  def generateAssignment(brokerList: Seq[Int], currentTopicIdentity: TopicIdentity): Try[TopicIdentity] = {
+  def generateAssignment(brokerList: Set[Int], currentTopicIdentity: TopicIdentity): Try[TopicIdentity] = {
     Try {
       val assignedReplicas = adminUtils.assignReplicasToBrokers(
         brokerList,
