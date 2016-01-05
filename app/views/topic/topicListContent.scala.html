@@ -53,12 +53,12 @@
         <th>Brokers Skew %</th>
         <th># Replicas</th>
         <th>Under Replicated %</th>
-        <th>Producer Message/Sec</th>
-        @if(pollConsumers){
-        <th>Summed Recent Offsets</th>
-        }
         @if(displayTopicSize){
         <th>Leader Size</th>
+        }
+        @if(pollConsumers){
+        <th>Producer Message/Sec</th>
+        <th>Summed Recent Offsets</th>
         }
     </tr>
     </thead>
@@ -72,12 +72,12 @@
           @topicIdentity.map{ ti => <td class="@getBrokersSkewLevel(ti.brokersSkewPercentage)">@ti.brokersSkewPercentage</td>}.getOrElse{<td> </td>}
           @topicIdentity.map{ ti => <td>@ti.replicationFactor</td>}.getOrElse{<td> </td>}
           @topicIdentity.map{ ti => <td class="@getUnderReplicatedLevel(ti.underReplicatedPercentage)">@ti.underReplicatedPercentage</td>}.getOrElse{<td> </td>}
-          @topicIdentity.map{ ti => <td>@ti.producerRate</td>}.getOrElse{<td> </td>}
-          @if(pollConsumers){
-          @topicIdentity.map{ ti => <td>@ti.summedTopicOffsets</td>}.getOrElse{<td> </td>}
-          }
           @if(displayTopicSize){
           @topicIdentity.map{ ti => <td>@ti.size</td>}.getOrElse{<td> </td>}
+          }
+          @if(pollConsumers){
+          @topicIdentity.map{ ti => <td>@ti.producerRate</td>}.getOrElse{<td> </td>}
+          @topicIdentity.map{ ti => <td>@ti.summedTopicOffsets</td>}.getOrElse{<td> </td>}
           }
       </tr>
     }
