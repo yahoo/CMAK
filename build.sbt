@@ -18,6 +18,8 @@ assemblyMergeStrategy in assembly := {
   case other => (assemblyMergeStrategy in assembly).value(other)
 }
 
+resolvers += "Kaliber Repository" at "https://jars.kaliber.io/artifactory/libs-release-local"
+
 libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.3.14",
   "com.typesafe.akka" %% "akka-slf4j" % "2.3.14",
@@ -39,7 +41,8 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "org.apache.curator" % "curator-test" % "2.9.1" % "test",
   "org.mockito" % "mockito-core" % "1.10.19" % "test",
-  "com.yammer.metrics" % "metrics-core" % "2.2.0" force()
+  "com.yammer.metrics" % "metrics-core" % "2.2.0" force(),
+  "net.kaliber" %% "play-basic-authentication-filter" % "0.7"
 )
 
 routesGenerator := InjectedRoutesGenerator
