@@ -27,7 +27,7 @@ libraryDependencies ++= Seq(
   "org.webjars" % "jquery" % "2.1.4",
   "org.webjars" % "backbonejs" % "1.2.3",
   "org.webjars" % "underscorejs" % "1.8.3",
-  "org.webjars" % "dustjs-linkedin" % "2.6.1",
+  "org.webjars" % "dustjs-linkedin" % "2.6.1-1",
   "org.apache.curator" % "curator-framework" % "2.9.1" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
   "org.apache.curator" % "curator-recipes" % "2.9.1" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
   "org.json4s" %% "json4s-jackson" % "3.2.11",
