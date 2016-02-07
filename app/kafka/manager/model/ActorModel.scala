@@ -150,6 +150,7 @@ object ActorModel {
   case class KMCommandResult(result: Try[Unit]) extends CommandResponse
 
   sealed trait KSRequest extends QueryRequest
+  case object KSForceUpdateConsumerByKafka extends KSRequest
   case object KSGetTopics extends KSRequest
   case object KSGetConsumers extends KSRequest
   case class KSGetTopicConfig(topic: String) extends KSRequest
