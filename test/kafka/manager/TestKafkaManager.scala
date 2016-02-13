@@ -206,7 +206,7 @@ class TestKafkaManager extends CuratorAwareTest {
     val result = Await.result(future,duration)
     //TODO: this is a failure since there is nothing to do, need a better test
     assert(result.isLeft === true)
-    Thread.sleep(3000)
+    Thread.sleep(2000)
   }
 
   test("get preferred leader election") {
@@ -221,6 +221,7 @@ class TestKafkaManager extends CuratorAwareTest {
     val future = kafkaManager.generatePartitionAssignments("dev",topicList.list.toSet,Set(0))
     val result = Await.result(future,duration)
     assert(result.isRight === true)
+    Thread.sleep(2000)
   }
 
   test("run reassign partitions") {
@@ -228,7 +229,7 @@ class TestKafkaManager extends CuratorAwareTest {
     val future = kafkaManager.runReassignPartitions("dev",topicList.list.toSet)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
-    Thread.sleep(3000)
+    Thread.sleep(2000)
   }
 
   test("get reassign partitions") {
@@ -245,7 +246,8 @@ class TestKafkaManager extends CuratorAwareTest {
     val future = kafkaManager.addTopicPartitions("dev",createTopicNameA,Seq(0),ti.partitions + 1,ti.readVersion)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
-    
+    Thread.sleep(2000)
+
     //check new partition num
     {
       val tiFuture= kafkaManager.getTopicIdentity("dev",createTopicNameA)
@@ -269,6 +271,7 @@ class TestKafkaManager extends CuratorAwareTest {
     val future = kafkaManager.addMultipleTopicsPartitions("dev",Seq(createTopicNameA, createTopicNameB),Set(0),newPartitionNum,Map(createTopicNameA->tiA.readVersion,createTopicNameB->tiB.readVersion))
     val result = Await.result(future,duration)
     assert(result.isRight === true)
+    Thread.sleep(2000)
 
     {
       val tiFutureA = kafkaManager.getTopicIdentity("dev",createTopicNameA)
@@ -295,6 +298,7 @@ class TestKafkaManager extends CuratorAwareTest {
     val future = kafkaManager.updateTopicConfig("dev",createTopicNameA,config,configReadVersion)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
+    Thread.sleep(2000)
 
     //check new topic config
     {
@@ -311,7 +315,7 @@ class TestKafkaManager extends CuratorAwareTest {
     val futureA = kafkaManager.deleteTopic("dev",createTopicNameA)
     val resultA = Await.result(futureA,duration)
     assert(resultA.isRight === true, resultA)
-    Thread.sleep(1000)
+    Thread.sleep(2000)
     val futureA2 = kafkaManager.getTopicList("dev")
     val resultA2 = Await.result(futureA2,duration)
     assert(resultA2.isRight === true, resultA2)
@@ -320,7 +324,7 @@ class TestKafkaManager extends CuratorAwareTest {
     val futureB = kafkaManager.deleteTopic("dev",createTopicNameB)
     val resultB = Await.result(futureB,duration)
     assert(resultB.isRight === true, resultB)
-    Thread.sleep(1000)
+    Thread.sleep(2000)
     val futureB2 = kafkaManager.getTopicList("dev")
     val resultB2 = Await.result(futureB2,duration)
     assert(resultB2.isRight === true, resultB2)
@@ -338,12 +342,13 @@ class TestKafkaManager extends CuratorAwareTest {
     val result = Await.result(future,duration)
     assert(result.isRight === true)
 
+    Thread.sleep(2000)
     val future2 = kafkaManager.getClusterList
     val result2 = Await.result(future2,duration)
     assert(result2.isRight === true)
     assert((result2.toOption.get.pending.nonEmpty === true) ||
            (result2.toOption.get.active.find(c => c.name == "dev").get.curatorConfig.zkConnect === testServer.getConnectString))
-    Thread.sleep(5000)
+    Thread.sleep(2000)
   }
 
   test("disable cluster") {
@@ -351,32 +356,34 @@ class TestKafkaManager extends CuratorAwareTest {
     val result = Await.result(future,duration)
     assert(result.isRight === true)
 
+    Thread.sleep(2000)
     val future2 = kafkaManager.getClusterList
     val result2 = Await.result(future2,duration)
     assert(result2.isRight === true)
     assert((result2.toOption.get.pending.nonEmpty === true) ||
            (result2.toOption.get.active.find(c => c.name == "dev").get.enabled === false))
-    Thread.sleep(5000)
+    Thread.sleep(2000)
   }
 
   test("enable cluster") {
     val future = kafkaManager.enableCluster("dev")
     val result = Await.result(future,duration)
     assert(result.isRight === true)
-    Thread.sleep(3000)
+    Thread.sleep(2000)
   }
 
   test("update cluster version") {
     val future = kafkaManager.updateCluster("dev","0.8.1.1",testServer.getConnectString, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
+    Thread.sleep(2000)
 
     val future2 = kafkaManager.getClusterList
     val result2 = Await.result(future2,duration)
     assert(result2.isRight === true)
     assert((result2.toOption.get.pending.nonEmpty === true) ||
            (result2.toOption.get.active.find(c => c.name == "dev").get.version === Kafka_0_8_1_1))
-    Thread.sleep(5000)
+    Thread.sleep(2000)
   }
 
   test("delete topic not supported prior to 0.8.2.0") {
@@ -392,14 +399,14 @@ class TestKafkaManager extends CuratorAwareTest {
     val result = Await.result(future,duration)
     assert(result.isRight === true)
     
-    Thread.sleep(3000)
+    Thread.sleep(2000)
 
     val future2 = kafkaManager.getClusterList
     val result2 = Await.result(future2,duration)
     assert(result2.isRight === true)
     assert((result2.toOption.get.active.find(c => c.name == "dev").get.logkafkaEnabled === true) &&
       (result2.toOption.get.active.find(c => c.name == "dev").get.activeOffsetCacheEnabled === true))
-    Thread.sleep(3000)
+    Thread.sleep(2000)
   }
 
   /*
@@ -468,6 +475,7 @@ class TestKafkaManager extends CuratorAwareTest {
     val future = kafkaManager.deleteLogkafka("dev",createLogkafkaLogkafkaId,createLogkafkaLogPath)
     val result = Await.result(future,duration)
     assert(result.isRight === true, result)
+    Thread.sleep(2000)
     val liFuture= kafkaManager.getLogkafkaIdentity("dev",createLogkafkaLogkafkaId)
     val liOrError = Await.result(liFuture, duration)
     assert(liOrError.isRight, "Failed to get logkafka identity!")
@@ -482,13 +490,13 @@ class TestKafkaManager extends CuratorAwareTest {
       val future = kafkaManager.disableCluster("dev")
       val result = Await.result(future, duration)
       assert(result.isRight === true)
-      Thread.sleep(3000)
+      Thread.sleep(2000)
     }
 
     val future = kafkaManager.deleteCluster("dev")
     val result = Await.result(future,duration)
     assert(result.isRight === true)
-    Thread.sleep(3000)
+    Thread.sleep(2000)
     val future2 = kafkaManager.getClusterList
     val result2 = Await.result(future2,duration)
     assert(result2.isRight === true)
