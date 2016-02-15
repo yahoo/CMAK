@@ -110,7 +110,7 @@ class TestKafkaStateActor extends KafkaServerInTest {
   test("get consumer description") {
     withKafkaStateActor(KSGetConsumers) { result: ConsumerList =>
       val descriptions = result.list map { consumer =>
-        withKafkaStateActor(KSGetConsumerDescription(consumer)) { optionalDesc: Option[ConsumerDescription] => optionalDesc }
+        withKafkaStateActor(KSGetConsumerDescription(consumer.name, consumer.consumerType)) { optionalDesc: Option[ConsumerDescription] => optionalDesc }
       }
       descriptions foreach println
     }

@@ -11,8 +11,8 @@ import com.typesafe.config.{Config, ConfigFactory}
 import kafka.manager.features.KMDeleteTopicFeature
 import kafka.manager.model.{Kafka_0_8_1_1, ActorModel}
 import kafka.manager.utils.CuratorAwareTest
-import ActorModel.TopicList
-import kafka.test.{SimpleProducer, HighLevelConsumer, SeededBroker}
+import kafka.manager.model.ActorModel.{KafkaManagedConsumer, ZKManagedConsumer, TopicList}
+import kafka.test.{NewKafkaManagedConsumer, SimpleProducer, HighLevelConsumer, SeededBroker}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -45,6 +45,9 @@ class TestKafkaManager extends CuratorAwareTest {
   private[this] var hlConsumer : Option[HighLevelConsumer] = None
   private[this] var hlConsumerThread : Option[Thread] = None
   private[this] val hlShutdown = new AtomicBoolean(false)
+  private[this] var newConsumer : Option[NewKafkaManagedConsumer] = None
+  private[this] var newConsumerThread : Option[Thread] = None
+  private[this] val newShutdown = new AtomicBoolean(false)
   private[this] var simpleProducer : Option[SimpleProducer] = None
   private[this] var simpleProducerThread : Option[Thread] = None
 
@@ -56,13 +59,25 @@ class TestKafkaManager extends CuratorAwareTest {
       override def run(): Unit = {
         while(!hlShutdown.get()) {
           hlConsumer.map(_.read { ba => 
-            Option(ba).map(asString).foreach( s => println(s"read message : $s"))
+            Option(ba).map(asString).foreach( s => println(s"hl consumer read message : $s"))
           })
           Thread.sleep(500)
         }
       }
     })
     hlConsumerThread.foreach(_.start())
+    newConsumer = Option(broker.getNewConsumer)
+    newConsumerThread = Option(new Thread() {
+      override def run(): Unit = {
+        while(!newShutdown.get()) {
+          newConsumer.map(_.read { message =>
+            Option(message).foreach( s => println(s"new consumer read message : $s"))
+          })
+          Thread.sleep(500)
+        }
+      }
+    })
+    newConsumerThread.foreach(_.start())
     simpleProducer = Option(broker.getSimpleProducer)
     simpleProducerThread = Option(new Thread() {
       override def run(): Unit = {
@@ -81,10 +96,13 @@ class TestKafkaManager extends CuratorAwareTest {
   }
 
   override protected def afterAll(): Unit = {
+    Try(newShutdown.set(true))
     Try(hlShutdown.set(true))
     Try(simpleProducerThread.foreach(_.interrupt()))
     Try(hlConsumerThread.foreach(_.interrupt()))
     Try(hlConsumer.foreach(_.close()))
+    Try(newConsumerThread.foreach(_.interrupt()))
+    Try(newConsumer.foreach(_.close()))
     kafkaManager.shutdown()
     Try(broker.shutdown())
     super.afterAll()
@@ -189,11 +207,20 @@ class TestKafkaManager extends CuratorAwareTest {
     val result = Await.result(future,duration)
     assert(result.isRight === true, s"Failed : ${result}")
     assert(result.toOption.get.clusterContext.config.activeOffsetCacheEnabled === false, s"Failed : ${result}")
-    assert(result.toOption.get.list.head._1 === hlConsumer.get.groupId, s"Failed : ${result}")
+    assert(result.toOption.get.list.map(_._1).contains((newConsumer.get.groupId, KafkaManagedConsumer)), s"Failed : ${result}")
+    assert(result.toOption.get.list.map(_._1).contains((hlConsumer.get.groupId, ZKManagedConsumer)), s"Failed : ${result}")
   }
 
-  test("get consumer identity passive mode") {
-    val future = kafkaManager.getConsumerIdentity("dev", hlConsumer.get.groupId)
+  test("get consumer identity passive mode for old consumer") {
+    val future = kafkaManager.getConsumerIdentity("dev", hlConsumer.get.groupId, "ZK")
+    val result = Await.result(future,duration)
+    assert(result.isRight === true, s"Failed : ${result}")
+    assert(result.toOption.get.clusterContext.config.activeOffsetCacheEnabled === false, s"Failed : ${result}")
+    assert(result.toOption.get.topicMap.head._1 === seededTopic, s"Failed : ${result}")
+  }
+
+  test("get consumer identity passive mode for new consumer") {
+    val future = kafkaManager.getConsumerIdentity("dev", newConsumer.get.groupId, "KF")
     val result = Await.result(future,duration)
     assert(result.isRight === true, s"Failed : ${result}")
     assert(result.toOption.get.clusterContext.config.activeOffsetCacheEnabled === false, s"Failed : ${result}")
