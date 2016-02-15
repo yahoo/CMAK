@@ -8,7 +8,7 @@ package controllers.api
 import controllers.KafkaManagerContext
 import features.ApplicationFeatures
 import models.navigation.Menus
-import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.i18n.{ I18nSupport, MessagesApi }
 import play.api.libs.json._
 import play.api.mvc._
 
@@ -42,7 +42,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
   }
 
   def underReplicatedPartitions(c: String, t: String) = Action.async { implicit request =>
-    kafkaManager.getTopicIdentity(c,t).map { errorOrTopicIdentity =>
+    kafkaManager.getTopicIdentity(c, t).map { errorOrTopicIdentity =>
       errorOrTopicIdentity.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
         topicIdentity => Ok(Json.obj("topic" -> t, "underReplicatedPartitions" -> topicIdentity.partitionsIdentity.filter(_._2.isUnderReplicated).map{case (num, pi) => pi.partNum}))
@@ -51,12 +51,18 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
   }
 
   def unavailablePartitions(c: String, t: String) = Action.async { implicit request =>
-    kafkaManager.getTopicIdentity(c,t).map { errorOrTopicIdentity =>
+    kafkaManager.getTopicIdentity(c, t).map { errorOrTopicIdentity =>
       errorOrTopicIdentity.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
-        topicIdentity => Ok(Json.obj("topic" -> t, "unavailablePartitions" -> topicIdentity.partitionsIdentity.filter(_._2.isr.isEmpty).map{case (num, pi) => pi.partNum}))
-      )
+        topicIdentity => Ok(Json.obj("topic" -> t, "unavailablePartitions" -> topicIdentity.partitionsIdentity.filter(_._2.isr.isEmpty).map { case (num, pi) => pi.partNum })))
+    }
+  }
+
+  def topicSummary(cluster: String, consumer: String, topic: String) = Action.async { implicit request =>
+    kafkaManager.getConsumedTopicState(cluster, consumer, topic).map { errorOrTopicSummary =>
+      errorOrTopicSummary.fold(
+        error => BadRequest(Json.obj("msg" -> error.msg)),
+        topicSummary => Ok(Json.obj("totalLag" -> topicSummary.totalLag.get, "percentageCovered" -> topicSummary.percentageCovered)))
     }
   }
 }
-

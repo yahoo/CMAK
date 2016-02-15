@@ -56,6 +56,7 @@ GET         /api/status/:c/brokers                        controllers.api.KafkaS
 GET         /api/status/:c/topics                         controllers.api.KafkaStateCheck.topics(c:String)
 GET         /api/status/:c/:t/underReplicatedPartitions   controllers.api.KafkaStateCheck.underReplicatedPartitions(c:String,t:String)
 GET         /api/status/:c/:t/unavailablePartitions       controllers.api.KafkaStateCheck.unavailablePartitions(c:String,t:String)
+GET         /api/status/:cluster/:consumer/:topic/topicSummary       controllers.api.KafkaStateCheck.topicSummary(cluster:String, consumer:String, topic:String)
 
 # Versioned Assets
 GET         /vassets/*file          controllers.Assets.versioned(path="/public", file: Asset)
