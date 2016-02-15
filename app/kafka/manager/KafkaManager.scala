@@ -25,7 +25,7 @@ import scala.util.{Success, Failure, Try}
  * @author hiral
  */
 case class TopicListExtended(list: IndexedSeq[(String, Option[TopicIdentity])],
-                             topicToConsumerMap: Map[String, Iterable[String]],
+                             topicToConsumerMap: Map[String, Iterable[(String, ConsumerType)]],
                              deleteSet: Set[String],
                              underReassignments: IndexedSeq[String],
                              clusterContext: ClusterContext)
@@ -33,7 +33,7 @@ case class BrokerListExtended(list: IndexedSeq[BrokerIdentity],
                               metrics: Map[Int,BrokerMetrics],
                               combinedMetric: Option[BrokerMetrics],
                               clusterContext: ClusterContext)
-case class ConsumerListExtended(list: IndexedSeq[(String, Option[ConsumerIdentity])], clusterContext: ClusterContext)
+case class ConsumerListExtended(list: IndexedSeq[((String, ConsumerType), Option[ConsumerIdentity])], clusterContext: ClusterContext)
 case class LogkafkaListExtended(list: IndexedSeq[(String, Option[LogkafkaIdentity])], deleteSet: Set[String])
 
 case class ApiError(msg: String)
@@ -526,7 +526,7 @@ class KafkaManager(akkaConfig: Config)
       identity[Map[String, TopicIdentity]])
     val futureTopicList = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, KSGetTopics))(identity[TopicList])
     val futureTopicToConsumerMap = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, BVGetTopicConsumerMap))(
-      identity[Map[String, Iterable[String]]])
+      identity[Map[String, Iterable[(String, ConsumerType)]]])
     val futureTopicsReasgn = getTopicsUnderReassignment(clusterName)
     implicit val ec = apiExecutionContext
     for {
@@ -548,7 +548,7 @@ class KafkaManager(akkaConfig: Config)
 
   def getConsumerListExtended(clusterName: String): Future[ApiError \/ ConsumerListExtended] = {
     val futureConsumerIdentities = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, BVGetConsumerIdentities))(
-      identity[Map[String, ConsumerIdentity]])
+      identity[Map[(String, ConsumerType), ConsumerIdentity]])
     val futureConsumerList = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, KSGetConsumers))(identity[ConsumerList])
     implicit val ec = apiExecutionContext
     for {
@@ -559,7 +559,7 @@ class KafkaManager(akkaConfig: Config)
         ci <- errorOrCI
         cl <- errorOrCL
       } yield {
-        ConsumerListExtended(cl.list.map(c => (c, ci.get(c))), cl.clusterContext)
+        ConsumerListExtended(cl.list.map(c => ((c.name, c.consumerType), ci.get((c.name, c.consumerType)))), cl.clusterContext)
       }
     }
   }
@@ -663,12 +663,12 @@ class KafkaManager(akkaConfig: Config)
     }
   }
 
-  def getConsumersForTopic(clusterName: String, topic: String): Future[Option[Iterable[String]]] = {
+  def getConsumersForTopic(clusterName: String, topic: String): Future[Option[Iterable[(String, ConsumerType)]]] = {
     val futureTopicConsumerMap = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, BVGetTopicConsumerMap))(
-      identity[Map[String, Iterable[String]]])
+      identity[Map[String, Iterable[(String, ConsumerType)]]])
     implicit val ec = apiExecutionContext
-    futureTopicConsumerMap.map[Option[Iterable[String]]] { errOrTCM =>
-      errOrTCM.fold[Option[Iterable[String]]] (_ => None, _.get(topic))
+    futureTopicConsumerMap.map[Option[Iterable[(String, ConsumerType)]]] { errOrTCM =>
+      errOrTCM.fold[Option[Iterable[(String, ConsumerType)]]] (_ => None, _.get(topic))
     }
   }
 
@@ -678,11 +678,23 @@ class KafkaManager(akkaConfig: Config)
     )
   }
 
-  def getConsumerIdentity(clusterName: String, consumer: String): Future[ApiError \/ ConsumerIdentity] = {
-    val futureCMConsumerIdentity = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, CMGetConsumerIdentity(consumer)))(
-      identity[CMConsumerIdentity]
-    )
+  private[this] def tryWithConsumerType[T](consumerType: String)(fn: ConsumerType => Future[ApiError \/ T])(implicit ec: ExecutionContext) : Future[ApiError \/ T] = {
+    Future.successful[ApiError \/ ConsumerType] {
+      ConsumerType.from(consumerType).fold[ApiError \/ ConsumerType](-\/(ApiError(s"Unknown consumer type : $consumerType"))){
+        ct => \/-(ct)
+      }
+    }.flatMap { ctOrError =>
+      ctOrError.fold(err => Future.successful[ApiError \/ T](-\/(err)), fn)
+    }
+  }
+
+  def getConsumerIdentity(clusterName: String, consumer: String, consumerType: String): Future[ApiError \/ ConsumerIdentity] = {
     implicit val ec = apiExecutionContext
+    val futureCMConsumerIdentity = tryWithConsumerType(consumerType) { ct =>
+        tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, CMGetConsumerIdentity(consumer, ct)))(
+          identity[CMConsumerIdentity]
+        )
+    }
     futureCMConsumerIdentity.map[ApiError \/ ConsumerIdentity] { errOrCI =>
       errOrCI.fold[ApiError \/ ConsumerIdentity](
       { err: ApiError =>
@@ -698,11 +710,13 @@ class KafkaManager(akkaConfig: Config)
     }
   }
 
-  def getConsumedTopicState(clusterName: String, consumer: String, topic: String): Future[ApiError \/ ConsumedTopicState] = {
-    val futureCMConsumedTopic = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, CMGetConsumedTopicState(consumer,topic)))(
-      identity[CMConsumedTopic]
-    )
+  def getConsumedTopicState(clusterName: String, consumer: String, topic: String, consumerType: String): Future[ApiError \/ ConsumedTopicState] = {
     implicit val ec = apiExecutionContext
+    val futureCMConsumedTopic = tryWithConsumerType(consumerType) { ct =>
+      tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, CMGetConsumedTopicState(consumer, topic, ct)))(
+        identity[CMConsumedTopic]
+      )
+    }
     futureCMConsumedTopic.map[ApiError \/ ConsumedTopicState] { errOrCT =>
       errOrCT.fold[ApiError \/ ConsumedTopicState](
       { err: ApiError =>

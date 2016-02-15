@@ -61,8 +61,8 @@ object ActorModel {
   case class CMGetTopicIdentity(topic: String) extends QueryRequest
   case object CMGetClusterContext extends QueryRequest
   case class CMView(topicsCount: Int, brokersCount: Int, clusterContext: ClusterContext) extends QueryResponse
-  case class CMGetConsumerIdentity(consumer: String) extends QueryRequest
-  case class CMGetConsumedTopicState(consumer: String, topic: String) extends QueryRequest
+  case class CMGetConsumerIdentity(consumer: String, consumerType: ConsumerType) extends QueryRequest
+  case class CMGetConsumedTopicState(consumer: String, topic: String, consumerType: ConsumerType) extends QueryRequest
   case class CMTopicIdentity(topicIdentity: Try[TopicIdentity]) extends QueryResponse
   case class CMConsumerIdentity(consumerIdentity: Try[ConsumerIdentity]) extends QueryResponse
   case class CMConsumedTopic(ctIdentity: Try[ConsumedTopicState]) extends QueryResponse
@@ -156,8 +156,8 @@ object ActorModel {
   case class KSGetTopicDescription(topic: String) extends KSRequest
   case class KSGetAllTopicDescriptions(lastUpdateMillis: Option[Long]= None) extends KSRequest
   case class KSGetTopicDescriptions(topics: Set[String]) extends KSRequest
-  case class KSGetConsumerDescription(consumer: String) extends KSRequest
-  case class KSGetConsumedTopicDescription(consumer: String, topic: String) extends KSRequest
+  case class KSGetConsumerDescription(consumer: String, consumerType: ConsumerType) extends KSRequest
+  case class KSGetConsumedTopicDescription(consumer: String, topic: String, consumerType: ConsumerType) extends KSRequest
   case class KSGetAllConsumerDescriptions(lastUpdateMillis: Option[Long]= None) extends KSRequest
   case class KSGetConsumerDescriptions(consumers: Set[String]) extends KSRequest
   case object KSGetTopicsLastUpdateMillis extends KSRequest
@@ -173,7 +173,20 @@ object ActorModel {
 
   case class TopicList(list: IndexedSeq[String], deleteSet: Set[String], clusterContext: ClusterContext) extends QueryResponse
   case class TopicConfig(topic: String, config: Option[(Int,String)]) extends QueryResponse
-  case class ConsumerList(list: IndexedSeq[String], clusterContext: ClusterContext) extends QueryResponse
+  sealed trait ConsumerType
+  case object ZKManagedConsumer extends ConsumerType { override def toString() = "ZK" }
+  case object KafkaManagedConsumer extends ConsumerType { override def toString() = "KF" }
+  object ConsumerType {
+    def from(s: String) : Option[ConsumerType] = {
+      s.toUpperCase() match {
+        case "ZK" => Option(ZKManagedConsumer)
+        case "KF" => Option(KafkaManagedConsumer)
+        case _ => None
+      }
+    }
+  }
+  case class ConsumerNameAndType(name: String, consumerType: ConsumerType)
+  case class ConsumerList(list: IndexedSeq[ConsumerNameAndType], clusterContext: ClusterContext) extends QueryResponse
 
   case class TopicDescription(topic: String,
                               description: (Int,String),
@@ -200,7 +213,9 @@ object ActorModel {
                                       partitionOwners: Option[Map[Int, String]],
                                       partitionOffsets: Option[Map[Int, Long]])
   case class ConsumerDescription(consumer: String,
-                                 topics: Map[String, ConsumedTopicDescription]) extends  QueryResponse
+                                 topics: Map[String, ConsumedTopicDescription],
+                                 consumerType: ConsumerType
+                                ) extends  QueryResponse
   case class ConsumerDescriptions(descriptions: IndexedSeq[ConsumerDescription], lastUpdateMillis: Long) extends QueryResponse
 
   case object DCUpdateState extends CommandRequest
@@ -532,6 +547,7 @@ import scala.language.reflectiveCalls
   }
 
   case class ConsumerIdentity(consumerGroup:String,
+                              consumerType: ConsumerType,
                               topicMap: Map[String, ConsumedTopicState],
                               clusterContext: ClusterContext)
   object ConsumerIdentity extends Logging {
@@ -544,6 +560,7 @@ import scala.language.reflectiveCalls
         cts = ConsumedTopicState.from(ctd, clusterContext)
       } yield (topic, cts)
       ConsumerIdentity(cd.consumer,
+        cd.consumerType,
         topicMap.toMap,
         clusterContext)
     }

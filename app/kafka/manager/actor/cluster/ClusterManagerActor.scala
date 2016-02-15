@@ -280,19 +280,19 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         } yield Some(CMLogkafkaIdentity(Try(LogkafkaIdentity.from(logkafka_id,lcg,lct))))
         result pipeTo sender
 
-      case CMGetConsumerIdentity(consumer) =>
+      case CMGetConsumerIdentity(consumer, consumerType) =>
         implicit val ec = context.dispatcher
-        val eventualConsumerDescription = withKafkaStateActor(KSGetConsumerDescription(consumer))(identity[ConsumerDescription])
+        val eventualConsumerDescription = withKafkaStateActor(KSGetConsumerDescription(consumer, consumerType))(identity[ConsumerDescription])
         val result: Future[CMConsumerIdentity] = for {
           cd <- eventualConsumerDescription
           ciO = CMConsumerIdentity(Try(ConsumerIdentity.from(cd,clusterContext)))
         } yield ciO
         result pipeTo sender
 
-      case CMGetConsumedTopicState(consumer, topic) =>
+      case CMGetConsumedTopicState(consumer, topic, consumerType) =>
         implicit val ec = context.dispatcher
         val eventualConsumedTopicDescription = withKafkaStateActor(
-          KSGetConsumedTopicDescription(consumer,topic)
+          KSGetConsumedTopicDescription(consumer,topic, consumerType)
         )(identity[ConsumedTopicDescription])
         val result: Future[CMConsumedTopic] = eventualConsumedTopicDescription.map{
           ctd: ConsumedTopicDescription =>  CMConsumedTopic(Try(ConsumedTopicState.from(ctd, clusterContext)))

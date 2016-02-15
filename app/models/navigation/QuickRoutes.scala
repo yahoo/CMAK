@@ -37,7 +37,7 @@ object QuickRoutes {
     "Add Partitions" -> controllers.routes.Topic.addPartitions,
     "Update Config" -> controllers.routes.Topic.addPartitions
   )
-  val consumerRoutes : Map[String, (String, String) => Call] = Map(
+  val consumerRoutes : Map[String, (String, String, String) => Call] = Map(
     "Consumer View" -> controllers.routes.Consumer.consumer
   )
   val logkafkaRoutes : Map[String, (String, String, String) => Call] = Map(
@@ -85,11 +85,11 @@ object QuickRoutes {
   }
 
   implicit class ConsumerRoute(s: String) {
-    def consumerRouteMenuItem(cluster: String, consumer: String): (String, Call) = {
-      s -> consumerRoutes(s)(cluster,consumer)
+    def consumerRouteMenuItem(cluster: String, consumer: String, consumerType: String): (String, Call) = {
+      s -> consumerRoutes(s)(cluster,consumer,consumerType)
     }
-    def consumerRoute(cluster: String, consumer: List[String]): Call = {
-      consumerRoutes(s)(cluster,consumer.head)
+    def consumerRoute(cluster: String, consumer: List[String], consumerType: String): Call = {
+      consumerRoutes(s)(cluster,consumer.head, consumerType)
     }
   }
 

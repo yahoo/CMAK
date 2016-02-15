@@ -42,9 +42,9 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
   
   private[this] var topicDescriptionsOption : Option[TopicDescriptions] = None
 
-  private[this] var topicConsumerMap : Map[String, Iterable[String]] = Map.empty
+  private[this] var topicConsumerMap : Map[String, Iterable[(String, ConsumerType)]] = Map.empty
 
-  private[this] var consumerIdentities : Map[String, ConsumerIdentity] = Map.empty
+  private[this] var consumerIdentities : Map[(String, ConsumerType), ConsumerIdentity] = Map.empty
 
   private[this] var consumerDescriptionsOption : Option[ConsumerDescriptions] = None
 
@@ -302,10 +302,10 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
     } {
       val consumerIdentity : IndexedSeq[ConsumerIdentity] = consumerDescriptions.descriptions.map(
           ConsumerIdentity.from(_, config.clusterContext))
-      consumerIdentities = consumerIdentity.map(ci => (ci.consumerGroup, ci)).toMap
+      consumerIdentities = consumerIdentity.map(ci => ((ci.consumerGroup, ci.consumerType), ci)).toMap
 
       val c2tMap = consumerDescriptions.descriptions.map{cd: ConsumerDescription =>
-        (cd.consumer, cd.topics.keys.toList)}.toMap
+        ((cd.consumer, cd.consumerType), cd.topics.keys.toList)}.toMap
       topicConsumerMap = c2tMap.values.flatten.map(v => (v, c2tMap.keys.filter(c2tMap(_).contains(v)))).toMap
     }
   }
