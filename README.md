@@ -108,6 +108,8 @@ Here is an example for a kafka cluster with 10 brokers, 100 topics, with each to
 
 You may also want to increase the above three if you have consumer polling enabled depending on the # of consumers you have reporting through Zookeeper.
 
+Kafka managed consumer offset is now consumed by KafkaManagedOffsetCache from the "__consumer_offsets" topic.  Note, this is not been tested with large number of offsets being tracked.  There is a single thread per cluster consuming this topic so it may not be able to keep up on large # of offsets being pushed to the topic.
+
 Deployment
 ----------
 
