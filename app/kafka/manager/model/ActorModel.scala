@@ -171,6 +171,9 @@ object ActorModel {
   case object KSGetBrokers extends KSRequest
   case class KSGetBrokerState(id: String) extends  KSRequest
 
+  sealed trait KARequest extends QueryRequest
+  case class KAGetGroupSummary(groupList: Seq[String], enqueue: java.util.Queue[(String, kafka.coordinator.GroupSummary)]) extends QueryRequest
+
   case class TopicList(list: IndexedSeq[String], deleteSet: Set[String], clusterContext: ClusterContext) extends QueryResponse
   case class TopicConfig(topic: String, config: Option[(Int,String)]) extends QueryResponse
   sealed trait ConsumerType

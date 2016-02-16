@@ -39,13 +39,13 @@ trait LongRunningPoolActor extends BaseActor {
     super.postStop()
   }
 
-   protected def longRunning[T](fn: => Future[T])(implicit ec: ExecutionContext, ct: ClassTag[T]) : Unit = {
+  protected def longRunning[T](fn: => Future[T])(implicit ec: ExecutionContext, ct: ClassTag[T]) : Unit = {
     if(longRunningExecutor.getQueue.remainingCapacity() == 0) {
       longRunningQueueFull()
     } else {
       fn match {
         case _ if ct.runtimeClass == classOf[Unit] =>
-          //do nothing with unit
+        //do nothing with unit
         case f =>
           f pipeTo sender
       }

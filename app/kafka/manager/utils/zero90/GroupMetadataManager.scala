@@ -17,14 +17,12 @@
 package kafka.manager.utils.zero90
 
 import java.nio.ByteBuffer
-import java.nio.charset.StandardCharsets
 
 import kafka.common.{KafkaException, TopicAndPartition, OffsetAndMetadata}
 import kafka.coordinator.{GroupMetadataKey, GroupTopicPartition, OffsetKey, BaseKey}
 import org.apache.kafka.clients.consumer.internals.ConsumerProtocol
 import org.apache.kafka.common.protocol.types.Type._
 import org.apache.kafka.common.protocol.types.{ArrayOf, Field, Schema, Struct}
-import org.apache.kafka.common.utils.Utils
 
 import scala.collection.Map
 
@@ -274,7 +272,7 @@ object GroupMetadataManager {
             val memberId = memberMetadata.get(MEMBER_METADATA_MEMBER_ID_V0).asInstanceOf[String]
             val clientId = memberMetadata.get(MEMBER_METADATA_CLIENT_ID_V0).asInstanceOf[String]
             val clientHost = memberMetadata.get(MEMBER_METADATA_CLIENT_HOST_V0).asInstanceOf[String]
-            val sessionTimeout = memberMetadata.get(MEMBER_METADATA_SESSION_TIMEOUT_V0).asInstanceOf[Int]
+            //val sessionTimeout = memberMetadata.get(MEMBER_METADATA_SESSION_TIMEOUT_V0).asInstanceOf[Int]
             val subscription = ConsumerProtocol.deserializeSubscription(memberMetadata.get(MEMBER_METADATA_SUBSCRIPTION_V0).asInstanceOf[ByteBuffer])
             val assignment = ConsumerProtocol.deserializeAssignment(memberMetadata.get(MEMBER_METADATA_ASSIGNMENT_V0).asInstanceOf[ByteBuffer])
 
@@ -284,7 +282,7 @@ object GroupMetadataManager {
               , groupId
               , clientId
               , clientHost
-              , sessionTimeout
+              //, sessionTimeout
               , List((group.protocol, subscription.topics().asScala.toSet))
               , assignment.partitions().asScala.map(tp => tp.topic() -> tp.partition()).toSet
             )
@@ -326,11 +324,26 @@ case class GroupMetadata(groupId: String
 
 }
 
+object MemberMetadata {
+  import collection.JavaConverters._
+  def from(groupId: String, groupSummary: kafka.coordinator.GroupSummary, memberSummary: kafka.coordinator.MemberSummary) : MemberMetadata = {
+    val subscription = ConsumerProtocol.deserializeSubscription(ByteBuffer.wrap(memberSummary.metadata))
+    val assignment = ConsumerProtocol.deserializeAssignment(ByteBuffer.wrap(memberSummary.assignment))
+    MemberMetadata(memberSummary.memberId
+      , groupId, memberSummary.clientId
+      , memberSummary. clientHost
+      //, -1
+      , List((groupSummary.protocol, subscription.topics().asScala.toSet))
+      , assignment.partitions().asScala.map(tp => tp.topic() -> tp.partition()).toSet
+    )
+
+  }
+}
 case class MemberMetadata(memberId: String
                           , groupId: String
                           , clientId: String
                           , clientHost: String
-                          , sessionTimeoutMs: Int
+                          //, sessionTimeoutMs: Int
                           , supportedProtocols: List[(String, Set[String])]
                           , assignment: Set[(String, Int)]
                          ) {

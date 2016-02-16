@@ -99,6 +99,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
 
   private[this] val ksConfig = KafkaStateActorConfig(
     sharedClusterCurator,
+    cmConfig.pinnedDispatcherName,
     clusterContext,
     LongRunningPoolConfig(Runtime.getRuntime.availableProcessors(), 1000),
     cmConfig.partitionOffsetCacheTimeoutSecs,
