@@ -77,7 +77,7 @@ packageDescription := "A tool for managing Apache Kafka"
    $ sbt rpm:packageBin
 
    See here for details:
-   http://www.scala-sbt.org/sbt-native-packager/formats/rpm.html
+   http://www.scala-sbt.org/sbt-native-packager/formats/rpm.htmlsbt depl
 */
 
 rpmRelease := "1"
