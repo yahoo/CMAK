@@ -42,6 +42,21 @@ libraryDependencies ++= Seq(
   "com.yammer.metrics" % "metrics-core" % "2.2.0" force()
 )
 
+val DevelopementFactoryUrl="http://udd-phenix.edc.carrefour.com/nexus/content"
+
+publishTo := {
+  if (isSnapshot.value)
+    Some("snapshots" at DevelopementFactoryUrl + "/repositories/snapshots")
+  else
+    Some("releases" at DevelopementFactoryUrl + "/repositories/releases")
+}
+
+//add credential if exist
+val credentialFile = Path.userHome / ".sbt" / ".credentials"
+
+//if (credentialFile.exists())
+credentials += Credentials(credentialFile)
+
 routesGenerator := InjectedRoutesGenerator
 
 LessKeys.compress in Assets := true
@@ -73,6 +88,8 @@ packageDescription := "A tool for managing Apache Kafka"
 /* End Debian Settings */
 
 
+enablePlugins(RpmPlugin, RpmDeployPlugin)
+
 /* RPM Settings - to create, run as:
    $ sbt rpm:packageBin
 
@@ -80,9 +97,29 @@ packageDescription := "A tool for managing Apache Kafka"
    http://www.scala-sbt.org/sbt-native-packager/formats/rpm.htmlsbt depl
 */
 
-rpmRelease := "1"
-rpmVendor := "yahoo"
-rpmUrl := Some("https://github.com/yahoo/kafka-manager")
-rpmLicense := Some("Apache")
+com.typesafe.sbt.packager.rpm.RpmPlugin.projectSettings
+
+com.typesafe.sbt.packager.rpm.RpmPlugin.globalSettings
+
+com.typesafe.sbt.packager.rpm.RpmPlugin.buildSettings
+
+packageSummary := "Kafka Manager"
+packageDescription := "Kafka Manager"
+com.typesafe.sbt.packager.Keys.maintainer in Rpm := "Carrefour"
+rpmVendor in Rpm := "Carrefour"
+packageArchitecture := "noarch"
+rpmDistribution := Some("CentOS")
+rpmRelease := "1" // in Rpm <<= (version, baseDirectory) apply rpmReleaseVersion
+version in Rpm := {
+  version.value.replace("-", ".")
+}
+rpmLicense in Rpm := Some("Apache 2.0")
+rpmGroup in Rpm := Some("phenix")
+rpmBrpJavaRepackJars := true //see https://github.com/sbt/sbt-native-packager/issues/327
+rpmRequirements += "jdk >= 1.8.0"
+publishLocal <<= publishLocal.dependsOn(publishLocal in config("rpm"))
+publish <<= publish.dependsOn(publish in config("rpm"))
+
+daemonGroup in Linux := "phenix"
 
 /* End RPM Settings */
