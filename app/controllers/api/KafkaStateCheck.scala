@@ -11,6 +11,7 @@ import models.navigation.Menus
 import play.api.i18n.{ I18nSupport, MessagesApi }
 import play.api.libs.json._
 import play.api.mvc._
+import scala.concurrent.Future
 
 /**
  * @author jisookim0513
@@ -58,11 +59,41 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     }
   }
 
-  def topicSummary(cluster: String, consumer: String, topic: String) = Action.async { implicit request =>
-    kafkaManager.getConsumedTopicState(cluster, consumer, topic).map { errorOrTopicSummary =>
+  def topicSummaryAction(cluster: String, consumer: String, topic: String) = Action.async { implicit request =>
+    getTopicSummary(cluster, consumer, topic).map { errorOrTopicSummary =>
       errorOrTopicSummary.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
-        topicSummary => Ok(Json.obj("totalLag" -> topicSummary.totalLag.get, "percentageCovered" -> topicSummary.percentageCovered)))
+        topicSummary => {
+          Ok(topicSummary)
+        })
     }
+  }
+
+  def getTopicSummary(cluster: String, consumer: String, topic: String) = {
+    kafkaManager.getConsumedTopicState(cluster, consumer, topic).map { errorOrTopicSummary =>
+      errorOrTopicSummary.map(
+        topicSummary => {
+          Json.obj("totalLag" -> topicSummary.totalLag, "percentageCovered" -> topicSummary.percentageCovered)
+        })
+    }
+  }
+
+  def groupSummaryAction(cluster: String, consumer: String) = Action.async { implicit request =>
+    kafkaManager.getConsumerIdentity(cluster, consumer).flatMap { errorOrConsumedTopicSummary =>
+      errorOrConsumedTopicSummary.fold(
+        error =>
+          Future.successful(BadRequest(Json.obj("msg" -> error.msg))),
+        consumedTopicSummary => getGroupSummary(cluster, consumer, consumedTopicSummary.topicMap.keys).map { topics =>
+          Ok(JsObject(topics))
+        })
+    }
+  }
+
+  def getGroupSummary(cluster: String, consumer: String, groups: Iterable[String]): Future[Map[String, JsObject]] = {
+    val cosumdTopicSummary: List[Future[(String, JsObject)]] = groups.toList.map { group =>
+      getTopicSummary(cluster, consumer, group)
+        .map(topicSummary => group -> topicSummary.getOrElse(Json.obj()))
+    }
+    Future.sequence(cosumdTopicSummary).map(_.toMap)
   }
 }
