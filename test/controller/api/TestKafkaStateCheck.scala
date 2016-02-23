@@ -152,4 +152,15 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
     (json \ "totalLag").asOpt[Int] should not be empty
     (json \ "percentageCovered").asOpt[Int] should not be empty
   }
+  
+  test("get unavailable topic summary") {
+    val future = kafkaStateCheck.get.topicSummaryAction("non-existent", "null", "weird").apply(FakeRequest())
+    assert(status(future) === BAD_REQUEST)
+
+  }
+
+  test("get unavailable group summary") {
+    val future = kafkaStateCheck.get.groupSummaryAction("non-existent", "weird").apply(FakeRequest())
+    assert(status(future) === BAD_REQUEST)
+  }
 }
