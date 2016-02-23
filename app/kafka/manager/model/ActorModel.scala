@@ -500,7 +500,7 @@ import scala.language.reflectiveCalls
     // Percentage of the partitions that have an owner
     def percentageCovered : Int =
     if (numPartitions != 0) {
-      val numCovered = partitionOwners.size
+      val numCovered = partitionOwners.count(_._2.nonEmpty)
       100 * numCovered / numPartitions
     } else {
       100 // if there are no partitions to cover, they are all covered!
