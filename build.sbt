@@ -4,9 +4,6 @@
  */
 name := """kafka-manager"""
 
-/* For packaging purposes, -SNAPSHOT MUST contain a digit */
-version := "1.3.0.4"
-
 scalaVersion := "2.11.7"
 
 scalacOptions ++= Seq("-Xlint:-missing-interpolator","-Xfatal-warnings","-deprecation","-feature","-language:implicitConversions","-language:postfixOps")
@@ -42,6 +39,13 @@ libraryDependencies ++= Seq(
   "com.yammer.metrics" % "metrics-core" % "2.2.0" force()
 )
 
+val DevelopementFactoryUrl="http://udd-phenix.edc.carrefour.com/nexus/content"
+
+publishTo <<= (isSnapshot) apply Packaging.phenixRepo
+
+//if (credentialFile.exists())
+credentials += Credentials(Packaging.credentialFile)
+
 routesGenerator := InjectedRoutesGenerator
 
 LessKeys.compress in Assets := true
@@ -73,16 +77,38 @@ packageDescription := "A tool for managing Apache Kafka"
 /* End Debian Settings */
 
 
+enablePlugins(RpmPlugin, RpmDeployPlugin)
+
 /* RPM Settings - to create, run as:
    $ sbt rpm:packageBin
 
    See here for details:
-   http://www.scala-sbt.org/sbt-native-packager/formats/rpm.html
+   http://www.scala-sbt.org/sbt-native-packager/formats/rpm.htmlsbt depl
 */
 
-rpmRelease := "1"
-rpmVendor := "yahoo"
-rpmUrl := Some("https://github.com/yahoo/kafka-manager")
-rpmLicense := Some("Apache")
 
+com.typesafe.sbt.packager.rpm.RpmPlugin.projectSettings
+
+com.typesafe.sbt.packager.rpm.RpmPlugin.globalSettings
+
+com.typesafe.sbt.packager.rpm.RpmPlugin.buildSettings
+
+packageSummary := "Kafka Manager"
+packageDescription := "Kafka Manager"
+com.typesafe.sbt.packager.Keys.maintainer in Rpm := "Carrefour"
+rpmVendor in Rpm := "Carrefour"
+packageArchitecture := "noarch"
+rpmDistribution := Some("CentOS")
+rpmRelease <<= (version, baseDirectory) apply Packaging.rpmReleaseVersion
+version in Rpm <<=  (version) apply Packaging.makeVersion
+rpmLicense in Rpm := Some("Apache 2.0")
+rpmGroup in Rpm := Some("phenix")
+rpmBrpJavaRepackJars := true //see https://github.com/sbt/sbt-native-packager/issues/327
+rpmRequirements += "jdk >= 1.8.0"
+publishLocal <<= publishLocal.dependsOn(publishLocal in config("rpm"))
+publish <<= publish.dependsOn(publish in config("rpm"))
+
+daemonGroup in Linux := "phenix"
+
+rpmPre in Rpm := Some(s"getent group ${(daemonGroup in Linux).value}  >/dev/null 2>&1 || groupadd -r ${(daemonGroup in Linux).value}; getent passwd ${(daemonUser in Linux).value}  >/dev/null 2>&1 || useradd -r -g ${(daemonGroup in Linux).value} ${(daemonUser in Linux).value} && mkdir /var/run/$name && chown -R ${(daemonUser in Linux).value}:${(daemonGroup in Linux).value} /var/run/$name")
 /* End RPM Settings */
