@@ -1,19 +1,7 @@
-/**
- * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
- * See accompanying LICENSE file.
- */
-// Comment to get more information during initialization
-logLevel := Level.Warn
+resolvers += "phenix releases" at "http://udd-phenix.edc.carrefour.com/nexus/content/repositories/releases"
+resolvers += "phenix snapshots" at "http://udd-phenix.edc.carrefour.com/nexus/content/repositories/snapshots"
 
-//resolvers += Resolver.url(
-//  "bintray-sbt-plugin-releases",
-//  url("http://dl.bintray.com/content/sbt/sbt-plugin-releases"))(
-//    Resolver.ivyStylePatterns)
-
-//addSbtPlugin("me.lessis" % "bintray-sbt" % "0.3.0")
-
-// The Typesafe repository
-//resolvers += "Typesafe repository" at "http://repo.typesafe.com/typesafe/releases/"
+addSbtPlugin("com.carrefour.phenix" % "phenix-build" % "0.10.0" )
 
 // Use the Play sbt plugin for Play projects
 addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.4.4")

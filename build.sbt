@@ -4,9 +4,6 @@
  */
 name := """kafka-manager"""
 
-/* For packaging purposes, -SNAPSHOT MUST contain a digit */
-version := "1.3.0.4"
-
 scalaVersion := "2.11.7"
 
 scalacOptions ++= Seq("-Xlint:-missing-interpolator","-Xfatal-warnings","-deprecation","-feature","-language:implicitConversions","-language:postfixOps")
@@ -44,18 +41,10 @@ libraryDependencies ++= Seq(
 
 val DevelopementFactoryUrl="http://udd-phenix.edc.carrefour.com/nexus/content"
 
-publishTo := {
-  if (isSnapshot.value)
-    Some("snapshots" at DevelopementFactoryUrl + "/repositories/snapshots")
-  else
-    Some("releases" at DevelopementFactoryUrl + "/repositories/releases")
-}
-
-//add credential if exist
-val credentialFile = Path.userHome / ".sbt" / ".credentials"
+publishTo <<= (isSnapshot) apply Packaging.phenixRepo
 
 //if (credentialFile.exists())
-credentials += Credentials(credentialFile)
+credentials += Credentials(Packaging.credentialFile)
 
 routesGenerator := InjectedRoutesGenerator
 
@@ -97,6 +86,7 @@ enablePlugins(RpmPlugin, RpmDeployPlugin)
    http://www.scala-sbt.org/sbt-native-packager/formats/rpm.htmlsbt depl
 */
 
+
 com.typesafe.sbt.packager.rpm.RpmPlugin.projectSettings
 
 com.typesafe.sbt.packager.rpm.RpmPlugin.globalSettings
@@ -109,10 +99,8 @@ com.typesafe.sbt.packager.Keys.maintainer in Rpm := "Carrefour"
 rpmVendor in Rpm := "Carrefour"
 packageArchitecture := "noarch"
 rpmDistribution := Some("CentOS")
-rpmRelease := "1" // in Rpm <<= (version, baseDirectory) apply rpmReleaseVersion
-version in Rpm := {
-  version.value.replace("-", ".")
-}
+rpmRelease <<= (version, baseDirectory) apply Packaging.rpmReleaseVersion
+version in Rpm <<=  (version) apply Packaging.makeVersion
 rpmLicense in Rpm := Some("Apache 2.0")
 rpmGroup in Rpm := Some("phenix")
 rpmBrpJavaRepackJars := true //see https://github.com/sbt/sbt-native-packager/issues/327
@@ -122,4 +110,5 @@ publish <<= publish.dependsOn(publish in config("rpm"))
 
 daemonGroup in Linux := "phenix"
 
+rpmPre in Rpm := Some(s"getent group ${(daemonGroup in Linux).value}  >/dev/null 2>&1 || groupadd -r ${(daemonGroup in Linux).value}; getent passwd ${(daemonUser in Linux).value}  >/dev/null 2>&1 || useradd -r -g ${(daemonGroup in Linux).value} ${(daemonUser in Linux).value} && mkdir /var/run/$name && chown -R ${(daemonUser in Linux).value}:${(daemonGroup in Linux).value} /var/run/$name")
 /* End RPM Settings */
