@@ -14,6 +14,8 @@ import play.api.BuiltInComponentsFromContext
 import play.api.i18n.I18nComponents
 import play.api.routing.Router
 import router.Routes
+import controllers.BasicAuthenticationFilter
+
 
 /**
  * Created by hiral on 12/2/15.
@@ -38,6 +40,10 @@ class ApplicationComponents(context: Context) extends BuiltInComponentsFromConte
   private[this] lazy val kafkaStateCheckC = new controllers.api.KafkaStateCheck(messagesApi, kafkaManagerContext)
   private[this] lazy val assetsC = new controllers.Assets(httpErrorHandler)
   private[this] lazy val webJarsAssetsC = new controllers.WebJarAssets(httpErrorHandler, context.initialConfiguration, context.environment)
+
+
+  override lazy val httpFilters = Seq(BasicAuthenticationFilter(context.initialConfiguration))
+
 
   override val router: Router = new Routes(
     httpErrorHandler, 
