@@ -26,15 +26,15 @@ class Consumer (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaMana
     }
   }
 
-  def consumer(cluster: String, consumerGroup: String) = Action.async {
-    kafkaManager.getConsumerIdentity(cluster,consumerGroup).map { errorOrConsumerIdentity =>
+  def consumer(cluster: String, consumerGroup: String, consumerType: String) = Action.async {
+    kafkaManager.getConsumerIdentity(cluster,consumerGroup, consumerType).map { errorOrConsumerIdentity =>
       Ok(views.html.consumer.consumerView(cluster,consumerGroup,errorOrConsumerIdentity))
     }
   }
 
-  def consumerAndTopic(cluster: String, consumerGroup: String, topic: String) = Action.async {
-    kafkaManager.getConsumedTopicState(cluster,consumerGroup,topic).map { errorOrConsumedTopicState =>
-      Ok(views.html.consumer.consumedTopicView(cluster,consumerGroup,topic,errorOrConsumedTopicState))
+  def consumerAndTopic(cluster: String, consumerGroup: String, topic: String, consumerType: String) = Action.async {
+    kafkaManager.getConsumedTopicState(cluster,consumerGroup,topic, consumerType).map { errorOrConsumedTopicState =>
+      Ok(views.html.consumer.consumedTopicView(cluster,consumerGroup,consumerType,topic,errorOrConsumedTopicState))
     }
   }
 }

@@ -16,6 +16,7 @@ object BreadCrumbs {
   final case class BCDynamicText(cn: String => String) extends BreadCrumb
   final case class BCDynamicNamedLink(cn: String => String, cl : String => Call) extends BreadCrumb
   final case class BCDynamicMultiNamedLink(cn: String => String, cl : (String, List[String]) => Call) extends BreadCrumb
+  final case class BCDynamicMultiNamedLink2(cn: String => String, cl : (String, List[String], String) => Call) extends BreadCrumb
   final case class BCDynamicLink(s: String, cl : String => Call) extends BreadCrumb
   final case class BCStaticLink(s: String, c: Call) extends BreadCrumb
 
@@ -97,7 +98,7 @@ object BreadCrumbs {
       "Clusters".baseRouteBreadCrumb,
       BCDynamicNamedLink(identity,"Summary".clusterRoute),
       "Consumers".clusterRouteBreadCrumb,
-      BCDynamicMultiNamedLink(identity,"Consumer View".consumerRoute)
+      BCDynamicMultiNamedLink2(identity,"Consumer View".consumerRoute)
     )
   )
   val logkafkaBreadCrumbs: Map[String, IndexedSeq[BreadCrumb]] = Map(
@@ -142,16 +143,19 @@ object BreadCrumbs {
       case BCDynamicMultiNamedLink(cn, cl) => BCLink(cn(topic),cl(clusterName,List(topic)).toString())
       case BCDynamicLink(cn, cl) => BCLink(cn,cl(clusterName).toString())
       case BCDynamicText(cn) => BCText(cn(clusterName))
+      case any => throw new UnsupportedOperationException(s"Unhandled breadcrumb : $any")
     }
   }
 
-  private[this] def renderWithClusterAndConsumer(s: String, clusterName: String, consumer: String, topic: String = "") : IndexedSeq[BreadCrumbRendered] = {
+  private[this] def renderWithClusterAndConsumer(s: String, clusterName: String, consumer: String, consumerType: String, topic: String = "") : IndexedSeq[BreadCrumbRendered] = {
     consumerBreadCrumbs.getOrElse(s,IndexedSeq.empty[BreadCrumb]) map {
       case BCStaticLink(n,c) => BCLink(n,c.toString())
       case BCDynamicNamedLink(cn, cl) => BCLink(cn(clusterName),cl(clusterName).toString())
       case BCDynamicMultiNamedLink(cn, cl) => BCLink(cn(consumer),cl(clusterName,List(consumer)).toString())
       case BCDynamicLink(cn, cl) => BCLink(cn,cl(clusterName).toString())
       case BCDynamicText(cn) => BCText(cn(clusterName))
+      case BCDynamicMultiNamedLink2(cn, cl) => BCLink(cn(consumer),cl(clusterName,List(consumer), consumerType).toString())
+      case any => throw new UnsupportedOperationException(s"Unhandled breadcrumb : $any")
     }
   }
 
@@ -167,13 +171,14 @@ object BreadCrumbs {
       case BCDynamicMultiNamedLink(cn, cl) => BCLink(cn(hl),cl(clusterName,List(logkafka_id, log_path)).toString())
       case BCDynamicLink(cn, cl) => BCLink(cn,cl(clusterName).toString())
       case BCDynamicText(cn) => BCText(cn(clusterName))
+      case any => throw new UnsupportedOperationException(s"Unhandled breadcrumb : $any")
     }
   }
 
   def withNamedViewAndClusterAndLogkafka(s: String, clusterName: String, logkafka_id: String, log_path: String, name: String) : IndexedSeq[BreadCrumbRendered] = {
     renderWithClusterAndLogkafka(s, clusterName, logkafka_id, log_path) :+ BCActive(name)
   }
-  def withNamedViewAndClusterAndConsumer(s: String, clusterName: String, consumer: String, name: String) : IndexedSeq[BreadCrumbRendered] = {
-    renderWithClusterAndConsumer(s, clusterName, consumer) :+ BCActive(name)
+  def withNamedViewAndClusterAndConsumerWithType(s: String, clusterName: String, consumer: String, consumerType: String, name: String) : IndexedSeq[BreadCrumbRendered] = {
+    renderWithClusterAndConsumer(s, clusterName, consumer, consumerType) :+ BCActive(name)
   }
 }

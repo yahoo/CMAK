@@ -65,9 +65,8 @@ Broker View
 Requirements
 ------------
 
-1. [Kafka 0.8.1.1 or 0.8.2.*](http://kafka.apache.org/downloads.html)
-2. [sbt 0.13.x](http://www.scala-sbt.org/download.html)
-3. Java 8+
+1. [Kafka 0.8.1.1 or 0.8.2.* or 0.9.0.0](http://kafka.apache.org/downloads.html)
+2. Java 8+
 
 Configuration
 -------------
@@ -109,14 +108,16 @@ Here is an example for a kafka cluster with 10 brokers, 100 topics, with each to
 
 You may also want to increase the above three if you have consumer polling enabled depending on the # of consumers you have reporting through Zookeeper.
 
+Kafka managed consumer offset is now consumed by KafkaManagedOffsetCache from the "__consumer_offsets" topic.  Note, this has not been tested with large number of offsets being tracked.  There is a single thread per cluster consuming this topic so it may not be able to keep up on large # of offsets being pushed to the topic.
+
 Deployment
 ----------
 
 The command below will create a zip file which can be used to deploy the application.
 
-    sbt clean dist
+    ./sbt clean dist
 
-Please refer to play framework documentation on production deployment.
+Please refer to play framework documentation on [production deployment/configuration](https://www.playframework.com/documentation/2.4.x/ProductionConfiguration).
 
 If java is not in your path, or you need to build against a specific java version,
 please use the following (the example assumes oracle java8):

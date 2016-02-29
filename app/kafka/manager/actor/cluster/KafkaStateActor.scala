@@ -5,27 +5,36 @@
 
 package kafka.manager.actor.cluster
 
-import java.util.concurrent.TimeUnit
+import java.io.Closeable
+import java.nio.ByteBuffer
+import java.util.Properties
+import java.util.concurrent.{ConcurrentLinkedDeque, TimeUnit}
 
+import akka.actor.{Props, ActorRef, ActorContext, ActorPath}
 import akka.pattern._
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import grizzled.slf4j.Logging
+import kafka.admin.AdminClient
 import kafka.api.{OffsetRequest, PartitionOffsetRequestInfo}
-import kafka.common.TopicAndPartition
-import kafka.consumer.SimpleConsumer
+import kafka.common.{OffsetAndMetadata, TopicAndPartition}
+import kafka.consumer._
+import kafka.coordinator.{GroupSummary, GroupMetadataKey, OffsetKey}
 import kafka.manager._
-import kafka.manager.base.cluster.BaseClusterQueryCommandActor
+import kafka.manager.base.cluster.{BaseClusterQueryActor, BaseClusterQueryCommandActor}
 import kafka.manager.base.{LongRunningPoolActor, LongRunningPoolConfig}
 import kafka.manager.features.{ClusterFeatures, KMPollConsumersFeature, KMDeleteTopicFeature}
 import kafka.manager.model.ActorModel._
-import kafka.manager.model.{ClusterContext, KafkaVersion, Kafka_0_8_1_1}
+import kafka.manager.model._
 import kafka.manager.utils.ZkUtils
 import kafka.manager.utils.zero81.{PreferredReplicaLeaderElectionCommand, ReassignPartitionCommand}
+import kafka.manager.utils.zero90.{MemberMetadata, GroupMetadata}
+import kafka.message.MessageAndMetadata
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.cache._
 import org.joda.time.{DateTime, DateTimeZone}
 
+import scala.collection.concurrent.TrieMap
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
@@ -36,6 +45,276 @@ import scala.util.{Failure, Success, Try}
 import kafka.manager.utils._
 
 import scala.collection.JavaConverters._
+
+case class KafkaAdminClientActorConfig(clusterContext: ClusterContext, longRunningPoolConfig: LongRunningPoolConfig, kafkaStateActorPath: ActorPath)
+case class KafkaAdminClientActor(config: KafkaAdminClientActorConfig) extends BaseClusterQueryActor with LongRunningPoolActor {
+
+  private[this] var adminClientOption : Option[AdminClient] = None
+
+  protected implicit val clusterContext: ClusterContext = config.clusterContext
+  override protected def longRunningPoolConfig: LongRunningPoolConfig = config.longRunningPoolConfig
+
+  override protected def longRunningQueueFull(): Unit = {
+    log.error("Long running pool queue full, skipping!")
+  }
+
+  @scala.throws[Exception](classOf[Exception])
+  override def preStart() = {
+    super.preStart()
+    log.info(config.toString)
+  }
+
+  @scala.throws[Exception](classOf[Exception])
+  override def preRestart(reason: Throwable, message: Option[Any]): Unit = {
+    log.error(reason, "Restarting due to [{}] when processing [{}]",
+      reason.getMessage, message.getOrElse(""))
+    super.preRestart(reason, message)
+  }
+
+  @scala.throws[Exception](classOf[Exception])
+  override def postStop(): Unit = {
+    log.info("Closing admin client...")
+    Try(adminClientOption.foreach(_.close()))
+    log.info("Stopped actor %s".format(self.path))
+  }
+
+  private def createAdminClient(bl: BrokerList): AdminClient = {
+    val targetBrokers : IndexedSeq[BrokerIdentity] = bl.list
+    var brokerListStr: String = targetBrokers.map(b => s"${b.host}:${b.port}").mkString(",")
+
+    log.info(s"Creating admin client with broker list : $brokerListStr")
+    AdminClient.createSimplePlaintext(brokerListStr)
+  }
+
+  override def processQueryRequest(request: QueryRequest): Unit = {
+    if(adminClientOption.isEmpty) {
+      context.actorSelection(config.kafkaStateActorPath).tell(KSGetBrokers, self)
+      log.error(s"AdminClient not initialized yet, cannot process request : $request")
+    } else {
+      implicit val ec = longRunningExecutionContext
+      request match {
+        case KAGetGroupSummary(groupList: Seq[String], enqueue: java.util.Queue[(String, kafka.coordinator.GroupSummary)]) =>
+          Future {
+            groupList.foreach {
+              group =>
+                try {
+                  adminClientOption.foreach {
+                    client =>
+                      val summary = client.describeGroup(group)
+                      if(summary != null) {
+                        enqueue.offer(group -> summary)
+                      }
+                  }
+                } catch {
+                  case e: Exception =>
+                    log.error(e, s"Failed to get group summary with admin client : $group")
+                    log.error(e, s"Forcing new admin client initialization...")
+                    Try { adminClientOption.foreach(_.close()) }
+                    adminClientOption = None
+                }
+            }
+          }
+        case any: Any => log.warning("kac : processQueryRequest : Received unknown message: {}", any.toString)
+      }
+    }
+
+  }
+
+  override def processActorResponse(response: ActorResponse): Unit = {
+    response match {
+      case bl: BrokerList =>
+        if(bl.list.nonEmpty) {
+          Try {
+            adminClientOption = Option(createAdminClient(bl))
+          }.logError(s"Failed to create admin client with brokerlist : $bl")
+        }
+      case any: Any => log.warning("kac : processActorResponse : Received unknown message: {}", any.toString)
+    }
+  }
+}
+
+class KafkaAdminClient(context: => ActorContext, adminClientActorPath: ActorPath) {
+  def enqueueGroupMetadata(groupList: Seq[String], queue: java.util.Queue[(String, GroupSummary)]) : Unit = {
+    Try {
+      context.actorSelection(adminClientActorPath).tell(KAGetGroupSummary(groupList, queue), ActorRef.noSender)
+    }
+  }
+}
+
+
+object KafkaManagedOffsetCache {
+  val supportedVersions: Set[KafkaVersion] = Set(Kafka_0_8_2_0, Kafka_0_8_2_1, Kafka_0_8_2_2, Kafka_0_9_0_0)
+  val ConsumerOffsetTopic = "__consumer_offsets"
+
+  def isSupported(version: KafkaVersion) : Boolean = {
+    supportedVersions(version)
+  }
+}
+
+case class KafkaManagedOffsetCache(clusterContext: ClusterContext
+                                   , adminClient: KafkaAdminClient
+                                   , groupMemberMetadataCheckMillis: Int = 30000) extends Runnable with Closeable with Logging {
+  val groupTopicPartitionOffsetMap = new TrieMap[(String, String, Int), OffsetAndMetadata]()
+  val topicConsumerSetMap = new TrieMap[String, mutable.Set[String]]()
+  val consumerTopicSetMap = new TrieMap[String, mutable.Set[String]]()
+  val groupTopicPartitionMemberMap = new TrieMap[(String, String, Int), MemberMetadata]()
+
+  private[this] val queue = new ConcurrentLinkedDeque[(String, GroupSummary)]()
+
+  @volatile
+  private[this] var lastUpdateTimeMillis : Long = 0
+
+  private[this] var lastGroupMemberMetadataCheckMillis : Long = System.currentTimeMillis()
+
+  import KafkaManagedOffsetCache._
+  import kafka.manager.utils.zero90.GroupMetadataManager._
+
+  require(isSupported(clusterContext.config.version), s"Kafka version not support : ${clusterContext.config}")
+
+  @volatile
+  private[this] var shutdown: Boolean = false
+
+  private[this] def createKafkaConsumerConnector(): ConsumerConnector = {
+    val props: Properties = new Properties()
+    props.put("group.id", "KafkaManagerOffsetCache")
+    props.put("zookeeper.connect", clusterContext.config.curatorConfig.zkConnect)
+    props.put("exclude.internal.topics", "false")
+    props.put("auto.commit.enable", "false")
+    props.put("auto.offset.reset", "largest")
+    Consumer.create(new ConsumerConfig(props))
+  }
+
+  private[this] def performGroupMetadataCheck() : Unit = {
+    val currentMillis = System.currentTimeMillis()
+    if((lastGroupMemberMetadataCheckMillis + groupMemberMetadataCheckMillis) < currentMillis) {
+      val diff = groupTopicPartitionOffsetMap.keySet.filterNot(groupTopicPartitionMemberMap.contains)
+      if(diff.nonEmpty) {
+        val groupsToBackfill = diff.map(_._1).toSeq
+        info(s"Backfilling group metadata for $groupsToBackfill")
+        adminClient.enqueueGroupMetadata(groupsToBackfill, queue)
+      }
+      lastGroupMemberMetadataCheckMillis = System.currentTimeMillis()
+      lastUpdateTimeMillis = System.currentTimeMillis()
+    }
+  }
+
+  private[this] def dequeueAndProcessBackFill(): Unit = {
+    while(!queue.isEmpty) {
+      val (groupId, summary) = queue.pop()
+      summary.members.foreach {
+        member =>
+          try {
+            val mm = MemberMetadata.from(groupId, summary, member)
+            mm.assignment.foreach {
+              case (topic, part) =>
+                val k = (groupId, topic, part)
+                //only add it if it hasn't already been added through a new update via the offset topic
+                if(!groupTopicPartitionMemberMap.contains(k)) {
+                  groupTopicPartitionMemberMap += (groupId, topic, part) -> mm
+                }
+            }
+          } catch {
+            case e: Exception =>
+              error(s"Failed to get member metadata from group summary and member summary : $groupId : $member", e)
+          }
+      }
+    }
+  }
+
+  override def run(): Unit = {
+    for {
+      consumer <- Try(createKafkaConsumerConnector()).logError(s"Failed to create consumer for offset topic for cluster ${clusterContext.config.name}")
+    } {
+      try {
+        info(s"Consumer created for kafka offset topic consumption for cluster ${clusterContext.config.name}")
+        for {
+          stream <- Try {
+            val offsetStream: KafkaStream[Array[Byte], Array[Byte]] = consumer
+              .createMessageStreams(Map(KafkaManagedOffsetCache.ConsumerOffsetTopic -> 1))
+              .apply(KafkaManagedOffsetCache.ConsumerOffsetTopic).head
+            offsetStream
+          }.logError(s"Failed to create kafka stream for offset topic for cluster ${clusterContext.config.name}")
+          iterator = stream.iterator()
+        } {
+          while (!shutdown) {
+            try {
+              try {
+                dequeueAndProcessBackFill()
+                performGroupMetadataCheck()
+              } catch {
+                case e: Exception =>
+                  error("Failed to backfill group metadata", e)
+              }
+
+              val messageAndMetadata: MessageAndMetadata[Array[Byte], Array[Byte]] = iterator.next()
+              readMessageKey(ByteBuffer.wrap(messageAndMetadata.key())) match {
+                case OffsetKey(version, key) =>
+                  val value: OffsetAndMetadata = readOffsetMessageValue(ByteBuffer.wrap(messageAndMetadata.message()))
+                  groupTopicPartitionOffsetMap += (key.group, key.topicPartition.topic, key.topicPartition.partition) -> value
+                  val topic = key.topicPartition.topic
+                  val group = key.group
+                  val consumerSet = {
+                    if (topicConsumerSetMap.contains(topic)) {
+                      topicConsumerSetMap(topic)
+                    } else {
+                      val s = new mutable.TreeSet[String]()
+                      topicConsumerSetMap += topic -> s
+                      s
+                    }
+                  }
+                  consumerSet += group
+
+                  val topicSet = {
+                    if (consumerTopicSetMap.contains(group)) {
+                      consumerTopicSetMap(group)
+                    } else {
+                      val s = new mutable.TreeSet[String]()
+                      consumerTopicSetMap += group -> s
+                      s
+                    }
+                  }
+                  topicSet += topic
+                case GroupMetadataKey(version, key) =>
+                  val value: GroupMetadata = readGroupMessageValue(key, ByteBuffer.wrap(messageAndMetadata.message()))
+                  value.allMemberMetadata.foreach {
+                    mm =>
+                      mm.assignment.foreach {
+                        case (topic, part) =>
+                          groupTopicPartitionMemberMap += (key, topic, part) -> mm
+                      }
+                  }
+              }
+              lastUpdateTimeMillis = System.currentTimeMillis()
+            } catch {
+              case e: Exception =>
+                warn("Failed to process a message from offset topic!", e)
+            }
+          }
+        }
+      } finally {
+        info(s"Shutting down consumer for $ConsumerOffsetTopic on cluster ${clusterContext.config.name}")
+        Try(consumer.shutdown())
+      }
+    }
+  }
+
+  def close(): Unit = {
+    this.shutdown = true
+  }
+
+  def getOffset(group: String, topic: String, part:Int) : Option[Long] = {
+    groupTopicPartitionOffsetMap.get((group, topic, part)).map(_.offset)
+  }
+
+  def getOwner(group: String, topic: String, part:Int) : Option[String] = {
+    groupTopicPartitionMemberMap.get((group, topic, part)).map(mm => s"${mm.memberId}:${mm.clientHost}")
+  }
+
+  def getConsumerTopics(group: String) : Set[String] = consumerTopicSetMap.get(group).map(_.toSet).getOrElse(Set.empty)
+  def getTopicConsumers(topic: String) : Set[String] = topicConsumerSetMap.get(topic).map(_.toSet).getOrElse(Set.empty)
+  def getConsumers : IndexedSeq[String] = consumerTopicSetMap.keys.toIndexedSeq
+  def getLastUpdateTimeMillis: Long = lastUpdateTimeMillis
+}
 
 case class ConsumerInstanceSubscriptions private(id: String, subs: Map[String, Int])
 
@@ -53,7 +332,11 @@ object ConsumerInstanceSubscriptions extends Logging {
 }
 
 trait OffsetCache extends Logging {
-  
+
+  def kafkaAdminClient: KafkaAdminClient
+
+  def clusterContext: ClusterContext
+
   def getKafkaVersion: KafkaVersion
   
   def getCacheTimeoutSecs: Int
@@ -152,48 +435,38 @@ trait OffsetCache extends Logging {
 
   protected def getConsumerTopicsFromOwners(consumer: String) : Set[String]
 
-  /*
-  protected def readConsumerOffsetByTopicPartitionFromKafka(consumer: String, topic: String, tpi: Map[Int, TopicPartitionIdentity]) : Map[Int, Long] = {
-    val topicPartitions = tpi.keys.map(part => TopicAndPartition(topic, part))
-    val channel = ClientUtils.channelToOffsetManager(group, zkClient, channelSocketTimeoutMs, channelRetryBackoffMs)
+  protected def getZKManagedConsumerList: IndexedSeq[ConsumerNameAndType]
 
-    debug("Sending offset fetch request to coordinator %s:%d.".format(channel.host, channel.port))
-    channel.send(OffsetFetchRequest(group, topicPartitions))
-    val offsetFetchResponse = OffsetFetchResponse.readFrom(channel.receive().buffer)
-    debug("Received offset fetch response %s.".format(offsetFetchResponse))
-
-    offsetFetchResponse.requestInfo.foreach { case (topicAndPartition, offsetAndMetadata) =>
-      if (offsetAndMetadata == OffsetMetadataAndError.NoOffset) {
-        val topicDirs = new ZKGroupTopicDirs(group, topicAndPartition.topic)
-        // this group may not have migrated off zookeeper for offsets storage (we don't expose the dual-commit option in this tool
-        // (meaning the lag may be off until all the consumers in the group have the same setting for offsets storage)
-        try {
-          val offset = ZkUtils.readData(zkClient, topicDirs.consumerOffsetDir + "/%d".format(topicAndPartition.partition))._1.toLong
-          offsetMap.put(topicAndPartition, offset)
-        } catch {
-          case z: ZkNoNodeException =>
-            if(ZkUtils.pathExists(zkClient,topicDirs.consumerOffsetDir))
-              offsetMap.put(topicAndPartition,-1)
-            else
-              throw z
-        }
-      }
-      else if (offsetAndMetadata.error == ErrorMapping.NoError)
-        offsetMap.put(topicAndPartition, offsetAndMetadata.offset)
-      else {
-        println("Could not fetch offset for %s due to %s.".format(topicAndPartition, ErrorMapping.exceptionFor(offsetAndMetadata.error)))
-      }
-    }
-    channel.disconnect()
-  }*/
+  protected def lastUpdateMillisZK : Long
 
   protected def getConsumerTopics(consumer: String) : Set[String] = {
     getConsumerTopicsFromOffsets(consumer) ++ getConsumerTopicsFromOwners(consumer) ++ getConsumerTopicsFromIds(consumer)
   }
 
-  def start()
+  private[this] var kafkaManagedOffsetCache : Option[KafkaManagedOffsetCache] = None
+
+  def start() : Unit = {
+    if(KafkaManagedOffsetCache.isSupported(clusterContext.config.version)) {
+      if(kafkaManagedOffsetCache.isEmpty) {
+        info("Starting kafka managed offset cache ...")
+        Try {
+          val of = new KafkaManagedOffsetCache(clusterContext, kafkaAdminClient)
+          kafkaManagedOffsetCache = Option(of)
+          val t = new Thread(of, "KafkaManagedOffsetCache")
+          t.start()
+        }
+      }
+    }
+  }
   
-  def stop()
+  def stop() : Unit = {
+    kafkaManagedOffsetCache.foreach { of =>
+      info("Stopping kafka managed offset cache ...")
+      Try {
+        of.close()
+      }
+    }
+  }
 
   def getTopicPartitionOffsets(topic: String, interactive: Boolean) : Future[PartitionOffsetsCapture] = {
     if(interactive || loadOffsets) {
@@ -202,36 +475,101 @@ trait OffsetCache extends Logging {
       emptyPartitionOffsetsCapture
     }
   }
-  
-  def lastUpdateMillis : Long
-  
-  final def getConsumerDescription(consumer: String) : ConsumerDescription = {
+
+  protected def readKafkaManagedConsumerOffsetByTopicPartition(consumer: String
+                                                               , topic: String
+                                                               , tpi: Map[Int, TopicPartitionIdentity]) : Map[Int, Long] = {
+    kafkaManagedOffsetCache.fold(Map.empty[Int,Long]) {
+      oc =>
+        tpi.map {
+          case (part, _) =>
+            part -> oc.getOffset(consumer, topic, part).getOrElse(-1L)
+        }
+    }
+  }
+
+  protected def readKafkaManagedConsumerOwnerByTopicPartition(consumer: String
+                                                              , topic: String
+                                                              , tpi: Map[Int, TopicPartitionIdentity]) : Map[Int, String] = {
+    kafkaManagedOffsetCache.fold(Map.empty[Int,String]) {
+      oc =>
+        tpi.map {
+          case (part, _) =>
+            part -> oc.getOwner(consumer, topic, part).getOrElse("")
+        }
+    }
+  }
+
+  protected def getKafkaManagedConsumerTopics(consumer: String) : Set[String] = {
+    kafkaManagedOffsetCache.fold(Set.empty[String]) {
+      oc => oc.getConsumerTopics(consumer)
+    }
+  }
+
+  protected def getKafkaManagedConsumerList : IndexedSeq[ConsumerNameAndType] = {
+    kafkaManagedOffsetCache.fold(IndexedSeq.empty[ConsumerNameAndType]) {
+      oc => oc.getConsumers.map(name => ConsumerNameAndType(name, KafkaManagedConsumer))
+    }
+  }
+
+  final def lastUpdateMillis : Long = {
+    Math.max(lastUpdateMillisZK, kafkaManagedOffsetCache.map(_.getLastUpdateTimeMillis).getOrElse(Long.MinValue))
+  }
+
+  final def getConsumerDescription(consumer: String, consumerType: ConsumerType) : ConsumerDescription = {
     val consumerTopics: Set[String] = getKafkaVersion match {
       case Kafka_0_8_1_1 => getConsumerTopicsFromOffsets(consumer)
-      case _ => getConsumerTopicsFromOffsets(consumer) ++ getConsumerTopicsFromOwners(consumer)
+      case _ =>
+        consumerType match {
+          case ZKManagedConsumer =>
+            getConsumerTopicsFromOffsets(consumer) ++ getConsumerTopicsFromOwners(consumer)
+          case KafkaManagedConsumer =>
+            getKafkaManagedConsumerTopics(consumer)
+        }
     }
 
     val topicDescriptions: Map[String, ConsumedTopicDescription] = consumerTopics.map { topic =>
-          val topicDesc = getConsumedTopicDescription(consumer, topic, false)
+          val topicDesc = getConsumedTopicDescription(consumer, topic, false, consumerType)
           (topic, topicDesc)
         }.toMap
-    ConsumerDescription(consumer, topicDescriptions)
+    ConsumerDescription(consumer, topicDescriptions, consumerType)
   }
   
-  final def getConsumedTopicDescription(consumer:String, topic:String, interactive: Boolean) : ConsumedTopicDescription = {
+  final def getConsumedTopicDescription(consumer:String
+                                        , topic:String
+                                        , interactive: Boolean
+                                        , consumerType: ConsumerType) : ConsumedTopicDescription = {
     val optTopic = getTopicDescription(topic, interactive)
     val optTpi = optTopic.map(TopicIdentity.getTopicPartitionIdentity(_, None))
-    val partitionOffsets = for {
-      td <- optTopic
-      tpi <- optTpi
-    } yield {
-      readConsumerOffsetByTopicPartition(consumer, topic, tpi)
-    }
-    val partitionOwners = for {
-      td <- optTopic
-      tpi <- optTpi
-    } yield {
-      readConsumerOwnerByTopicPartition(consumer, topic, tpi)
+    val (partitionOffsets, partitionOwners) = consumerType match {
+      case ZKManagedConsumer =>
+        val partitionOffsets = for {
+          td <- optTopic
+          tpi <- optTpi
+        } yield {
+          readConsumerOffsetByTopicPartition(consumer, topic, tpi)
+        }
+        val partitionOwners = for {
+          td <- optTopic
+          tpi <- optTpi
+        } yield {
+          readConsumerOwnerByTopicPartition(consumer, topic, tpi)
+        }
+        (partitionOffsets, partitionOwners)
+      case KafkaManagedConsumer =>
+        val partitionOffsets = for {
+          td <- optTopic
+          tpi <- optTpi
+        } yield {
+          readKafkaManagedConsumerOffsetByTopicPartition(consumer, topic, tpi)
+        }
+        val partitionOwners = for {
+          td <- optTopic
+          tpi <- optTpi
+        } yield {
+          readKafkaManagedConsumerOwnerByTopicPartition(consumer, topic, tpi)
+        }
+        (partitionOffsets, partitionOwners)
     }
 
     val numPartitions: Int = math.max(optTopic.flatMap(_.partitionState.map(_.size)).getOrElse(0),
@@ -239,17 +577,20 @@ trait OffsetCache extends Logging {
     ConsumedTopicDescription(consumer, topic, numPartitions, optTopic, partitionOwners, partitionOffsets)
   }
   
-  def getConsumerList: ConsumerList
+  final def getConsumerList: ConsumerList = {
+    ConsumerList(getKafkaManagedConsumerList ++ getZKManagedConsumerList, clusterContext)
+  }
 }
 
 case class OffsetCacheActive(curator: CuratorFramework,
-                                  clusterContext: ClusterContext, 
-                                  partitionLeaders: String => Option[List[(Int, Option[BrokerIdentity])]],
-                                  topicDescriptions: (String, Boolean) => Option[TopicDescription],
-                                  cacheTimeoutSecs: Int,
-                                  socketTimeoutMillis: Int,
-                                  kafkaVersion: KafkaVersion)
-                                 (implicit protected[this] val ec: ExecutionContext, val cf: ClusterFeatures) extends OffsetCache {
+                             kafkaAdminClient: KafkaAdminClient,
+                             clusterContext: ClusterContext,
+                             partitionLeaders: String => Option[List[(Int, Option[BrokerIdentity])]],
+                             topicDescriptions: (String, Boolean) => Option[TopicDescription],
+                             cacheTimeoutSecs: Int,
+                             socketTimeoutMillis: Int,
+                             kafkaVersion: KafkaVersion)
+                            (implicit protected[this] val ec: ExecutionContext, val cf: ClusterFeatures) extends OffsetCache {
 
   def getKafkaVersion: KafkaVersion = kafkaVersion
 
@@ -284,7 +625,8 @@ case class OffsetCacheActive(curator: CuratorFramework,
 
   protected def getTopicDescription(topic: String, interactive: Boolean) : Option[TopicDescription] = topicDescriptions(topic, interactive)
   
-  def start():  Unit = {
+  override def start():  Unit = {
+    super.start()
     info("Starting consumers tree cache...")
     consumersTreeCache.start()
 
@@ -292,7 +634,8 @@ case class OffsetCacheActive(curator: CuratorFramework,
     consumersTreeCache.getListenable.addListener(consumersTreeCacheListener)
   }
   
-  def stop(): Unit = {
+  override def stop(): Unit = {
+    super.stop()
     info("Removing consumers tree cache listener...")
     Try(consumersTreeCache.getListenable.removeListener(consumersTreeCacheListener))
     
@@ -300,7 +643,7 @@ case class OffsetCacheActive(curator: CuratorFramework,
     Try(consumersTreeCache.close())
   }
 
-  def lastUpdateMillis : Long = consumersTreeCacheLastUpdateMillis
+  protected def lastUpdateMillisZK : Long = consumersTreeCacheLastUpdateMillis
 
   protected def readConsumerOffsetByTopicPartition(consumer: String, topic: String, tpi: Map[Int, TopicPartitionIdentity]) : Map[Int, Long] = {
     tpi.map {
@@ -336,48 +679,32 @@ case class OffsetCacheActive(curator: CuratorFramework,
     Option(consumersTreeCache.getCurrentChildren(zkPath)).map(_.asScala.toMap.keySet).getOrElse(Set.empty)
   }
 
-  /*
-  def getConsumerDescription(consumer: String) : Option[ConsumerDescription] = {
-    val offsetPath = "%s/%s/%s".format(ZkUtils.ConsumersPath,consumer,"offsets")
-    val topicOffsetOption : Option[Map[String, ChildData]] = Option(consumersTreeCache.getCurrentChildren(offsetPath)).map(_.asScala.toMap)
-
-    val topicDescriptions: Option[Map[String, ConsumedTopicDescription]] =
-      topicOffsetOption.map[List[(String, ConsumedTopicDescription)]] { topics: Map[String, ChildData] =>
-        for {
-          topicAndData: (String, ChildData) <- topics.toList
-          topicDesc = getConsumedTopicDescription(consumer, topicAndData._1)
-        } yield (topicAndData._1, topicDesc)
-      }.map(_.toMap)
-
-    topicDescriptions.map(ConsumerDescription(consumer, _))
-  }*/
-
-  def getConsumerList: ConsumerList = {
+  protected def getZKManagedConsumerList: IndexedSeq[ConsumerNameAndType] = {
     withConsumersTreeCache { cache =>
       cache.getCurrentChildren(ZkUtils.ConsumersPath)
     }.fold {
-      ConsumerList(IndexedSeq.empty, clusterContext)
+      IndexedSeq.empty[ConsumerNameAndType]
     } { data: java.util.Map[String, ChildData] =>
-      val filteredList: IndexedSeq[String] = data.asScala.filter{
+      data.asScala.filter{
         case (consumer, childData) =>
           if (clusterContext.config.filterConsumers)
           // Defining "inactive consumer" as a consumer that is missing one of three children ids/ offsets/ or owners/
             childData.getStat.getNumChildren > 2
           else true
-      }.keySet.toIndexedSeq
-      ConsumerList(filteredList, clusterContext)
+      }.keySet.toIndexedSeq.map(name => ConsumerNameAndType(name, ZKManagedConsumer))
     }
   }
 }
 
 case class OffsetCachePassive(curator: CuratorFramework,
-                             clusterContext: ClusterContext,
-                             partitionLeaders: String => Option[List[(Int, Option[BrokerIdentity])]],
-                             topicDescriptions: (String, Boolean) => Option[TopicDescription],
-                             cacheTimeoutSecs: Int,
-                             socketTimeoutMillis: Int,
-                             kafkaVersion: KafkaVersion)
-                            (implicit protected[this] val ec: ExecutionContext, val cf: ClusterFeatures) extends OffsetCache {
+                              kafkaAdminClient: KafkaAdminClient,
+                              clusterContext: ClusterContext,
+                              partitionLeaders: String => Option[List[(Int, Option[BrokerIdentity])]],
+                              topicDescriptions: (String, Boolean) => Option[TopicDescription],
+                              cacheTimeoutSecs: Int,
+                              socketTimeoutMillis: Int,
+                              kafkaVersion: KafkaVersion)
+                             (implicit protected[this] val ec: ExecutionContext, val cf: ClusterFeatures) extends OffsetCache {
 
   def getKafkaVersion: KafkaVersion = kafkaVersion
 
@@ -412,7 +739,8 @@ case class OffsetCachePassive(curator: CuratorFramework,
 
   protected def getTopicDescription(topic: String, interactive: Boolean) : Option[TopicDescription] = topicDescriptions(topic, interactive)
 
-  def start():  Unit = {
+  override def start():  Unit = {
+    super.start()
     info("Starting consumers path children cache...")
     consumersPathChildrenCache.start(StartMode.BUILD_INITIAL_CACHE)
 
@@ -420,7 +748,8 @@ case class OffsetCachePassive(curator: CuratorFramework,
     consumersPathChildrenCache.getListenable.addListener(consumersPathChildrenCacheListener)
   }
 
-  def stop(): Unit = {
+  override def stop(): Unit = {
+    super.stop()
     info("Removing consumers path children cache listener...")
     Try(consumersPathChildrenCache.getListenable.removeListener(consumersPathChildrenCacheListener))
 
@@ -428,7 +757,7 @@ case class OffsetCachePassive(curator: CuratorFramework,
     Try(consumersPathChildrenCache.close())
   }
 
-  def lastUpdateMillis : Long = consumersTreeCacheLastUpdateMillis
+  protected def lastUpdateMillisZK : Long = consumersTreeCacheLastUpdateMillis
 
   protected def readConsumerOffsetByTopicPartition(consumer: String, topic: String, tpi: Map[Int, TopicPartitionIdentity]) : Map[Int, Long] = {
     tpi.map {
@@ -468,20 +797,21 @@ case class OffsetCachePassive(curator: CuratorFramework,
     val zkPath = "%s/%s/%s".format(ZkUtils.ConsumersPath,consumer,"owners")
     Try(Option(curator.getChildren.forPath(zkPath)).map(_.asScala.toSet)).toOption.flatten.getOrElse(Set.empty)
   }
-  
-  def getConsumerList: ConsumerList = {
+
+  protected def getZKManagedConsumerList: IndexedSeq[ConsumerNameAndType] = {
     withConsumersPathChildrenCache { cache =>
       val currentData = cache.getCurrentData
       currentData
     }.fold {
-      ConsumerList(IndexedSeq.empty, clusterContext)
+      IndexedSeq.empty[ConsumerNameAndType]
     } { data: java.util.List[ChildData] =>
-      ConsumerList(data.asScala.map(cd => cd.getPath.split("/").last).toIndexedSeq, clusterContext)
+      data.asScala.map(cd => ConsumerNameAndType(cd.getPath.split("/").last, ZKManagedConsumer)).toIndexedSeq
     }
   }
 }
 
 case class KafkaStateActorConfig(curator: CuratorFramework,
+                                 pinnedDispatcherName: String,
                                  clusterContext: ClusterContext,
                                  longRunningPoolConfig: LongRunningPoolConfig,
                                  partitionOffsetCacheTimeoutSecs: Int, simpleConsumerSocketTimeoutMillis: Int)
@@ -496,6 +826,15 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
   override protected def longRunningQueueFull(): Unit = {
     log.error("Long running pool queue full, skipping!")
   }
+
+  private[this] val kaConfig = KafkaAdminClientActorConfig(
+    clusterContext,
+    LongRunningPoolConfig(Runtime.getRuntime.availableProcessors(), 1000),
+    self.path
+  )
+  private[this] val kaProps = Props(classOf[KafkaAdminClientActor],kaConfig)
+  private[this] val kafkaAdminClientActor : ActorPath = context.actorOf(kaProps.withDispatcher(config.pinnedDispatcherName),"kafka-admin-client").path
+  private[this] val kafkaAdminClient = new KafkaAdminClient(context, kafkaAdminClientActor)
 
   // e.g. /brokers/topics/analytics_content/partitions/0/state
   private[this] val topicsTreeCache = new TreeCache(config.curator,ZkUtils.BrokerTopicsPath)
@@ -586,6 +925,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
     if(config.clusterContext.config.activeOffsetCacheEnabled)
       new OffsetCacheActive(
         config.curator,
+        kafkaAdminClient,
         config.clusterContext,
         getPartitionLeaders,
         getTopicDescription,
@@ -595,6 +935,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
     else
       new OffsetCachePassive(
         config.curator,
+        kafkaAdminClient,
         config.clusterContext,
         getPartitionLeaders,
         getTopicDescription,
@@ -733,7 +1074,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
       case scalaz.Success(bi) => bi
     }.toIndexedSeq.sortBy(_.id)
   }
-  
+
   private[this] def asyncPipeToSender[T](fn: => T):  Unit = {
     implicit val ec = longRunningExecutionContext
     val result: Future[T] = Future {
@@ -776,14 +1117,14 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
       case KSGetTopicDescriptions(topics) =>
         sender ! TopicDescriptions(topics.toIndexedSeq.flatMap(getTopicDescription(_, false)), topicsTreeCacheLastUpdateMillis)
 
-      case KSGetConsumerDescription(consumer) =>
+      case KSGetConsumerDescription(consumer, consumerType) =>
         asyncPipeToSender {
-          offsetCache.getConsumerDescription(consumer)
+          offsetCache.getConsumerDescription(consumer, consumerType)
         }
 
-      case KSGetConsumedTopicDescription(consumer, topic) =>
+      case KSGetConsumedTopicDescription(consumer, topic, consumerType) =>
         asyncPipeToSender {
-          offsetCache.getConsumedTopicDescription(consumer, topic, true)
+          offsetCache.getConsumedTopicDescription(consumer, topic, true, consumerType)
         }
 
       case KSGetAllTopicDescriptions(lastUpdateMillisOption) =>
@@ -807,7 +1148,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
             ConsumerDescriptions(offsetCache
               .getConsumerList
               .list
-              .map(c => offsetCache.getConsumerDescription(c)), offsetCache.lastUpdateMillis)
+              .map(c => offsetCache.getConsumerDescription(c.name, c.consumerType)), offsetCache.lastUpdateMillis)
           }
         }
 

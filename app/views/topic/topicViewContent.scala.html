@@ -3,10 +3,11 @@
 * See accompanying LICENSE file.
 *@
 @import b3.vertical.fieldConstructor
+@import kafka.manager.model.ActorModel.ConsumerType
 @(cluster:String,
   topic: String,
   topicIdentity: kafka.manager.model.ActorModel.TopicIdentity,
-  consumerList: Iterable[String]
+  consumerList: Iterable[(String, ConsumerType)]
 )(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages)
 
 @getUnderReplicatedLevel(percentage: Int) = {
@@ -82,9 +83,10 @@
     @if(topicIdentity.clusterContext.config.pollConsumers){
         <table class="table">
             <tbody>
-            @for(c:String <- consumerList) {
+            @for((c:String, ct: ConsumerType) <- consumerList) {
                 <tr>
-                    <td><a href="@routes.Consumer.consumerAndTopic(cluster,c,topic)">@c</a></td>
+                    <td><a href="@routes.Consumer.consumerAndTopic(cluster,c,topic, ct.toString)">@c</a></td>
+                    <td>@ct.toString</td>
                 </tr>
             }
             </tbody>
