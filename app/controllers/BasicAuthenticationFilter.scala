@@ -111,7 +111,7 @@ object BasicAuthenticationFilterConfiguration {
         }
       }
 
-    val enabled = boolean("enabled").getOrElse(true)
+    val enabled = boolean("enabled").getOrElse(false)
 
     val credentials: Option[(String, Set[String])] = for {
       username <- string("username")
