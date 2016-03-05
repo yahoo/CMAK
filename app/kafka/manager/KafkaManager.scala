@@ -13,6 +13,7 @@ import akka.util.Timeout
 import com.typesafe.config.{ConfigFactory, Config}
 import grizzled.slf4j.Logging
 import kafka.manager.actor.{KafkaManagerActorConfig, KafkaManagerActor}
+import kafka.manager.base.LongRunningPoolConfig
 import kafka.manager.model.{ClusterConfig, ClusterContext, CuratorConfig, ActorModel}
 import ActorModel._
 
@@ -71,6 +72,10 @@ object KafkaManager {
   val SimpleConsumerSocketTimeoutMillis = "kafka-manager.simple-consumer-socket-timeout-millis"
   val BrokerViewThreadPoolSize = "kafka-manager.broker-view-thread-pool-size"
   val BrokerViewMaxQueueSize = "kafka-manager.broker-view-max-queue-size"
+  val OffsetCacheThreadPoolSize = "kafka-manager.offset-cache-thread-pool-size"
+  val OffsetCacheMaxQueueSize = "kafka-manager.offset-cache-max-queue-size"
+  val KafkaAdminClientThreadPoolSize = "kafka-manager.kafka-admin-client-thread-pool-size"
+  val KafkaAdminClientMaxQueueSize = "kafka-manager.kafka-admin-client-max-queue-size"
 
   val DefaultConfig: Config = {
     val defaults: Map[String, _ <: AnyRef] = Map(
@@ -89,7 +94,11 @@ object KafkaManager {
       PartitionOffsetCacheTimeoutSecs -> "5",
       SimpleConsumerSocketTimeoutMillis -> "10000",
       BrokerViewThreadPoolSize -> Runtime.getRuntime.availableProcessors().toString,
-      BrokerViewMaxQueueSize -> "1000"
+      BrokerViewMaxQueueSize -> "1000",
+      OffsetCacheThreadPoolSize -> Runtime.getRuntime.availableProcessors().toString,
+      OffsetCacheMaxQueueSize -> "1000",
+      KafkaAdminClientThreadPoolSize -> Runtime.getRuntime.availableProcessors().toString,
+      KafkaAdminClientMaxQueueSize -> "1000"
     )
     import scala.collection.JavaConverters._
     ConfigFactory.parseMap(defaults.asJava)
@@ -122,7 +131,9 @@ class KafkaManager(akkaConfig: Config)
       partitionOffsetCacheTimeoutSecs = configWithDefaults.getInt(PartitionOffsetCacheTimeoutSecs),
       simpleConsumerSocketTimeoutMillis =  configWithDefaults.getInt(SimpleConsumerSocketTimeoutMillis),
       brokerViewThreadPoolSize = configWithDefaults.getInt(BrokerViewThreadPoolSize),
-      brokerViewMaxQueueSize = configWithDefaults.getInt(BrokerViewMaxQueueSize)
+      brokerViewMaxQueueSize = configWithDefaults.getInt(BrokerViewMaxQueueSize),
+      offsetCachePoolConfig = LongRunningPoolConfig(configWithDefaults.getInt(OffsetCacheThreadPoolSize), configWithDefaults.getInt(OffsetCacheMaxQueueSize)),
+      kafkaAdminClientPoolConfig = LongRunningPoolConfig(configWithDefaults.getInt(KafkaAdminClientThreadPoolSize), configWithDefaults.getInt(KafkaAdminClientMaxQueueSize))
     )
   }
 

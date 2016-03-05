@@ -12,6 +12,7 @@ import akka.pattern._
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
 import kafka.manager.actor.cluster.{ClusterManagerActorConfig, ClusterManagerActor}
+import kafka.manager.base.LongRunningPoolConfig
 import kafka.manager.model.{ClusterConfig, CuratorConfig, ActorModel}
 import kafka.manager.utils.zero81.PreferredLeaderElectionErrors
 import kafka.test.SeededBroker
@@ -47,7 +48,13 @@ class TestClusterManagerActor extends CuratorAwareTest {
     super.beforeAll()
     val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, logkafkaEnabled = true, jmxUser = None, jmxPass = None)
     val curatorConfig = CuratorConfig(testServer.getConnectString)
-    val config = ClusterManagerActorConfig("pinned-dispatcher","/kafka-manager/clusters/dev",curatorConfig,clusterConfig,FiniteDuration(1,SECONDS))
+    val config = ClusterManagerActorConfig(
+      "pinned-dispatcher"
+      ,"/kafka-manager/clusters/dev"
+      ,curatorConfig,clusterConfig
+      ,FiniteDuration(1,SECONDS)
+      , offsetCachePoolConfig = LongRunningPoolConfig(2, 100)
+      , kafkaAdminClientPoolConfig = LongRunningPoolConfig(2, 100))
     val props = Props(classOf[ClusterManagerActor],config)
 
     clusterManagerActor = Some(system.actorOf(props,"dev"))

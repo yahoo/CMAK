@@ -50,18 +50,20 @@ object ClusterManagerActor {
 import kafka.manager.model.ActorModel._
 
 case class ClusterManagerActorConfig(pinnedDispatcherName: String,
-                                baseZkPath : String,
-                                curatorConfig: CuratorConfig,
-                                clusterConfig: ClusterConfig,
-                                updatePeriod: FiniteDuration,
-                                threadPoolSize: Int = 2,
-                                maxQueueSize: Int = 100,
-                                askTimeoutMillis: Long = 2000,
-                                mutexTimeoutMillis: Int = 4000,
-                                partitionOffsetCacheTimeoutSecs : Int = 5,
-                                simpleConsumerSocketTimeoutMillis: Int = 10000,
-                                brokerViewThreadPoolSize: Int = 2,
-                                brokerViewMaxQueueSize: Int = 1000)
+                                     baseZkPath : String,
+                                     curatorConfig: CuratorConfig,
+                                     clusterConfig: ClusterConfig,
+                                     updatePeriod: FiniteDuration,
+                                     offsetCachePoolConfig: LongRunningPoolConfig,
+                                     kafkaAdminClientPoolConfig: LongRunningPoolConfig,
+                                     threadPoolSize: Int = 2,
+                                     maxQueueSize: Int = 100,
+                                     askTimeoutMillis: Long = 2000,
+                                     mutexTimeoutMillis: Int = 4000,
+                                     partitionOffsetCacheTimeoutSecs : Int = 5,
+                                     simpleConsumerSocketTimeoutMillis: Int = 10000,
+                                     brokerViewThreadPoolSize: Int = 2,
+                                     brokerViewMaxQueueSize: Int = 1000)
 
 class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
   extends BaseClusterQueryCommandActor with CuratorAwareActor with BaseZkPath {
@@ -101,7 +103,8 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
     sharedClusterCurator,
     cmConfig.pinnedDispatcherName,
     clusterContext,
-    LongRunningPoolConfig(Runtime.getRuntime.availableProcessors(), 1000),
+    cmConfig.offsetCachePoolConfig,
+    cmConfig.kafkaAdminClientPoolConfig,
     cmConfig.partitionOffsetCacheTimeoutSecs,
     cmConfig.simpleConsumerSocketTimeoutMillis)
   private[this] val ksProps = Props(classOf[KafkaStateActor],ksConfig)

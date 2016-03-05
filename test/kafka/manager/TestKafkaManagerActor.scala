@@ -11,6 +11,7 @@ import akka.pattern._
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
 import kafka.manager.actor.{KafkaManagerActor, KafkaManagerActorConfig}
+import kafka.manager.base.LongRunningPoolConfig
 import kafka.manager.model.{ClusterConfig, CuratorConfig, ActorModel}
 import kafka.manager.utils.CuratorAwareTest
 import ActorModel._
@@ -40,9 +41,11 @@ class TestKafkaManagerActor extends CuratorAwareTest {
     super.beforeAll()
     val curatorConfig = CuratorConfig(testServer.getConnectString)
     val config = KafkaManagerActorConfig(
-      curatorConfig = curatorConfig,
-      kafkaManagerUpdatePeriod = FiniteDuration(1,SECONDS),
-      deleteClusterUpdatePeriod = FiniteDuration(1,SECONDS)
+      curatorConfig = curatorConfig
+      , kafkaManagerUpdatePeriod = FiniteDuration(1,SECONDS)
+      , deleteClusterUpdatePeriod = FiniteDuration(1,SECONDS)
+      , offsetCachePoolConfig = LongRunningPoolConfig(2, 100)
+      , kafkaAdminClientPoolConfig = LongRunningPoolConfig(2, 100)
     )
     val props = Props(classOf[KafkaManagerActor],config)
 

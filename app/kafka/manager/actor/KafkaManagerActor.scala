@@ -10,7 +10,7 @@ import java.util.concurrent.{LinkedBlockingQueue, ThreadPoolExecutor, TimeUnit}
 import akka.actor.{ActorPath, Props}
 import akka.pattern._
 import kafka.manager.actor.cluster.{ClusterManagerActor, ClusterManagerActorConfig}
-import kafka.manager.base.{BaseZkPath, CuratorAwareActor, BaseQueryCommandActor}
+import kafka.manager.base.{LongRunningPoolConfig, BaseZkPath, CuratorAwareActor, BaseQueryCommandActor}
 import kafka.manager.model.{ClusterConfig, CuratorConfig, ActorModel}
 import kafka.manager.model.ActorModel.CMShutdown
 import org.apache.curator.framework.CuratorFramework
@@ -54,7 +54,9 @@ case class KafkaManagerActorConfig(curatorConfig: CuratorConfig,
                                    partitionOffsetCacheTimeoutSecs: Int = 5,
                                    simpleConsumerSocketTimeoutMillis : Int = 10000,
                                    brokerViewThreadPoolSize: Int = 2,
-                                   brokerViewMaxQueueSize : Int = 1000
+                                   brokerViewMaxQueueSize : Int = 1000,
+                                   offsetCachePoolConfig: LongRunningPoolConfig,
+                                   kafkaAdminClientPoolConfig: LongRunningPoolConfig
                                     )
 class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
   extends BaseQueryCommandActor with CuratorAwareActor with BaseZkPath {
@@ -424,7 +426,10 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
           partitionOffsetCacheTimeoutSecs = kafkaManagerConfig.partitionOffsetCacheTimeoutSecs,
           simpleConsumerSocketTimeoutMillis = kafkaManagerConfig.simpleConsumerSocketTimeoutMillis,
           brokerViewThreadPoolSize = kafkaManagerConfig.brokerViewThreadPoolSize,
-          brokerViewMaxQueueSize = kafkaManagerConfig.brokerViewMaxQueueSize)
+          brokerViewMaxQueueSize = kafkaManagerConfig.brokerViewMaxQueueSize,
+          offsetCachePoolConfig = kafkaManagerConfig.offsetCachePoolConfig,
+          kafkaAdminClientPoolConfig = kafkaManagerConfig.kafkaAdminClientPoolConfig
+        )
         val props = Props(classOf[ClusterManagerActor], clusterManagerConfig)
         val newClusterManager = context.actorOf(props, config.name).path
         clusterConfigMap += (config.name -> config)

@@ -813,7 +813,8 @@ case class OffsetCachePassive(curator: CuratorFramework,
 case class KafkaStateActorConfig(curator: CuratorFramework,
                                  pinnedDispatcherName: String,
                                  clusterContext: ClusterContext,
-                                 longRunningPoolConfig: LongRunningPoolConfig,
+                                 offsetCachePoolConfig: LongRunningPoolConfig,
+                                 kafkaAdminClientPoolConfig: LongRunningPoolConfig,
                                  partitionOffsetCacheTimeoutSecs: Int, simpleConsumerSocketTimeoutMillis: Int)
 class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCommandActor with LongRunningPoolActor {
 
@@ -821,7 +822,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
 
   protected implicit val cf: ClusterFeatures = clusterContext.clusterFeatures
 
-  override protected def longRunningPoolConfig: LongRunningPoolConfig = config.longRunningPoolConfig
+  override protected def longRunningPoolConfig: LongRunningPoolConfig = config.offsetCachePoolConfig
 
   override protected def longRunningQueueFull(): Unit = {
     log.error("Long running pool queue full, skipping!")
@@ -829,7 +830,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
 
   private[this] val kaConfig = KafkaAdminClientActorConfig(
     clusterContext,
-    LongRunningPoolConfig(Runtime.getRuntime.availableProcessors(), 1000),
+    config.kafkaAdminClientPoolConfig,
     self.path
   )
   private[this] val kaProps = Props(classOf[KafkaAdminClientActor],kaConfig)
