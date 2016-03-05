@@ -106,7 +106,14 @@ Here is an example for a kafka cluster with 10 brokers, 100 topics, with each to
  - kafka-manager.broker-view-max-queue-size=3000
  - kafka-manager.broker-view-update-seconds=30
 
-You may also want to increase the above three if you have consumer polling enabled depending on the # of consumers you have reporting through Zookeeper.
+The follow control consumer offset cache's thread pool and queue :
+
+ - kafka-manager.offset-cache-thread-pool-size=< default is # of processors>
+ - kafka-manager.offset-cache-max-queue-size=< default is 1000>
+ - kafka-manager.kafka-admin-client-thread-pool-size=< default is # of processors>
+ - kafka-manager.kafka-admin-client-max-queue-size=< default is 1000>
+
+You should increase the above for large # of consumers with consumer polling enabled.  Though it mainly affects ZK based consumer polling.
 
 Kafka managed consumer offset is now consumed by KafkaManagedOffsetCache from the "__consumer_offsets" topic.  Note, this has not been tested with large number of offsets being tracked.  There is a single thread per cluster consuming this topic so it may not be able to keep up on large # of offsets being pushed to the topic.
 
