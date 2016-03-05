@@ -20,7 +20,6 @@ package kafka.manager.utils.zero90
 import java.util.Properties
 import kafka.manager.utils.TopicConfigs
 import org.apache.kafka.common.utils.Utils
-import scala.collection._
 import org.apache.kafka.common.config.{AbstractConfig, ConfigDef}
 import kafka.message.BrokerCompressionCodec
 import kafka.message.Message
@@ -46,6 +45,7 @@ object Defaults {
   val PreAllocateEnable = kafka.server.Defaults.LogPreAllocateEnable
 }
 
+import scala.language.existentials
 case class LogConfig(props: java.util.Map[_, _]) extends AbstractConfig(LogConfig.configDef, props, false) {
   /**
     * Important note: Any configuration parameter that is passed along from KafkaConfig to LogConfig
@@ -161,9 +161,9 @@ object LogConfig extends TopicConfigs {
 
   def apply(): LogConfig = LogConfig(new Properties())
 
-  val configNames: Set[String] = {
-    import JavaConversions._
-    configDef.names().toSet
+  val configNames : Set[String] = {
+    import scala.collection.JavaConverters._
+    configDef.names().asScala.toSet
   }
 
 
@@ -181,7 +181,7 @@ object LogConfig extends TopicConfigs {
     * Check that property names are valid
     */
   def validateNames(props: Properties) {
-    import JavaConversions._
+    import scala.collection.JavaConversions._
     val names = configDef.names()
     for(name <- props.keys)
       require(names.contains(name), "Unknown configuration \"%s\".".format(name))
