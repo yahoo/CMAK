@@ -27,7 +27,7 @@ import scala.util.Try
 /**
  * @author hiral
  */
-class TestLogkafkaViewCacheActor extends KafkaServerInTest {
+class TestLogkafkaViewCacheActor extends KafkaServerInTest with BaseTest {
   private[this] val akkaConfig: Properties = new Properties()
   akkaConfig.setProperty("pinned-dispatcher.type","PinnedDispatcher")
   akkaConfig.setProperty("pinned-dispatcher.executor","thread-pool-executor")
@@ -39,12 +39,12 @@ class TestLogkafkaViewCacheActor extends KafkaServerInTest {
   private[this] implicit val timeout: Timeout = 10.seconds
 
   private[this] var logkafkaViewCacheActor : Option[ActorRef] = None
-  private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None)
+  private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, tuning = Option(defaultTuning))
   private[this] val defaultClusterContext = ClusterContext(ClusterFeatures.from(defaultClusterConfig), defaultClusterConfig)
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, logkafkaEnabled = true, jmxUser = None, jmxPass = None)
+    val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, logkafkaEnabled = true, jmxUser = None, jmxPass = None, tuning = Option(defaultTuning))
     val clusterContext = ClusterContext(ClusterFeatures.from(clusterConfig), clusterConfig)
     val props = Props(classOf[KafkaStateActor],sharedCurator, defaultClusterContext)
 

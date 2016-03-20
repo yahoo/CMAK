@@ -39,6 +39,21 @@
         @b3.checkbox(form("logkafkaEnabled"), '_text -> "Enable Logkafka")
         @b3.checkbox(form("activeOffsetCacheEnabled"), '_text -> "Enable Active OffsetCache (Not recommended for large # of consumers)")
         @checkboxWithLink(form("displaySizeEnabled"))
+        @b3.number(form("tuning.brokerViewUpdatePeriodSeconds"), '_label -> "brokerViewUpdatePeriodSeconds")
+        @b3.number(form("tuning.clusterManagerThreadPoolSize"), '_label -> "clusterManagerThreadPoolSize")
+        @b3.number(form("tuning.clusterManagerThreadPoolQueueSize"), '_label -> "clusterManagerThreadPoolQueueSize")
+        @b3.number(form("tuning.kafkaCommandThreadPoolSize"), '_label -> "kafkaCommandThreadPoolSize")
+        @b3.number(form("tuning.kafkaCommandThreadPoolQueueSize"), '_label -> "kafkaCommandThreadPoolQueueSize")
+        @b3.number(form("tuning.logkafkaCommandThreadPoolSize"), '_label -> "logkafkaCommandThreadPoolSize")
+        @b3.number(form("tuning.logkafkaCommandThreadPoolQueueSize"), '_label -> "logkafkaCommandThreadPoolQueueSize")
+        @b3.number(form("tuning.logkafkaUpdatePeriodSeconds"), '_label -> "logkafkaUpdatePeriodSeconds")
+        @b3.number(form("tuning.partitionOffsetCacheTimeoutSecs"), '_label -> "partitionOffsetCacheTimeoutSecs")
+        @b3.number(form("tuning.brokerViewThreadPoolSize"), '_label -> "brokerViewThreadPoolSize")
+        @b3.number(form("tuning.brokerViewThreadPoolQueueSize"), '_label -> "brokerViewThreadPoolQueueSize")
+        @b3.number(form("tuning.offsetCacheThreadPoolSize"), '_label -> "offsetCacheThreadPoolSize")
+        @b3.number(form("tuning.offsetCacheThreadPoolQueueSize"), '_label -> "offsetCacheThreadPoolQueueSize")
+        @b3.number(form("tuning.kafkaAdminClientThreadPoolSize"), '_label -> "kafkaAdminClientThreadPoolSize")
+        @b3.number(form("tuning.kafkaAdminClientThreadPoolQueueSize"), '_label -> "kafkaAdminClientThreadPoolQueueSize")
         @b3.submit('class -> "submit-button btn btn-primary btn"){ Save }
         <a href="@routes.Application.index()" class="cancel-button btn btn-default" role="button">Cancel</a>
     </fieldset>

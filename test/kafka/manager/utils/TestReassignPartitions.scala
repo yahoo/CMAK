@@ -6,6 +6,7 @@ package kafka.manager.utils
 
 import java.util.Properties
 
+import kafka.manager.BaseTest
 import kafka.manager.model.ActorModel
 import ActorModel._
 import kafka.manager.features.ClusterFeatures
@@ -18,7 +19,7 @@ import scala.concurrent.Future
 /**
  * @author hiral
  */
-class TestReassignPartitions extends CuratorAwareTest {
+class TestReassignPartitions extends CuratorAwareTest with BaseTest {
 
   import ReassignPartitionErrors._
 
@@ -28,7 +29,7 @@ class TestReassignPartitions extends CuratorAwareTest {
 
   private[this] val brokerList = Set(1,2,3)
 
-  private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None)
+  private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, tuning = Option(defaultTuning))
   private[this] val defaultClusterContext = ClusterContext(ClusterFeatures.from(defaultClusterConfig), defaultClusterConfig)
 
   private[this] def mytopic1 : TopicIdentity = getTopicIdentity("mytopic1")

@@ -11,7 +11,7 @@ import akka.actor.{ActorPath, Props}
 import akka.pattern._
 import kafka.manager.actor.cluster.{ClusterManagerActor, ClusterManagerActorConfig}
 import kafka.manager.base.{LongRunningPoolConfig, BaseZkPath, CuratorAwareActor, BaseQueryCommandActor}
-import kafka.manager.model.{ClusterConfig, CuratorConfig, ActorModel}
+import kafka.manager.model.{ClusterTuning, ClusterConfig, CuratorConfig}
 import kafka.manager.model.ActorModel.CMShutdown
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
@@ -39,25 +39,20 @@ import kafka.manager.model.ActorModel._
 import scala.collection.JavaConverters._
 import scala.concurrent.duration._
 
-case class KafkaManagerActorConfig(curatorConfig: CuratorConfig,
-                                   baseZkPath : String = KafkaManagerActor.ZkRoot,
-                                   pinnedDispatcherName : String = "pinned-dispatcher",
-                                   brokerViewUpdatePeriod: FiniteDuration = 30 seconds,
-                                   startDelayMillis: Long = 1000,
-                                   threadPoolSize: Int = 2,
-                                   mutexTimeoutMillis: Int = 4000,
-                                   maxQueueSize: Int = 100,
-                                   kafkaManagerUpdatePeriod: FiniteDuration = 10 seconds,
-                                   deleteClusterUpdatePeriod: FiniteDuration = 10 seconds,
-                                   deletionBatchSize : Int = 2,
-                                   clusterActorsAskTimeoutMillis: Int = 2000,
-                                   partitionOffsetCacheTimeoutSecs: Int = 5,
-                                   simpleConsumerSocketTimeoutMillis : Int = 10000,
-                                   brokerViewThreadPoolSize: Int = 2,
-                                   brokerViewMaxQueueSize : Int = 1000,
-                                   offsetCachePoolConfig: LongRunningPoolConfig,
-                                   kafkaAdminClientPoolConfig: LongRunningPoolConfig
-                                    )
+case class KafkaManagerActorConfig(curatorConfig: CuratorConfig
+                                   , baseZkPath : String = KafkaManagerActor.ZkRoot
+                                   , pinnedDispatcherName : String = "pinned-dispatcher"
+                                   , startDelayMillis: Long = 1000
+                                   , threadPoolSize: Int = 2
+                                   , mutexTimeoutMillis: Int = 4000
+                                   , maxQueueSize: Int = 100
+                                   , kafkaManagerUpdatePeriod: FiniteDuration = 10 seconds
+                                   , deleteClusterUpdatePeriod: FiniteDuration = 10 seconds
+                                   , deletionBatchSize : Int = 2
+                                   , clusterActorsAskTimeoutMillis: Int = 2000
+                                   , simpleConsumerSocketTimeoutMillis : Int = 10000
+                                   , defaultTuning: ClusterTuning
+                                  )
 class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
   extends BaseQueryCommandActor with CuratorAwareActor with BaseZkPath {
 
@@ -404,6 +399,46 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
     clusterConfigMap -= clusterConfig.name
   }
 
+  private[this] def getConfigWithDefaults(config: ClusterConfig, kmConfig: KafkaManagerActorConfig) : ClusterConfig = {
+    val brokerViewUpdatePeriodSeconds = config.tuning.flatMap(_.brokerViewUpdatePeriodSeconds) orElse kmConfig.defaultTuning.brokerViewUpdatePeriodSeconds
+    val clusterManagerThreadPoolSize = config.tuning.flatMap(_.clusterManagerThreadPoolSize) orElse kmConfig.defaultTuning.clusterManagerThreadPoolSize
+    val clusterManagerThreadPoolQueueSize = config.tuning.flatMap(_.clusterManagerThreadPoolQueueSize) orElse kmConfig.defaultTuning.clusterManagerThreadPoolQueueSize
+    val kafkaCommandThreadPoolSize = config.tuning.flatMap(_.kafkaCommandThreadPoolSize) orElse kmConfig.defaultTuning.kafkaCommandThreadPoolSize
+    val kafkaCommandThreadPoolQueueSize = config.tuning.flatMap(_.kafkaCommandThreadPoolQueueSize) orElse kmConfig.defaultTuning.kafkaCommandThreadPoolQueueSize
+    val logkafkaCommandThreadPoolSize = config.tuning.flatMap(_.logkafkaCommandThreadPoolSize) orElse kmConfig.defaultTuning.logkafkaCommandThreadPoolSize
+    val logkafkaCommandThreadPoolQueueSize = config.tuning.flatMap(_.logkafkaCommandThreadPoolQueueSize) orElse kmConfig.defaultTuning.logkafkaCommandThreadPoolQueueSize
+    val logkafkaUpdatePeriodSeconds = config.tuning.flatMap(_.logkafkaUpdatePeriodSeconds) orElse kmConfig.defaultTuning.brokerViewUpdatePeriodSeconds
+    val partitionOffsetCacheTimeoutSecs = config.tuning.flatMap(_.partitionOffsetCacheTimeoutSecs) orElse kmConfig.defaultTuning.partitionOffsetCacheTimeoutSecs
+    val brokerViewThreadPoolSize = config.tuning.flatMap(_.brokerViewThreadPoolSize) orElse kmConfig.defaultTuning.brokerViewThreadPoolSize
+    val brokerViewThreadPoolQueueSize = config.tuning.flatMap(_.brokerViewThreadPoolQueueSize) orElse kmConfig.defaultTuning.brokerViewThreadPoolQueueSize
+    val offsetCacheThreadPoolSize = config.tuning.flatMap(_.offsetCacheThreadPoolSize) orElse kmConfig.defaultTuning.offsetCacheThreadPoolSize
+    val offsetCacheThreadPoolQueueSize = config.tuning.flatMap(_.offsetCacheThreadPoolQueueSize) orElse kmConfig.defaultTuning.offsetCacheThreadPoolQueueSize
+    val kafkaAdminClientThreadPoolSize = config.tuning.flatMap(_.kafkaAdminClientThreadPoolSize) orElse kmConfig.defaultTuning.kafkaAdminClientThreadPoolSize
+    val kafkaAdminClientThreadPoolQueueSize = config.tuning.flatMap(_.kafkaAdminClientThreadPoolQueueSize) orElse kmConfig.defaultTuning.kafkaAdminClientThreadPoolQueueSize
+
+    val tuning = Option(
+      ClusterTuning(
+      brokerViewUpdatePeriodSeconds = brokerViewUpdatePeriodSeconds
+      , clusterManagerThreadPoolSize = clusterManagerThreadPoolSize
+      , clusterManagerThreadPoolQueueSize = clusterManagerThreadPoolQueueSize
+      , kafkaCommandThreadPoolSize = kafkaCommandThreadPoolSize
+      , kafkaCommandThreadPoolQueueSize = kafkaCommandThreadPoolQueueSize
+      , logkafkaCommandThreadPoolSize = logkafkaCommandThreadPoolSize
+      , logkafkaCommandThreadPoolQueueSize = logkafkaCommandThreadPoolQueueSize
+      , logkafkaUpdatePeriodSeconds = logkafkaUpdatePeriodSeconds
+      , partitionOffsetCacheTimeoutSecs = partitionOffsetCacheTimeoutSecs
+      , brokerViewThreadPoolSize = brokerViewThreadPoolSize
+      , brokerViewThreadPoolQueueSize = brokerViewThreadPoolQueueSize
+      , offsetCacheThreadPoolSize = offsetCacheThreadPoolSize
+      , offsetCacheThreadPoolQueueSize = offsetCacheThreadPoolQueueSize
+      , kafkaAdminClientThreadPoolSize = kafkaAdminClientThreadPoolSize
+      , kafkaAdminClientThreadPoolQueueSize = kafkaAdminClientThreadPoolQueueSize
+      )
+    )
+    config.copy(
+      tuning = tuning
+    )
+  }
   private[this] def addCluster(config: ClusterConfig): Try[Boolean] = {
     Try {
       if(!config.enabled) {
@@ -418,17 +453,9 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
           getClusterZkPath(config),
           kafkaManagerConfig.curatorConfig,
           config,
-          kafkaManagerConfig.brokerViewUpdatePeriod,
-          threadPoolSize = kafkaManagerConfig.threadPoolSize,
-          maxQueueSize = kafkaManagerConfig.maxQueueSize,
           askTimeoutMillis = kafkaManagerConfig.clusterActorsAskTimeoutMillis,
           mutexTimeoutMillis = kafkaManagerConfig.mutexTimeoutMillis,
-          partitionOffsetCacheTimeoutSecs = kafkaManagerConfig.partitionOffsetCacheTimeoutSecs,
-          simpleConsumerSocketTimeoutMillis = kafkaManagerConfig.simpleConsumerSocketTimeoutMillis,
-          brokerViewThreadPoolSize = kafkaManagerConfig.brokerViewThreadPoolSize,
-          brokerViewMaxQueueSize = kafkaManagerConfig.brokerViewMaxQueueSize,
-          offsetCachePoolConfig = kafkaManagerConfig.offsetCachePoolConfig,
-          kafkaAdminClientPoolConfig = kafkaManagerConfig.kafkaAdminClientPoolConfig
+          simpleConsumerSocketTimeoutMillis = kafkaManagerConfig.simpleConsumerSocketTimeoutMillis
         )
         val props = Props(classOf[ClusterManagerActor], clusterManagerConfig)
         val newClusterManager = context.actorOf(props, config.name).path
@@ -452,13 +479,15 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
         && newConfig.pollConsumers == currentConfig.pollConsumers
         && newConfig.filterConsumers == currentConfig.filterConsumers
         && newConfig.activeOffsetCacheEnabled == currentConfig.activeOffsetCacheEnabled
-        && newConfig.displaySizeEnabled == currentConfig.displaySizeEnabled) {
+        && newConfig.displaySizeEnabled == currentConfig.displaySizeEnabled
+        && newConfig.tuning == currentConfig.tuning
+      ) {
         //nothing changed
         false
       } else {
         //only need to shutdown enabled cluster
         log.info("Updating cluster manager for cluster={} , old={}, new={}",
-          currentConfig.name,currentConfig.curatorConfig,newConfig.curatorConfig)
+          currentConfig.name,currentConfig,newConfig)
         markPendingClusterManager(newConfig)
         removeClusterManager(currentConfig)
         true
@@ -474,7 +503,8 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
           case Failure(t) =>
             log.error("Failed to deserialize cluster config",t)
           case Success(newConfig) =>
-            clusterConfigMap.get(newConfig.name).fold(addCluster(newConfig))(updateCluster(_,newConfig))
+            val configWithDefaults = getConfigWithDefaults(newConfig, kafkaManagerConfig)
+            clusterConfigMap.get(newConfig.name).fold(addCluster(configWithDefaults))(updateCluster(_,configWithDefaults))
         }
       }
     }

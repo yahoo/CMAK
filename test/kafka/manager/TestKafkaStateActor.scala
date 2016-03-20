@@ -27,7 +27,7 @@ import scala.util.Try
 /**
  * @author hiral
  */
-class TestKafkaStateActor extends KafkaServerInTest {
+class TestKafkaStateActor extends KafkaServerInTest with BaseTest {
 
   private[this] val akkaConfig: Properties = new Properties()
   akkaConfig.setProperty("pinned-dispatcher.type","PinnedDispatcher")
@@ -38,7 +38,7 @@ class TestKafkaStateActor extends KafkaServerInTest {
   override val kafkaServerZkPath = broker.getZookeeperConnectionString
   private[this] var kafkaStateActor : Option[ActorRef] = None
   private[this] implicit val timeout: Timeout = 10.seconds
-  private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None)
+  private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, tuning = Option(defaultTuning))
   private[this] val defaultClusterContext = ClusterContext(ClusterFeatures.from(defaultClusterConfig), defaultClusterConfig)
 
   override protected def beforeAll(): Unit = {

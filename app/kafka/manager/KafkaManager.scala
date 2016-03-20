@@ -14,7 +14,7 @@ import com.typesafe.config.{ConfigFactory, Config}
 import grizzled.slf4j.Logging
 import kafka.manager.actor.{KafkaManagerActorConfig, KafkaManagerActor}
 import kafka.manager.base.LongRunningPoolConfig
-import kafka.manager.model.{ClusterConfig, ClusterContext, CuratorConfig, ActorModel}
+import kafka.manager.model._
 import ActorModel._
 
 import scala.concurrent.{ExecutionContext, Future}
@@ -113,27 +113,39 @@ class KafkaManager(akkaConfig: Config)
   private[this] val system = ActorSystem("kafka-manager-system", akkaConfig)
 
   private[this] val configWithDefaults = akkaConfig.withFallback(DefaultConfig)
+  val defaultTuning = ClusterTuning(
+    brokerViewUpdatePeriodSeconds = Option(configWithDefaults.getInt(BrokerViewUpdateSeconds))
+    , clusterManagerThreadPoolSize = Option(configWithDefaults.getInt(ThreadPoolSize))
+    , clusterManagerThreadPoolQueueSize = Option(configWithDefaults.getInt(MaxQueueSize))
+    , kafkaCommandThreadPoolSize = Option(configWithDefaults.getInt(ThreadPoolSize))
+    , kafkaCommandThreadPoolQueueSize = Option(configWithDefaults.getInt(MaxQueueSize))
+    , logkafkaCommandThreadPoolSize = Option(configWithDefaults.getInt(ThreadPoolSize))
+    , logkafkaCommandThreadPoolQueueSize = Option(configWithDefaults.getInt(MaxQueueSize))
+    , logkafkaUpdatePeriodSeconds = Option(configWithDefaults.getInt(BrokerViewUpdateSeconds))
+    , partitionOffsetCacheTimeoutSecs = Option(configWithDefaults.getInt(PartitionOffsetCacheTimeoutSecs))
+    , brokerViewThreadPoolSize = Option(configWithDefaults.getInt(BrokerViewThreadPoolSize))
+    , brokerViewThreadPoolQueueSize = Option(configWithDefaults.getInt(BrokerViewMaxQueueSize))
+    , offsetCacheThreadPoolSize = Option(configWithDefaults.getInt(OffsetCacheThreadPoolSize))
+    , offsetCacheThreadPoolQueueSize = Option(configWithDefaults.getInt(OffsetCacheMaxQueueSize))
+    , kafkaAdminClientThreadPoolSize = Option(configWithDefaults.getInt(KafkaAdminClientThreadPoolSize))
+    , kafkaAdminClientThreadPoolQueueSize = Option(configWithDefaults.getInt(KafkaAdminClientMaxQueueSize))
+  )
   private[this] val kafkaManagerConfig = {
     val curatorConfig = CuratorConfig(configWithDefaults.getString(ZkHosts))
     KafkaManagerActorConfig(
-      curatorConfig = curatorConfig,
-      baseZkPath = configWithDefaults.getString(BaseZkPath),
-      pinnedDispatcherName = configWithDefaults.getString(PinnedDispatchName),
-      brokerViewUpdatePeriod = FiniteDuration(configWithDefaults.getInt(BrokerViewUpdateSeconds), SECONDS),
-      startDelayMillis = configWithDefaults.getLong(StartDelayMillis),
-      threadPoolSize = configWithDefaults.getInt(ThreadPoolSize),
-      mutexTimeoutMillis = configWithDefaults.getInt(MutexTimeoutMillis),
-      maxQueueSize = configWithDefaults.getInt(MaxQueueSize),
-      kafkaManagerUpdatePeriod = FiniteDuration(configWithDefaults.getInt(KafkaManagerUpdateSeconds), SECONDS),
-      deleteClusterUpdatePeriod = FiniteDuration(configWithDefaults.getInt(DeleteClusterUpdateSeconds), SECONDS),
-      deletionBatchSize = configWithDefaults.getInt(DeletionBatchSize),
-      clusterActorsAskTimeoutMillis = configWithDefaults.getInt(ClusterActorsAskTimeoutMillis),
-      partitionOffsetCacheTimeoutSecs = configWithDefaults.getInt(PartitionOffsetCacheTimeoutSecs),
-      simpleConsumerSocketTimeoutMillis =  configWithDefaults.getInt(SimpleConsumerSocketTimeoutMillis),
-      brokerViewThreadPoolSize = configWithDefaults.getInt(BrokerViewThreadPoolSize),
-      brokerViewMaxQueueSize = configWithDefaults.getInt(BrokerViewMaxQueueSize),
-      offsetCachePoolConfig = LongRunningPoolConfig(configWithDefaults.getInt(OffsetCacheThreadPoolSize), configWithDefaults.getInt(OffsetCacheMaxQueueSize)),
-      kafkaAdminClientPoolConfig = LongRunningPoolConfig(configWithDefaults.getInt(KafkaAdminClientThreadPoolSize), configWithDefaults.getInt(KafkaAdminClientMaxQueueSize))
+      curatorConfig = curatorConfig
+      , baseZkPath = configWithDefaults.getString(BaseZkPath)
+      , pinnedDispatcherName = configWithDefaults.getString(PinnedDispatchName)
+      , startDelayMillis = configWithDefaults.getLong(StartDelayMillis)
+      , threadPoolSize = configWithDefaults.getInt(ThreadPoolSize)
+      , mutexTimeoutMillis = configWithDefaults.getInt(MutexTimeoutMillis)
+      , maxQueueSize = configWithDefaults.getInt(MaxQueueSize)
+      , kafkaManagerUpdatePeriod = FiniteDuration(configWithDefaults.getInt(KafkaManagerUpdateSeconds), SECONDS)
+      , deleteClusterUpdatePeriod = FiniteDuration(configWithDefaults.getInt(DeleteClusterUpdateSeconds), SECONDS)
+      , deletionBatchSize = configWithDefaults.getInt(DeletionBatchSize)
+      , clusterActorsAskTimeoutMillis = configWithDefaults.getInt(ClusterActorsAskTimeoutMillis)
+      , simpleConsumerSocketTimeoutMillis =  configWithDefaults.getInt(SimpleConsumerSocketTimeoutMillis)
+      , defaultTuning = defaultTuning
     )
   }
 
@@ -214,6 +226,7 @@ class KafkaManager(akkaConfig: Config)
                  jmxPass: Option[String],
                  pollConsumers: Boolean,
                  filterConsumers: Boolean,
+                 tuning: Option[ClusterTuning],
                  logkafkaEnabled: Boolean = false,
                  activeOffsetCacheEnabled: Boolean = false,
                  displaySizeEnabled: Boolean = false): Future[ApiError \/ Unit] =
@@ -222,6 +235,7 @@ class KafkaManager(akkaConfig: Config)
       clusterName,
       version,
       zkHosts,
+      tuning = tuning,
       jmxEnabled = jmxEnabled,
       jmxUser = jmxUser,
       jmxPass = jmxPass,
@@ -243,6 +257,7 @@ class KafkaManager(akkaConfig: Config)
                     jmxPass: Option[String],
                     pollConsumers: Boolean,
                     filterConsumers: Boolean,
+                    tuning: Option[ClusterTuning],
                     logkafkaEnabled: Boolean = false,
                     activeOffsetCacheEnabled: Boolean = false,
                     displaySizeEnabled: Boolean = false): Future[ApiError \/ Unit] =
@@ -251,6 +266,7 @@ class KafkaManager(akkaConfig: Config)
       clusterName,
       version,
       zkHosts,
+      tuning = tuning,
       jmxEnabled = jmxEnabled,
       jmxUser = jmxUser,
       jmxPass = jmxPass,
