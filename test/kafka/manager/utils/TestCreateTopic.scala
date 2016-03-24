@@ -199,7 +199,7 @@ class TestCreateTopic extends CuratorAwareTest with BaseTest {
         }
 
         assert(json.isDefined, "Failed to get data for config change!")
-        assert(json.get === "\"mytopic\"")
+        assert(json.get contains "\"mytopic\"")
       }
 
     }

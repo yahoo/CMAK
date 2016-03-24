@@ -20,7 +20,7 @@ package kafka.manager.utils
 import java.util.Properties
 
 import grizzled.slf4j.Logging
-import kafka.manager.model.KafkaVersion
+import kafka.manager.model._
 import org.apache.curator.framework.CuratorFramework
 import org.apache.zookeeper.CreateMode
 import org.apache.zookeeper.KeeperException.NodeExistsException
@@ -264,12 +264,22 @@ class AdminUtils(version: KafkaVersion) extends Logging {
     // write the new config--may not exist if there were previously no overrides
     writeTopicConfig(curator, topic, config, readVersion)
 
+    // Create the topic change data
+    val topicChange = version match {
+      case Kafka_0_8_1_1 | Kafka_0_8_2_0 | Kafka_0_8_2_1 | Kafka_0_8_2_2 => toJson(topic)
+      case _ => toJson(Map(
+        "version" -> 1,
+        "entity_type" -> "topics",
+        "entity_name" -> topic
+      ))
+    }
+
     // create the change notification
     curator
       .create()
       .creatingParentsIfNeeded()
       .withMode(CreateMode.PERSISTENT_SEQUENTIAL)
-      .forPath(s"${ZkUtils.TopicConfigChangesPath}/$TopicConfigChangeZnodePrefix", toJson(topic))
+      .forPath(s"${ZkUtils.TopicConfigChangesPath}/$TopicConfigChangeZnodePrefix", topicChange)
   }
   
   def topicExists(curator: CuratorFramework, topic: String):  Boolean = {
