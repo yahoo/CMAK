@@ -5,12 +5,26 @@
 
 package kafka.manager.actor
 
+import grizzled.slf4j.Logging
 import kafka.manager.features.{ClusterFeatures, ClusterFeature}
+
+import scala.util.{Failure, Try}
 
 /**
  * Created by hiral on 12/1/15.
  */
 package object cluster {
+  implicit class TryLogErrorHelper[T](t: Try[T]) extends Logging {
+    def logError(s: => String) : Try[T] = {
+      t match {
+        case Failure(e) =>
+          error(s, e)
+        case _ => //do nothing
+      }
+      t
+    }
+  }
+
   def featureGate[T](af: ClusterFeature)(fn: => Unit)(implicit features: ClusterFeatures) : Unit = {
     if(features.features(af)) {
       fn

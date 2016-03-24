@@ -18,6 +18,7 @@ import org.apache.curator.framework.imps.CuratorFrameworkState
 import org.apache.curator.framework.{CuratorFrameworkFactory, CuratorFramework}
 import org.apache.curator.retry.ExponentialBackoffRetry
 import org.apache.curator.test.TestingServer
+import org.apache.kafka.clients.consumer.{ConsumerRecords, ConsumerRecord, KafkaConsumer}
 
 import scala.util.Try
 
@@ -77,7 +78,11 @@ class SeededBroker(seedTopic: String, partitions: Int) {
   def getHighLevelConsumer : HighLevelConsumer = {
     new HighLevelConsumer(seedTopic, "test-hl-consumer", getZookeeperConnectionString)
   }
-  
+
+  def getNewConsumer : NewKafkaManagedConsumer = {
+    new NewKafkaManagedConsumer(seedTopic, "test-new-consumer", getBrokerConnectionString)
+  }
+
   def getSimpleProducer : SimpleProducer = {
     new SimpleProducer(seedTopic, getBrokerConnectionString, "test-producer")
     
@@ -92,7 +97,8 @@ object SeededBroker {
 
 /**
  * Borrowed from https://github.com/stealthly/scala-kafka/blob/master/src/main/scala/KafkaConsumer.scala
- * @param topic
+  *
+  * @param topic
  * @param groupId
  * @param zookeeperConnect
  * @param readFromStartOfStream
@@ -139,7 +145,8 @@ case class HighLevelConsumer(topic: String,
 
 /**
  * Borrowed from https://github.com/stealthly/scala-kafka/blob/master/src/main/scala/KafkaProducer.scala
- * @param topic
+  *
+  * @param topic
  * @param brokerList
  * @param clientId
  * @param synchronously
@@ -190,5 +197,44 @@ case class SimpleProducer(topic: String,
         e.printStackTrace
         System.exit(1)
     }
+  }
+}
+
+case class NewKafkaManagedConsumer(topic: String,
+                                   groupId: String,
+                                   brokerConnect: String,
+                                   pollMillis: Int = 100,
+                                   readFromStartOfStream: Boolean = true) extends Logging {
+
+  val props = new Properties()
+  props.put("bootstrap.servers", brokerConnect)
+  props.put("group.id", groupId)
+  props.put("enable.auto.commit", "true")
+  props.put("auto.commit.interval.ms", "1000")
+  props.put("session.timeout.ms", "30000")
+  props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer")
+  props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer")
+  props.put("auto.offset.reset", if(readFromStartOfStream) "earliest" else "latest")
+
+  val consumer = new KafkaConsumer[String, String](props)
+
+  val filterSpec = new Whitelist(topic)
+
+  info("setup:start topic=%s for broker=%s and groupId=%s".format(topic,brokerConnect,groupId))
+  consumer.subscribe(java.util.Arrays.asList(topic))
+  info("setup:complete topic=%s for zk=%s and groupId=%s".format(topic,brokerConnect,groupId))
+
+  def read(write: (String)=>Unit) = {
+    import collection.JavaConverters._
+    while (true) {
+      val records : ConsumerRecords[String, String] = consumer.poll(pollMillis)
+      for(record <- records.asScala) {
+        write(record.value())
+      }
+    }
+  }
+
+  def close() {
+    consumer.close()
   }
 }

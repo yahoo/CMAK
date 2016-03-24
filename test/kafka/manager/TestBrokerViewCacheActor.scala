@@ -26,7 +26,7 @@ import scala.util.Try
 /**
  * @author hiral
  */
-class TestBrokerViewCacheActor extends KafkaServerInTest {
+class TestBrokerViewCacheActor extends KafkaServerInTest with BaseTest {
   private[this] val akkaConfig: Properties = new Properties()
   akkaConfig.setProperty("pinned-dispatcher.type","PinnedDispatcher")
   akkaConfig.setProperty("pinned-dispatcher.executor","thread-pool-executor")
@@ -38,14 +38,14 @@ class TestBrokerViewCacheActor extends KafkaServerInTest {
   private[this] implicit val timeout: Timeout = 10.seconds
 
   private[this] var brokerViewCacheActor : Option[ActorRef] = None
-  private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None)
+  private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, tuning = Option(defaultTuning))
   private[this] val defaultClusterContext = ClusterContext(ClusterFeatures.from(defaultClusterConfig), defaultClusterConfig)
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None)
+    val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, tuning = Option(defaultTuning))
     val clusterContext = ClusterContext(ClusterFeatures.from(clusterConfig), clusterConfig)
-    val ksConfig = KafkaStateActorConfig(sharedCurator, clusterContext, LongRunningPoolConfig(2,100), 5, 10000)
+    val ksConfig = KafkaStateActorConfig(sharedCurator, "pinned-dispatcher", clusterContext, LongRunningPoolConfig(2,100), LongRunningPoolConfig(2,100), 5, 10000)
     val props = Props(classOf[KafkaStateActor],ksConfig)
 
     kafkaStateActor = Some(system.actorOf(props.withDispatcher("pinned-dispatcher"),"ksa"))

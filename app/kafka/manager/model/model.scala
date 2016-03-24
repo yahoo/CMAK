@@ -30,6 +30,12 @@ case object Kafka_0_8_2_1 extends KafkaVersion {
 case object Kafka_0_8_2_2 extends KafkaVersion {
   override def toString = "0.8.2.2"
 }
+case object Kafka_0_9_0_0 extends KafkaVersion {
+  override def toString = "0.9.0.0"
+}
+case object Kafka_0_9_0_1 extends KafkaVersion {
+  override def toString = "0.9.0.1"
+}
 
 object KafkaVersion {
   val supportedVersions: Map[String,KafkaVersion] = Map(
@@ -37,7 +43,9 @@ object KafkaVersion {
     "0.8.2-beta" -> Kafka_0_8_2_0,
     "0.8.2.0" -> Kafka_0_8_2_0,
     "0.8.2.1" -> Kafka_0_8_2_1,
-    "0.8.2.2" -> Kafka_0_8_2_2
+    "0.8.2.2" -> Kafka_0_8_2_2,
+    "0.9.0.0" -> Kafka_0_9_0_0,
+    "0.9.0.1" -> Kafka_0_9_0_1
   )
 
   val formSelectList : IndexedSeq[(String,String)] = supportedVersions.toIndexedSeq.filterNot(_._1.contains("beta")).map(t => (t._1,t._2.toString))
@@ -76,18 +84,20 @@ object ClusterConfig {
     require(zkHosts.length > 0, "cluster zk hosts is illegal, can't be empty!")
   }
 
-  def apply(name: String,
-            version : String,
-            zkHosts: String,
-            zkMaxRetry: Int = 100,
-            jmxEnabled: Boolean,
-            jmxUser: Option[String],
-            jmxPass: Option[String],
-            pollConsumers: Boolean,
-            filterConsumers: Boolean,
-            logkafkaEnabled: Boolean = false,
-            activeOffsetCacheEnabled: Boolean = false,
-            displaySizeEnabled: Boolean = false) : ClusterConfig = {
+  def apply(name: String
+            , version : String
+            , zkHosts: String
+            , zkMaxRetry: Int = 100
+            , jmxEnabled: Boolean
+            , jmxUser: Option[String]
+            , jmxPass: Option[String]
+            , pollConsumers: Boolean
+            , filterConsumers: Boolean
+            , logkafkaEnabled: Boolean = false
+            , activeOffsetCacheEnabled: Boolean = false
+            , displaySizeEnabled: Boolean = false
+            , tuning: Option[ClusterTuning]
+           ) : ClusterConfig = {
     val kafkaVersion = KafkaVersion(version)
     //validate cluster name
     validateName(name)
@@ -95,26 +105,30 @@ object ClusterConfig {
     validateZkHosts(zkHosts)
     val cleanZkHosts = zkHosts.replaceAll(" ","")
     new ClusterConfig(
-      name,
-      CuratorConfig(cleanZkHosts, zkMaxRetry),
-      true,
-      kafkaVersion,
-      jmxEnabled,
-      jmxUser,
-      jmxPass,
-      pollConsumers,
-      filterConsumers,
-      logkafkaEnabled,
-      activeOffsetCacheEnabled,
-      displaySizeEnabled)
+      name
+      , CuratorConfig(cleanZkHosts, zkMaxRetry)
+      , true
+      , kafkaVersion
+      , jmxEnabled
+      , jmxUser
+      , jmxPass
+      , pollConsumers
+      , filterConsumers
+      , logkafkaEnabled
+      , activeOffsetCacheEnabled
+      , displaySizeEnabled
+      , tuning
+    )
   }
 
   def customUnapply(cc: ClusterConfig) : Option[(
-    String, String, String, Int, Boolean, Option[String], Option[String],
-      Boolean, Boolean, Boolean, Boolean, Boolean)] = {
-    Some((cc.name, cc.version.toString, cc.curatorConfig.zkConnect, cc.curatorConfig.zkMaxRetry,
+    String, String, String, Int, Boolean, Option[String], Option[String], Boolean, Boolean, Boolean, Boolean, Boolean, Option[ClusterTuning])] = {
+    Some((
+      cc.name, cc.version.toString, cc.curatorConfig.zkConnect, cc.curatorConfig.zkMaxRetry,
       cc.jmxEnabled, cc.jmxUser, cc.jmxPass, cc.pollConsumers, cc.filterConsumers,
-      cc.logkafkaEnabled, cc.activeOffsetCacheEnabled, cc.displaySizeEnabled))
+      cc.logkafkaEnabled, cc.activeOffsetCacheEnabled, cc.displaySizeEnabled, cc.tuning
+      )
+    )
   }
 
   import scalaz.{Failure,Success}
@@ -152,6 +166,7 @@ object ClusterConfig {
       :: ("logkafkaEnabled" -> toJSON(config.logkafkaEnabled))
       :: ("activeOffsetCacheEnabled" -> toJSON(config.activeOffsetCacheEnabled))
       :: ("displaySizeEnabled" -> toJSON(config.displaySizeEnabled))
+      :: ("tuning" -> toJSON(config.tuning))
       :: Nil)
     compact(render(json)).getBytes(StandardCharsets.UTF_8)
   }
@@ -173,6 +188,8 @@ object ClusterConfig {
           val logkafkaEnabled = field[Boolean]("logkafkaEnabled")(json)
           val activeOffsetCacheEnabled = field[Boolean]("activeOffsetCacheEnabled")(json)
           val displaySizeEnabled = field[Boolean]("displaySizeEnabled")(json)
+          val clusterTuning = field[Option[ClusterTuning]]("tuning")(json)
+
           ClusterConfig.apply(
             name,
             curatorConfig,
@@ -184,7 +201,8 @@ object ClusterConfig {
             filterConsumers.getOrElse(true),
             logkafkaEnabled.getOrElse(false),
             activeOffsetCacheEnabled.getOrElse(false),
-            displaySizeEnabled.getOrElse(false)
+            displaySizeEnabled.getOrElse(false),
+            clusterTuning.getOrElse(None)
           )
       }
 
@@ -200,16 +218,107 @@ object ClusterConfig {
 
 }
 
+case class ClusterTuning(brokerViewUpdatePeriodSeconds: Option[Int]
+                         , clusterManagerThreadPoolSize: Option[Int]
+                         , clusterManagerThreadPoolQueueSize: Option[Int]
+                         , kafkaCommandThreadPoolSize: Option[Int]
+                         , kafkaCommandThreadPoolQueueSize: Option[Int]
+                         , logkafkaCommandThreadPoolSize: Option[Int]
+                         , logkafkaCommandThreadPoolQueueSize: Option[Int]
+                         , logkafkaUpdatePeriodSeconds: Option[Int]
+                         , partitionOffsetCacheTimeoutSecs: Option[Int]
+                         , brokerViewThreadPoolSize: Option[Int]
+                         , brokerViewThreadPoolQueueSize: Option[Int]
+                         , offsetCacheThreadPoolSize: Option[Int]
+                         , offsetCacheThreadPoolQueueSize: Option[Int]
+                         , kafkaAdminClientThreadPoolSize: Option[Int]
+                         , kafkaAdminClientThreadPoolQueueSize: Option[Int]
+                        )
+object ClusterTuning {
+  import scalaz.{Failure,Success}
+  import scalaz.syntax.applicative._
+  import org.json4s._
+  import org.json4s.jackson.JsonMethods._
+  import org.json4s.jackson.Serialization
+  import org.json4s.scalaz.JsonScalaz._
+  import scala.language.reflectiveCalls
+
+  implicit val formats = Serialization.formats(FullTypeHints(List(classOf[ClusterTuning])))
+
+  implicit def clusterTuningJSONW: JSONW[ClusterTuning] = new JSONW[ClusterTuning] {
+    def write(tuning: ClusterTuning) =
+      makeObj(("brokerViewUpdatePeriodSeconds" -> toJSON(tuning.brokerViewUpdatePeriodSeconds))
+        :: ("clusterManagerThreadPoolSize" -> toJSON(tuning.clusterManagerThreadPoolSize))
+        :: ("clusterManagerThreadPoolQueueSize" -> toJSON(tuning.clusterManagerThreadPoolQueueSize))
+        :: ("kafkaCommandThreadPoolSize" -> toJSON(tuning.kafkaCommandThreadPoolSize))
+        :: ("kafkaCommandThreadPoolQueueSize" -> toJSON(tuning.kafkaCommandThreadPoolQueueSize))
+        :: ("logkafkaCommandThreadPoolSize" -> toJSON(tuning.logkafkaCommandThreadPoolSize))
+        :: ("logkafkaCommandThreadPoolQueueSize" -> toJSON(tuning.logkafkaCommandThreadPoolQueueSize))
+        :: ("logkafkaUpdatePeriodSeconds" -> toJSON(tuning.logkafkaUpdatePeriodSeconds))
+        :: ("partitionOffsetCacheTimeoutSecs" -> toJSON(tuning.partitionOffsetCacheTimeoutSecs))
+        :: ("brokerViewThreadPoolSize" -> toJSON(tuning.brokerViewThreadPoolSize))
+        :: ("brokerViewThreadPoolQueueSize" -> toJSON(tuning.brokerViewThreadPoolQueueSize))
+        :: ("offsetCacheThreadPoolSize" -> toJSON(tuning.offsetCacheThreadPoolSize))
+        :: ("offsetCacheThreadPoolQueueSize" -> toJSON(tuning.offsetCacheThreadPoolQueueSize))
+        :: ("kafkaAdminClientThreadPoolSize" -> toJSON(tuning.kafkaAdminClientThreadPoolSize))
+        :: ("kafkaAdminClientThreadPoolQueueSize" -> toJSON(tuning.kafkaAdminClientThreadPoolQueueSize))
+        :: Nil)
+  }
+
+  implicit def clusterTuningJSONR: JSONR[ClusterTuning] = new JSONR[ClusterTuning] {
+    def read(json: JValue): Result[ClusterTuning] = {
+      for {
+        brokerViewUpdatePeriodSeconds <- field[Option[Int]]("brokerViewUpdatePeriodSeconds")(json)
+        clusterManagerThreadPoolSize <- field[Option[Int]]("clusterManagerThreadPoolSize")(json)
+        clusterManagerThreadPoolQueueSize <- field[Option[Int]]("clusterManagerThreadPoolQueueSize")(json)
+        kafkaCommandThreadPoolSize <- field[Option[Int]]("kafkaCommandThreadPoolSize")(json)
+        kafkaCommandThreadPoolQueueSize <- field[Option[Int]]("kafkaCommandThreadPoolQueueSize")(json)
+        logkafkaCommandThreadPoolSize <- field[Option[Int]]("logkafkaCommandThreadPoolSize")(json)
+        logkafkaCommandThreadPoolQueueSize <- field[Option[Int]]("logkafkaCommandThreadPoolQueueSize")(json)
+        logkafkaUpdatePeriodSeconds <- field[Option[Int]]("logkafkaUpdatePeriodSeconds")(json)
+        partitionOffsetCacheTimeoutSecs <- field[Option[Int]]("partitionOffsetCacheTimeoutSecs")(json)
+        brokerViewThreadPoolSize <- field[Option[Int]]("brokerViewThreadPoolSize")(json)
+        brokerViewThreadPoolQueueSize <- field[Option[Int]]("brokerViewThreadPoolQueueSize")(json)
+        offsetCacheThreadPoolSize <- field[Option[Int]]("offsetCacheThreadPoolSize")(json)
+        offsetCacheThreadPoolQueueSize <- field[Option[Int]]("offsetCacheThreadPoolQueueSize")(json)
+        kafkaAdminClientThreadPoolSize <- field[Option[Int]]("kafkaAdminClientThreadPoolSize")(json)
+        kafkaAdminClientThreadPoolQueueSize <- field[Option[Int]]("kafkaAdminClientThreadPoolQueueSize")(json)
+      } yield {
+        ClusterTuning(
+          brokerViewUpdatePeriodSeconds = brokerViewUpdatePeriodSeconds
+          , clusterManagerThreadPoolSize = clusterManagerThreadPoolSize
+          , clusterManagerThreadPoolQueueSize = clusterManagerThreadPoolQueueSize
+          , kafkaCommandThreadPoolSize = kafkaCommandThreadPoolSize
+          , kafkaCommandThreadPoolQueueSize = kafkaCommandThreadPoolQueueSize
+          , logkafkaCommandThreadPoolSize = logkafkaCommandThreadPoolSize
+          , logkafkaCommandThreadPoolQueueSize = logkafkaCommandThreadPoolQueueSize
+          , logkafkaUpdatePeriodSeconds = logkafkaUpdatePeriodSeconds
+          , partitionOffsetCacheTimeoutSecs = partitionOffsetCacheTimeoutSecs
+          , brokerViewThreadPoolSize = brokerViewThreadPoolSize
+          , brokerViewThreadPoolQueueSize = brokerViewThreadPoolQueueSize
+          , offsetCacheThreadPoolSize = offsetCacheThreadPoolSize
+          , offsetCacheThreadPoolQueueSize = offsetCacheThreadPoolQueueSize
+          , kafkaAdminClientThreadPoolSize = kafkaAdminClientThreadPoolSize
+          , kafkaAdminClientThreadPoolQueueSize = kafkaAdminClientThreadPoolQueueSize
+        )
+      }
+    }
+  }
+
+}
+
 case class ClusterContext(clusterFeatures: ClusterFeatures, config: ClusterConfig)
-case class ClusterConfig (name: String,
-                          curatorConfig : CuratorConfig,
-                          enabled: Boolean,
-                          version: KafkaVersion,
-                          jmxEnabled: Boolean,
-                          jmxUser: Option[String],
-                          jmxPass: Option[String],
-                          pollConsumers: Boolean,
-                          filterConsumers: Boolean,
-                          logkafkaEnabled: Boolean,
-                          activeOffsetCacheEnabled: Boolean,
-                          displaySizeEnabled: Boolean)
+case class ClusterConfig (name: String
+                          , curatorConfig : CuratorConfig
+                          , enabled: Boolean
+                          , version: KafkaVersion
+                          , jmxEnabled: Boolean
+                          , jmxUser: Option[String]
+                          , jmxPass: Option[String]
+                          , pollConsumers: Boolean
+                          , filterConsumers: Boolean
+                          , logkafkaEnabled: Boolean
+                          , activeOffsetCacheEnabled: Boolean
+                          , displaySizeEnabled: Boolean
+                          , tuning: Option[ClusterTuning]
+                         )

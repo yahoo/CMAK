@@ -6,7 +6,7 @@
 package controllers
 
 import features.{KMClusterManagerFeature, ApplicationFeatures}
-import kafka.manager.model.{KafkaVersion, ClusterConfig}
+import kafka.manager.model.{CuratorConfig, ClusterTuning, KafkaVersion, ClusterConfig}
 import kafka.manager.ApiError
 import models.FollowLink
 import models.form._
@@ -30,6 +30,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
   import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
   private[this] val kafkaManager = kafkaManagerContext.getKafkaManager
+  private[this] val defaultTuning = kafkaManager.defaultTuning
 
   val validateName : Constraint[String] = Constraint("validate name") { name =>
     Try {
@@ -68,18 +69,37 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
 
   val clusterConfigForm = Form(
     mapping(
-      "name" -> nonEmptyText.verifying(maxLength(250), validateName),
-      "kafkaVersion" -> nonEmptyText.verifying(validateKafkaVersion),
-      "zkHosts" -> nonEmptyText.verifying(validateZkHosts),
-      "zkMaxRetry" -> ignored(100 : Int),
-      "jmxEnabled" -> boolean,
-      "jmxUser" -> optional(text),
-      "jmxPass" -> optional(text),
-      "pollConsumers" -> boolean,
-      "filterConsumers" -> boolean,
-      "logkafkaEnabled" -> boolean,
-      "activeOffsetCacheEnabled" -> boolean,
-      "displaySizeEnabled" -> boolean
+      "name" -> nonEmptyText.verifying(maxLength(250), validateName)
+      , "kafkaVersion" -> nonEmptyText.verifying(validateKafkaVersion)
+      , "zkHosts" -> nonEmptyText.verifying(validateZkHosts)
+      , "zkMaxRetry" -> ignored(100 : Int)
+      , "jmxEnabled" -> boolean
+      , "jmxUser" -> optional(text)
+      , "jmxPass" -> optional(text)
+      , "pollConsumers" -> boolean
+      , "filterConsumers" -> boolean
+      , "logkafkaEnabled" -> boolean
+      , "activeOffsetCacheEnabled" -> boolean
+      , "displaySizeEnabled" -> boolean
+      , "tuning" -> optional(
+        mapping(
+          "brokerViewUpdatePeriodSeconds" -> optional(number(10, 1000))
+          , "clusterManagerThreadPoolSize" -> optional(number(2, 1000))
+          , "clusterManagerThreadPoolQueueSize" -> optional(number(10, 1000))
+          , "kafkaCommandThreadPoolSize" -> optional(number(2, 1000))
+          , "kafkaCommandThreadPoolQueueSize" -> optional(number(10, 1000))
+          , "logkafkaCommandThreadPoolSize" -> optional(number(2, 1000))
+          , "logkafkaCommandThreadPoolQueueSize" -> optional(number(10, 1000))
+          , "logkafkaUpdatePeriodSeconds" -> optional(number(10, 1000))
+          , "partitionOffsetCacheTimeoutSecs" -> optional(number(5, 100))
+          , "brokerViewThreadPoolSize" -> optional(number(2, 1000))
+          , "brokerViewThreadPoolQueueSize" -> optional(number(10, 1000))
+          , "offsetCacheThreadPoolSize" -> optional(number(2, 1000))
+          , "offsetCacheThreadPoolQueueSize" -> optional(number(10, 1000))
+          , "kafkaAdminClientThreadPoolSize" -> optional(number(2, 1000))
+          , "kafkaAdminClientThreadPoolQueueSize" -> optional(number(10, 1000))
+        )(ClusterTuning.apply)(ClusterTuning.unapply)
+      )
     )(ClusterConfig.apply)(ClusterConfig.customUnapply)
   )
 
@@ -97,9 +117,46 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
       "filterConsumers" -> boolean,
       "logkafkaEnabled" -> boolean,
       "activeOffsetCacheEnabled" -> boolean,
-      "displaySizeEnabled" -> boolean
+      "displaySizeEnabled" -> boolean,
+      "tuning" -> optional(
+        mapping(
+          "brokerViewUpdatePeriodSeconds" -> optional(number(10, 1000))
+          , "clusterManagerThreadPoolSize" -> optional(number(2, 1000))
+          , "clusterManagerThreadPoolQueueSize" -> optional(number(10, 1000))
+          , "kafkaCommandThreadPoolSize" -> optional(number(2, 1000))
+          , "kafkaCommandThreadPoolQueueSize" -> optional(number(10, 1000))
+          , "logkafkaCommandThreadPoolSize" -> optional(number(2, 1000))
+          , "logkafkaCommandThreadPoolQueueSize" -> optional(number(10, 1000))
+          , "logkafkaUpdatePeriodSeconds" -> optional(number(10, 1000))
+          , "partitionOffsetCacheTimeoutSecs" -> optional(number(5, 100))
+          , "brokerViewThreadPoolSize" -> optional(number(2, 1000))
+          , "brokerViewThreadPoolQueueSize" -> optional(number(10, 1000))
+          , "offsetCacheThreadPoolSize" -> optional(number(2, 1000))
+          , "offsetCacheThreadPoolQueueSize" -> optional(number(10, 1000))
+          , "kafkaAdminClientThreadPoolSize" -> optional(number(2, 1000))
+          , "kafkaAdminClientThreadPoolQueueSize" -> optional(number(10, 1000))
+        )(ClusterTuning.apply)(ClusterTuning.unapply)
+      )
     )(ClusterOperation.apply)(ClusterOperation.customUnapply)
   )
+
+  private[this] val defaultClusterConfig : ClusterConfig = {
+    ClusterConfig(
+      ""
+      ,CuratorConfig("")
+      ,false
+      ,KafkaVersion.supportedVersions.values.toList.sortBy(_.toString).last
+      ,false
+      ,None
+      ,None
+      ,false
+      ,false
+      ,false
+      ,false
+      ,false
+      ,Option(defaultTuning)
+    )
+  }
 
   def cluster(c: String) = Action.async {
     kafkaManager.getClusterView(c).map { errorOrClusterView =>
@@ -121,7 +178,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
 
   def addCluster = Action.async { implicit request =>
     featureGate(KMClusterManagerFeature) {
-      Future.successful(Ok(views.html.cluster.addCluster(clusterConfigForm)))
+      Future.successful(Ok(views.html.cluster.addCluster(clusterConfigForm.fill(defaultClusterConfig))))
     }
   }
 
@@ -142,7 +199,9 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
             cc.filterConsumers,
             cc.logkafkaEnabled,
             cc.activeOffsetCacheEnabled,
-            cc.displaySizeEnabled))
+            cc.displaySizeEnabled,
+            cc.tuning
+          ))
         }))
       }
     }
@@ -162,6 +221,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
             clusterConfig.jmxPass,
             clusterConfig.pollConsumers,
             clusterConfig.filterConsumers,
+            clusterConfig.tuning,
             clusterConfig.logkafkaEnabled,
             clusterConfig.activeOffsetCacheEnabled,
             clusterConfig.displaySizeEnabled
@@ -228,6 +288,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
               clusterOperation.clusterConfig.jmxPass,
               clusterOperation.clusterConfig.pollConsumers,
               clusterOperation.clusterConfig.filterConsumers,
+              clusterOperation.clusterConfig.tuning,
               clusterOperation.clusterConfig.logkafkaEnabled,
               clusterOperation.clusterConfig.activeOffsetCacheEnabled,
               clusterOperation.clusterConfig.displaySizeEnabled

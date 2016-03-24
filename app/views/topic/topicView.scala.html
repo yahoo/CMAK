@@ -3,10 +3,11 @@
 * See accompanying LICENSE file.
 *@
 @import scalaz.{\/}
+@import kafka.manager.model.ActorModel.ConsumerType
 @(cluster:String,
   topic: String,
   errorOrTopicIdentity: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.TopicIdentity,
-  optConsumerList: Option[Iterable[String]]
+  optConsumerList: Option[Iterable[(String, ConsumerType)]]
 )(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
 
 @theMenu = {
@@ -23,7 +24,7 @@
         <div class="panel-heading">
             <h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>@topic</h3>
         </div>
-        @errorOrTopicIdentity.fold(views.html.errors.onApiError(_),views.html.topic.topicViewContent(cluster,topic,_,optConsumerList.getOrElse(Iterable.empty[String])))
+        @errorOrTopicIdentity.fold(views.html.errors.onApiError(_),views.html.topic.topicViewContent(cluster,topic,_,optConsumerList.getOrElse(Iterable.empty[(String, ConsumerType)])))
     </div>
 </div>
 }

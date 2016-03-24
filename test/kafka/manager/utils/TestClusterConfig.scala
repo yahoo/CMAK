@@ -4,7 +4,7 @@
  */
 package kafka.manager.utils
 
-import kafka.manager.model.{Kafka_0_8_1_1, ClusterConfig}
+import kafka.manager.model.{ClusterTuning, Kafka_0_8_1_1, ClusterConfig}
 import org.scalatest.{Matchers, FunSuite}
 
 /**
@@ -14,18 +14,18 @@ class TestClusterConfig extends FunSuite with Matchers {
 
   test("invalid name") {
     intercept[IllegalArgumentException] {
-      ClusterConfig("qa!","0.8.1.1","localhost",jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None)
+      ClusterConfig("qa!","0.8.1.1","localhost",jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, tuning = None)
     }
   }
 
   test("invalid kafka version") {
     intercept[IllegalArgumentException] {
-      ClusterConfig("qa","0.8.1","localhost:2181",jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None)
+      ClusterConfig("qa","0.8.1","localhost:2181",jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, tuning = None)
     }
   }
 
   test("serialize and deserialize 0.8.1.1") {
-    val cc = ClusterConfig("qa","0.8.2.0","localhost:2181", jmxEnabled = true, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None)
+    val cc = ClusterConfig("qa","0.8.2.0","localhost:2181", jmxEnabled = true, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, tuning = None)
     val serialize: String = ClusterConfig.serialize(cc)
     val deserialize = ClusterConfig.deserialize(serialize)
     assert(deserialize.isSuccess === true)
@@ -33,7 +33,7 @@ class TestClusterConfig extends FunSuite with Matchers {
   }
 
   test("serialize and deserialize 0.8.2.0 +jmx credentials") {
-    val cc = ClusterConfig("qa","0.8.2.0","localhost:2181", jmxEnabled = true, jmxUser = Some("mario"), jmxPass = Some("rossi"), pollConsumers = true, filterConsumers = true)
+    val cc = ClusterConfig("qa","0.8.2.0","localhost:2181", jmxEnabled = true, jmxUser = Some("mario"), jmxPass = Some("rossi"), pollConsumers = true, filterConsumers = true, tuning = None)
     val serialize: String = ClusterConfig.serialize(cc)
     val deserialize = ClusterConfig.deserialize(serialize)
     assert(deserialize.isSuccess === true)
@@ -41,7 +41,7 @@ class TestClusterConfig extends FunSuite with Matchers {
   }
 
   test("serialize and deserialize 0.8.2.0") {
-    val cc = ClusterConfig("qa","0.8.2.0","localhost:2181", jmxEnabled = true, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None)
+    val cc = ClusterConfig("qa","0.8.2.0","localhost:2181", jmxEnabled = true, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, tuning = None)
     val serialize: String = ClusterConfig.serialize(cc)
     val deserialize = ClusterConfig.deserialize(serialize)
     assert(deserialize.isSuccess === true)
@@ -49,7 +49,7 @@ class TestClusterConfig extends FunSuite with Matchers {
   }
 
   test("serialize and deserialize 0.8.2.1") {
-    val cc = ClusterConfig("qa","0.8.2.1","localhost:2181", jmxEnabled = true, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None)
+    val cc = ClusterConfig("qa","0.8.2.1","localhost:2181", jmxEnabled = true, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, tuning = None)
     val serialize: String = ClusterConfig.serialize(cc)
     val deserialize = ClusterConfig.deserialize(serialize)
     assert(deserialize.isSuccess === true)
@@ -57,7 +57,7 @@ class TestClusterConfig extends FunSuite with Matchers {
   }
 
   test("serialize and deserialize 0.8.2.2") {
-    val cc = ClusterConfig("qa","0.8.2.2","localhost:2181", jmxEnabled = true, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None)
+    val cc = ClusterConfig("qa","0.8.2.2","localhost:2181", jmxEnabled = true, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, tuning = None)
     val serialize: String = ClusterConfig.serialize(cc)
     val deserialize = ClusterConfig.deserialize(serialize)
     assert(deserialize.isSuccess === true)
@@ -65,7 +65,7 @@ class TestClusterConfig extends FunSuite with Matchers {
   }
 
   test("deserialize without version and jmxEnabled") {
-    val cc = ClusterConfig("qa","0.8.2.0","localhost:2181", jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None)
+    val cc = ClusterConfig("qa","0.8.2.0","localhost:2181", jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, tuning = None)
     val serialize: String = ClusterConfig.serialize(cc)
     val noverison = serialize.replace(""","kafkaVersion":"0.8.2.0"""","")
     assert(!noverison.contains("kafkaVersion"))
@@ -75,10 +75,20 @@ class TestClusterConfig extends FunSuite with Matchers {
   }
 
   test("deserialize from 0.8.2-beta as 0.8.2.0") {
-    val cc = ClusterConfig("qa","0.8.2-beta","localhost:2181", jmxEnabled = false, pollConsumers = true, filterConsumers = true, activeOffsetCacheEnabled = true, jmxUser = None, jmxPass = None)
+    val cc = ClusterConfig("qa","0.8.2-beta","localhost:2181", jmxEnabled = false, pollConsumers = true, filterConsumers = true, activeOffsetCacheEnabled = true, jmxUser = None, jmxPass = None, tuning = None)
     val serialize: String = ClusterConfig.serialize(cc)
     val noverison = serialize.replace(""","kafkaVersion":"0.8.2.0"""",""","kafkaVersion":"0.8.2-beta"""")
     val deserialize = ClusterConfig.deserialize(noverison)
+    assert(deserialize.isSuccess === true)
+    assert(cc == deserialize.get)
+  }
+
+  test("deserialize from 0.9.0.1") {
+    val cc = ClusterConfig("qa","0.9.0.1","localhost:2181", jmxEnabled = false, pollConsumers = true, filterConsumers = true, activeOffsetCacheEnabled = true, jmxUser = None, jmxPass = None,
+      tuning = Option(ClusterTuning(Option(1),Option(2),Option(3), Option(4), Option(5), Option(6), Option(7), Option(8), Option(9), Option(10), Option(11), Option(12), Option(13), Option(14), Option(15)))
+    )
+    val serialize: String = ClusterConfig.serialize(cc)
+    val deserialize = ClusterConfig.deserialize(serialize)
     assert(deserialize.isSuccess === true)
     assert(cc == deserialize.get)
   }

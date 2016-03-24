@@ -11,6 +11,7 @@ import akka.pattern._
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
 import kafka.manager.actor.{KafkaManagerActor, KafkaManagerActorConfig}
+import kafka.manager.base.LongRunningPoolConfig
 import kafka.manager.model.{ClusterConfig, CuratorConfig, ActorModel}
 import kafka.manager.utils.CuratorAwareTest
 import ActorModel._
@@ -24,7 +25,7 @@ import scala.util.Try
 /**
  * @author hiral
  */
-class TestKafkaManagerActor extends CuratorAwareTest {
+class TestKafkaManagerActor extends CuratorAwareTest with BaseTest {
 
   private[this] val akkaConfig: Properties = new Properties()
   akkaConfig.setProperty("pinned-dispatcher.type","PinnedDispatcher")
@@ -40,9 +41,10 @@ class TestKafkaManagerActor extends CuratorAwareTest {
     super.beforeAll()
     val curatorConfig = CuratorConfig(testServer.getConnectString)
     val config = KafkaManagerActorConfig(
-      curatorConfig = curatorConfig,
-      kafkaManagerUpdatePeriod = FiniteDuration(1,SECONDS),
-      deleteClusterUpdatePeriod = FiniteDuration(1,SECONDS)
+      curatorConfig = curatorConfig
+      , kafkaManagerUpdatePeriod = FiniteDuration(1,SECONDS)
+      , deleteClusterUpdatePeriod = FiniteDuration(1,SECONDS)
+      , defaultTuning = defaultTuning
     )
     val props = Props(classOf[KafkaManagerActor],config)
 
@@ -65,7 +67,7 @@ class TestKafkaManagerActor extends CuratorAwareTest {
   }
 
   test("add cluster") {
-    val cc = ClusterConfig("dev","0.8.1.1",testServer.getConnectString, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None)
+    val cc = ClusterConfig("dev","0.8.1.1",testServer.getConnectString, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, tuning = Option(defaultTuning))
     withKafkaManagerActor(KMAddCluster(cc)) { result: KMCommandResult =>
       result.result.get
       Thread.sleep(1000)
@@ -76,7 +78,7 @@ class TestKafkaManagerActor extends CuratorAwareTest {
   }
 
   test("update cluster zkhost") {
-    val cc2 = ClusterConfig("dev","0.8.1.1",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None)
+    val cc2 = ClusterConfig("dev","0.8.1.1",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, tuning = Option(defaultTuning))
     withKafkaManagerActor(KMUpdateCluster(cc2)) { result: KMCommandResult =>
       result.result.get
       Thread.sleep(3000)
@@ -108,7 +110,7 @@ class TestKafkaManagerActor extends CuratorAwareTest {
   }
 
   test("update cluster version") {
-    val cc2 = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None)
+    val cc2 = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, tuning = Option(defaultTuning))
     withKafkaManagerActor(KMUpdateCluster(cc2)) { result: KMCommandResult =>
       result.result.get
       Thread.sleep(3000)
@@ -135,7 +137,7 @@ class TestKafkaManagerActor extends CuratorAwareTest {
       println(result)
       result.msg.contains("dev")
     }
-    val cc2 = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None)
+    val cc2 = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, tuning = Option(defaultTuning))
     withKafkaManagerActor(KMAddCluster(cc2)) { result: KMCommandResult =>
       result.result.get
       Thread.sleep(1000)
@@ -152,13 +154,31 @@ class TestKafkaManagerActor extends CuratorAwareTest {
   }
 
   test("update cluster logkafka enabled") {
-    val cc2 = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, logkafkaEnabled = true, jmxUser = None, jmxPass = None)
+    val cc2 = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, logkafkaEnabled = true, jmxUser = None, jmxPass = None, tuning = Option(defaultTuning))
     withKafkaManagerActor(KMUpdateCluster(cc2)) { result: KMCommandResult =>
       result.result.get
       Thread.sleep(3000)
     }
     withKafkaManagerActor(KMClusterQueryRequest("dev",LKSGetLogkafkaLogkafkaIds)) { result: LogkafkaLogkafkaIdList =>
       result.list.nonEmpty
+    }
+  }
+
+  test("update cluster tuning") {
+    val newTuning = getClusterTuning(3, 101, 11)
+    val cc2 = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, logkafkaEnabled = true, jmxUser = None, jmxPass = None,
+      tuning = Option(newTuning)
+    )
+    withKafkaManagerActor(KMUpdateCluster(cc2)) { result: KMCommandResult =>
+      result.result.get
+      Thread.sleep(3000)
+    }
+    withKafkaManagerActor(KMClusterQueryRequest("dev",KSGetTopics)) { result: TopicList =>
+      result.list.isEmpty
+    }
+    withKafkaManagerActor(KMGetClusterConfig("dev")) { result: KMClusterConfigResult =>
+      assert(result.result.isSuccess)
+      assert(result.result.toOption.get.tuning.get === newTuning)
     }
   }
 }

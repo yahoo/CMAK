@@ -49,23 +49,19 @@ object ClusterManagerActor {
 
 import kafka.manager.model.ActorModel._
 
-case class ClusterManagerActorConfig(pinnedDispatcherName: String,
-                                baseZkPath : String,
-                                curatorConfig: CuratorConfig,
-                                clusterConfig: ClusterConfig,
-                                updatePeriod: FiniteDuration,
-                                threadPoolSize: Int = 2,
-                                maxQueueSize: Int = 100,
-                                askTimeoutMillis: Long = 2000,
-                                mutexTimeoutMillis: Int = 4000,
-                                partitionOffsetCacheTimeoutSecs : Int = 5,
-                                simpleConsumerSocketTimeoutMillis: Int = 10000,
-                                brokerViewThreadPoolSize: Int = 2,
-                                brokerViewMaxQueueSize: Int = 1000)
+case class ClusterManagerActorConfig(pinnedDispatcherName: String
+                                     , baseZkPath : String
+                                     , curatorConfig: CuratorConfig
+                                     , clusterConfig: ClusterConfig
+                                     , askTimeoutMillis: Long = 2000
+                                     , mutexTimeoutMillis: Int = 4000
+                                     , simpleConsumerSocketTimeoutMillis: Int = 10000
+                                    )
 
 class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
   extends BaseClusterQueryCommandActor with CuratorAwareActor with BaseZkPath {
 
+  require(cmConfig.clusterConfig.tuning.isDefined, s"No tuning defined : ${cmConfig.clusterConfig}")
   import ClusterManagerActor._
   protected implicit val clusterContext: ClusterContext = ClusterContext(ClusterFeatures.from(cmConfig.clusterConfig), cmConfig.clusterConfig)
 
@@ -76,7 +72,13 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
   override def curatorConfig: CuratorConfig = cmConfig.curatorConfig
 
   val longRunningExecutor = new ThreadPoolExecutor(
-    cmConfig.threadPoolSize, cmConfig.threadPoolSize,0L,TimeUnit.MILLISECONDS,new LinkedBlockingQueue[Runnable](cmConfig.maxQueueSize))
+    clusterConfig.tuning.get.clusterManagerThreadPoolSize.get
+    , clusterConfig.tuning.get.clusterManagerThreadPoolSize.get
+    ,0L
+    ,TimeUnit.MILLISECONDS
+    ,new LinkedBlockingQueue[Runnable](clusterConfig.tuning.get.clusterManagerThreadPoolQueueSize.get)
+  )
+
   val longRunningExecutionContext = ExecutionContext.fromExecutor(longRunningExecutor)
 
   protected[this] val sharedClusterCurator : CuratorFramework = getCurator(cmConfig.clusterConfig.curatorConfig)
@@ -98,29 +100,31 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
   private[this] val adminUtils = new AdminUtils(cmConfig.clusterConfig.version)
 
   private[this] val ksConfig = KafkaStateActorConfig(
-    sharedClusterCurator,
-    clusterContext,
-    LongRunningPoolConfig(Runtime.getRuntime.availableProcessors(), 1000),
-    cmConfig.partitionOffsetCacheTimeoutSecs,
-    cmConfig.simpleConsumerSocketTimeoutMillis)
+    sharedClusterCurator
+    , cmConfig.pinnedDispatcherName
+    , clusterContext
+    , LongRunningPoolConfig(clusterConfig.tuning.get.offsetCacheThreadPoolSize.get, clusterConfig.tuning.get.offsetCacheThreadPoolQueueSize.get)
+    , LongRunningPoolConfig(clusterConfig.tuning.get.kafkaAdminClientThreadPoolSize.get, clusterConfig.tuning.get.kafkaAdminClientThreadPoolQueueSize.get)
+    , clusterConfig.tuning.get.partitionOffsetCacheTimeoutSecs.get
+    , cmConfig.simpleConsumerSocketTimeoutMillis)
   private[this] val ksProps = Props(classOf[KafkaStateActor],ksConfig)
   private[this] val kafkaStateActor : ActorPath = context.actorOf(ksProps.withDispatcher(cmConfig.pinnedDispatcherName),"kafka-state").path
 
   private[this] val bvConfig = BrokerViewCacheActorConfig(
-    kafkaStateActor, 
-    clusterContext,
-    LongRunningPoolConfig(cmConfig.brokerViewThreadPoolSize, cmConfig.brokerViewMaxQueueSize),
-    cmConfig.updatePeriod)
+    kafkaStateActor
+    , clusterContext
+    , LongRunningPoolConfig(clusterConfig.tuning.get.brokerViewThreadPoolSize.get, clusterConfig.tuning.get.brokerViewThreadPoolQueueSize.get)
+    , FiniteDuration(clusterConfig.tuning.get.brokerViewUpdatePeriodSeconds.get, TimeUnit.SECONDS))
   private[this] val bvcProps = Props(classOf[BrokerViewCacheActor],bvConfig)
   private[this] val brokerViewCacheActor : ActorPath = context.actorOf(bvcProps,"broker-view").path
 
   private[this] val kcProps = {
     val kcaConfig = KafkaCommandActorConfig(
-      sharedClusterCurator,
-      LongRunningPoolConfig(cmConfig.threadPoolSize, cmConfig.maxQueueSize),
-      cmConfig.askTimeoutMillis,
-      clusterContext, 
-      adminUtils)
+      sharedClusterCurator
+      , LongRunningPoolConfig(clusterConfig.tuning.get.kafkaCommandThreadPoolSize.get, clusterConfig.tuning.get.kafkaCommandThreadPoolQueueSize.get)
+      , cmConfig.askTimeoutMillis
+      , clusterContext
+      , adminUtils)
     Props(classOf[KafkaCommandActor],kcaConfig)
   }
   private[this] val kafkaCommandActor : ActorPath = context.actorOf(kcProps,"kafka-command").path
@@ -145,7 +149,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           logkafkaStateActor.get,
           clusterContext,
           LongRunningPoolConfig(Runtime.getRuntime.availableProcessors(), 1000),
-          cmConfig.updatePeriod
+          FiniteDuration(clusterConfig.tuning.get.logkafkaUpdatePeriodSeconds.get, TimeUnit.SECONDS)
         )
       )
     )
@@ -168,10 +172,10 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
       Some(
         Props(classOf[LogkafkaCommandActor],
           LogkafkaCommandActorConfig(
-            sharedClusterCurator,
-            LongRunningPoolConfig(cmConfig.threadPoolSize, cmConfig.maxQueueSize),
-            cmConfig.askTimeoutMillis,
-            clusterContext)
+            sharedClusterCurator
+            , LongRunningPoolConfig(clusterConfig.tuning.get.logkafkaCommandThreadPoolSize.get, clusterConfig.tuning.get.logkafkaCommandThreadPoolQueueSize.get)
+            , cmConfig.askTimeoutMillis
+            , clusterContext)
         )
       )
     )
@@ -280,19 +284,19 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         } yield Some(CMLogkafkaIdentity(Try(LogkafkaIdentity.from(logkafka_id,lcg,lct))))
         result pipeTo sender
 
-      case CMGetConsumerIdentity(consumer) =>
+      case CMGetConsumerIdentity(consumer, consumerType) =>
         implicit val ec = context.dispatcher
-        val eventualConsumerDescription = withKafkaStateActor(KSGetConsumerDescription(consumer))(identity[ConsumerDescription])
+        val eventualConsumerDescription = withKafkaStateActor(KSGetConsumerDescription(consumer, consumerType))(identity[ConsumerDescription])
         val result: Future[CMConsumerIdentity] = for {
           cd <- eventualConsumerDescription
           ciO = CMConsumerIdentity(Try(ConsumerIdentity.from(cd,clusterContext)))
         } yield ciO
         result pipeTo sender
 
-      case CMGetConsumedTopicState(consumer, topic) =>
+      case CMGetConsumedTopicState(consumer, topic, consumerType) =>
         implicit val ec = context.dispatcher
         val eventualConsumedTopicDescription = withKafkaStateActor(
-          KSGetConsumedTopicDescription(consumer,topic)
+          KSGetConsumedTopicDescription(consumer,topic, consumerType)
         )(identity[ConsumedTopicDescription])
         val result: Future[CMConsumedTopic] = eventualConsumedTopicDescription.map{
           ctd: ConsumedTopicDescription =>  CMConsumedTopic(Try(ConsumedTopicState.from(ctd, clusterContext)))
@@ -336,7 +340,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
   private[this] def getGeneratedPartitionAssignments(topic: String) : Map[Int, Seq[Int]] = {
     val topicZkPath = zkPathFrom(baseTopicsZkPath, topic)
     Option(clusterManagerTopicsPathCache.getCurrentData(topicZkPath)).fold {
-      throw new IllegalArgumentException(s"No generated assignment found for topic ${topic}")
+      throw new IllegalArgumentException(s"No generated assignment found for topic $topic")
     } { childData =>
       deserializeAssignments(childData.getData)
     }
