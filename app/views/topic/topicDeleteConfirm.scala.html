@@ -4,10 +4,11 @@
 *@
 @import b3.vertical.fieldConstructor
 @import scalaz.{\/}
+@import kafka.manager.model.ActorModel.ConsumerType
 @(cluster:String,
   topic: String,
   errorOrTopicIdentity: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.TopicIdentity,
-  optConsumerList: Option[Iterable[String]]
+  optConsumerList: Option[Iterable[(String, ConsumerType)]]
 )(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
 
 @theMenu = {
