@@ -1,0 +1,42 @@
+@*
+* Copyright 2016 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import b3.vertical.fieldConstructor
+@import scalaz.{\/}
+@import kafka.manager.model.ActorModel.ConsumerType
+@(cluster:String,
+  topic: String,
+  errorOrTopicIdentity: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.TopicIdentity,
+  optConsumerList: Option[Iterable[(String, ConsumerType)]]
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+
+@theMenu = {
+    @views.html.navigation.clusterMenu(cluster,"Topic","",menus.clusterMenus(cluster)(
+        errorOrTopicIdentity.toOption.map(_.clusterContext.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
+}
+
+@main(
+    "Topic Delete Confirm",
+    menu = theMenu,
+    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndCluster("Topic Delete Confirm",cluster,topic))) {
+<div class="col-md-12 un-pad-me">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>@topic</h3>
+        </div>
+        <h3>Are you sure you want to delete @topic?</h3></br></br>
+        <div class="row">
+            <div class="col-md-3"><button type="button" class="btn btn-primary btn-block" onclick="goBack()">No</button></div>
+            <div class="col-md-2">
+                @b3.form(routes.Topic.handleDeleteTopic(cluster, topic)) {
+                    <fieldset>
+                        @b3.hidden("topic",topic)
+                        @b3.submit('class -> "btn btn-primary btn-block"){ Delete Topic }
+                    </fieldset>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+}

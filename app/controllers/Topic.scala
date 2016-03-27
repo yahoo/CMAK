@@ -44,7 +44,7 @@ class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManager
       case Success(_) => Valid
     }
   }
-  
+
   val kafka_0_8_1_1_Default = CreateTopic("",1,1,TopicConfigs.configNames(Kafka_0_8_1_1).map(n => TConfig(n,None)).toList)
   val kafka_0_8_2_0_Default = CreateTopic("",1,1,TopicConfigs.configNames(Kafka_0_8_2_0).map(n => TConfig(n,None)).toList)
   val kafka_0_8_2_1_Default = CreateTopic("",1,1,TopicConfigs.configNames(Kafka_0_8_2_1).map(n => TConfig(n,None)).toList)
@@ -65,7 +65,7 @@ class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManager
       )
     )(CreateTopic.apply)(CreateTopic.unapply)
   )
-  
+
   val defaultDeleteForm = Form(
     mapping(
       "topic" -> nonEmptyText.verifying(maxLength(250), validateName)
@@ -198,6 +198,15 @@ class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManager
           }
         }
       )
+    }
+  }
+
+  def confirmDeleteTopic(clusterName: String, topic: String) = Action.async {
+    val futureErrorOrTopicIdentity = kafkaManager.getTopicIdentity(clusterName, topic)
+    val futureErrorOrConsumerList = kafkaManager.getConsumersForTopic(clusterName, topic)
+
+    futureErrorOrTopicIdentity.zip(futureErrorOrConsumerList).map {case (errorOrTopicIdentity,errorOrConsumerList) =>
+      Ok(views.html.topic.topicDeleteConfirm(clusterName,topic,errorOrTopicIdentity,errorOrConsumerList))
     }
   }
 
