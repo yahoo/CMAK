@@ -186,12 +186,7 @@
                 <tr>
                     @if(topicIdentity.clusterContext.clusterFeatures.features(kafka.manager.features.KMDeleteTopicFeature)) {
                     <td>
-                        @b3.form(routes.Topic.handleDeleteTopic(cluster, topic)) {
-                        <fieldset>
-                            @b3.hidden("topic",topic)
-                            @b3.submit('class -> "btn btn-primary btn-block"){ Delete Topic }
-                        </fieldset>
-                        }
+                        <a href="@routes.Topic.confirmDeleteTopic(cluster,topic)" class='btn btn-primary btn-block'>Delete Topic</a>
                     </td>
                     }
                     @features.app(features.KMReassignPartitionsFeature) {
