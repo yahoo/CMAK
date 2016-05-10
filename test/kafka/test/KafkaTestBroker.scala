@@ -24,12 +24,12 @@ class KafkaTestBroker(zookeeper: CuratorFramework, zookeeperConnectionString: St
   kafkaServerStartable.startup()
 
   //wait until broker shows up in zookeeper
-  {
-    var count = 0
-    while(count < 10 && zookeeper.checkExists().forPath(kafka.utils.ZkUtils.BrokerIdsPath + "/0") == null) {
-      Thread.sleep(1000)
-      println("Waiting for broker ...")
-    }
+  var count = 0
+  while(count < 10 && zookeeper.checkExists().forPath(kafka.utils.ZkUtils.BrokerIdsPath + "/0") == null) {
+    count += 1
+    println("Waiting for broker ...")
+    println(Option(zookeeper.getData.forPath(kafka.utils.ZkUtils.BrokerIdsPath + "/0")).map(kafka.manager.asString))
+    Thread.sleep(1000)
   }
 
   private def buildKafkaConfig(zookeeperConnectionString: String): KafkaConfig = {

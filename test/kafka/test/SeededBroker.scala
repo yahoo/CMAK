@@ -18,7 +18,7 @@ import org.apache.curator.framework.imps.CuratorFrameworkState
 import org.apache.curator.framework.{CuratorFrameworkFactory, CuratorFramework}
 import org.apache.curator.retry.ExponentialBackoffRetry
 import org.apache.curator.test.TestingServer
-import org.apache.kafka.clients.consumer.{ConsumerRecords, ConsumerRecord, KafkaConsumer}
+import org.apache.kafka.clients.consumer.{ConsumerRecords, KafkaConsumer}
 
 import scala.util.Try
 

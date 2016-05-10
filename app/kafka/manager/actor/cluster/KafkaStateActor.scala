@@ -28,7 +28,6 @@ import kafka.manager.model._
 import kafka.manager.utils.ZkUtils
 import kafka.manager.utils.zero81.{PreferredReplicaLeaderElectionCommand, ReassignPartitionCommand}
 import kafka.manager.utils.zero90.{MemberMetadata, GroupMetadata}
-import kafka.message.MessageAndMetadata
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.cache._
@@ -183,8 +182,10 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
     props.put("group.id", "KafkaManagerOffsetCache")
     props.put("bootstrap.servers", bootstrapBrokerList.list.map(bi => s"${bi.host}:${bi.port}").mkString(","))
     props.put("exclude.internal.topics", "false")
-    props.put("auto.commit.enable", "false")
-    props.put("auto.offset.reset", "largest")
+    props.put("enable.auto.commit", "false")
+    props.put("key.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer")
+    props.put("value.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer")
+    props.put("auto.offset.reset", "latest")
     consumerProperties.foreach {
       cp => props.putAll(cp)
     }
@@ -230,73 +231,70 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
 
   override def run(): Unit = {
     for {
-      consumer <- Try(createKafkaConsumer()).logError(s"Failed to create consumer for offset topic for cluster ${clusterContext.config.name}")
+      consumer <- Try {
+        val consumer = createKafkaConsumer()
+        consumer.subscribe(java.util.Arrays.asList(KafkaManagedOffsetCache.ConsumerOffsetTopic))
+        consumer
+      }.logError(s"Failed to create consumer for offset topic for cluster ${clusterContext.config.name}")
     } {
       try {
         info(s"Consumer created for kafka offset topic consumption for cluster ${clusterContext.config.name}")
-        for {
-          stream <- Try {
-            import collection.JavaConverters._
-            consumer.subscribe( List(KafkaManagedOffsetCache.ConsumerOffsetTopic).asJava)
-          }.logError(s"Failed to create kafka stream for offset topic for cluster ${clusterContext.config.name}")
-        } {
-          while (!shutdown) {
+        while (!shutdown) {
+          try {
             try {
-              try {
-                dequeueAndProcessBackFill()
-                performGroupMetadataCheck()
-              } catch {
-                case e: Exception =>
-                  error("Failed to backfill group metadata", e)
-              }
-
-              val records: ConsumerRecords[Array[Byte], Array[Byte]] = consumer.poll(100)
-              val iterator = records.iterator()
-              while(iterator.hasNext) {
-                val record = iterator.next()
-                readMessageKey(ByteBuffer.wrap(record.key())) match {
-                  case OffsetKey(version, key) =>
-                    val value: OffsetAndMetadata = readOffsetMessageValue(ByteBuffer.wrap(record.value()))
-                    groupTopicPartitionOffsetMap += (key.group, key.topicPartition.topic, key.topicPartition.partition) -> value
-                    val topic = key.topicPartition.topic
-                    val group = key.group
-                    val consumerSet = {
-                      if (topicConsumerSetMap.contains(topic)) {
-                        topicConsumerSetMap(topic)
-                      } else {
-                        val s = new mutable.TreeSet[String]()
-                        topicConsumerSetMap += topic -> s
-                        s
-                      }
-                    }
-                    consumerSet += group
-
-                    val topicSet = {
-                      if (consumerTopicSetMap.contains(group)) {
-                        consumerTopicSetMap(group)
-                      } else {
-                        val s = new mutable.TreeSet[String]()
-                        consumerTopicSetMap += group -> s
-                        s
-                      }
-                    }
-                    topicSet += topic
-                  case GroupMetadataKey(version, key) =>
-                    val value: GroupMetadata = readGroupMessageValue(key, ByteBuffer.wrap(record.value()))
-                    value.allMemberMetadata.foreach {
-                      mm =>
-                        mm.assignment.foreach {
-                          case (topic, part) =>
-                            groupTopicPartitionMemberMap += (key, topic, part) -> mm
-                        }
-                    }
-                }
-              }
-              lastUpdateTimeMillis = System.currentTimeMillis()
+              dequeueAndProcessBackFill()
+              performGroupMetadataCheck()
             } catch {
               case e: Exception =>
-                warn("Failed to process a message from offset topic!", e)
+                error("Failed to backfill group metadata", e)
             }
+
+            val records: ConsumerRecords[Array[Byte], Array[Byte]] = consumer.poll(100)
+            val iterator = records.iterator()
+            while(iterator.hasNext) {
+              val record = iterator.next()
+              readMessageKey(ByteBuffer.wrap(record.key())) match {
+                case OffsetKey(version, key) =>
+                  val value: OffsetAndMetadata = readOffsetMessageValue(ByteBuffer.wrap(record.value()))
+                  groupTopicPartitionOffsetMap += (key.group, key.topicPartition.topic, key.topicPartition.partition) -> value
+                  val topic = key.topicPartition.topic
+                  val group = key.group
+                  val consumerSet = {
+                    if (topicConsumerSetMap.contains(topic)) {
+                      topicConsumerSetMap(topic)
+                    } else {
+                      val s = new mutable.TreeSet[String]()
+                      topicConsumerSetMap += topic -> s
+                      s
+                    }
+                  }
+                  consumerSet += group
+
+                  val topicSet = {
+                    if (consumerTopicSetMap.contains(group)) {
+                      consumerTopicSetMap(group)
+                    } else {
+                      val s = new mutable.TreeSet[String]()
+                      consumerTopicSetMap += group -> s
+                      s
+                    }
+                  }
+                  topicSet += topic
+                case GroupMetadataKey(version, key) =>
+                  val value: GroupMetadata = readGroupMessageValue(key, ByteBuffer.wrap(record.value()))
+                  value.allMemberMetadata.foreach {
+                    mm =>
+                      mm.assignment.foreach {
+                        case (topic, part) =>
+                          groupTopicPartitionMemberMap += (key, topic, part) -> mm
+                      }
+                  }
+              }
+            }
+            lastUpdateTimeMillis = System.currentTimeMillis()
+          } catch {
+            case e: Exception =>
+              warn("Failed to process a message from offset topic!", e)
           }
         }
       } finally {
@@ -945,7 +943,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
     }
   }
   
-  private[this] val offsetCache: OffsetCache = {
+  private[this] lazy val offsetCache: OffsetCache = {
     if(config.clusterContext.config.activeOffsetCacheEnabled)
       new OffsetCacheActive(config.curator
         , kafkaAdminClient

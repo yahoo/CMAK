@@ -104,7 +104,9 @@ class TestKafkaManager extends CuratorAwareTest with BaseTest {
     Try(hlConsumer.foreach(_.close()))
     Try(newConsumerThread.foreach(_.interrupt()))
     Try(newConsumer.foreach(_.close()))
-    kafkaManager.shutdown()
+    if(kafkaManager!=null) {
+      kafkaManager.shutdown()
+    }
     Try(broker.shutdown())
     super.afterAll()
   }
