@@ -51,6 +51,7 @@ class TestKafkaStateActor extends KafkaServerInTest with BaseTest {
       , LongRunningPoolConfig(2,100)
       , 5
       , 10000
+      , None
     )
     val props = Props(classOf[KafkaStateActor],ksConfig)
 

@@ -130,7 +130,7 @@ class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extend
           log.info("Running reassign partition from {} to {}", current, generated)
           Future {
             KCCommandResult(
-              reassignPartitionCommand.executeAssignment(kafkaCommandActorConfig.curator, current, generated)
+              reassignPartitionCommand.executeAssignment(kafkaCommandActorConfig.curator, current, generated, Set.empty)
             )
           }
         }

@@ -45,6 +45,7 @@ class TestKafkaManagerActor extends CuratorAwareTest with BaseTest {
       , kafkaManagerUpdatePeriod = FiniteDuration(1,SECONDS)
       , deleteClusterUpdatePeriod = FiniteDuration(1,SECONDS)
       , defaultTuning = defaultTuning
+      , consumerProperties = None
     )
     val props = Props(classOf[KafkaManagerActor],config)
 

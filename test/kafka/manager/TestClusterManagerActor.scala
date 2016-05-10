@@ -52,6 +52,7 @@ class TestClusterManagerActor extends CuratorAwareTest with BaseTest {
       "pinned-dispatcher"
       ,"/kafka-manager/clusters/dev"
       ,curatorConfig,clusterConfig
+      ,None
     )
     val props = Props(classOf[ClusterManagerActor],config)
 

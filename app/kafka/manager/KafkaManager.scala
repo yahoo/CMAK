@@ -55,6 +55,7 @@ object ApiError extends Logging {
 
 object KafkaManager {
 
+  val ConsumerPropertiesFile = "kafka-manager.consumer.properties.file"
   val BaseZkPath = "kafka-manager.base-zk-path"
   val PinnedDispatchName = "kafka-manager.pinned-dispatcher-name"
   val ZkHosts = "kafka-manager.zkhosts"
@@ -108,8 +109,7 @@ object KafkaManager {
 import KafkaManager._
 import akka.pattern._
 import scalaz.{-\/, \/, \/-}
-class KafkaManager(akkaConfig: Config)
-{
+class KafkaManager(akkaConfig: Config) extends Logging {
   private[this] val system = ActorSystem("kafka-manager-system", akkaConfig)
 
   private[this] val configWithDefaults = akkaConfig.withFallback(DefaultConfig)
@@ -146,6 +146,7 @@ class KafkaManager(akkaConfig: Config)
       , clusterActorsAskTimeoutMillis = configWithDefaults.getInt(ClusterActorsAskTimeoutMillis)
       , simpleConsumerSocketTimeoutMillis =  configWithDefaults.getInt(SimpleConsumerSocketTimeoutMillis)
       , defaultTuning = defaultTuning
+      , consumerProperties = getConsumerPropertiesFromConfig(configWithDefaults)
     )
   }
 
@@ -167,6 +168,21 @@ class KafkaManager(akkaConfig: Config)
     configWithDefaults.getInt(ApiTimeoutMillis),
     MILLISECONDS
   )
+
+  private[this] def getConsumerPropertiesFromConfig(config: Config) : Option[Properties] = {
+    if(config.hasPath(ConsumerPropertiesFile)) {
+      val filePath = config.getString(ConsumerPropertiesFile)
+      val file = new java.io.File(filePath)
+      if(file.isFile & file.canRead) {
+        val props = new Properties()
+        props.load(new java.io.FileInputStream(file))
+        return Option(props)
+      } else {
+        warn(s"Failed to find consumer properties file or file is not readable : $file")
+      }
+    }
+    None
+  }
 
   private[this] def tryWithKafkaManagerActor[Input, Output, FOutput](msg: Input)
     (fn: Output => FOutput)
