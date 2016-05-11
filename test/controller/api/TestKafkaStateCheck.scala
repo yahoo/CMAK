@@ -117,7 +117,7 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
   test("get topics") {
     val future = kafkaStateCheck.get.topics(testClusterName).apply(FakeRequest())
     assert(status(future) === OK)
-    assert(contentAsJson(future) === Json.obj("topics" -> Seq(testTopicName, "controller-api-test").sorted))
+    assert(contentAsJson(future) === Json.obj("topics" -> Seq(testTopicName, "controller-api-test", "__consumer_offsets").sorted))
   }
 
   test("get topics in non-existing cluster") {

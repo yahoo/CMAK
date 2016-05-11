@@ -247,7 +247,7 @@ class TestClusterManagerActor extends CuratorAwareTest with BaseTest {
   test("run reassign partition for topic") {
     withClusterManagerActor(KSGetTopics) { result : TopicList =>
       val topicSet = result.list.toSet
-      withClusterManagerActor(CMRunReassignPartition(topicSet)) { cmResultsFuture: Future[CMCommandResults] =>
+      withClusterManagerActor(CMRunReassignPartition(topicSet, Set.empty)) { cmResultsFuture: Future[CMCommandResults] =>
         val cmResult = Await.result(cmResultsFuture,10 seconds)
         Thread.sleep(1000)
         cmResult.result.foreach { t =>
