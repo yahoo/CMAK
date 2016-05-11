@@ -159,7 +159,7 @@ object ReassignPartitionErrors {
     "Current partitions and generated partition replicas are out of sync current=%s, generated=%s , please regenerate"
     .format(current, generated))
   class ReplicationOutOfSync private[ReassignPartitionErrors](current: Int, generated: Int) extends UtilError(
-    "Current replication factor and generated replication factor for replicas are out of sync current=%s, generated=%s , please regenerate"
+    "Current replication factor and generated replication factor for replicas are out of sync current=%s, generated=%s , please regenerate or attempt to force operation"
       .format(current, generated))
   class NoValidAssignments private[ReassignPartitionErrors] extends UtilError("Cannot reassign partitions with no valid assignments!")
   class ReassignmentAlreadyInProgress private[ReassignPartitionErrors] extends UtilError("Partition reassignment currently in " +

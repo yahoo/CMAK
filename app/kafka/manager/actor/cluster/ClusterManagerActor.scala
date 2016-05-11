@@ -505,7 +505,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           }
         } pipeTo sender()
 
-      case CMRunReassignPartition(topics) =>
+      case CMRunReassignPartition(topics, forceSet) =>
         implicit val ec = longRunningExecutionContext
         val eventualBrokerList = withKafkaStateActor(KSGetBrokers)(identity[BrokerList])
         val eventualDescriptions = withKafkaStateActor(KSGetTopicDescriptions(topics))(identity[TopicDescriptions])
@@ -531,7 +531,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           val topicsMap = topicIdentities.map(ti => (ti.topic, ti)).toMap
           val reassignmentsMap = reassignments.filter(_.isSuccess).map(_.toOption).flatten.map(ti => (ti.topic, ti)).toMap
           val failures: IndexedSeq[Try[Unit]] = reassignments.filter(_.isFailure).map(_.flatMap(ti => Try[Unit]((): Unit)))
-          withKafkaCommandActor(KCReassignPartition(topicsMap, reassignmentsMap)) { kcResponse: KCCommandResult =>
+          withKafkaCommandActor(KCReassignPartition(topicsMap, reassignmentsMap, forceSet)) { kcResponse: KCCommandResult =>
             CMCommandResults(failures ++ IndexedSeq(kcResponse.result))
           }
         } pipeTo sender()

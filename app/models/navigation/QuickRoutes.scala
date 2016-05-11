@@ -33,7 +33,7 @@ object QuickRoutes {
     "Create Logkafka" -> controllers.routes.Logkafka.createLogkafka
   )
   val topicRoutes : Map[String, (String, String) => Call] = Map(
-    "Topic View" -> controllers.routes.Topic.topic,
+    "Topic View" -> ((c, t) => controllers.routes.Topic.topic(c, t, force=false)),
     "Add Partitions" -> controllers.routes.Topic.addPartitions,
     "Update Config" -> controllers.routes.Topic.addPartitions
   )

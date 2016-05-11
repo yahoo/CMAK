@@ -16,6 +16,9 @@ import kafka.manager.actor.{KafkaManagerActorConfig, KafkaManagerActor}
 import kafka.manager.base.LongRunningPoolConfig
 import kafka.manager.model._
 import ActorModel._
+import kafka.manager.utils.UtilException
+import kafka.manager.utils.zero81.ReassignPartitionErrors.ReplicationOutOfSync
+import kafka.manager.utils.zero81.{ReassignPartitionErrors, ForceReassignmentCommand, ForceOnReplicationOutOfSync}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
@@ -37,7 +40,7 @@ case class BrokerListExtended(list: IndexedSeq[BrokerIdentity],
 case class ConsumerListExtended(list: IndexedSeq[((String, ConsumerType), Option[ConsumerIdentity])], clusterContext: ClusterContext)
 case class LogkafkaListExtended(list: IndexedSeq[(String, Option[LogkafkaIdentity])], deleteSet: Set[String])
 
-case class ApiError(msg: String)
+case class ApiError(msg: String, recoverByForceOperation: Boolean = false)
 object ApiError extends Logging {
 
   implicit def fromThrowable(t: Throwable) : ApiError = {
@@ -373,12 +376,25 @@ class KafkaManager(akkaConfig: Config) extends Logging {
     }
   }
 
-  def runReassignPartitions(clusterName: String, topics: Set[String]): Future[IndexedSeq[ApiError] \/ Unit] = {
+  def runReassignPartitions(clusterName: String, topics: Set[String], force: Boolean = false): Future[IndexedSeq[ApiError] \/ Unit] = {
     implicit val ec = apiExecutionContext
-    val results = tryWithKafkaManagerActor(KMClusterCommandRequest(clusterName, CMRunReassignPartition(topics))) {
+    val forceSet: Set[ForceReassignmentCommand] = {
+      if(force) {
+        Set(ForceOnReplicationOutOfSync)
+      } else Set.empty
+    }
+    val results = tryWithKafkaManagerActor(KMClusterCommandRequest(clusterName, CMRunReassignPartition(topics, forceSet))) {
       resultFuture: Future[CMCommandResults] =>
         resultFuture map { result =>
-          val errors = result.result.collect { case Failure(t) => ApiError(t.getMessage)}
+          val errors = result.result.collect {
+            case Failure(t) =>
+              t match {
+                case UtilException(e) if e.isInstanceOf[ReplicationOutOfSync] =>
+                  ApiError(t.getMessage, recoverByForceOperation = true)
+                case _ =>
+                  ApiError(t.getMessage)
+              }
+          }
           if (errors.isEmpty)
             \/-({})
           else

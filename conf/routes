@@ -11,7 +11,7 @@ GET         /clusters/:c                                  controllers.Cluster.cl
 GET         /clusters/:c/topics                           controllers.Topic.topics(c:String)
 GET         /clusters/:c/topics/addPartitions             controllers.Topic.addPartitionsToMultipleTopics(c:String)
 POST        /clusters/:c/topics/addPartitions             controllers.Topic.handleAddPartitionsToMultipleTopics(c:String)
-GET         /clusters/:c/topics/:t                        controllers.Topic.topic(c:String, t:String)
+GET         /clusters/:c/topics/:t                        controllers.Topic.topic(c:String, t:String, force:Boolean ?= false)
 GET         /clusters/:c/logkafkas                        controllers.Logkafka.logkafkas(c:String)
 GET         /clusters/:c/logkafkas/:h/:l                  controllers.Logkafka.logkafka(c:String, h:String, l:String)
 GET         /clusters/:c/brokers                          controllers.Cluster.brokers(c: String)

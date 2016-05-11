@@ -5,13 +5,24 @@
 
 package models.form
 
+import enumeratum.{Enum, EnumEntry}
+import enumeratum.EnumEntry.{Uppercase, Snakecase}
 import kafka.manager.model.ActorModel
 import ActorModel.BrokerIdentity
 
 /**
  * @author hiral
  */
-sealed trait ReassignPartitionOperation
+sealed abstract class ReassignPartitionOperation (override val entryName: String) extends EnumEntry with Snakecase with Uppercase
+
+object ReassignPartitionOperation extends Enum[ReassignPartitionOperation] {
+  val values = findValues
+
+  case object RunAssignment extends ReassignPartitionOperation("run")
+  case object ForceRunAssignment extends ReassignPartitionOperation("force")
+  case object UnknownRPO extends ReassignPartitionOperation("unknown")
+
+}
 
 case class BrokerSelect(id: Int, host: String, selected: Boolean)
 object BrokerSelect {
@@ -32,21 +43,3 @@ case class ReadVersion(topic: String, version: Int)
 case class GenerateAssignment(brokers: Seq[BrokerSelect])
 case class GenerateMultipleAssignments(topics: Seq[TopicSelect], brokers: Seq[BrokerSelect])
 case class RunMultipleAssignments(topics: Seq[TopicSelect])
-case object RunAssignment extends ReassignPartitionOperation
-case class UnknownRPO(op: String) extends ReassignPartitionOperation
-
-object ReassignPartitionOperation {
-  def apply(s: String) : ReassignPartitionOperation = {
-    s match {
-      case "run" => RunAssignment
-      case a => UnknownRPO(a)
-    }
-  }
-
-  def unapply(op: ReassignPartitionOperation) : Option[String] = {
-    op match {
-      case RunAssignment => Option("run")
-      case UnknownRPO(_) => Option("unknown")
-    }
-  }
-}

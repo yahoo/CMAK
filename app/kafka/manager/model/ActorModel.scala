@@ -11,6 +11,7 @@ import grizzled.slf4j.Logging
 import kafka.common.TopicAndPartition
 import kafka.manager.jmx._
 import kafka.manager.utils
+import kafka.manager.utils.zero81.ForceReassignmentCommand
 import org.joda.time.DateTime
 
 import scala.collection.immutable.Queue
@@ -84,7 +85,7 @@ object ActorModel {
   case class CMUpdateTopicConfig(topic: String, config: Properties, readVersion: Int) extends CommandRequest
   case class CMDeleteTopic(topic: String) extends CommandRequest
   case class CMRunPreferredLeaderElection(topics: Set[String]) extends CommandRequest
-  case class CMRunReassignPartition(topics: Set[String]) extends CommandRequest
+  case class CMRunReassignPartition(topics: Set[String], forceSet: Set[ForceReassignmentCommand]) extends CommandRequest
   case class CMGeneratePartitionAssignments(topics: Set[String], brokers: Set[Int]) extends CommandRequest
   case class CMManualPartitionAssignments(assignments: List[(String, List[(Int, List[Int])])]) extends CommandRequest
 
@@ -124,8 +125,9 @@ object ActorModel {
   case class KCUpdateTopicConfig(topic: String, config: Properties, readVersion: Int) extends CommandRequest
   case class KCDeleteTopic(topic: String) extends CommandRequest
   case class KCPreferredReplicaLeaderElection(topicAndPartition: Set[TopicAndPartition]) extends CommandRequest
-  case class KCReassignPartition(currentTopicIdentity: Map[String, TopicIdentity],
-                               generatedTopicIdentity: Map[String, TopicIdentity]) extends CommandRequest
+  case class KCReassignPartition(currentTopicIdentity: Map[String, TopicIdentity]
+                                 , generatedTopicIdentity: Map[String, TopicIdentity]
+                                 , forceSet: Set[ForceReassignmentCommand]) extends CommandRequest
 
   case class KCCommandResult(result: Try[Unit]) extends CommandResponse
 

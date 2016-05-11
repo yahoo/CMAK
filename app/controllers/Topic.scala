@@ -14,6 +14,7 @@ import kafka.manager.features.ClusterFeatures
 import kafka.manager.utils.TopicConfigs
 import kafka.manager.ApiError
 import models.FollowLink
+import models.form.ReassignPartitionOperation.{RunAssignment, ForceRunAssignment}
 import models.form._
 import models.navigation.Menus
 import play.api.data.Form
@@ -146,12 +147,16 @@ class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManager
     }
   }
 
-  def topic(c: String, t: String) = Action.async {
+  def topic(c: String, t: String, force: Boolean) = Action.async {
     val futureErrorOrTopicIdentity = kafkaManager.getTopicIdentity(c,t)
     val futureErrorOrConsumerList = kafkaManager.getConsumersForTopic(c,t)
 
     futureErrorOrTopicIdentity.zip(futureErrorOrConsumerList).map {case (errorOrTopicIdentity,errorOrConsumerList) =>
-      Ok(views.html.topic.topicView(c,t,errorOrTopicIdentity,errorOrConsumerList))
+      val op = force match {
+        case true => ForceRunAssignment
+        case _ => RunAssignment
+      }
+      Ok(views.html.topic.topicView(c,t,errorOrTopicIdentity,errorOrConsumerList, op))
     }
   }
 
@@ -218,7 +223,9 @@ class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManager
             clusterName,
             topic,
             -\/(ApiError(formWithErrors.error("topic").map(_.toString).getOrElse("Unknown error deleting topic!"))),
-            None))
+            None,
+            RunAssignment
+          ))
         ),
         deleteTopic => {
           kafkaManager.deleteTopic(clusterName, deleteTopic.topic).map { errorOrSuccess =>

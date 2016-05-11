@@ -36,6 +36,7 @@ libraryDependencies ++= Seq(
   "com.adrianhurt" %% "play-bootstrap3" % "0.4.5-P24",
   "org.clapper" %% "grizzled-slf4j" % "1.0.2",
   "org.apache.kafka" %% "kafka" % "0.9.0.1" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
+  "com.beachape" %% "enumeratum" % "1.4.4",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "org.apache.curator" % "curator-test" % "2.9.1" % "test",
   "org.mockito" % "mockito-core" % "1.10.19" % "test",
