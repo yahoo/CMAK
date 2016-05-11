@@ -5,7 +5,7 @@
 name := """kafka-manager"""
 
 /* For packaging purposes, -SNAPSHOT MUST contain a digit */
-version := "1.3.1.0"
+version := "1.3.1.1"
 
 scalaVersion := "2.11.8"
 
@@ -28,8 +28,8 @@ libraryDependencies ++= Seq(
   "org.webjars" % "backbonejs" % "1.2.3",
   "org.webjars" % "underscorejs" % "1.8.3",
   "org.webjars" % "dustjs-linkedin" % "2.6.1-1",
-  "org.apache.curator" % "curator-framework" % "3.1.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
-  "org.apache.curator" % "curator-recipes" % "3.1.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
+  "org.apache.curator" % "curator-framework" % "2.10.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
+  "org.apache.curator" % "curator-recipes" % "2.10.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
   "org.json4s" %% "json4s-jackson" % "3.2.11",
   "org.json4s" %% "json4s-scalaz" % "3.2.11",
   "org.slf4j" % "log4j-over-slf4j" % "1.7.12",
