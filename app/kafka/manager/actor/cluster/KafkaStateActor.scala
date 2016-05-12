@@ -230,7 +230,7 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
   }
 
   override def run(): Unit = {
-    while(!shutdown) {
+    if(!shutdown) {
       for {
         consumer <- Try {
           val consumer = createKafkaConsumer()
