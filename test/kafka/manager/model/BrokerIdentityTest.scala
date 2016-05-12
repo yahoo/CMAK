@@ -16,6 +16,7 @@ class BrokerIdentityTest extends FunSuite with Matchers {
     val bi = biVal.toOption.get
     assert(bi.host === "host.com")
     assert(bi.port === 9092)
+    assert(bi.secure === true)
   }
 
   test("successfully parse json with endpoints with plaintext") {
@@ -26,6 +27,7 @@ class BrokerIdentityTest extends FunSuite with Matchers {
     val bi = biVal.toOption.get
     assert(bi.host === "host.com")
     assert(bi.port === 9092)
+    assert(bi.secure === false)
 
   }
 
@@ -37,6 +39,7 @@ class BrokerIdentityTest extends FunSuite with Matchers {
     val bi = biVal.toOption.get
     assert(bi.host === "host.com")
     assert(bi.port === 9092)
+    assert(bi.secure === false)
 
   }
 }

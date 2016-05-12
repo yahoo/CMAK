@@ -226,7 +226,7 @@ object ActorModel {
   case object DCUpdateState extends CommandRequest
 
   case class GeneratedPartitionAssignments(topic: String, assignments: Map[Int, Seq[Int]], nonExistentBrokers: Set[Int])
-  case class BrokerIdentity(id: Int, host: String, port: Int, jmxPort: Int)
+  case class BrokerIdentity(id: Int, host: String, port: Int, jmxPort: Int, secure: Boolean)
 
   object BrokerIdentity {
     import org.json4s.jackson.JsonMethods._
@@ -238,13 +238,15 @@ object ActorModel {
     import scalaz.syntax.validation._
     import scalaz.syntax.applicative._
 
+    val DEFAULT_SECURE : JsonScalaz.Result[Boolean] = false.successNel
+
     implicit def from(brokerId: Int, config: String): Validation[NonEmptyList[JsonScalaz.Error],BrokerIdentity]= {
       val json = parse(config)
       val hostResult = fieldExtended[String]("host")(json)
       val portResult = fieldExtended[Int]("port")(json)
       val jmxPortResult = fieldExtended[Int]("jmx_port")(json)
-      val hostPortResult: JsonScalaz.Result[(String, Int)] = json.findField(_._1 == "endpoints").map(_ => fieldExtended[List[String]]("endpoints")(json))
-        .fold((hostResult |@| portResult)((a, b) => (a, b))){
+      val hostPortResult: JsonScalaz.Result[(String, Int, Boolean)] = json.findField(_._1 == "endpoints").map(_ => fieldExtended[List[String]]("endpoints")(json))
+        .fold((hostResult |@| portResult |@| DEFAULT_SECURE)((a, b, c) => (a, b, c))){
         r =>
           r.flatMap {
             endpointList =>
@@ -252,11 +254,11 @@ object ActorModel {
                 endpoint =>
                   Validation.fromTryCatchNonFatal {
                     val arr = endpoint.split("://")(1).split(":")
-                    (arr(0), arr(1).toInt)
+                    (arr(0), arr(1).toInt, endpoint.toLowerCase.contains("sasl"))
                   }.leftMap[JsonScalaz.Error](t => UncategorizedError("endpoints", t.getMessage, List.empty)).toValidationNel
               }
               parsedList.find(_.isSuccess).fold({
-                val err: JsonScalaz.Result[(String, Int)] = UncategorizedError("endpoints", s"failed to parse host and port from json : $config", List.empty).failureNel
+                val err: JsonScalaz.Result[(String, Int, Boolean)] = UncategorizedError("endpoints", s"failed to parse host and port from json : $config", List.empty).failureNel
                 err
               }
               )(r => r)
@@ -266,9 +268,10 @@ object ActorModel {
         tpl <- hostPortResult
         host = tpl._1
         port = tpl._2
+        secure = tpl._3
         jmxPort <- jmxPortResult
       } yield {
-        BrokerIdentity(brokerId, host, port, jmxPort)
+        BrokerIdentity(brokerId, host, port, jmxPort, secure)
       }
     }
   }

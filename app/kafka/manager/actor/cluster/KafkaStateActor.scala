@@ -361,7 +361,7 @@ trait OffsetCache extends Logging {
   protected[this] val loadOffsets: Boolean
 
   // Caches a map of partitions to offsets at a key that is the topic's name.
-  private[this] val partitionOffsetsCache: LoadingCache[String, Future[PartitionOffsetsCapture]] = CacheBuilder.newBuilder()
+  private[this] lazy val partitionOffsetsCache: LoadingCache[String, Future[PartitionOffsetsCapture]] = CacheBuilder.newBuilder()
     .expireAfterWrite(getCacheTimeoutSecs,TimeUnit.SECONDS) // TODO - update more or less often maybe, or make it configurable
     .build(
       new CacheLoader[String,Future[PartitionOffsetsCapture]] {
@@ -458,6 +458,8 @@ trait OffsetCache extends Logging {
 
   private[this] var kafkaManagedOffsetCache : Option[KafkaManagedOffsetCache] = None
 
+  private[this] lazy val secureKafka = getBrokerList.list.exists(_.secure)
+
   def start() : Unit = {
     if(KafkaManagedOffsetCache.isSupported(clusterContext.config.version)) {
       if(kafkaManagedOffsetCache.isEmpty) {
@@ -484,7 +486,7 @@ trait OffsetCache extends Logging {
   }
 
   def getTopicPartitionOffsets(topic: String, interactive: Boolean) : Future[PartitionOffsetsCapture] = {
-    if(interactive || loadOffsets) {
+    if((interactive || loadOffsets) && !secureKafka) {
       partitionOffsetsCache.get(topic)
     } else {
       emptyPartitionOffsetsCapture
