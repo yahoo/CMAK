@@ -230,78 +230,81 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
   }
 
   override def run(): Unit = {
-    for {
-      consumer <- Try {
-        val consumer = createKafkaConsumer()
-        consumer.subscribe(java.util.Arrays.asList(KafkaManagedOffsetCache.ConsumerOffsetTopic))
-        consumer
-      }.logError(s"Failed to create consumer for offset topic for cluster ${clusterContext.config.name}")
-    } {
-      try {
-        info(s"Consumer created for kafka offset topic consumption for cluster ${clusterContext.config.name}")
-        while (!shutdown) {
-          try {
+    while(!shutdown) {
+      for {
+        consumer <- Try {
+          val consumer = createKafkaConsumer()
+          consumer.subscribe(java.util.Arrays.asList(KafkaManagedOffsetCache.ConsumerOffsetTopic))
+          consumer
+        }.logError(s"Failed to create consumer for offset topic for cluster ${clusterContext.config.name}")
+      } {
+        try {
+          info(s"Consumer created for kafka offset topic consumption for cluster ${clusterContext.config.name}")
+          while (!shutdown) {
             try {
-              dequeueAndProcessBackFill()
-              performGroupMetadataCheck()
+              try {
+                dequeueAndProcessBackFill()
+                performGroupMetadataCheck()
+              } catch {
+                case e: Exception =>
+                  error("Failed to backfill group metadata", e)
+              }
+
+              val records: ConsumerRecords[Array[Byte], Array[Byte]] = consumer.poll(100)
+              val iterator = records.iterator()
+              while (iterator.hasNext) {
+                val record = iterator.next()
+                readMessageKey(ByteBuffer.wrap(record.key())) match {
+                  case OffsetKey(version, key) =>
+                    val value: OffsetAndMetadata = readOffsetMessageValue(ByteBuffer.wrap(record.value()))
+                    groupTopicPartitionOffsetMap += (key.group, key.topicPartition.topic, key.topicPartition.partition) -> value
+                    val topic = key.topicPartition.topic
+                    val group = key.group
+                    val consumerSet = {
+                      if (topicConsumerSetMap.contains(topic)) {
+                        topicConsumerSetMap(topic)
+                      } else {
+                        val s = new mutable.TreeSet[String]()
+                        topicConsumerSetMap += topic -> s
+                        s
+                      }
+                    }
+                    consumerSet += group
+
+                    val topicSet = {
+                      if (consumerTopicSetMap.contains(group)) {
+                        consumerTopicSetMap(group)
+                      } else {
+                        val s = new mutable.TreeSet[String]()
+                        consumerTopicSetMap += group -> s
+                        s
+                      }
+                    }
+                    topicSet += topic
+                  case GroupMetadataKey(version, key) =>
+                    val value: GroupMetadata = readGroupMessageValue(key, ByteBuffer.wrap(record.value()))
+                    value.allMemberMetadata.foreach {
+                      mm =>
+                        mm.assignment.foreach {
+                          case (topic, part) =>
+                            groupTopicPartitionMemberMap += (key, topic, part) -> mm
+                        }
+                    }
+                }
+              }
+              lastUpdateTimeMillis = System.currentTimeMillis()
             } catch {
               case e: Exception =>
-                error("Failed to backfill group metadata", e)
+                warn("Failed to process a message from offset topic!", e)
             }
-
-            val records: ConsumerRecords[Array[Byte], Array[Byte]] = consumer.poll(100)
-            val iterator = records.iterator()
-            while(iterator.hasNext) {
-              val record = iterator.next()
-              readMessageKey(ByteBuffer.wrap(record.key())) match {
-                case OffsetKey(version, key) =>
-                  val value: OffsetAndMetadata = readOffsetMessageValue(ByteBuffer.wrap(record.value()))
-                  groupTopicPartitionOffsetMap += (key.group, key.topicPartition.topic, key.topicPartition.partition) -> value
-                  val topic = key.topicPartition.topic
-                  val group = key.group
-                  val consumerSet = {
-                    if (topicConsumerSetMap.contains(topic)) {
-                      topicConsumerSetMap(topic)
-                    } else {
-                      val s = new mutable.TreeSet[String]()
-                      topicConsumerSetMap += topic -> s
-                      s
-                    }
-                  }
-                  consumerSet += group
-
-                  val topicSet = {
-                    if (consumerTopicSetMap.contains(group)) {
-                      consumerTopicSetMap(group)
-                    } else {
-                      val s = new mutable.TreeSet[String]()
-                      consumerTopicSetMap += group -> s
-                      s
-                    }
-                  }
-                  topicSet += topic
-                case GroupMetadataKey(version, key) =>
-                  val value: GroupMetadata = readGroupMessageValue(key, ByteBuffer.wrap(record.value()))
-                  value.allMemberMetadata.foreach {
-                    mm =>
-                      mm.assignment.foreach {
-                        case (topic, part) =>
-                          groupTopicPartitionMemberMap += (key, topic, part) -> mm
-                      }
-                  }
-              }
-            }
-            lastUpdateTimeMillis = System.currentTimeMillis()
-          } catch {
-            case e: Exception =>
-              warn("Failed to process a message from offset topic!", e)
           }
+        } finally {
+          info(s"Shutting down consumer for $ConsumerOffsetTopic on cluster ${clusterContext.config.name}")
+          Try(consumer.close())
         }
-      } finally {
-        info(s"Shutting down consumer for $ConsumerOffsetTopic on cluster ${clusterContext.config.name}")
-        Try(consumer.close())
       }
     }
+    info(s"KafkaManagedOffsetCache shut down for cluster ${clusterContext.config.name}")
   }
 
   def close(): Unit = {
