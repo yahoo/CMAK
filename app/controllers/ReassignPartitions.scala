@@ -33,6 +33,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
 
   val validateOperation : Constraint[String] = Constraint("validate operation value") {
     case "confirm" => Valid
+    case "force" => Valid
     case "run" => Valid
     case "generate" => Valid
     case any: Any => Invalid(s"Invalid operation value: $any")
