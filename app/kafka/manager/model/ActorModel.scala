@@ -233,14 +233,42 @@ object ActorModel {
     import org.json4s.scalaz.JsonScalaz
     import org.json4s.scalaz.JsonScalaz._
 
-import scala.language.reflectiveCalls
+    import scala.language.reflectiveCalls
+    import scalaz.Validation.FlatMap._
+    import scalaz.syntax.validation._
     import scalaz.syntax.applicative._
 
-    implicit def from(id: Int, config: String): Validation[NonEmptyList[JsonScalaz.Error],BrokerIdentity]= {
+    implicit def from(brokerId: Int, config: String): Validation[NonEmptyList[JsonScalaz.Error],BrokerIdentity]= {
       val json = parse(config)
-      (field[String]("host")(json) |@| field[Int]("port")(json) |@| field[Int]("jmx_port")(json))
-      {
-        (host: String, port: Int, jmxPort: Int) => BrokerIdentity(id,host, port, jmxPort)
+      val hostResult = fieldExtended[String]("host")(json)
+      val portResult = fieldExtended[Int]("port")(json)
+      val jmxPortResult = fieldExtended[Int]("jmx_port")(json)
+      val hostPortResult: JsonScalaz.Result[(String, Int)] = json.findField(_._1 == "endpoints").map(_ => fieldExtended[List[String]]("endpoints")(json))
+        .fold((hostResult |@| portResult)((a, b) => (a, b))){
+        r =>
+          r.flatMap {
+            endpointList =>
+              val parsedList = endpointList.map {
+                endpoint =>
+                  Validation.fromTryCatchNonFatal {
+                    val arr = endpoint.split("://")(1).split(":")
+                    (arr(0), arr(1).toInt)
+                  }.leftMap[JsonScalaz.Error](t => UncategorizedError("endpoints", t.getMessage, List.empty)).toValidationNel
+              }
+              parsedList.find(_.isSuccess).fold({
+                val err: JsonScalaz.Result[(String, Int)] = UncategorizedError("endpoints", s"failed to parse host and port from json : $config", List.empty).failureNel
+                err
+              }
+              )(r => r)
+          }
+      }
+      for {
+        tpl <- hostPortResult
+        host = tpl._1
+        port = tpl._2
+        jmxPort <- jmxPortResult
+      } yield {
+        BrokerIdentity(brokerId, host, port, jmxPort)
       }
     }
   }

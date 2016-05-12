@@ -5,7 +5,7 @@
 name := """kafka-manager"""
 
 /* For packaging purposes, -SNAPSHOT MUST contain a digit */
-version := "1.3.1.4"
+version := "1.3.1.5"
 
 scalaVersion := "2.11.8"
 
@@ -30,15 +30,16 @@ libraryDependencies ++= Seq(
   "org.webjars" % "dustjs-linkedin" % "2.6.1-1",
   "org.apache.curator" % "curator-framework" % "2.10.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
   "org.apache.curator" % "curator-recipes" % "2.10.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
-  "org.json4s" %% "json4s-jackson" % "3.2.11",
-  "org.json4s" %% "json4s-scalaz" % "3.2.11",
+  "org.json4s" %% "json4s-jackson" % "3.3.0",
+  "org.json4s" %% "json4s-scalaz" % "3.3.0",
+  "org.scalaz" %% "scalaz-core" % "7.1.6",
   "org.slf4j" % "log4j-over-slf4j" % "1.7.12",
   "com.adrianhurt" %% "play-bootstrap3" % "0.4.5-P24",
   "org.clapper" %% "grizzled-slf4j" % "1.0.2",
   "org.apache.kafka" %% "kafka" % "0.9.0.1" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
   "com.beachape" %% "enumeratum" % "1.4.4",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
-  "org.apache.curator" % "curator-test" % "2.9.1" % "test",
+  "org.apache.curator" % "curator-test" % "2.10.0" % "test",
   "org.mockito" % "mockito-core" % "1.10.19" % "test",
   "com.yammer.metrics" % "metrics-core" % "2.2.0" force()
 )
