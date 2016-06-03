@@ -9,8 +9,9 @@
     </encoder>
 
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-      <fileNamePattern>application.%d{yyyy-MM-dd}.log</fileNamePattern>
+      <fileNamePattern>${application.home}/logs/application.%d{yyyy-MM-dd}.log</fileNamePattern>
       <maxHistory>5</maxHistory>
+      <totalSizeCap>5GB</totalSizeCap>
     </rollingPolicy>
   </appender>
 
