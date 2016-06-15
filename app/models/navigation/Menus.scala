@@ -79,7 +79,7 @@ class Menus(implicit applicationFeatures: ApplicationFeatures) {
     ).flatten
   }
   
-  val indexMenu = {
+  def indexMenu = {
     val defaultItems = IndexedSeq("List".baseRouteMenuItem)
     val items = {
       if(applicationFeatures.features(KMClusterManagerFeature))

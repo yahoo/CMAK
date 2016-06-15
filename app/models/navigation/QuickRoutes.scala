@@ -13,10 +13,10 @@ import play.api.mvc.Call
 object QuickRoutes {
   import models.navigation.BreadCrumbs._
 
-  val baseRoutes : Map[String, Call] = Map(
-    "Clusters" -> controllers.routes.Application.index(),
-    "List" -> controllers.routes.Application.index(),
-    "Add Cluster" -> controllers.routes.Cluster.addCluster()
+  val baseRoutes : Map[String, () => Call] = Map(
+    "Clusters" -> controllers.routes.Application.index,
+    "List" -> controllers.routes.Application.index,
+    "Add Cluster" -> controllers.routes.Cluster.addCluster
   )
   val clusterRoutes : Map[String, String => Call] = Map(
     "Update Cluster" -> controllers.routes.Cluster.updateCluster,
@@ -47,16 +47,16 @@ object QuickRoutes {
 
   implicit class BaseRoute(s: String) {
     def baseRouteMenuItem : (String, Call) = {
-      s -> baseRoutes(s)
+      s -> baseRoutes(s)()
     }
     def baseRoute : Call = {
-      baseRoutes(s)
+      baseRoutes(s)()
     }
     def baseMenu(c: String): Menu = {
       Menu(s,IndexedSeq.empty,Some(baseRoute))
     }
     def baseRouteBreadCrumb : BCStaticLink = {
-      BCStaticLink(s, baseRoutes(s))
+      BCStaticLink(s, baseRoutes(s)())
     }
   }
 
