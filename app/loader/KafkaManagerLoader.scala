@@ -57,5 +57,5 @@ class ApplicationComponents(context: Context) extends BuiltInComponentsFromConte
     kafkaStateCheckC, 
     assetsC,
     webJarsAssetsC
-  )
+  ).withPrefix(context.initialConfiguration.getString("play.http.context").orNull)
 }
