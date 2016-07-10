@@ -9,7 +9,7 @@ version := "1.3.0.8"
 
 scalaVersion := "2.11.7"
 
-scalacOptions ++= Seq("-Xlint:-missing-interpolator","-Xfatal-warnings","-deprecation","-feature","-language:implicitConversions","-language:postfixOps")
+scalacOptions ++= Seq("-Xlint:-missing-interpolator","-Xfatal-warnings","-deprecation","-feature","-language:implicitConversions","-language:postfixOps","-Xmax-classfile-name","240")
 
 // From https://www.playframework.com/documentation/2.3.x/ProductionDist
 assemblyMergeStrategy in assembly := {
