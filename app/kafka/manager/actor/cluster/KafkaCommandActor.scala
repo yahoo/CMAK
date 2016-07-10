@@ -125,12 +125,12 @@ class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extend
             )
           }
         }
-      case KCReassignPartition(current, generated) =>
+      case KCReassignPartition(current, generated, forceSet) =>
         longRunning {
           log.info("Running reassign partition from {} to {}", current, generated)
           Future {
             KCCommandResult(
-              reassignPartitionCommand.executeAssignment(kafkaCommandActorConfig.curator, current, generated)
+              reassignPartitionCommand.executeAssignment(kafkaCommandActorConfig.curator, current, generated, forceSet)
             )
           }
         }

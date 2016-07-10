@@ -9,6 +9,7 @@ import features.{KMReassignPartitionsFeature, ApplicationFeatures}
 import kafka.manager.model.ActorModel
 import ActorModel._
 import kafka.manager.ApiError
+import models.form.ReassignPartitionOperation.{ForceRunAssignment, UnknownRPO, RunAssignment}
 import models.navigation.Menus
 import models.{navigation, FollowLink}
 import models.form._
@@ -32,6 +33,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
 
   val validateOperation : Constraint[String] = Constraint("validate operation value") {
     case "confirm" => Valid
+    case "force" => Valid
     case "run" => Valid
     case "generate" => Valid
     case any: Any => Invalid(s"Invalid operation value: $any")
@@ -41,7 +43,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
   val reassignPartitionsForm = Form(
     mapping(
       "operation" -> nonEmptyText.verifying(validateOperation)
-    )(ReassignPartitionOperation.apply)(ReassignPartitionOperation.unapply)
+    )(ReassignPartitionOperation.withNameInsensitiveOption)(op => op.map(_.entryName))
   )
   
   val reassignMultipleTopicsForm = Form(
@@ -403,13 +405,13 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
     featureGate(KMReassignPartitionsFeature) {
       withClusterContext(c)(
         err => Future.successful(
-          Ok(views.html.errors.onApiError(err, Option(FollowLink("Try Again", routes.Topic.topic(c, t).toString()))))
+          Ok(views.html.errors.onApiError(err, Option(FollowLink("Try Force Running", routes.Topic.topic(c, t, force = err.recoverByForceOperation).toString()))))
         ),
         cc =>
           reassignPartitionsForm.bindFromRequest.fold(
-            formWithErrors => Future.successful(BadRequest(views.html.topic.topicView(c, t, -\/(ApiError("Unknown operation!")), None))),
+            formWithErrors => Future.successful(BadRequest(views.html.topic.topicView(c, t, -\/(ApiError("Unknown operation!")), None, UnknownRPO))),
             op => op match {
-              case RunAssignment =>
+              case Some(RunAssignment) =>
                 implicit val clusterFeatures = cc.clusterFeatures
                 kafkaManager.runReassignPartitions(c, Set(t)).map { errorOrSuccess =>
                   Ok(views.html.common.resultsOfCommand(
@@ -421,12 +423,24 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
                     FollowLink("Try again.", routes.Topic.topic(c, t).toString())
                   ))
                 }
-              case UnknownRPO(opString) =>
+              case Some(ForceRunAssignment) =>
+                implicit val clusterFeatures = cc.clusterFeatures
+                kafkaManager.runReassignPartitions(c, Set(t), force = true).map { errorOrSuccess =>
+                  Ok(views.html.common.resultsOfCommand(
+                    views.html.navigation.clusterMenu(c, "Reassign Partitions", "", menus.clusterMenus(c)),
+                    models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View", c, t, "Run Reassign Partitions"),
+                    errorOrSuccess,
+                    s"Run Reassign Partitions - $t",
+                    FollowLink("Go to reassign partitions.", routes.ReassignPartitions.reassignPartitions(c).toString()),
+                    FollowLink("Try again.", routes.Topic.topic(c, t).toString())
+                  ))
+                }
+              case unknown =>
                 implicit val clusterFeatures = cc.clusterFeatures
                 Future.successful(Ok(views.html.common.resultOfCommand(
                   views.html.navigation.clusterMenu(c, "Reassign Partitions", "", menus.clusterMenus(c)),
                   models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View", c, t, "Unknown Reassign Partitions Operation"),
-                  -\/(ApiError(s"Unknown operation $opString")),
+                  -\/(ApiError(s"Unknown operation $unknown")),
                   "Unknown Reassign Partitions Operation",
                   FollowLink("Back to reassign partitions.", routes.ReassignPartitions.reassignPartitions(c).toString()),
                   FollowLink("Back to reassign partitions.", routes.ReassignPartitions.reassignPartitions(c).toString())

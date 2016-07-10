@@ -32,6 +32,7 @@ class TestKafkaManager extends CuratorAwareTest with BaseTest {
   akkaConfig.setProperty(KafkaManager.BrokerViewUpdateSeconds,"1")
   akkaConfig.setProperty(KafkaManager.KafkaManagerUpdateSeconds,"1")
   akkaConfig.setProperty(KafkaManager.DeleteClusterUpdateSeconds,"1")
+  akkaConfig.setProperty(KafkaManager.ConsumerPropertiesFile,"conf/consumer.properties")
   private[this] val config : Config = ConfigFactory.parseProperties(akkaConfig)
 
   private[this] val kafkaManager : KafkaManager = new KafkaManager(config)
@@ -103,7 +104,9 @@ class TestKafkaManager extends CuratorAwareTest with BaseTest {
     Try(hlConsumer.foreach(_.close()))
     Try(newConsumerThread.foreach(_.interrupt()))
     Try(newConsumer.foreach(_.close()))
-    kafkaManager.shutdown()
+    if(kafkaManager!=null) {
+      kafkaManager.shutdown()
+    }
     Try(broker.shutdown())
     super.afterAll()
   }

@@ -11,6 +11,7 @@ import kafka.manager.features.ClusterFeatures
 
 import scala.util.Try
 import scala.util.matching.Regex
+import scalaz.Validation.FlatMap._
 
 /**
   * @author hiral
@@ -151,7 +152,7 @@ object ClusterConfig {
   }
 
   implicit def curatorConfigJSONR: JSONR[CuratorConfig] = CuratorConfig.applyJSON(
-    field[String]("zkConnect"), field[Int]("zkMaxRetry"), field[Int]("baseSleepTimeMs"), field[Int]("maxSleepTimeMs"))
+    fieldExtended[String]("zkConnect"), fieldExtended[Int]("zkMaxRetry"), fieldExtended[Int]("baseSleepTimeMs"), fieldExtended[Int]("maxSleepTimeMs"))
 
   def serialize(config: ClusterConfig) : Array[Byte] = {
     val json = makeObj(("name" -> toJSON(config.name))
@@ -175,20 +176,20 @@ object ClusterConfig {
     Try {
       val json = parse(kafka.manager.utils.deserializeString(ba))
 
-      val result = (field[String]("name")(json) |@| field[CuratorConfig]("curatorConfig")(json) |@| field[Boolean]("enabled")(json))
+      val result = (fieldExtended[String]("name")(json) |@| fieldExtended[CuratorConfig]("curatorConfig")(json) |@| fieldExtended[Boolean]("enabled")(json))
       {
         (name:String,curatorConfig:CuratorConfig,enabled:Boolean) =>
-          val versionString = field[String]("kafkaVersion")(json)
+          val versionString = fieldExtended[String]("kafkaVersion")(json)
           val version = versionString.map(KafkaVersion.apply).getOrElse(Kafka_0_8_1_1)
-          val jmxEnabled = field[Boolean]("jmxEnabled")(json)
-          val jmxUser = field[Option[String]]("jmxUser")(json)
-          val jmxPass = field[Option[String]]("jmxPass")(json)
-          val pollConsumers = field[Boolean]("pollConsumers")(json)
-          val filterConsumers = field[Boolean]("filterConsumers")(json)
-          val logkafkaEnabled = field[Boolean]("logkafkaEnabled")(json)
-          val activeOffsetCacheEnabled = field[Boolean]("activeOffsetCacheEnabled")(json)
-          val displaySizeEnabled = field[Boolean]("displaySizeEnabled")(json)
-          val clusterTuning = field[Option[ClusterTuning]]("tuning")(json)
+          val jmxEnabled = fieldExtended[Boolean]("jmxEnabled")(json)
+          val jmxUser = fieldExtended[Option[String]]("jmxUser")(json)
+          val jmxPass = fieldExtended[Option[String]]("jmxPass")(json)
+          val pollConsumers = fieldExtended[Boolean]("pollConsumers")(json)
+          val filterConsumers = fieldExtended[Boolean]("filterConsumers")(json)
+          val logkafkaEnabled = fieldExtended[Boolean]("logkafkaEnabled")(json)
+          val activeOffsetCacheEnabled = fieldExtended[Boolean]("activeOffsetCacheEnabled")(json)
+          val displaySizeEnabled = fieldExtended[Boolean]("displaySizeEnabled")(json)
+          val clusterTuning = fieldExtended[Option[ClusterTuning]]("tuning")(json)
 
           ClusterConfig.apply(
             name,
@@ -268,21 +269,21 @@ object ClusterTuning {
   implicit def clusterTuningJSONR: JSONR[ClusterTuning] = new JSONR[ClusterTuning] {
     def read(json: JValue): Result[ClusterTuning] = {
       for {
-        brokerViewUpdatePeriodSeconds <- field[Option[Int]]("brokerViewUpdatePeriodSeconds")(json)
-        clusterManagerThreadPoolSize <- field[Option[Int]]("clusterManagerThreadPoolSize")(json)
-        clusterManagerThreadPoolQueueSize <- field[Option[Int]]("clusterManagerThreadPoolQueueSize")(json)
-        kafkaCommandThreadPoolSize <- field[Option[Int]]("kafkaCommandThreadPoolSize")(json)
-        kafkaCommandThreadPoolQueueSize <- field[Option[Int]]("kafkaCommandThreadPoolQueueSize")(json)
-        logkafkaCommandThreadPoolSize <- field[Option[Int]]("logkafkaCommandThreadPoolSize")(json)
-        logkafkaCommandThreadPoolQueueSize <- field[Option[Int]]("logkafkaCommandThreadPoolQueueSize")(json)
-        logkafkaUpdatePeriodSeconds <- field[Option[Int]]("logkafkaUpdatePeriodSeconds")(json)
-        partitionOffsetCacheTimeoutSecs <- field[Option[Int]]("partitionOffsetCacheTimeoutSecs")(json)
-        brokerViewThreadPoolSize <- field[Option[Int]]("brokerViewThreadPoolSize")(json)
-        brokerViewThreadPoolQueueSize <- field[Option[Int]]("brokerViewThreadPoolQueueSize")(json)
-        offsetCacheThreadPoolSize <- field[Option[Int]]("offsetCacheThreadPoolSize")(json)
-        offsetCacheThreadPoolQueueSize <- field[Option[Int]]("offsetCacheThreadPoolQueueSize")(json)
-        kafkaAdminClientThreadPoolSize <- field[Option[Int]]("kafkaAdminClientThreadPoolSize")(json)
-        kafkaAdminClientThreadPoolQueueSize <- field[Option[Int]]("kafkaAdminClientThreadPoolQueueSize")(json)
+        brokerViewUpdatePeriodSeconds <- fieldExtended[Option[Int]]("brokerViewUpdatePeriodSeconds")(json)
+        clusterManagerThreadPoolSize <- fieldExtended[Option[Int]]("clusterManagerThreadPoolSize")(json)
+        clusterManagerThreadPoolQueueSize <- fieldExtended[Option[Int]]("clusterManagerThreadPoolQueueSize")(json)
+        kafkaCommandThreadPoolSize <- fieldExtended[Option[Int]]("kafkaCommandThreadPoolSize")(json)
+        kafkaCommandThreadPoolQueueSize <- fieldExtended[Option[Int]]("kafkaCommandThreadPoolQueueSize")(json)
+        logkafkaCommandThreadPoolSize <- fieldExtended[Option[Int]]("logkafkaCommandThreadPoolSize")(json)
+        logkafkaCommandThreadPoolQueueSize <- fieldExtended[Option[Int]]("logkafkaCommandThreadPoolQueueSize")(json)
+        logkafkaUpdatePeriodSeconds <- fieldExtended[Option[Int]]("logkafkaUpdatePeriodSeconds")(json)
+        partitionOffsetCacheTimeoutSecs <- fieldExtended[Option[Int]]("partitionOffsetCacheTimeoutSecs")(json)
+        brokerViewThreadPoolSize <- fieldExtended[Option[Int]]("brokerViewThreadPoolSize")(json)
+        brokerViewThreadPoolQueueSize <- fieldExtended[Option[Int]]("brokerViewThreadPoolQueueSize")(json)
+        offsetCacheThreadPoolSize <- fieldExtended[Option[Int]]("offsetCacheThreadPoolSize")(json)
+        offsetCacheThreadPoolQueueSize <- fieldExtended[Option[Int]]("offsetCacheThreadPoolQueueSize")(json)
+        kafkaAdminClientThreadPoolSize <- fieldExtended[Option[Int]]("kafkaAdminClientThreadPoolSize")(json)
+        kafkaAdminClientThreadPoolQueueSize <- fieldExtended[Option[Int]]("kafkaAdminClientThreadPoolQueueSize")(json)
       } yield {
         ClusterTuning(
           brokerViewUpdatePeriodSeconds = brokerViewUpdatePeriodSeconds

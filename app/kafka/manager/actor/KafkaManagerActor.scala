@@ -5,6 +5,7 @@
 
 package kafka.manager.actor
 
+import java.util.Properties
 import java.util.concurrent.{LinkedBlockingQueue, ThreadPoolExecutor, TimeUnit}
 
 import akka.actor.{ActorPath, Props}
@@ -52,6 +53,7 @@ case class KafkaManagerActorConfig(curatorConfig: CuratorConfig
                                    , clusterActorsAskTimeoutMillis: Int = 2000
                                    , simpleConsumerSocketTimeoutMillis : Int = 10000
                                    , defaultTuning: ClusterTuning
+                                   , consumerProperties: Option[Properties]
                                   )
 class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
   extends BaseQueryCommandActor with CuratorAwareActor with BaseZkPath {
@@ -449,13 +451,14 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
       } else {
         log.info("Adding new cluster manager for cluster : {}", config.name)
         val clusterManagerConfig = ClusterManagerActorConfig(
-          kafkaManagerConfig.pinnedDispatcherName,
-          getClusterZkPath(config),
-          kafkaManagerConfig.curatorConfig,
-          config,
-          askTimeoutMillis = kafkaManagerConfig.clusterActorsAskTimeoutMillis,
-          mutexTimeoutMillis = kafkaManagerConfig.mutexTimeoutMillis,
-          simpleConsumerSocketTimeoutMillis = kafkaManagerConfig.simpleConsumerSocketTimeoutMillis
+          kafkaManagerConfig.pinnedDispatcherName
+          , getClusterZkPath(config)
+          , kafkaManagerConfig.curatorConfig
+          , config
+          , askTimeoutMillis = kafkaManagerConfig.clusterActorsAskTimeoutMillis
+          , mutexTimeoutMillis = kafkaManagerConfig.mutexTimeoutMillis
+          , simpleConsumerSocketTimeoutMillis = kafkaManagerConfig.simpleConsumerSocketTimeoutMillis
+          , consumerProperties = kafkaManagerConfig.consumerProperties
         )
         val props = Props(classOf[ClusterManagerActor], clusterManagerConfig)
         val newClusterManager = context.actorOf(props, config.name).path

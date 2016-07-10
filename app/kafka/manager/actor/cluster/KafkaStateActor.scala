@@ -28,14 +28,14 @@ import kafka.manager.model._
 import kafka.manager.utils.ZkUtils
 import kafka.manager.utils.zero81.{PreferredReplicaLeaderElectionCommand, ReassignPartitionCommand}
 import kafka.manager.utils.zero90.{MemberMetadata, GroupMetadata}
-import kafka.message.MessageAndMetadata
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.cache._
+import org.apache.kafka.clients.consumer.{ConsumerRecords, Consumer, KafkaConsumer}
 import org.joda.time.{DateTime, DateTimeZone}
 
 import scala.collection.concurrent.TrieMap
-import scala.collection.mutable
+import scala.collection.{JavaConverters, mutable}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 
@@ -153,7 +153,10 @@ object KafkaManagedOffsetCache {
 
 case class KafkaManagedOffsetCache(clusterContext: ClusterContext
                                    , adminClient: KafkaAdminClient
-                                   , groupMemberMetadataCheckMillis: Int = 30000) extends Runnable with Closeable with Logging {
+                                   , consumerProperties: Option[Properties]
+                                   , bootstrapBrokerList: BrokerList
+                                   , groupMemberMetadataCheckMillis: Int = 30000
+                                    ) extends Runnable with Closeable with Logging {
   val groupTopicPartitionOffsetMap = new TrieMap[(String, String, Int), OffsetAndMetadata]()
   val topicConsumerSetMap = new TrieMap[String, mutable.Set[String]]()
   val consumerTopicSetMap = new TrieMap[String, mutable.Set[String]]()
@@ -174,14 +177,19 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
   @volatile
   private[this] var shutdown: Boolean = false
 
-  private[this] def createKafkaConsumerConnector(): ConsumerConnector = {
+  private[this] def createKafkaConsumer(): Consumer[Array[Byte], Array[Byte]] = {
     val props: Properties = new Properties()
     props.put("group.id", "KafkaManagerOffsetCache")
-    props.put("zookeeper.connect", clusterContext.config.curatorConfig.zkConnect)
+    props.put("bootstrap.servers", bootstrapBrokerList.list.map(bi => s"${bi.host}:${bi.port}").mkString(","))
     props.put("exclude.internal.topics", "false")
-    props.put("auto.commit.enable", "false")
-    props.put("auto.offset.reset", "largest")
-    Consumer.create(new ConsumerConfig(props))
+    props.put("enable.auto.commit", "false")
+    props.put("key.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer")
+    props.put("value.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer")
+    props.put("auto.offset.reset", "latest")
+    consumerProperties.foreach {
+      cp => props.putAll(cp)
+    }
+    new KafkaConsumer[Array[Byte], Array[Byte]](props)
   }
 
   private[this] def performGroupMetadataCheck() : Unit = {
@@ -222,20 +230,16 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
   }
 
   override def run(): Unit = {
-    for {
-      consumer <- Try(createKafkaConsumerConnector()).logError(s"Failed to create consumer for offset topic for cluster ${clusterContext.config.name}")
-    } {
-      try {
-        info(s"Consumer created for kafka offset topic consumption for cluster ${clusterContext.config.name}")
-        for {
-          stream <- Try {
-            val offsetStream: KafkaStream[Array[Byte], Array[Byte]] = consumer
-              .createMessageStreams(Map(KafkaManagedOffsetCache.ConsumerOffsetTopic -> 1))
-              .apply(KafkaManagedOffsetCache.ConsumerOffsetTopic).head
-            offsetStream
-          }.logError(s"Failed to create kafka stream for offset topic for cluster ${clusterContext.config.name}")
-          iterator = stream.iterator()
-        } {
+    if(!shutdown) {
+      for {
+        consumer <- Try {
+          val consumer = createKafkaConsumer()
+          consumer.subscribe(java.util.Arrays.asList(KafkaManagedOffsetCache.ConsumerOffsetTopic))
+          consumer
+        }.logError(s"Failed to create consumer for offset topic for cluster ${clusterContext.config.name}")
+      } {
+        try {
+          info(s"Consumer created for kafka offset topic consumption for cluster ${clusterContext.config.name}")
           while (!shutdown) {
             try {
               try {
@@ -246,43 +250,47 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
                   error("Failed to backfill group metadata", e)
               }
 
-              val messageAndMetadata: MessageAndMetadata[Array[Byte], Array[Byte]] = iterator.next()
-              readMessageKey(ByteBuffer.wrap(messageAndMetadata.key())) match {
-                case OffsetKey(version, key) =>
-                  val value: OffsetAndMetadata = readOffsetMessageValue(ByteBuffer.wrap(messageAndMetadata.message()))
-                  groupTopicPartitionOffsetMap += (key.group, key.topicPartition.topic, key.topicPartition.partition) -> value
-                  val topic = key.topicPartition.topic
-                  val group = key.group
-                  val consumerSet = {
-                    if (topicConsumerSetMap.contains(topic)) {
-                      topicConsumerSetMap(topic)
-                    } else {
-                      val s = new mutable.TreeSet[String]()
-                      topicConsumerSetMap += topic -> s
-                      s
-                    }
-                  }
-                  consumerSet += group
-
-                  val topicSet = {
-                    if (consumerTopicSetMap.contains(group)) {
-                      consumerTopicSetMap(group)
-                    } else {
-                      val s = new mutable.TreeSet[String]()
-                      consumerTopicSetMap += group -> s
-                      s
-                    }
-                  }
-                  topicSet += topic
-                case GroupMetadataKey(version, key) =>
-                  val value: GroupMetadata = readGroupMessageValue(key, ByteBuffer.wrap(messageAndMetadata.message()))
-                  value.allMemberMetadata.foreach {
-                    mm =>
-                      mm.assignment.foreach {
-                        case (topic, part) =>
-                          groupTopicPartitionMemberMap += (key, topic, part) -> mm
+              val records: ConsumerRecords[Array[Byte], Array[Byte]] = consumer.poll(100)
+              val iterator = records.iterator()
+              while (iterator.hasNext) {
+                val record = iterator.next()
+                readMessageKey(ByteBuffer.wrap(record.key())) match {
+                  case OffsetKey(version, key) =>
+                    val value: OffsetAndMetadata = readOffsetMessageValue(ByteBuffer.wrap(record.value()))
+                    groupTopicPartitionOffsetMap += (key.group, key.topicPartition.topic, key.topicPartition.partition) -> value
+                    val topic = key.topicPartition.topic
+                    val group = key.group
+                    val consumerSet = {
+                      if (topicConsumerSetMap.contains(topic)) {
+                        topicConsumerSetMap(topic)
+                      } else {
+                        val s = new mutable.TreeSet[String]()
+                        topicConsumerSetMap += topic -> s
+                        s
                       }
-                  }
+                    }
+                    consumerSet += group
+
+                    val topicSet = {
+                      if (consumerTopicSetMap.contains(group)) {
+                        consumerTopicSetMap(group)
+                      } else {
+                        val s = new mutable.TreeSet[String]()
+                        consumerTopicSetMap += group -> s
+                        s
+                      }
+                    }
+                    topicSet += topic
+                  case GroupMetadataKey(version, key) =>
+                    val value: GroupMetadata = readGroupMessageValue(key, ByteBuffer.wrap(record.value()))
+                    value.allMemberMetadata.foreach {
+                      mm =>
+                        mm.assignment.foreach {
+                          case (topic, part) =>
+                            groupTopicPartitionMemberMap += (key, topic, part) -> mm
+                        }
+                    }
+                }
               }
               lastUpdateTimeMillis = System.currentTimeMillis()
             } catch {
@@ -290,12 +298,13 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
                 warn("Failed to process a message from offset topic!", e)
             }
           }
+        } finally {
+          info(s"Shutting down consumer for $ConsumerOffsetTopic on cluster ${clusterContext.config.name}")
+          Try(consumer.close())
         }
-      } finally {
-        info(s"Shutting down consumer for $ConsumerOffsetTopic on cluster ${clusterContext.config.name}")
-        Try(consumer.shutdown())
       }
     }
+    info(s"KafkaManagedOffsetCache shut down for cluster ${clusterContext.config.name}")
   }
 
   def close(): Unit = {
@@ -333,6 +342,8 @@ object ConsumerInstanceSubscriptions extends Logging {
 
 trait OffsetCache extends Logging {
 
+  def consumerProperties: Option[Properties]
+
   def kafkaAdminClient: KafkaAdminClient
 
   def clusterContext: ClusterContext
@@ -350,7 +361,7 @@ trait OffsetCache extends Logging {
   protected[this] val loadOffsets: Boolean
 
   // Caches a map of partitions to offsets at a key that is the topic's name.
-  private[this] val partitionOffsetsCache: LoadingCache[String, Future[PartitionOffsetsCapture]] = CacheBuilder.newBuilder()
+  private[this] lazy val partitionOffsetsCache: LoadingCache[String, Future[PartitionOffsetsCapture]] = CacheBuilder.newBuilder()
     .expireAfterWrite(getCacheTimeoutSecs,TimeUnit.SECONDS) // TODO - update more or less often maybe, or make it configurable
     .build(
       new CacheLoader[String,Future[PartitionOffsetsCapture]] {
@@ -425,6 +436,8 @@ trait OffsetCache extends Logging {
 
   protected def getTopicDescription(topic: String, interactive: Boolean) : Option[TopicDescription]
 
+  protected def getBrokerList : BrokerList
+
   protected def readConsumerOffsetByTopicPartition(consumer: String, topic: String, tpi: Map[Int, TopicPartitionIdentity]) : Map[Int, Long]
   
   protected def readConsumerOwnerByTopicPartition(consumer: String, topic: String, tpi: Map[Int, TopicPartitionIdentity]) : Map[Int, String]
@@ -445,12 +458,16 @@ trait OffsetCache extends Logging {
 
   private[this] var kafkaManagedOffsetCache : Option[KafkaManagedOffsetCache] = None
 
+  private[this] lazy val secureKafka = getBrokerList.list.exists(_.secure)
+
   def start() : Unit = {
     if(KafkaManagedOffsetCache.isSupported(clusterContext.config.version)) {
       if(kafkaManagedOffsetCache.isEmpty) {
         info("Starting kafka managed offset cache ...")
         Try {
-          val of = new KafkaManagedOffsetCache(clusterContext, kafkaAdminClient)
+          val bl = getBrokerList
+          require(bl.list.nonEmpty, "Cannot consume from offset topic when there are no brokers!")
+          val of = new KafkaManagedOffsetCache(clusterContext, kafkaAdminClient, consumerProperties, bl)
           kafkaManagedOffsetCache = Option(of)
           val t = new Thread(of, "KafkaManagedOffsetCache")
           t.start()
@@ -469,7 +486,7 @@ trait OffsetCache extends Logging {
   }
 
   def getTopicPartitionOffsets(topic: String, interactive: Boolean) : Future[PartitionOffsetsCapture] = {
-    if(interactive || loadOffsets) {
+    if((interactive || loadOffsets) && !secureKafka) {
       partitionOffsetsCache.get(topic)
     } else {
       emptyPartitionOffsetsCapture
@@ -582,14 +599,17 @@ trait OffsetCache extends Logging {
   }
 }
 
-case class OffsetCacheActive(curator: CuratorFramework,
-                             kafkaAdminClient: KafkaAdminClient,
-                             clusterContext: ClusterContext,
-                             partitionLeaders: String => Option[List[(Int, Option[BrokerIdentity])]],
-                             topicDescriptions: (String, Boolean) => Option[TopicDescription],
-                             cacheTimeoutSecs: Int,
-                             socketTimeoutMillis: Int,
-                             kafkaVersion: KafkaVersion)
+case class OffsetCacheActive(curator: CuratorFramework
+                             , kafkaAdminClient: KafkaAdminClient
+                             , clusterContext: ClusterContext
+                             , partitionLeaders: String => Option[List[(Int, Option[BrokerIdentity])]]
+                             , topicDescriptions: (String, Boolean) => Option[TopicDescription]
+                             , cacheTimeoutSecs: Int
+                             , socketTimeoutMillis: Int
+                             , kafkaVersion: KafkaVersion
+                             , consumerProperties: Option[Properties]
+                             , getBrokerList : BrokerList
+                              )
                             (implicit protected[this] val ec: ExecutionContext, val cf: ClusterFeatures) extends OffsetCache {
 
   def getKafkaVersion: KafkaVersion = kafkaVersion
@@ -696,14 +716,17 @@ case class OffsetCacheActive(curator: CuratorFramework,
   }
 }
 
-case class OffsetCachePassive(curator: CuratorFramework,
-                              kafkaAdminClient: KafkaAdminClient,
-                              clusterContext: ClusterContext,
-                              partitionLeaders: String => Option[List[(Int, Option[BrokerIdentity])]],
-                              topicDescriptions: (String, Boolean) => Option[TopicDescription],
-                              cacheTimeoutSecs: Int,
-                              socketTimeoutMillis: Int,
-                              kafkaVersion: KafkaVersion)
+case class OffsetCachePassive(curator: CuratorFramework
+                              , kafkaAdminClient: KafkaAdminClient
+                              , clusterContext: ClusterContext
+                              , partitionLeaders: String => Option[List[(Int, Option[BrokerIdentity])]]
+                              , topicDescriptions: (String, Boolean) => Option[TopicDescription]
+                              , cacheTimeoutSecs: Int
+                              , socketTimeoutMillis: Int
+                              , kafkaVersion: KafkaVersion
+                              , consumerProperties: Option[Properties]
+                              , getBrokerList : BrokerList
+                               )
                              (implicit protected[this] val ec: ExecutionContext, val cf: ClusterFeatures) extends OffsetCache {
 
   def getKafkaVersion: KafkaVersion = kafkaVersion
@@ -810,12 +833,15 @@ case class OffsetCachePassive(curator: CuratorFramework,
   }
 }
 
-case class KafkaStateActorConfig(curator: CuratorFramework,
-                                 pinnedDispatcherName: String,
-                                 clusterContext: ClusterContext,
-                                 offsetCachePoolConfig: LongRunningPoolConfig,
-                                 kafkaAdminClientPoolConfig: LongRunningPoolConfig,
-                                 partitionOffsetCacheTimeoutSecs: Int, simpleConsumerSocketTimeoutMillis: Int)
+case class KafkaStateActorConfig(curator: CuratorFramework
+                                 , pinnedDispatcherName: String
+                                 , clusterContext: ClusterContext
+                                 , offsetCachePoolConfig: LongRunningPoolConfig
+                                 , kafkaAdminClientPoolConfig: LongRunningPoolConfig
+                                 , partitionOffsetCacheTimeoutSecs: Int
+                                 , simpleConsumerSocketTimeoutMillis: Int
+                                 , consumerProperties: Option[Properties]
+                                  )
 class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCommandActor with LongRunningPoolActor {
 
   protected implicit val clusterContext: ClusterContext = config.clusterContext
@@ -922,27 +948,31 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
     }
   }
   
-  private[this] val offsetCache: OffsetCache = {
+  private[this] lazy val offsetCache: OffsetCache = {
     if(config.clusterContext.config.activeOffsetCacheEnabled)
-      new OffsetCacheActive(
-        config.curator,
-        kafkaAdminClient,
-        config.clusterContext,
-        getPartitionLeaders,
-        getTopicDescription,
-        config.partitionOffsetCacheTimeoutSecs,
-        config.simpleConsumerSocketTimeoutMillis,
-        config.clusterContext.config.version)(longRunningExecutionContext, cf)
+      new OffsetCacheActive(config.curator
+        , kafkaAdminClient
+        , config.clusterContext
+        , getPartitionLeaders
+        , getTopicDescription
+        , config.partitionOffsetCacheTimeoutSecs
+        , config.simpleConsumerSocketTimeoutMillis
+        , config.clusterContext.config.version
+        , config.consumerProperties
+        , getBrokerList
+      )(longRunningExecutionContext, cf)
     else
-      new OffsetCachePassive(
-        config.curator,
-        kafkaAdminClient,
-        config.clusterContext,
-        getPartitionLeaders,
-        getTopicDescription,
-        config.partitionOffsetCacheTimeoutSecs,
-        config .simpleConsumerSocketTimeoutMillis,
-        config.clusterContext.config.version)(longRunningExecutionContext, cf)
+      new OffsetCachePassive( config.curator
+        , kafkaAdminClient
+        , config.clusterContext
+        , getPartitionLeaders
+        , getTopicDescription
+        , config.partitionOffsetCacheTimeoutSecs
+        , config .simpleConsumerSocketTimeoutMillis
+        , config.clusterContext.config.version
+        , config.consumerProperties
+        , getBrokerList
+      )(longRunningExecutionContext, cf)
   }
 
   @scala.throws[Exception](classOf[Exception])
@@ -1157,7 +1187,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
         sender ! topicsTreeCacheLastUpdateMillis
 
       case KSGetBrokers =>
-        sender ! BrokerList(getBrokers, config.clusterContext)
+        sender ! getBrokerList
 
       case KSGetPreferredLeaderElection =>
         sender ! preferredLeaderElection
@@ -1167,6 +1197,10 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
 
       case any: Any => log.warning("ksa : processQueryRequest : Received unknown message: {}", any.toString)
     }
+  }
+
+  private def getBrokerList : BrokerList = {
+    BrokerList(getBrokers, config.clusterContext)
   }
 
   override def processCommandRequest(request: CommandRequest): Unit = {

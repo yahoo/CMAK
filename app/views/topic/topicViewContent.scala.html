@@ -4,10 +4,13 @@
 *@
 @import b3.vertical.fieldConstructor
 @import kafka.manager.model.ActorModel.ConsumerType
-@(cluster:String,
-  topic: String,
-  topicIdentity: kafka.manager.model.ActorModel.TopicIdentity,
-  consumerList: Iterable[(String, ConsumerType)]
+@import models.form.ReassignPartitionOperation
+@import models.form.ReassignPartitionOperation._
+@(cluster:String
+, topic: String
+, topicIdentity: kafka.manager.model.ActorModel.TopicIdentity
+, consumerList: Iterable[(String, ConsumerType)]
+, reassignPartitionOperation: ReassignPartitionOperation
 )(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages)
 
 @getUnderReplicatedLevel(percentage: Int) = {
@@ -192,11 +195,22 @@
                     @features.app(features.KMReassignPartitionsFeature) {
                     <td>
                         @b3.form(routes.ReassignPartitions.handleOperation(cluster,topic)) {
-                        <fieldset>
-                            <input type="hidden" name="operation" value="run">
-                            <input type="hidden" name="brokers" value="@Seq()">
-                            @b3.submit('class -> "btn btn-primary btn-block"){ Reassign Partitions }
-                        </fieldset>
+                            @reassignPartitionOperation match {
+                                case ForceRunAssignment => {
+                                    <fieldset>
+                                        <input type="hidden" name="operation" value="force">
+                                        <input type="hidden" name="brokers" value="@Seq()">
+                                        @b3.submit('class -> "btn btn-primary btn-block"){ Force Reassign Partitions }
+                                    </fieldset>
+                                }
+                                case _ => {
+                                    <fieldset>
+                                        <input type="hidden" name="operation" value="run">
+                                        <input type="hidden" name="brokers" value="@Seq()">
+                                        @b3.submit('class -> "btn btn-primary btn-block"){ Reassign Partitions }
+                                    </fieldset>
+                                }
+                            }
                         }
                     </td>
                     <td>

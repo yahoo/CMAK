@@ -60,7 +60,7 @@ class TestReassignPartitions extends CuratorAwareTest with BaseTest {
 
   test("reassign partitions with empty set") {
     withCurator { curator =>
-      assert(reassignPartitionCommand.executeAssignment(curator,Map.empty, Map.empty).isFailure)
+      assert(reassignPartitionCommand.executeAssignment(curator,Map.empty, Map.empty, Set.empty).isFailure)
       assert(curator.checkExists().forPath(ZkUtils.ReassignPartitionsPath) == null)
     }
   }
@@ -75,7 +75,7 @@ class TestReassignPartitions extends CuratorAwareTest with BaseTest {
             td.copy(partitions = td.partitions - 1, partitionsIdentity = td.partitionsIdentity - (td.partitions - 1))).get)
         }
 
-        reassignPartitionCommand.executeAssignment(curator,current,generated).get
+        reassignPartitionCommand.executeAssignment(curator,current,generated, Set.empty).get
       }
     }
   }
@@ -90,7 +90,7 @@ class TestReassignPartitions extends CuratorAwareTest with BaseTest {
             td.copy(partitionsIdentity = td.partitionsIdentity.map { case (p,l) => (p, l.copy(replicas = l.replicas.drop(1)))})).get)
         }
 
-        reassignPartitionCommand.executeAssignment(curator,current,generated).get
+        reassignPartitionCommand.executeAssignment(curator,current,generated, Set.empty).get
       }
     }
   }
@@ -104,7 +104,7 @@ class TestReassignPartitions extends CuratorAwareTest with BaseTest {
           td).get)
       }
 
-      assert(reassignPartitionCommand.executeAssignment(curator,current,generated).isSuccess)
+      assert(reassignPartitionCommand.executeAssignment(curator,current,generated, Set.empty).isSuccess)
     }
   }
 
@@ -118,7 +118,7 @@ class TestReassignPartitions extends CuratorAwareTest with BaseTest {
             td).get)
         }
 
-        reassignPartitionCommand.executeAssignment(curator,current,generated).get
+        reassignPartitionCommand.executeAssignment(curator,current,generated, Set.empty).get
       }
     }
   }

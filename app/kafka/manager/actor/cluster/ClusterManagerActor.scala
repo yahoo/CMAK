@@ -6,6 +6,7 @@
 package kafka.manager.actor.cluster
 
 import java.nio.charset.StandardCharsets
+import java.util.Properties
 import java.util.concurrent.{LinkedBlockingQueue, ThreadPoolExecutor, TimeUnit}
 
 import akka.actor.{ActorPath, Props}
@@ -53,6 +54,7 @@ case class ClusterManagerActorConfig(pinnedDispatcherName: String
                                      , baseZkPath : String
                                      , curatorConfig: CuratorConfig
                                      , clusterConfig: ClusterConfig
+                                     , consumerProperties: Option[Properties]
                                      , askTimeoutMillis: Long = 2000
                                      , mutexTimeoutMillis: Int = 4000
                                      , simpleConsumerSocketTimeoutMillis: Int = 10000
@@ -106,7 +108,9 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
     , LongRunningPoolConfig(clusterConfig.tuning.get.offsetCacheThreadPoolSize.get, clusterConfig.tuning.get.offsetCacheThreadPoolQueueSize.get)
     , LongRunningPoolConfig(clusterConfig.tuning.get.kafkaAdminClientThreadPoolSize.get, clusterConfig.tuning.get.kafkaAdminClientThreadPoolQueueSize.get)
     , clusterConfig.tuning.get.partitionOffsetCacheTimeoutSecs.get
-    , cmConfig.simpleConsumerSocketTimeoutMillis)
+    , cmConfig.simpleConsumerSocketTimeoutMillis
+    , cmConfig.consumerProperties
+  )
   private[this] val ksProps = Props(classOf[KafkaStateActor],ksConfig)
   private[this] val kafkaStateActor : ActorPath = context.actorOf(ksProps.withDispatcher(cmConfig.pinnedDispatcherName),"kafka-state").path
 
@@ -501,7 +505,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           }
         } pipeTo sender()
 
-      case CMRunReassignPartition(topics) =>
+      case CMRunReassignPartition(topics, forceSet) =>
         implicit val ec = longRunningExecutionContext
         val eventualBrokerList = withKafkaStateActor(KSGetBrokers)(identity[BrokerList])
         val eventualDescriptions = withKafkaStateActor(KSGetTopicDescriptions(topics))(identity[TopicDescriptions])
@@ -527,7 +531,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           val topicsMap = topicIdentities.map(ti => (ti.topic, ti)).toMap
           val reassignmentsMap = reassignments.filter(_.isSuccess).map(_.toOption).flatten.map(ti => (ti.topic, ti)).toMap
           val failures: IndexedSeq[Try[Unit]] = reassignments.filter(_.isFailure).map(_.flatMap(ti => Try[Unit]((): Unit)))
-          withKafkaCommandActor(KCReassignPartition(topicsMap, reassignmentsMap)) { kcResponse: KCCommandResult =>
+          withKafkaCommandActor(KCReassignPartition(topicsMap, reassignmentsMap, forceSet)) { kcResponse: KCCommandResult =>
             CMCommandResults(failures ++ IndexedSeq(kcResponse.result))
           }
         } pipeTo sender()

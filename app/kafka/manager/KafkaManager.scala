@@ -16,6 +16,9 @@ import kafka.manager.actor.{KafkaManagerActorConfig, KafkaManagerActor}
 import kafka.manager.base.LongRunningPoolConfig
 import kafka.manager.model._
 import ActorModel._
+import kafka.manager.utils.UtilException
+import kafka.manager.utils.zero81.ReassignPartitionErrors.ReplicationOutOfSync
+import kafka.manager.utils.zero81.{ReassignPartitionErrors, ForceReassignmentCommand, ForceOnReplicationOutOfSync}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
@@ -37,7 +40,7 @@ case class BrokerListExtended(list: IndexedSeq[BrokerIdentity],
 case class ConsumerListExtended(list: IndexedSeq[((String, ConsumerType), Option[ConsumerIdentity])], clusterContext: ClusterContext)
 case class LogkafkaListExtended(list: IndexedSeq[(String, Option[LogkafkaIdentity])], deleteSet: Set[String])
 
-case class ApiError(msg: String)
+case class ApiError(msg: String, recoverByForceOperation: Boolean = false)
 object ApiError extends Logging {
 
   implicit def fromThrowable(t: Throwable) : ApiError = {
@@ -55,6 +58,7 @@ object ApiError extends Logging {
 
 object KafkaManager {
 
+  val ConsumerPropertiesFile = "kafka-manager.consumer.properties.file"
   val BaseZkPath = "kafka-manager.base-zk-path"
   val PinnedDispatchName = "kafka-manager.pinned-dispatcher-name"
   val ZkHosts = "kafka-manager.zkhosts"
@@ -108,8 +112,7 @@ object KafkaManager {
 import KafkaManager._
 import akka.pattern._
 import scalaz.{-\/, \/, \/-}
-class KafkaManager(akkaConfig: Config)
-{
+class KafkaManager(akkaConfig: Config) extends Logging {
   private[this] val system = ActorSystem("kafka-manager-system", akkaConfig)
 
   private[this] val configWithDefaults = akkaConfig.withFallback(DefaultConfig)
@@ -146,6 +149,7 @@ class KafkaManager(akkaConfig: Config)
       , clusterActorsAskTimeoutMillis = configWithDefaults.getInt(ClusterActorsAskTimeoutMillis)
       , simpleConsumerSocketTimeoutMillis =  configWithDefaults.getInt(SimpleConsumerSocketTimeoutMillis)
       , defaultTuning = defaultTuning
+      , consumerProperties = getConsumerPropertiesFromConfig(configWithDefaults)
     )
   }
 
@@ -167,6 +171,21 @@ class KafkaManager(akkaConfig: Config)
     configWithDefaults.getInt(ApiTimeoutMillis),
     MILLISECONDS
   )
+
+  private[this] def getConsumerPropertiesFromConfig(config: Config) : Option[Properties] = {
+    if(config.hasPath(ConsumerPropertiesFile)) {
+      val filePath = config.getString(ConsumerPropertiesFile)
+      val file = new java.io.File(filePath)
+      if(file.isFile & file.canRead) {
+        val props = new Properties()
+        props.load(new java.io.FileInputStream(file))
+        return Option(props)
+      } else {
+        warn(s"Failed to find consumer properties file or file is not readable : $file")
+      }
+    }
+    None
+  }
 
   private[this] def tryWithKafkaManagerActor[Input, Output, FOutput](msg: Input)
     (fn: Output => FOutput)
@@ -357,12 +376,25 @@ class KafkaManager(akkaConfig: Config)
     }
   }
 
-  def runReassignPartitions(clusterName: String, topics: Set[String]): Future[IndexedSeq[ApiError] \/ Unit] = {
+  def runReassignPartitions(clusterName: String, topics: Set[String], force: Boolean = false): Future[IndexedSeq[ApiError] \/ Unit] = {
     implicit val ec = apiExecutionContext
-    val results = tryWithKafkaManagerActor(KMClusterCommandRequest(clusterName, CMRunReassignPartition(topics))) {
+    val forceSet: Set[ForceReassignmentCommand] = {
+      if(force) {
+        Set(ForceOnReplicationOutOfSync)
+      } else Set.empty
+    }
+    val results = tryWithKafkaManagerActor(KMClusterCommandRequest(clusterName, CMRunReassignPartition(topics, forceSet))) {
       resultFuture: Future[CMCommandResults] =>
         resultFuture map { result =>
-          val errors = result.result.collect { case Failure(t) => ApiError(t.getMessage)}
+          val errors = result.result.collect {
+            case Failure(t) =>
+              t match {
+                case UtilException(e) if e.isInstanceOf[ReplicationOutOfSync] =>
+                  ApiError(t.getMessage, recoverByForceOperation = true)
+                case _ =>
+                  ApiError(t.getMessage)
+              }
+          }
           if (errors.isEmpty)
             \/-({})
           else
