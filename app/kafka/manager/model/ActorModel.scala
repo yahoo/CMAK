@@ -258,7 +258,7 @@ object ActorModel {
                   }.leftMap[JsonScalaz.Error](t => UncategorizedError("endpoints", t.getMessage, List.empty)).toValidationNel
               }
               parsedList.find(_.isSuccess).fold({
-                val err: JsonScalaz.Result[(String, Int, Boolean)] = UncategorizedError("endpoints", s"failed to parse host and port from json : $config", List.empty).failureNel
+                val err: JsonScalaz.Result[(String, Int, Boolean)] = Validation.failureNel(UncategorizedError("endpoints", s"failed to parse host and port from json : $config", List.empty))
                 err
               }
               )(r => r)
