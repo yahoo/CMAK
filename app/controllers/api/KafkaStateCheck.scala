@@ -47,25 +47,21 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     kafkaManager.getClusterList.map { errorOrClusterList =>
       errorOrClusterList.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
-        //                clusterList => Ok(Json.obj("clusters" -> (clusterList.active.map(cc => Map("name" -> cc.name, "status" -> "active")) ++
-        //                  clusterList.pending.map(cc => Map("name" -> cc.name, "status" -> "pending"))).sortBy(_("name"))))
-        clusterList => Ok(makeJson(clusterList, status))
+        clusterList => Ok(getClusterListJson(clusterList, status))
       )
     }
   }
 
-  def makeJson(clusterList: KMClusterList, status: Option[String]) = {
+  def getClusterListJson(clusterList: KMClusterList, status: Option[String]) = {
     val active = clusterList.active.map(cc => Map("name" -> cc.name, "status" -> "active"))
     val pending = clusterList.pending.map(cc => Map("name" -> cc.name, "status" -> "pending"))
 
-    if (status.isEmpty) {
-      Json.obj("clusters" -> (active ++ pending).sortBy(_("name")))
-    } else if (status.get == "active") {
+    if (status.getOrElse(None) == "active") {
       Json.obj("clusters" -> active.sortBy(_("name")))
-    } else if (status.get == "pending") {
+    } else if (status.getOrElse(None) == "pending") {
       Json.obj("clusters" -> pending.sortBy(_("name")))
     } else {
-      Json.obj("option" -> status)
+      Json.obj("clusters" -> (active ++ pending).sortBy(_("name")))
     }
   }
 
