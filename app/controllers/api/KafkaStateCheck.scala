@@ -37,7 +37,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     kafkaManager.getTopicList(c).map { errorOrTopicList =>
       errorOrTopicList.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
-        topicList => Ok(Json.obj("topics" -> topicList.list))
+        topicList => Ok(Json.obj("topics" -> topicList.list.sorted))
       )
     }
   }
