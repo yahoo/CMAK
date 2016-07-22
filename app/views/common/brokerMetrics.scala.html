@@ -1,0 +1,104 @@
+@(brokerMetrics: Option[kafka.manager.model.ActorModel.BrokerMetrics])(implicit messages: play.api.i18n.Messages)
+<table class="table">
+  <thead>
+    <tr>
+      <th>Rate</th>
+      <th>Mean</th>
+      <th>1&nbsp;min</th>
+      <th>5&nbsp;min</th>
+      <th>15&nbsp;min</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Messages in /sec</td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.messagesInPerSec.formatMeanRate)</span>
+      </td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.messagesInPerSec.formatOneMinuteRate)</span>
+      </td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.messagesInPerSec.formatFiveMinuteRate)</span>
+      </td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.messagesInPerSec.formatFifteenMinuteRate)</span>
+      </td>
+    <tr>
+    <tr>
+      <td>Bytes in /sec</td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.bytesInPerSec.formatMeanRate)</span>
+      </td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.bytesInPerSec.formatOneMinuteRate)</span>
+      </td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.bytesInPerSec.formatFiveMinuteRate)</span>
+      </td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.bytesInPerSec.formatFifteenMinuteRate)</span>
+      </td>
+    <tr>
+    <tr>
+      <td>Bytes out /sec</td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.bytesOutPerSec.formatMeanRate)</span>
+      </td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.bytesOutPerSec.formatOneMinuteRate)</span>
+      </td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.bytesOutPerSec.formatFiveMinuteRate)</span>
+      </td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.bytesOutPerSec.formatFifteenMinuteRate)</span>
+      </td>
+    <tr>
+    <tr>
+      <td>Bytes rejected /sec</td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.bytesRejectedPerSec.formatMeanRate)</span>
+      </td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.bytesRejectedPerSec.formatOneMinuteRate)</span>
+      </td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.bytesRejectedPerSec.formatFiveMinuteRate)</span>
+      </td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.bytesRejectedPerSec.formatFifteenMinuteRate)</span>
+      </td>
+    <tr>
+    <tr>
+      <td>Failed fetch request /sec</td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.failedFetchRequestsPerSec.formatMeanRate)</span>
+      </td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.failedFetchRequestsPerSec.formatOneMinuteRate)</span>
+      </td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.failedFetchRequestsPerSec.formatFiveMinuteRate)</span>
+      </td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.failedFetchRequestsPerSec.formatFifteenMinuteRate)</span>
+      </td>
+    <tr>
+    <tr>
+      <td>Failed produce request /sec</td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.failedProduceRequestsPerSec.formatMeanRate)</span>
+      </td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.failedProduceRequestsPerSec.formatOneMinuteRate)</span>
+      </td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.failedProduceRequestsPerSec.formatFiveMinuteRate)</span>
+      </td>
+      <td>
+        <span class="badge">@brokerMetrics.map(_.failedProduceRequestsPerSec.formatFifteenMinuteRate)</span>
+      </td>
+    <tr>
+  </tbody>
+</table>

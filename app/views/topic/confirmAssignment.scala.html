@@ -1,0 +1,82 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import scalaz.{\/}
+@import b3.vertical.fieldConstructor
+@(cluster: String,
+  topic: String,
+  errorOrForm: kafka.manager.ApiError \/ (Form[models.form.GenerateAssignment], kafka.manager.model.ClusterContext),
+  errorOrCurrentAssignments: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.GeneratedPartitionAssignments
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+
+@theMenu = {
+    @views.html.navigation.clusterMenu(cluster,"Topic","Confirm Assignment",menus.clusterMenus(cluster)(
+        errorOrForm.toOption.map(_._2.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
+}
+
+@renderForm(confirmForm: Form[models.form.GenerateAssignment]) = {
+    <h4>Choose brokers to reassign topic @topic to:</h4>
+    @b3.form(routes.ReassignPartitions.handleGenerateAssignment(cluster,topic)) {
+        <table class="table">
+            <thead>
+            <tr><th>Brokers</th></tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>
+                <button type="button" class="btn btn-default" onClick="checkBoxSelect('brokers',true);">
+                    <b>Select All</b>
+                </button>
+                <button type="button" class="btn btn-default" onClick="checkBoxSelect('brokers',false);">
+                    <b>Select None</b>
+                </button>
+                @helper.repeat(confirmForm("brokers"), min = 1) { brokerSelectForm =>
+                    @b3.hidden(brokerSelectForm("id").name,brokerSelectForm("id").value.getOrElse(-1))
+                    @b3.hidden(brokerSelectForm("host").name,brokerSelectForm("host").value.getOrElse(""))
+                    @b3.checkbox(brokerSelectForm("selected"), '_text -> s"${brokerSelectForm("id").value.getOrElse(-1)} - ${brokerSelectForm("host").value.getOrElse("")}")
+                }
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        @b3.submit('class -> "btn btn-primary btn-block"){ Generate Partition Assignments }
+        <a href="@routes.Topic.topic(cluster,topic)" class="cancel-button btn btn-default" role="button">Cancel</a>
+    }
+}
+        
+@renderAssignments(gpa: kafka.manager.model.ActorModel.GeneratedPartitionAssignments) = {
+    <h4>Current Assignments</h4>
+    <table class="table">
+        <thead>
+        <tr><th>Partition</th><th>Replicas</th></tr>
+        </thead>
+        @for((partNum, replicas) <- gpa.assignments.toList.sortBy(_._1) ) {
+        <tr>
+            <td>@partNum</td>
+            <td style="word-wrap: break-word">@replicas.mkString("(", ",", ")")</td>
+        </tr>
+        }
+    </table>
+}
+
+@main(
+  "Confirm Assignment",
+  menu = theMenu,
+  breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndCluster("Topic View",cluster,topic))) {
+<div class="col-md-6 un-pad-me">
+    <div class="panel panel-default">
+        <div class="panel-heading"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>Confirm Assignment</h3></div>
+        <div class="panel-body">
+            @errorOrForm.fold( views.html.errors.onApiError(_), t => renderForm(t._1))
+        </div>
+    </div>
+</div>
+<div class="col-md-6 un-pad-me">
+    <div class="panel panel-default">
+        <div class="panel-body">
+            @errorOrCurrentAssignments.fold( views.html.errors.onApiError(_), t => renderAssignments(t))
+        </div>
+    </div>
+</div>
+}

@@ -7,6 +7,8 @@ package kafka
 
 import java.nio.charset.StandardCharsets
 
+import kafka.manager.features.{ClusterFeatures, ClusterFeature}
+
 /**
  * @author hiral
  */

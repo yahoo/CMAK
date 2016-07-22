@@ -1,0 +1,161 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+
+@import scalaz.{\/}
+@import b3.vertical.fieldConstructor
+@import kafka.manager.model.ActorModel._
+@import kafka.manager.{BrokerListExtended}
+@import kafka.manager.utils._
+@import helper._
+@import models.form._
+
+@(cluster: String,
+  topic: String,
+  assignForm: List[(String, List[(Int,List[Int])])],
+  brokers: BrokerListExtended,
+  brokersViews: Map[Int, BVView],
+  formErrors: Seq[FormError]
+)(implicit af: features.ApplicationFeatures, 
+cf: kafka.manager.features.ClusterFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+
+@theMenu = {
+@views.html.navigation.clusterMenu(cluster,"Topic","Manual Partition Assignments",menus.clusterMenus(cluster))
+}
+@color(brokerId: Int) = @{
+  java.security.MessageDigest.getInstance("MD5").digest("" + brokerId).map("%02X".format(_)).mkString.substring(0,6)
+}
+@toColor(brokerId: Int) = {
+  #@color(brokerId)
+}
+@reverseColor(originalColor: String) = {
+  #@originalColor.map({x => if(x == '#') x else "%X".format(0xf - Integer.parseInt(x.toString,16)).head})
+}
+@replicaSelection(topicIdx: Int, assignIdx: Int, brokerIndex: Int, brokerId: Int) = {
+    @if(brokers.list.filter({broker => broker.id == brokerId}).size > 0) {
+    <span style="background-color: @toColor(brokerId) ;">
+      <select onchange="this.parentNode.setAttribute('style', 
+        this.options[this.selectedIndex].getAttribute('style'))"
+        name="topics[@topicIdx].assignments[@assignIdx].brokers[@brokerIndex]">
+        @brokers.list.map { case broker =>
+        <option style="background-color: @toColor(broker.id); color: @reverseColor(color(broker.id));"
+        value="@broker.id" @if(broker.id == brokerId){selected}>Broker @broker.id</option>
+        }
+      </select>
+      &nbsp;&nbsp;&nbsp;</span>
+    } else {
+        <small style="color:red">Broker Down!</small>
+        <script>window.onload = function() {disableSubmission()}</script>
+    }
+}
+
+@topHeading = {
+<div class="panel-heading">
+    <div class="row">
+        <h3>
+            <div class="col-md-8">
+                <button type="button" class="btn btn-link" onclick="goBack()">
+                    <span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span>
+                </button>
+                Manual Partition Assignments
+            </div>
+            <div class="btn-group-vertical col-md-4" role="group" aria-label="...">
+                <button class="btn btn-primary " type="submit">
+                    <span class="glyphicon glyphicon-floppy-disk"></span>
+                    Save Partition Assignment
+                </button>
+            </div>
+        </h3>
+    </div>
+</div>
+}
+
+@middleHeading = {
+<div class="panel-body btn-group-xs sub-heading">
+    <input type="text" placeholder="Type to filter topics"
+           id="cell-selector" onkeyup="selectBySubname('#cell-selector', 'assignment-cell', 'block')"/>
+</div>
+}
+
+@mainBody = {
+<div class="panel-body assignment-pane">
+    @assignForm.zipWithIndex.map { case (partitionAssignment, topicIdx) =>
+    <div class="assignment-cell" name="@partitionAssignment._1">
+        <h4>
+            <input type="text" class="borderless" style="display:none"
+                   name='topics[@topicIdx].topic'
+                   value='@partitionAssignment._1' readonly/>
+            @partitionAssignment._1
+        </h4>
+        @partitionAssignment._2.zipWithIndex.map { case (assignment, assgnIndex) =>
+            <div class="partition-cell">
+                <table>
+                    @assignment._2.zipWithIndex.map { case (broker, brokerIndex) =>
+                        @if(brokerIndex == 0) {
+                        <tr>
+                            <th>Partition
+                                <input type="number" class="borderless"
+                                       name='topics[@topicIdx].assignments[@assgnIndex].partition'
+                                       value='@assignment._1'
+                                       readonly>
+                            </th>
+                        </tr>
+                        }
+                        <tr><td>
+                            Replica @brokerIndex: @replicaSelection(topicIdx, assgnIndex, brokerIndex, broker)
+                        </td></tr>
+                    }
+                </table>
+            </div>
+        }
+    </div>
+    }
+</div>
+
+}
+
+@partitionsAssignmentsPane = {
+<div class="panel panel-default">
+    @topHeading
+    @middleHeading
+    @mainBody
+</div>
+}
+
+@brokersInfoPane = {
+    <input type="text" placeholder="Type to filter metrics"
+           id="selectMetrics" onkeyup="selectBySubname('#selectMetrics', 'metric-row', '')"/>
+    @brokersViews.map { case (idx, bv) =>
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h4>Broker @idx</h4>
+            </div>
+            @views.html.common.expandedBrokerMetrics(bv.metrics)
+        </div>
+    }
+}
+
+@main(
+  "Manual Multiple Assignment",
+  menu = theMenu,
+  breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Topics",cluster))) {
+<div class="row">
+    <div class="col-md-8">
+        @if(true) {
+            @helper.form(action = routes.ReassignPartitions.handleManualAssignment(cluster, topic)) {
+                @partitionsAssignmentsPane
+            }
+        } else {
+            @assignForm.toString
+            <br/><br/><br/><br/><br/>
+            @formErrors.toString
+        }
+    </div>
+    <div class="col-md-4">
+        @if(brokers != null) {
+            @brokersInfoPane
+        }
+    </div>
+</div>
+}

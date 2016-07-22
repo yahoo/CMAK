@@ -3,13 +3,25 @@
 * See accompanying LICENSE file.
 *@
 @import scalaz.{\/}
-@(clusterName: String, errorOrForm: kafka.manager.ApiError \/ Form[models.form.ClusterOperation])(implicit request: RequestHeader)
+@(clusterName: String, errorOrForm: kafka.manager.ApiError \/ Form[models.form.ClusterOperation]
+)(implicit request: RequestHeader, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
 
 @import b3.vertical.fieldConstructor
 @import controllers.routes
 
 @theMenu = {
-    @views.html.navigation.defaultMenu(views.html.navigation.menuNav("Cluster","Update Cluster",models.navigation.Menus.indexMenu))
+    @views.html.navigation.defaultMenu(views.html.navigation.menuNav("Cluster","Update Cluster",menus.indexMenu))
+}
+
+@checkboxWithLink(field: play.api.data.Field) = {
+@b3.inputFormGroup(field, withFeedback = false, withLabelFor = false, b3.Args.withDefault(Seq(), 'disabled -> false)) { fieldInfo =>
+<div class="checkbox">
+    <label for="@fieldInfo.id">
+        <input type="checkbox" id="@fieldInfo.id" name="@fieldInfo.name" value="true" @if(fieldInfo.value == Some("true")){checked} @toHtmlArgs(fieldInfo.innerArgsMap)>
+        Display Broker and Topic Size (only works after applying <a href="https://issues.apache.org/jira/browse/KAFKA-1614">this patch</a>)
+    </label>
+</div>
+}
 }
 
 @drawForm(form : Form[models.form.ClusterOperation]) = {
@@ -17,10 +29,33 @@
     <fieldset>
         <input type="hidden" name="operation" value="Update">
         <input type="hidden" name="name" value="@clusterName">
-        @b3.text(form("zkHosts"), '_label -> "Cluster Zookeeper Hosts", 'placeholder -> "zk1:2181,zk2:2181,zk3:2181", 'autoFocus -> true)
-        @b3.select( form("kafkaVersion"), options = kafka.manager.KafkaVersion.formSelectList, '_label -> "Kafka Version" )
-        @b3.submit('class -> "btn btn-primary btn"){ Save }
-        <a href="@routes.Application.index()" class="btn btn-default" role="button">Cancel</a>
+        @b3.text(form("zkHosts"), '_label -> "Cluster Zookeeper Hosts", 'placeholder -> "zk1:2181,zk2:2181,zk3:2181/NAMESPACE", 'autoFocus -> true)
+        @b3.select( form("kafkaVersion"), options = kafka.manager.model.KafkaVersion.formSelectList, '_label -> "Kafka Version" )
+        @b3.checkbox(form("jmxEnabled"), '_text -> "Enable JMX Polling (Set JMX_PORT env variable before starting kafka server)")
+        @b3.text(form("jmxUser"), '_label -> "JMX Auth Username")
+        @b3.text(form("jmxPass"), '_label -> "JMX Auth Password")
+        @b3.checkbox(form("pollConsumers"), '_text -> "Poll consumer information (Not recommended for large # of consumers)")
+        @b3.checkbox(form("filterConsumers"), '_text -> "Filter out inactive consumers")
+        @b3.checkbox(form("logkafkaEnabled"), '_text -> "Enable Logkafka")
+        @b3.checkbox(form("activeOffsetCacheEnabled"), '_text -> "Enable Active OffsetCache (Not recommended for large # of consumers)")
+        @checkboxWithLink(form("displaySizeEnabled"))
+        @b3.number(form("tuning.brokerViewUpdatePeriodSeconds"), '_label -> "brokerViewUpdatePeriodSeconds")
+        @b3.number(form("tuning.clusterManagerThreadPoolSize"), '_label -> "clusterManagerThreadPoolSize")
+        @b3.number(form("tuning.clusterManagerThreadPoolQueueSize"), '_label -> "clusterManagerThreadPoolQueueSize")
+        @b3.number(form("tuning.kafkaCommandThreadPoolSize"), '_label -> "kafkaCommandThreadPoolSize")
+        @b3.number(form("tuning.kafkaCommandThreadPoolQueueSize"), '_label -> "kafkaCommandThreadPoolQueueSize")
+        @b3.number(form("tuning.logkafkaCommandThreadPoolSize"), '_label -> "logkafkaCommandThreadPoolSize")
+        @b3.number(form("tuning.logkafkaCommandThreadPoolQueueSize"), '_label -> "logkafkaCommandThreadPoolQueueSize")
+        @b3.number(form("tuning.logkafkaUpdatePeriodSeconds"), '_label -> "logkafkaUpdatePeriodSeconds")
+        @b3.number(form("tuning.partitionOffsetCacheTimeoutSecs"), '_label -> "partitionOffsetCacheTimeoutSecs")
+        @b3.number(form("tuning.brokerViewThreadPoolSize"), '_label -> "brokerViewThreadPoolSize")
+        @b3.number(form("tuning.brokerViewThreadPoolQueueSize"), '_label -> "brokerViewThreadPoolQueueSize")
+        @b3.number(form("tuning.offsetCacheThreadPoolSize"), '_label -> "offsetCacheThreadPoolSize")
+        @b3.number(form("tuning.offsetCacheThreadPoolQueueSize"), '_label -> "offsetCacheThreadPoolQueueSize")
+        @b3.number(form("tuning.kafkaAdminClientThreadPoolSize"), '_label -> "kafkaAdminClientThreadPoolSize")
+        @b3.number(form("tuning.kafkaAdminClientThreadPoolQueueSize"), '_label -> "kafkaAdminClientThreadPoolQueueSize")
+        @b3.submit('class -> "submit-button btn btn-primary btn"){ Save }
+        <a href="@routes.Application.index()" class="cancel-button btn btn-default" role="button">Cancel</a>
     </fieldset>
     }
 }
@@ -37,6 +72,7 @@
             @errorOrForm.fold(views.html.errors.onApiError(_), drawForm(_))
         </div>
     </div>
+    @configReferences()
 </div>
 
 }

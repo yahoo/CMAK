@@ -1,0 +1,91 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import scalaz.{\/}
+@(cluster: String, errorOrForm: kafka.manager.ApiError \/ (Form[models.form.AddMultipleTopicsPartitions], kafka.manager.model.ClusterContext)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+
+@import helper._
+@import b3.vertical.fieldConstructor
+@import controllers.routes
+
+@theMenu = {
+    @views.html.navigation.clusterMenu(cluster,"Topics","Add Partitions to Topics",menus.clusterMenus(cluster)(
+        errorOrForm.toOption.map(_._2.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
+}
+
+@checkboxWithLink(field: play.api.data.Field, topic: String) = {
+@b3.inputFormGroup(field, withFeedback = false, withLabelFor = false, b3.Args.withDefault(Seq(), 'disabled -> false)) { fieldInfo =>
+<div class="checkbox">
+    <label for="@fieldInfo.id">
+        <input type="checkbox" id="@fieldInfo.id" name="@fieldInfo.name" value="true" @if(fieldInfo.value == Some("true")){checked} @toHtmlArgs(fieldInfo.innerArgsMap)>
+        <a href="@routes.Topic.topic(cluster,topic)">@topic</a>
+    </label>
+</div>
+}
+}
+
+@renderForm(addMultipleTopicsPartitionsForm: Form[models.form.AddMultipleTopicsPartitions]) = {
+@b3.form(routes.Topic.handleAddPartitionsToMultipleTopics(cluster)) {
+<table class="table">
+    <thead>
+    <tr><th>Add Partitions</th><th>Brokers</th></tr>
+    </thead>
+    <tbody>
+    <tr>
+        &#9888; Selected topics will have the same number of partitions after the operation.
+    </tr>
+    <tr>
+        <td>
+            @b3.text(addMultipleTopicsPartitionsForm("partitions"), '_label -> "Partitions", 'placeholder -> "8")
+            @helper.repeat(addMultipleTopicsPartitionsForm("readVersions"), min = 1) { readVersionForm =>
+            @b3.hidden(readVersionForm("topic").name,readVersionForm("topic").value.getOrElse(""))
+            @b3.hidden(readVersionForm("version").name,readVersionForm("version").value.getOrElse(-1))
+            }
+            <button type="button" class="btn btn-default" onClick="checkBoxSelect('topics',true);">
+                <b>Select All</b>
+            </button>
+            <button type="button" class="btn btn-default" onClick="checkBoxSelect('topics',false);">
+                <b>Select None</b>
+            </button>
+            @helper.repeat(addMultipleTopicsPartitionsForm("topics"), min = 1) { topicSelectForm =>
+            @b3.hidden(topicSelectForm("name").name,topicSelectForm("name").value.getOrElse(""))
+            @checkboxWithLink(topicSelectForm("selected"),topicSelectForm("name").value.getOrElse(""))
+            }
+        </td>
+        <td>
+            <button type="button" class="btn btn-default" onClick="checkBoxSelect('brokers',true);">
+                <b>Select All</b>
+            </button>
+            <button type="button" class="btn btn-default" onClick="checkBoxSelect('brokers',false);">
+                <b>Select None</b>
+            </button>
+            @helper.repeat(addMultipleTopicsPartitionsForm("brokers"), min = 1) { brokerSelectForm =>
+            @b3.hidden(brokerSelectForm("id").name,brokerSelectForm("id").value.getOrElse(-1))
+            @b3.hidden(brokerSelectForm("host").name,brokerSelectForm("host").value.getOrElse(""))
+            @b3.checkbox(brokerSelectForm("selected"), '_text -> s"${brokerSelectForm("id").value.getOrElse(-1)} - ${brokerSelectForm("host").value.getOrElse("")}")
+            }
+        </td>
+    </tr>
+    </tbody>
+</table>
+@b3.submit('class -> "submit-button btn btn-primary"){ Add Partitions }
+<a href="@routes.Topic.topics(cluster)" class="cancel-button btn btn-default" role="button">Cancel</a>
+}
+}
+
+@main(
+"Add Partitions to Multiple Topics",
+menu = theMenu,
+breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Topics",cluster))) {
+<div class="col-md-6 un-pad-me">
+    <div class="panel panel-default">
+        <div class="panel-heading"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>Add Partitions</h3></div>
+        <div class="panel-body">
+            @errorOrForm.fold( views.html.errors.onApiError(_), t => renderForm(t._1))
+        </div>
+    </div>
+</div>
+}
+

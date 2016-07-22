@@ -1,0 +1,79 @@
+@import kafka.manager.model.ActorModel.{TopicIdentity, BVView}
+
+@(brokersViews: Seq[BVView])(implicit messages: play.api.i18n.Messages)
+
+<table class="table">
+    <tr>
+      <th>Broker </th>
+      <th>Messages in /sec</th>
+      <th>Bytes in /sec</th>
+      <th>Bytes out /sec</th>
+    </tr>
+  @brokersViews.zipWithIndex.map { case (brokerView, idx) =>
+    @if(brokerView.clusterContext.clusterFeatures.features(kafka.manager.features.KMJMXMetricsFeature)) {
+      <tr>
+        <td>@idx</td>
+        <td>
+          <span class="badge">@brokerView.metrics.map(_.messagesInPerSec.formatMeanRate)</span>
+        </td>
+        <td>
+          <span class="badge">@brokerView.metrics.map(_.bytesInPerSec.formatMeanRate)</span>
+        </td>
+        <td>
+          <span class="badge">@brokerView.metrics.map(_.bytesOutPerSec.formatMeanRate)</span>
+        </td>
+      </tr>
+    } else {
+      <tr>
+        <td>@idx</td>
+        <td>
+          <span class="badge">NA</span>
+        </td>
+        <td>
+          <span class="badge">NA</span>
+        </td>
+        <td>
+          <span class="badge">NA</span>
+        </td>
+      </tr>
+    }
+  }
+</table>
+
+<table class="table">
+  <tr>
+    <th>Broker </th>
+    <th>Bytes rejected /sec</th>
+    <th>Failed fetch request /sec</th>
+    <th>Failed produce request /sec</th>
+  </tr>
+  @brokersViews.zipWithIndex.map { case (brokerView, idx) =>
+  @if(brokerView.clusterContext.clusterFeatures.features(kafka.manager.features.KMJMXMetricsFeature)) {
+  <tr>
+    <td>@idx</td>
+    <td>
+      <span class="badge">@brokerView.metrics.map(_.bytesRejectedPerSec.formatMeanRate)</span>
+    </td>
+    <td>
+      <span class="badge">@brokerView.metrics.map(_.failedFetchRequestsPerSec.formatMeanRate)</span>
+    </td>
+    <td>
+      <span class="badge">@brokerView.metrics.map(_.failedProduceRequestsPerSec.formatMeanRate)</span>
+    </td>
+  </tr>
+  } else {
+  <tr>
+    <td>@idx</td>
+    <td>
+      <span class="badge">NA</span>
+    </td>
+    <td>
+      <span class="badge">NA</span>
+    </td>
+    <td>
+      <span class="badge">NA</span>
+    </td>
+  </tr>
+  }
+  }
+</table>

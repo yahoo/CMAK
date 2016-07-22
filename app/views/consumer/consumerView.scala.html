@@ -1,0 +1,28 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import scalaz.{\/}
+@(cluster:String,
+  consumer: String,
+  errorOrConsumerIdentity: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.ConsumerIdentity
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+
+@theMenu = {
+    @views.html.navigation.clusterMenu(cluster,"Consumer","",menus.clusterMenus(cluster)(
+        errorOrConsumerIdentity.toOption.map(_.clusterContext.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
+}
+
+@main(
+    "Consumer View",
+    menu = theMenu,
+    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndCluster("Consumer View",cluster,consumer))) {
+<div class="col-md-12 un-pad-me">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>@consumer</h3>
+        </div>
+        @errorOrConsumerIdentity.fold(views.html.errors.onApiError(_),views.html.consumer.consumerViewContent(cluster,consumer,_))
+    </div>
+</div>
+}

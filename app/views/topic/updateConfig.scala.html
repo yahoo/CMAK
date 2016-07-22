@@ -1,0 +1,55 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import scalaz.{\/}
+@(cluster: String, topic: String, errorOrForm: kafka.manager.ApiError \/ (Form[models.form.UpdateTopicConfig], kafka.manager.model.ClusterContext)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+
+@import helper._
+@import b3.vertical.fieldConstructor
+@import controllers.routes
+
+@theMenu = {
+    @views.html.navigation.clusterMenu(cluster,"Topic","Update Config",menus.clusterMenus(cluster)(
+        errorOrForm.toOption.map(_._2.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
+}
+        
+@renderForm(updateTopicConfigForm: Form[models.form.UpdateTopicConfig]) = {
+    @b3.form(routes.Topic.handleUpdateConfig(cluster, topic)) {
+        <table class="table">
+            <thead>
+            <tr><th>Update Config</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        @b3.text(updateTopicConfigForm("topic"), '_label -> "Topic", 'placeholder -> "", 'autofocus -> true )
+                        @b3.hidden(updateTopicConfigForm("readVersion").name,updateTopicConfigForm("readVersion").value.getOrElse(-1))
+                        @helper.repeat(updateTopicConfigForm("configs"), min = 1) { configsForm =>
+                            @b3.hidden(configsForm("name").name, configsForm("name").value.getOrElse(""))
+                            @b3.text(configsForm("value"), '_label -> configsForm("name").value.getOrElse(""))
+                        }
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        @b3.submit('class -> "submit-button btn btn-primary"){ Update Config }
+        <a href="@routes.Topic.topic(cluster,topic)" class="cancel-button btn btn-default" role="button">Cancel</a>
+    }
+}
+
+@main(
+    "Update Config",
+    menu = theMenu,
+    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View",cluster,topic,"Update Config"))) {
+    <div class="col-md-6 un-pad-me">
+        <div class="panel panel-default">
+            <div class="panel-heading"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>Update Config</h3></div>
+            <div class="panel-body">
+                @errorOrForm.fold( views.html.errors.onApiError(_), t => renderForm(t._1))
+            </div>
+        </div>
+    </div>
+}
+

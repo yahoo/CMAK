@@ -5,30 +5,41 @@
 
 package models.form
 
+import enumeratum.{Enum, EnumEntry}
+import enumeratum.EnumEntry.{Uppercase, Snakecase}
+import kafka.manager.model.ActorModel
+import ActorModel.BrokerIdentity
+
 /**
  * @author hiral
  */
-sealed trait ReassignPartitionOperation
+sealed abstract class ReassignPartitionOperation (override val entryName: String) extends EnumEntry with Snakecase with Uppercase
 
-case object GenerateAssignment extends ReassignPartitionOperation
-case object RunAssignment extends ReassignPartitionOperation
-case class UnknownRPO(op: String) extends ReassignPartitionOperation
+object ReassignPartitionOperation extends Enum[ReassignPartitionOperation] {
+  val values = findValues
 
-object ReassignPartitionOperation {
-  def apply(s: String) : ReassignPartitionOperation = {
-    s match {
-      case "generate" => GenerateAssignment
-      case "run" => RunAssignment
-      case a => UnknownRPO(a)
-    }
-  }
-
-  def unapply(op: ReassignPartitionOperation) : Option[String] = {
-    op match {
-      case GenerateAssignment => Some("generate")
-      case RunAssignment => Some("run")
-      case UnknownRPO(_) => None
-    }
-  }
+  case object RunAssignment extends ReassignPartitionOperation("run")
+  case object ForceRunAssignment extends ReassignPartitionOperation("force")
+  case object UnknownRPO extends ReassignPartitionOperation("unknown")
 
 }
+
+case class BrokerSelect(id: Int, host: String, selected: Boolean)
+object BrokerSelect {
+  implicit def from(bi: BrokerIdentity) : BrokerSelect = {
+    BrokerSelect(bi.id,bi.host,true)
+  }
+}
+
+case class TopicSelect(name: String, selected: Boolean)
+object TopicSelect {
+  implicit def from(topicName: String) : TopicSelect = {
+    TopicSelect(topicName,true)
+  }
+}
+
+case class ReadVersion(topic: String, version: Int)
+
+case class GenerateAssignment(brokers: Seq[BrokerSelect])
+case class GenerateMultipleAssignments(topics: Seq[TopicSelect], brokers: Seq[BrokerSelect])
+case class RunMultipleAssignments(topics: Seq[TopicSelect])

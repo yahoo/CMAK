@@ -11,3 +11,6 @@ dist
 /.settings
 activator*
 RUNNING_PID
+.DS_Store
+*.log
+*.swp

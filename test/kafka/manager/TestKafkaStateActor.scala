@@ -11,6 +11,10 @@ import akka.pattern._
 import akka.util.Timeout
 import akka.util.Timeout._
 import com.typesafe.config.{Config, ConfigFactory}
+import kafka.manager.actor.cluster.{KafkaStateActorConfig, KafkaStateActor}
+import kafka.manager.base.LongRunningPoolConfig
+import kafka.manager.features.ClusterFeatures
+import kafka.manager.model.{ClusterContext, ClusterConfig, ActorModel}
 import kafka.manager.utils.KafkaServerInTest
 import ActorModel._
 import kafka.test.SeededBroker
@@ -23,7 +27,7 @@ import scala.util.Try
 /**
  * @author hiral
  */
-class TestKafkaStateActor extends KafkaServerInTest {
+class TestKafkaStateActor extends KafkaServerInTest with BaseTest {
 
   private[this] val akkaConfig: Properties = new Properties()
   akkaConfig.setProperty("pinned-dispatcher.type","PinnedDispatcher")
@@ -34,10 +38,22 @@ class TestKafkaStateActor extends KafkaServerInTest {
   override val kafkaServerZkPath = broker.getZookeeperConnectionString
   private[this] var kafkaStateActor : Option[ActorRef] = None
   private[this] implicit val timeout: Timeout = 10.seconds
+  private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, tuning = Option(defaultTuning))
+  private[this] val defaultClusterContext = ClusterContext(ClusterFeatures.from(defaultClusterConfig), defaultClusterConfig)
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    val props = Props(classOf[KafkaStateActor],sharedCurator)
+    val ksConfig = KafkaStateActorConfig(
+      sharedCurator
+      , "pinned-dispatcher"
+      , defaultClusterContext
+      , LongRunningPoolConfig(2,100)
+      , LongRunningPoolConfig(2,100)
+      , 5
+      , 10000
+      , None
+    )
+    val props = Props(classOf[KafkaStateActor],ksConfig)
 
     kafkaStateActor = Some(system.actorOf(props.withDispatcher("pinned-dispatcher"),"ksa"))
   }
@@ -62,6 +78,12 @@ class TestKafkaStateActor extends KafkaServerInTest {
     }
   }
 
+  test("get consumer list") {
+    withKafkaStateActor(KSGetConsumers) { result: ConsumerList =>
+      result.list foreach println
+    }
+  }
+
   test("get topic config") {
     withKafkaStateActor(KSGetTopics) { result: TopicList =>
       val configs = result.list map { topic =>
@@ -75,7 +97,7 @@ class TestKafkaStateActor extends KafkaServerInTest {
   test("get broker list") {
     withKafkaStateActor(KSGetBrokers) { result: BrokerList =>
       result.list foreach println
-      val brokerIdentityList : IndexedSeq[BrokerIdentity] = result.list.map(BrokerIdentity.from)
+      val brokerIdentityList : IndexedSeq[BrokerIdentity] = result.list
       brokerIdentityList foreach println
     }
   }
@@ -88,15 +110,30 @@ class TestKafkaStateActor extends KafkaServerInTest {
       descriptions foreach println
 
       withKafkaStateActor(KSGetBrokers) { brokerList: BrokerList =>
-        val topicIdentityList : IndexedSeq[TopicIdentity] = descriptions.flatten.map(td => TopicIdentity.from(brokerList,td))
+        val topicIdentityList : IndexedSeq[TopicIdentity] = descriptions.flatten.map(td => TopicIdentity.from(brokerList, td, None, None, brokerList.clusterContext, None))
         topicIdentityList foreach println
       }
     }
   }
 
-  test("get topic descriptions") {
+  test("get consumer description") {
+    withKafkaStateActor(KSGetConsumers) { result: ConsumerList =>
+      val descriptions = result.list map { consumer =>
+        withKafkaStateActor(KSGetConsumerDescription(consumer.name, consumer.consumerType)) { optionalDesc: Option[ConsumerDescription] => optionalDesc }
+      }
+      descriptions foreach println
+    }
+  }
+
+  test("get all topic descriptions") {
     withKafkaStateActor(KSGetAllTopicDescriptions()) { td: TopicDescriptions =>
       td.descriptions foreach println
+    }
+  }
+
+  test("get all consumer descriptions") {
+    withKafkaStateActor(KSGetAllConsumerDescriptions()) { cd: ConsumerDescriptions =>
+      cd.descriptions foreach println
     }
   }
 

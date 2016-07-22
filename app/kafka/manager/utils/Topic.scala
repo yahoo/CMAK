@@ -60,6 +60,16 @@ object TopicErrors {
   class DuplicateReplicaAssignment private[TopicErrors] (topic: String, part: Int, replicas: Seq[Int]) extends UtilError(
     s"Duplicate replica assignment topic=$topic, partition=$part, replicas=$replicas"
   )
+  class CannotAddZeroPartitions private[TopicErrors] (topic: String, currentPartitions: Int, newPartitions: Int) extends UtilError(
+    s"Cannot add zero partitions topic=$topic, currentPartitions=$currentPartitions, newPartitions=$newPartitions"
+  )
+  class FailedToAddNewPartitions private[TopicErrors] (topic: String, newPartitions: Int, found: Int) extends UtilError(
+    s"Failed to add new partitions topic=$topic, newPartitions=$newPartitions, after adding new partitions to assignment found=$found"
+  )
+  class NoReadVersionFound private[TopicErrors] (topics: String) extends UtilError(
+    s"Cannot find read version for topics: $topics while adding new partitions"
+  )
+  class TopicDoesNotExist private[TopicErrors] (topic: String) extends UtilError(s"Topic does not exist : $topic")
 
   val TopicNameEmpty = new TopicNameEmpty
   val InvalidTopicName = new InvalidTopicName
@@ -70,6 +80,10 @@ object TopicErrors {
   def ReplicationGreaterThanNumBrokers(rf: Int, nb: Int) = new ReplicationGreaterThanNumBrokers(rf,nb)
   val InconsistentPartitionReplicas = new InconsistentPartitionReplicas
   def TopicAlreadyExists(topic: String) = new TopicAlreadyExists(topic)
-  def DuplicateReplicAssignment(topic: String, part: Int, replicas: Seq[Int]) = new DuplicateReplicaAssignment(topic,part,replicas)
+  def DuplicateReplicaAssignment(topic: String, part: Int, replicas: Seq[Int]) = new DuplicateReplicaAssignment(topic,part,replicas)
+  def CannotAddZeroPartitions(topic: String, currentPartitions: Int, newPartitions:Int) = new CannotAddZeroPartitions(topic,currentPartitions,newPartitions)
+  def FailedToAddNewPartitions(topic: String, newPartitions:Int, found: Int) = new FailedToAddNewPartitions(topic,newPartitions,found)
+  def NoReadVersionFound(topics: String) = new NoReadVersionFound(topics)
+  def TopicDoesNotExist(topic: String) = new TopicDoesNotExist(topic)
 }
 

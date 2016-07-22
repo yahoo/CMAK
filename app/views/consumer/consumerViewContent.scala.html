@@ -1,0 +1,37 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import b3.vertical.fieldConstructor
+@(cluster:String, consumer: String, consumerIdentity: kafka.manager.model.ActorModel.ConsumerIdentity)(implicit messages: play.api.i18n.Messages)
+
+@getTopicCoverage(percentage: Int) = {
+    @percentage match {
+        case i if i <=  99 => {danger}
+        case i => {}
+    }
+}
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="panel panel-default">
+            <div class="panel-heading"><h4>Consumed Topic Information</h4></div>
+            <table class="table">
+                <thead>
+                <tr><th>Topic</th><th>Partitions Covered %</th><th>Total Lag</th></tr>
+                </thead>
+                <tbody>
+                @for((topic: String, state: kafka.manager.model.ActorModel.ConsumedTopicState) <- consumerIdentity.topicMap) {
+                <tr>
+                    <td><a href="@routes.Consumer.consumerAndTopic(cluster, consumer, topic, consumerIdentity.consumerType.toString)">@topic</a></td>
+                    <td class="@getTopicCoverage(state.percentageCovered)">
+                        @state.percentageCovered
+                    </td>
+                    <td>@state.totalLag.getOrElse("not available")</td>
+                </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

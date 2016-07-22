@@ -1,0 +1,54 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import scalaz.{\/}
+@(cluster: String, errorOrForm: kafka.manager.ApiError \/ (Form[models.form.CreateLogkafka], kafka.manager.model.ClusterContext)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+
+@import helper._
+@import b3.vertical.fieldConstructor
+@import controllers.routes
+
+@theMenu = {
+    @views.html.navigation.clusterMenu(cluster,"Logkafka","Create",menus.clusterMenus(cluster)(
+        errorOrForm.toOption.map(_._2.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
+}
+        
+@renderForm(createLogkafkaForm: Form[models.form.CreateLogkafka]) = {
+<div class="panel-body">
+    @b3.form(routes.Logkafka.handleCreateLogkafka(cluster)) {
+    <table class="table">
+        <tbody>
+        <tr>
+            <td>
+                @b3.text(createLogkafkaForm("logkafka_id"), '_label -> "Logkafka Id", 'placeholder -> "test.logkafka.net", 'autofocus -> true )
+                @b3.text(createLogkafkaForm("log_path"), '_label -> "Log Path", 'placeholder -> "/usr/local/apache2/logs/access_log.%Y%m%d")
+                @b3.submit('class -> "submit-button btn btn-primary"){ Create }
+                <a href="@routes.Logkafka.logkafkas(cluster)" class="cancel-button btn btn-default" role="button">Cancel</a>
+            </td>
+            <td>
+                @helper.repeat(createLogkafkaForm("configs"), min = 1) { configsForm =>
+                    @b3.hidden(configsForm("name").name, configsForm("name").value.getOrElse(""))
+                    @b3.text(configsForm("value"), '_label -> configsForm("name").value.getOrElse(""))
+                }
+            </td>
+        </tr>
+        </tbody>
+    </table>
+    }
+</div>
+}
+
+@main(
+    "Create Logkafka",
+    menu = theMenu,
+    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Create Logkafka",cluster))) {
+    <div class="col-md-12 un-pad-me">
+        <div class="panel panel-default">
+            <div class="panel-heading"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>Create Logkafka</h3></div>
+            @errorOrForm.fold( views.html.errors.onApiError(_), t => renderForm(t._1))
+        </div>
+    </div>
+}
+

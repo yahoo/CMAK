@@ -1,0 +1,35 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import scalaz.{\/}
+@(cluster:String, errorOrLogkafkas: kafka.manager.ApiError \/ (kafka.manager.LogkafkaListExtended, kafka.manager.model.ClusterContext)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+
+@theMenu = {
+    @views.html.navigation.clusterMenu(cluster,"Logkafka","List",menus.clusterMenus(cluster)(
+        errorOrLogkafkas.toOption.map(_._2.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
+}
+
+@logkafkaScripts = {
+    <script ype="text/javascript">
+    $(document).ready(function() {
+        $('#logkafkas-table').DataTable();
+    } );
+    </script>
+}
+
+@main(
+    "Logkafka List",
+    menu = theMenu,
+    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Logkafkas",cluster)),
+    scripts=logkafkaScripts) {
+    <div class="col-md-12">
+        <div class="panel panel-default">
+            <div class="panel-heading"><h3>Logkafkas</h3></div>
+            @errorOrLogkafkas.fold( 
+                views.html.errors.onApiError(_),
+                tl => views.html.logkafka.logkafkaListContent(cluster,tl._1.list.map(t => (t, tl._1.deleteSet(t._1)))))
+        </div>
+    </div>
+}

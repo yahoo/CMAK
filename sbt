@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 #
 # A more capable sbt runner, coincidentally also called sbt.
-# Author: Paul Phillips <paulp@typesafe.com>
+# Author: Paul Phillips <paulp@improving.org>
+
+set -o pipefail
 
 # todo - make this dynamic
-declare -r sbt_release_version="0.13.7"
-declare -r sbt_unreleased_version="0.13.8-M1"
+declare -r sbt_release_version="0.13.9"
+declare -r sbt_unreleased_version="0.13.9"
 declare -r buildProps="project/build.properties"
 
 declare sbt_jar sbt_dir sbt_create sbt_version
@@ -77,7 +79,7 @@ die() {
 }
 
 make_url () {
-  version="$1"
+  local version="$1"
 
   case "$version" in
         0.7.*) echo "http://simple-build-tool.googlecode.com/files/sbt-launch-0.7.7.jar" ;;
@@ -105,8 +107,9 @@ declare -r default_jvm_opts_common="-Xms512m -Xmx1536m -Xss2m $jit_opts $cms_opt
 declare -r noshare_opts="-Dsbt.global.base=project/.sbtboot -Dsbt.boot.directory=project/.boot -Dsbt.ivy.home=project/.ivy"
 declare -r latest_28="2.8.2"
 declare -r latest_29="2.9.3"
-declare -r latest_210="2.10.4"
-declare -r latest_211="2.11.5"
+declare -r latest_210="2.10.6"
+declare -r latest_211="2.11.7"
+declare -r latest_212="2.12.0-M3"
 
 declare -r script_path="$(get_script_path "$BASH_SOURCE")"
 declare -r script_name="${script_path##*/}"
@@ -115,7 +118,8 @@ declare -r script_name="${script_path##*/}"
 declare java_cmd="java"
 declare sbt_opts_file="$(init_default_option_file SBT_OPTS .sbtopts)"
 declare jvm_opts_file="$(init_default_option_file JVM_OPTS .jvmopts)"
-declare sbt_launch_repo="http://typesafe.artifactoryonline.com/typesafe/ivy-releases"
+declare sbt_launch_dir="$HOME/.sbt/launchers"
+declare sbt_launch_repo="http://repo.typesafe.com/typesafe/ivy-releases"
 
 # pull -J and -D options to give to java.
 declare -a residual_args
@@ -126,16 +130,64 @@ declare -a sbt_commands
 # args to jvm/sbt via files or environment variables
 declare -a extra_jvm_opts extra_sbt_opts
 
-# if set, use JAVA_HOME over java found in path
-[[ -e "$JAVA_HOME/bin/java" ]] && java_cmd="$JAVA_HOME/bin/java"
+addJava () {
+  vlog "[addJava] arg = '$1'"
+  java_args+=("$1")
+}
+addSbt () {
+  vlog "[addSbt] arg = '$1'"
+  sbt_commands+=("$1")
+}
+setThisBuild () {
+  vlog "[addBuild] args = '$@'"
+  local key="$1" && shift
+  addSbt "set $key in ThisBuild := $@"
+}
+addScalac () {
+  vlog "[addScalac] arg = '$1'"
+  scalac_args+=("$1")
+}
+addResidual () {
+  vlog "[residual] arg = '$1'"
+  residual_args+=("$1")
+}
+addResolver () {
+  addSbt "set resolvers += $1"
+}
+addDebugger () {
+  addJava "-Xdebug"
+  addJava "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=$1"
+}
+setScalaVersion () {
+  [[ "$1" == *"-SNAPSHOT" ]] && addResolver 'Resolver.sonatypeRepo("snapshots")'
+  addSbt "++ $1"
+}
+setJavaHome () {
+  java_cmd="$1/bin/java"
+  setThisBuild javaHome "Some(file(\"$1\"))"
+  export JAVA_HOME="$1"
+  export JDK_HOME="$1"
+  export PATH="$JAVA_HOME/bin:$PATH"
+}
+setJavaHomeQuietly () {
+  addSbt warn
+  setJavaHome "$1"
+  addSbt info
+}
+
+# if set, use JDK_HOME/JAVA_HOME over java found in path
+if [[ -e "$JDK_HOME/lib/tools.jar" ]]; then
+  setJavaHomeQuietly "$JDK_HOME"
+elif [[ -e "$JAVA_HOME/bin/java" ]]; then
+  setJavaHomeQuietly "$JAVA_HOME"
+fi
 
 # directory to store sbt launchers
-declare sbt_launch_dir="$HOME/.sbt/launchers"
 [[ -d "$sbt_launch_dir" ]] || mkdir -p "$sbt_launch_dir"
 [[ -w "$sbt_launch_dir" ]] || sbt_launch_dir="$(mktemp -d -t sbt_extras_launchers.XXXXXX)"
 
 java_version () {
-  local version=$("$java_cmd" -version 2>&1 | grep -e 'java version' | awk '{ print $3 }' | tr -d \")
+  local version=$("$java_cmd" -version 2>&1 | grep -E -e '(java|openjdk) version' | awk '{ print $3 }' | tr -d \")
   vlog "Detected Java version: $version"
   echo "${version:2:1}"
 }
@@ -195,7 +247,7 @@ download_url () {
 
   mkdir -p "${jar%/*}" && {
     if which curl >/dev/null; then
-      curl --fail --silent "$url" --output "$jar"
+      curl --fail --silent --location "$url" --output "$jar"
     elif which wget >/dev/null; then
       wget --quiet -O "$jar" "$url"
     fi
@@ -203,7 +255,7 @@ download_url () {
 }
 
 acquire_sbt_jar () {
-  sbt_url="$(jar_url "$sbt_version")"
+  local sbt_url="$(jar_url "$sbt_version")"
   sbt_jar="$(jar_file "$sbt_version")"
 
   [[ -r "$sbt_jar" ]] || download_url "$sbt_url" "$sbt_jar"
@@ -246,7 +298,7 @@ runner with the -x option.
   -sbt-version  <version>   use the specified version of sbt (default: $sbt_release_version)
   -sbt-dev                  use the latest pre-release version of sbt: $sbt_unreleased_version
   -sbt-jar      <path>      use the specified jar as the sbt launcher
-  -sbt-launch-dir <path>    directory to hold sbt launchers (default: ~/.sbt/launchers)
+  -sbt-launch-dir <path>    directory to hold sbt launchers (default: $sbt_launch_dir)
   -sbt-launch-repo <url>    repo url for downloading sbt launcher jar (default: $sbt_launch_repo)
 
   # scala version (default: as chosen by sbt)
@@ -254,6 +306,7 @@ runner with the -x option.
   -29                       use $latest_29
   -210                      use $latest_210
   -211                      use $latest_211
+  -212                      use $latest_212
   -scala-home <path>        use the scala build at the specified directory
   -scala-version <version>  use the specified version of scala
   -binary-version <version> use the specified scala version when searching for dependencies
@@ -280,42 +333,7 @@ runner with the -x option.
 EOM
 }
 
-addJava () {
-  vlog "[addJava] arg = '$1'"
-  java_args=( "${java_args[@]}" "$1" )
-}
-addSbt () {
-  vlog "[addSbt] arg = '$1'"
-  sbt_commands=( "${sbt_commands[@]}" "$1" )
-}
-setThisBuild () {
-  vlog "[addBuild] args = '$@'"
-  local key="$1" && shift
-  addSbt "set $key in ThisBuild := $@"
-}
-
-addScalac () {
-  vlog "[addScalac] arg = '$1'"
-  scalac_args=( "${scalac_args[@]}" "$1" )
-}
-addResidual () {
-  vlog "[residual] arg = '$1'"
-  residual_args=( "${residual_args[@]}" "$1" )
-}
-addResolver () {
-  addSbt "set resolvers += $1"
-}
-addDebugger () {
-  addJava "-Xdebug"
-  addJava "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=$1"
-}
-setScalaVersion () {
-  [[ "$1" == *"-SNAPSHOT" ]] && addResolver 'Resolver.sonatypeRepo("snapshots")'
-  addSbt "++ $1"
-}
-
-process_args ()
-{
+process_args () {
   require_arg () {
     local type="$1"
     local opt="$2"
@@ -329,9 +347,9 @@ process_args ()
     case "$1" in
           -h|-help) usage; exit 1 ;;
                 -v) verbose=true && shift ;;
-                -d) addSbt "--debug" && shift ;;
-                -w) addSbt "--warn" && shift ;;
-                -q) addSbt "--error" && shift ;;
+                -d) addSbt "--debug" && addSbt debug && shift ;;
+                -w) addSbt "--warn"  && addSbt warn  && shift ;;
+                -q) addSbt "--error" && addSbt error && shift ;;
                 -x) debugUs=true && shift ;;
             -trace) require_arg integer "$1" "$2" && trace_level="$2" && shift 2 ;;
               -ivy) require_arg path "$1" "$2" && addJava "-Dsbt.ivy.home=$2" && shift 2 ;;
@@ -355,7 +373,7 @@ process_args ()
     -scala-version) require_arg version "$1" "$2" && setScalaVersion "$2" && shift 2 ;;
    -binary-version) require_arg version "$1" "$2" && setThisBuild scalaBinaryVersion "\"$2\"" && shift 2 ;;
        -scala-home) require_arg path "$1" "$2" && setThisBuild scalaHome "Some(file(\"$2\"))" && shift 2 ;;
-        -java-home) require_arg path "$1" "$2" && java_cmd="$2/bin/java" && shift 2 ;;
+        -java-home) require_arg path "$1" "$2" && setJavaHome "$2" && shift 2 ;;
          -sbt-opts) require_arg path "$1" "$2" && sbt_opts_file="$2" && shift 2 ;;
          -jvm-opts) require_arg path "$1" "$2" && jvm_opts_file="$2" && shift 2 ;;
 
@@ -366,7 +384,11 @@ process_args ()
                -29) setScalaVersion "$latest_29" && shift ;;
               -210) setScalaVersion "$latest_210" && shift ;;
               -211) setScalaVersion "$latest_211" && shift ;;
+              -212) setScalaVersion "$latest_212" && shift ;;
 
+           --debug) addSbt debug && addResidual "$1" && shift ;;
+            --warn) addSbt warn  && addResidual "$1" && shift ;;
+           --error) addSbt error && addResidual "$1" && shift ;;
                  *) addResidual "$1" && shift ;;
     esac
   done
@@ -377,8 +399,10 @@ process_args "$@"
 
 # skip #-styled comments and blank lines
 readConfigFile() {
-  while read line; do
-    [[ $line =~ ^# ]] || [[ -z $line ]] || echo "$line"
+  local end=false
+  until $end; do
+    read || end=true
+    [[ $REPLY =~ ^# ]] || [[ -z $REPLY ]] || echo "$REPLY"
   done < "$1"
 }
 

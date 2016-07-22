@@ -2,7 +2,24 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@(cluster:String,topic: String, topicIdentity: kafka.manager.TopicIdentity)
+@import b3.vertical.fieldConstructor
+@import kafka.manager.model.ActorModel.ConsumerType
+@import models.form.ReassignPartitionOperation
+@import models.form.ReassignPartitionOperation._
+@(cluster:String
+, topic: String
+, topicIdentity: kafka.manager.model.ActorModel.TopicIdentity
+, consumerList: Iterable[(String, ConsumerType)]
+, reassignPartitionOperation: ReassignPartitionOperation
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages)
+
+@getUnderReplicatedLevel(percentage: Int) = {
+    @percentage match {
+        case i if i > 50 => {danger}
+        case i if i > 0 => {warning}
+        case i => {}
+    }
+}
 
 @getPreferredReplicasLevel(percentage: Int) = {
     @percentage match {
@@ -55,117 +72,237 @@
     }
 }
 
-    <div class="row">
-        <div class="col-md-5">
-            <div class="panel panel-default">
-                <div class="panel-heading"><h4>Topic Summary</h4></div>
-                <table class="table">
-                    <tbody>
-                    <tr>
-                        <td>Replication</td>
-                        <td>@topicIdentity.replicationFactor</td>
-                    <tr>
-                        <td>Number of Partitions</td>
-                        <td>@topicIdentity.partitions</td>
-                    </tr>
-                    <tr>
-                        <td>Total number of Brokers</td>
-                        <td>@topicIdentity.numBrokers</td>
-                    </tr>
-                    <tr>
-                        <td>Number of Brokers for Topic</td>
-                        <td>@topicIdentity.topicBrokers</td>
-                    </tr>
-                    <tr>
-                        <td>Preferred Replicas %</td>
-                        <td class="@getPreferredReplicasLevel(topicIdentity.preferredReplicasPercentage)">
-                            @topicIdentity.preferredReplicasPercentage
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Brokers Skewed %</td>
-                        <td class="@getBrokersSkewedLevel(topicIdentity.brokersSkewPercentage)">
-                            @topicIdentity.brokersSkewPercentage
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>Brokers Spread %</td>
-                        <td class="@getBrokersSpreadLevel(topicIdentity.brokersSpreadPercentage)">
-                            @topicIdentity.brokersSpreadPercentage
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>
-                            @b3.form(routes.ReassignPartitions.handleOperation(cluster,topic)) {
-                            <fieldset>
-                                <input type="hidden" name="operation" value="generate">
-                                @b3.submit('class -> "btn btn-primary btn-block"){ Generate Partition Assignments}
-                            </fieldset>
-                            }
-                        </td>
-                        <td>
-                            @b3.form(routes.ReassignPartitions.handleOperation(cluster,topic)) {
-                            <fieldset>
-                                <input type="hidden" name="operation" value="run">
-                                @b3.submit('class -> "btn btn-primary btn-block"){ Reassign Partitions }
-                            </fieldset>
-                            }
-                        </td>
-                    </tr>
-                    </tbody>
-                </table>
-            </div>
+@renderTopicMetrics = {
+    @if(topicIdentity.clusterContext.clusterFeatures.features(kafka.manager.features.KMJMXMetricsFeature)) {
+        @views.html.common.brokerMetrics(topicIdentity.metrics)
+    } else {
+        <div class="alert alert-info" role="alert">
+            Please enable JMX polling <a href="@routes.Cluster.updateCluster(cluster)" class="alert-link">here</a>.
         </div>
-        <div class="col-md-7">
-            <div class="panel panel-default">
-                <div class="panel-heading"><h4>Partitions by Broker</h4></div>
-                <table class="table">
-                    <thead>
-                    <tr><th>Broker</th><th># of Partitions</th><th>Partitions</th><th>Skewed?</th></tr>
-                    </thead>
-                    <tbody>
-                    @for(btp <- topicIdentity.partitionsByBroker) {
-                    <tr>
-                        <td><a href="@routes.Application.broker(cluster,btp.id)">@btp.id</a></td>
-                        <td>@btp.partitions.size</td>
-                        <td>@btp.partitions.mkString("(",",",")")</td>
-                        <td class="@getBrokerIsSkewedLevel(btp.isSkewed)">
-                            @btp.isSkewed
-                        </td>
-                    </tr>
-                    }
-                    </tbody>
-                </table>
-            </div>
+    }
+}
+
+@renderConsumerList = {
+    @if(topicIdentity.clusterContext.config.pollConsumers){
+        <table class="table">
+            <tbody>
+            @for((c:String, ct: ConsumerType) <- consumerList) {
+                <tr>
+                    <td><a href="@routes.Consumer.consumerAndTopic(cluster,c,topic, ct.toString)">@c</a></td>
+                    <td>@ct.toString</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    } else {
+        <div class="alert alert-info" role="alert">
+            Please enable consumer polling <a href="@routes.Cluster.updateCluster(cluster)" class="alert-link">here</a>.
         </div>
-    </div>
-    <div class="row">
-        <div class="col-md-12">
-            <div class="panel panel-default">
-                <div class="panel-heading"><h4>Partition Information</h4></div>
-                <table class="table">
-                    <thead>
-                    <tr><th>Partition</th><th>Leader</th><th>Replicas</th><th>In Sync Replicas</th><th>Preferred Leader?</th><th>Under Replicated?</th></tr>
-                    </thead>
-                    <tbody>
-                    @for((_,tpi) <- topicIdentity.partitionsIdentity.toIndexedSeq.sortBy(_._2.partNum)) {
-                    <tr>
-                        <td>@tpi.partNum</td>
-                        <td class="@getPartitionLeaderLevel(tpi.leader)">
-                            <a href="@routes.Application.broker(cluster,tpi.leader)">@tpi.leader</a>
-                        </td>
-                        <td>@tpi.replicas.mkString("(",",",")")</td>
-                        <td>@tpi.isr.mkString("(",",",")")</td>
-                        <td class="@getIsPreferredLeaderLevel(tpi.isPreferredLeader)">
-                            @tpi.isPreferredLeader
-                        </td>
-                        <td class="@getIsUnderReplicatedLevel(tpi.isUnderReplicated)">
-                            @tpi.isUnderReplicated
-                        </td>
-                    </tr>
-                    }
-                    </tbody>
-                </table>
-            </div>
+    }
+}
+
+
+<div class="row">
+    <div class="col-md-5">
+        <div class="panel panel-default">
+            <div class="panel-heading"><h4>Topic Summary</h4></div>
+            <table class="table">
+                <tbody>
+                <tr>
+                    <td>Replication</td>
+                    <td>@topicIdentity.replicationFactor</td>
+                <tr>
+                    <td>Number of Partitions</td>
+                    <td>@topicIdentity.partitions</td>
+                </tr>
+                <tr>
+                    <td>Sum of partition offsets</td>
+                    <td>@topicIdentity.summedTopicOffsets</td>
+                </tr>
+                <tr>
+                    <td>Total number of Brokers</td>
+                    <td>@topicIdentity.numBrokers</td>
+                </tr>
+                <tr>
+                    <td>Number of Brokers for Topic</td>
+                    <td>@topicIdentity.topicBrokers</td>
+                </tr>
+                <tr>
+                    <td>Preferred Replicas %</td>
+                    <td class="@getPreferredReplicasLevel(topicIdentity.preferredReplicasPercentage)">
+                        @topicIdentity.preferredReplicasPercentage
+                    </td>
+                </tr>
+                <tr>
+                    <td>Brokers Skewed %</td>
+                    <td class="@getBrokersSkewedLevel(topicIdentity.brokersSkewPercentage)">
+                        @topicIdentity.brokersSkewPercentage
+                    </td>
+                </tr>
+                <tr>
+                    <td>Brokers Spread %</td>
+                    <td class="@getBrokersSpreadLevel(topicIdentity.brokersSpreadPercentage)">
+                        @topicIdentity.brokersSpreadPercentage
+                    </td>
+                </tr>
+                <tr>
+                    <td>Under-replicated %</td>
+                    <td class="@getUnderReplicatedLevel(topicIdentity.underReplicatedPercentage)">
+                        @topicIdentity.underReplicatedPercentage
+                    </td>
+                </tr>
+                @if(topicIdentity.clusterContext.config.jmxEnabled && topicIdentity.clusterContext.config.displaySizeEnabled){
+                <tr>
+                    <td>Leader Size</td>
+                    <td>@topicIdentity.size</td>
+                </tr>
+                }
+                </tbody>
+            </table>
+            @if(!topicIdentity.config.isEmpty) {
+            <table class="table">
+                <thead>
+                <th>Config</th><th>Value</th>
+                </thead>
+                <tbody>
+                @for( (k,v) <- topicIdentity.config) {
+                <tr>
+                    <td>@k</td>
+                    <td>@v</td>
+                </tr>
+                }
+                </tbody>
+            </table>
+            }
+        </div>
+        <div class="panel panel-default">
+            <div class="panel-heading"><h4>Metrics</h4></div>
+            @renderTopicMetrics
         </div>
     </div>
+    <div class="col-md-7">
+        @features.app(features.KMTopicManagerFeature) {
+        <div class="panel panel-default">
+            <div class="panel-heading"><h4>Operations</h4></div>
+            <table class="table">
+                <tbody>
+                <tr>
+                    @if(topicIdentity.clusterContext.clusterFeatures.features(kafka.manager.features.KMDeleteTopicFeature)) {
+                    <td>
+                        <a href="@routes.Topic.confirmDeleteTopic(cluster,topic)" class='btn btn-primary btn-block'>Delete Topic</a>
+                    </td>
+                    }
+                    @features.app(features.KMReassignPartitionsFeature) {
+                    <td>
+                        @b3.form(routes.ReassignPartitions.handleOperation(cluster,topic)) {
+                            @reassignPartitionOperation match {
+                                case ForceRunAssignment => {
+                                    <fieldset>
+                                        <input type="hidden" name="operation" value="force">
+                                        <input type="hidden" name="brokers" value="@Seq()">
+                                        @b3.submit('class -> "btn btn-primary btn-block"){ Force Reassign Partitions }
+                                    </fieldset>
+                                }
+                                case _ => {
+                                    <fieldset>
+                                        <input type="hidden" name="operation" value="run">
+                                        <input type="hidden" name="brokers" value="@Seq()">
+                                        @b3.submit('class -> "btn btn-primary btn-block"){ Reassign Partitions }
+                                    </fieldset>
+                                }
+                            }
+                        }
+                    </td>
+                    <td>
+                        <a href="@routes.ReassignPartitions.confirmAssignment(cluster,topic)" class="submit-button btn btn-primary" role="button">Generate Partition Assignments</a>
+                    </td>
+                    }
+                </tr>
+                <tr>
+                    <td>
+                        <a href="@routes.Topic.addPartitions(cluster,topic)" class="submit-button btn btn-primary" role="button">Add Partitions</a>
+                    </td>
+                    <td>
+                        <a href="@routes.Topic.updateConfig(cluster,topic)" class="submit-button btn btn-primary" role="button">Update Config</a>
+                    </td>
+                    @features.app(features.KMReassignPartitionsFeature) {
+                    <td>
+                        <a href="@routes.ReassignPartitions.manualAssignments(cluster, topic)" class="submit-button btn btn-primary" role="button">Manual Partition Assignments</a>
+                    </td>
+                    }
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        }
+        <div class="panel panel-default">
+            <div class="panel-heading"><h4>Partitions by Broker</h4></div>
+            <table class="table" style="table-layout: fixed; width: 100%">
+                <thead>
+                <tr><th>Broker</th><th># of Partitions</th><th>Partitions</th><th>Skewed?</th></tr>
+                </thead>
+                <tbody>
+                @for(btp <- topicIdentity.partitionsByBroker) {
+                <tr>
+                    <td><a href="@routes.Cluster.broker(cluster,btp.id)">@btp.id</a></td>
+                    <td>@btp.partitions.size</td>
+                    <td style="word-wrap: break-word">@btp.partitions.mkString("(",",",")")</td>
+                    <td class="@getBrokerIsSkewedLevel(btp.isSkewed)">
+                        @btp.isSkewed
+                    </td>
+                </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+        <div class="panel panel-default">
+            <div class="panel-heading"><h4>Consumers consuming from this topic</h4></div>
+            @renderConsumerList
+        </div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-md-12">
+        <div class="panel panel-default">
+            <div class="panel-heading"><h4>Partition Information</h4></div>
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>Partition</th>
+                    <th>Latest Offset</th>
+                    <th>Leader</th>
+                    <th>Replicas</th>
+                    <th>In Sync Replicas</th>
+                    <th>Preferred Leader?</th>
+                    <th>Under Replicated?</th>
+                    @if(topicIdentity.clusterContext.config.jmxEnabled && topicIdentity.clusterContext.config.displaySizeEnabled){
+                    <th>Leader Size</th>
+                    }
+                </tr>
+                </thead>
+                <tbody>
+                @for((_,tpi) <- topicIdentity.partitionsIdentity.toIndexedSeq.sortBy(_._2.partNum)) {
+                <tr>
+                    <td>@tpi.partNum</td>
+                    <td>@tpi.latestOffset.getOrElse(" ")</td>
+                    <td class="@getPartitionLeaderLevel(tpi.leader)">
+                        <a href="@routes.Cluster.broker(cluster,tpi.leader)">@tpi.leader</a>
+                    </td>
+                    <td style="word-wrap: break-word">@tpi.replicas.mkString("(", ",", ")")</td>
+                    <td style="word-wrap: break-word">@tpi.isr.mkString("(", ",", ")")</td>
+                    <td class="@getIsPreferredLeaderLevel(tpi.isPreferredLeader)">
+                        @tpi.isPreferredLeader
+                    </td>
+                    <td class="@getIsUnderReplicatedLevel(tpi.isUnderReplicated)">
+                        @tpi.isUnderReplicated
+                    </td>
+                    @if(topicIdentity.clusterContext.config.jmxEnabled && topicIdentity.clusterContext.config.displaySizeEnabled){
+                    <td>@tpi.size</td>
+                    }
+                </tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

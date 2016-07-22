@@ -1,0 +1,115 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@(cluster: String, logkafkas: IndexedSeq[((String, Option[kafka.manager.model.ActorModel.LogkafkaIdentity]),Boolean)]
+)(implicit messages: play.api.i18n.Messages)
+
+@import b3.vertical.fieldConstructor; var row_num = 0
+
+@getFilesizeStatus(filesize: Int) = {
+    @filesize match {
+        case i if i < 0 => {warning}
+        case i => {}
+    }
+}
+
+@getLogkafkaStatus(flag: Boolean, s1: String, s2: String) = {
+    @if(flag) {@s1} else {@s2}
+}
+
+@getTime(timestamp: Long) = {
+    @((new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")).format(timestamp*1000))
+}
+
+<table class="table" id="logkafkas-table">
+    <thead>
+        <tr><th>row</th><th>Logkafka Id</th><th>Log Path</th><th># Real Path</th><th># Last Rotate Time</th><th># File Inode</th><th># File Pos</th><th># File Size</th><th># Topic</th><th>Operations</th></tr>
+    </thead>
+    <tbody>
+    @for( ((logkafka_id, logkafkaIdentity), deleted) <- logkafkas) {
+        @logkafkaIdentity.map{ li =>
+            @for( (log_path, im) <- li.identityMap) {
+                @{row_num = row_num + 1}
+                <tr>
+                <td class=@getLogkafkaStatus(li.active, "", "danger")>
+                    <a href="@routes.Logkafka.logkafka(cluster, logkafka_id, log_path)">@row_num</a>
+                </td>
+
+                <td> @logkafka_id </td>
+
+                @im._1.map { c =>
+                    <td>@log_path</td>
+                }.getOrElse{<td> </td>}
+
+                @im._2.map { c =>
+                    @c.get("realpath").map { d =>
+                        <td>@d</td>
+                    }.getOrElse{<td class = "danger"> no corresponding file </td>}
+                }.getOrElse{
+                    <td class = @getLogkafkaStatus(li.active, "warning", "danger")> 
+                        @getLogkafkaStatus(li.active,"scanning for new file", "logkafka is inactive") 
+                    </td>
+                }
+
+                @im._2.map { c =>
+                    @c.get("last_rotate_time_sec").map { d =>
+                        <td>@getTime(d.toLong)</td>
+                    }.getOrElse{<td> </td>}
+                }.getOrElse{<td> </td>}
+
+                @im._2.map { c =>
+                    @c.get("inode").map { d =>
+                        <td>@d</td>
+                    }.getOrElse{<td> </td>}
+                }.getOrElse{<td> </td>}
+
+                @im._2.map { c =>
+                    @c.get("filepos").map { d =>
+                        <td>@d</td>
+                    }.getOrElse{<td> </td>}
+                }.getOrElse{<td> </td>}
+
+                @im._2.map { c =>
+                    @c.get("filesize").map { d =>
+                        <td class = "@getFilesizeStatus(d.toInt)">@d</td>
+                    }.getOrElse{<td> </td>}
+                }.getOrElse{<td> </td>}
+
+                @im._1.map { c =>
+                    @c.get("topic").map { d =>
+                        <td>@d</td>
+                    }.getOrElse{<td> </td>}
+                }.getOrElse{<td> </td>}
+
+                <td>
+                    <div class="btn-group-horizontal" role="group" aria-label="...">
+                        @im._1.map { c =>
+                            @c.get("valid").map { enabled =>
+                                @if(enabled.toBoolean) {
+                                    <a href="@routes.Logkafka.updateConfig(cluster, logkafka_id, log_path)" class="btn btn-default ops-button" role="button">Modify</a>
+                                    @b3.form(routes.Logkafka.handleDisableConfig(cluster, logkafka_id, log_path)) {
+                                        <input type="hidden" name="name" value="@cluster">
+                                        @b3.submit('class -> "btn btn-warning ops-button"){ Disable }
+                                    }
+                                } else {
+                                    @b3.form(routes.Logkafka.handleEnableConfig(cluster, logkafka_id, log_path)) {
+                                        <input type="hidden" name="name" value="@cluster">
+                                        @b3.submit('class -> "btn btn-success ops-button"){ Enable }
+                                    }
+                                    @b3.form(routes.Logkafka.handleDeleteLogkafka(cluster, logkafka_id, log_path)) {
+                                        <input type="hidden" name="name" value="@cluster">
+                                        @b3.submit('class -> "btn btn-danger ops-button"){ Delete }
+                                    }
+                                }
+                            }.getOrElse{<td> </td>}
+                        }.getOrElse{<td> </td>}
+                    </div>
+                </td>
+
+                </tr>
+            }
+        }.getOrElse{}
+    }
+    </tbody>
+</table>

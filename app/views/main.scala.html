@@ -2,7 +2,7 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@(title: String, menu: Html, breadcrumbs: Html = Html(""))(content: Html)
+@(title: String, menu: Html, breadcrumbs: Html = Html(""), scripts: Html = Html(""))(content: Html)
 
 <!DOCTYPE html>
 <html>
@@ -14,9 +14,12 @@
         @Html(org.webjars.RequireJS.getSetupJavaScript(routes.WebJarAssets.at("").url))
     </script>
     <link rel="stylesheet" media="screen" href="@routes.Assets.versioned("stylesheets/index.min.css")">
+    <link rel="stylesheet" media="screen" href="@routes.Assets.versioned("dataTables/stylesheets/dataTables.bootstrap.css")">
+    <link rel="stylesheet" media="screen" href="@routes.Assets.versioned("chartist/stylesheets/chartist.min.css")">
     <!--
     <script data-main="@routes.Assets.versioned("javascripts/index.js")" src="@routes.WebJarAssets.at(WebJarAssets.locate("require.min.js"))"></script>
     -->
+    <script src="@routes.Assets.versioned("chartist/javascripts/chartist.min.js")"></script>
 </head>
 <body role="document">
 
@@ -29,11 +32,32 @@
 
 <script src="@routes.WebJarAssets.at(WebJarAssets.locate("jquery.min.js"))"></script>
 <script src="@routes.WebJarAssets.at(WebJarAssets.locate("js/bootstrap.min.js"))"></script>
+<script src="@routes.Assets.versioned("dataTables/javascripts/jquery.dataTables.min.js")"></script>
+<script src="@routes.Assets.versioned("dataTables/javascripts/dataTables.bootstrap.js")"></script>
+
 <script>
     function goBack() {
         window.history.back()
     }
-</script>
 
+    function checkBoxSelect(idPrefix, booleanValue, display) {
+        $("[id^="+idPrefix+"]").prop("checked",booleanValue);
+    }
+
+    function selectBySubname(selectId, selectClass, display) {
+        var subname = $(selectId).val().toLowerCase();
+        $('.' + selectClass).not("[name*='" + subname + "']").css("display", "none");
+        $("[class='"+selectClass+"'][name*='"+subname+"']").css("display", display);
+        if (subname == "") {
+            $('.' + selectClass).css("display", display);
+        }
+    }
+
+    function disableSubmission() {
+        $('[type=submit]').prop('disabled', true);
+        $('[type=submit]').removeAttr('type');
+    }
+</script>
+@scripts
 </body>
 </html>

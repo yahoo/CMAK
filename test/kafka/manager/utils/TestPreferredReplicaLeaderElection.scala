@@ -4,6 +4,9 @@
  */
 package kafka.manager.utils
 
+import kafka.common.TopicAndPartition
+import kafka.manager.utils.zero81.{PreferredLeaderElectionErrors, PreferredReplicaLeaderElectionCommand}
+
 /**
  * @author hiral
  */

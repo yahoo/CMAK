@@ -1,0 +1,27 @@
+# #####################################
+# ##### Environment Configuration #####
+# #####################################
+
+# This file gets sourced before the actual bashscript
+# gets executed. You can use this file to provide
+# environment variables
+
+# Available replacements
+# ------------------------------------------------
+# ${{author}}                   package author
+# ${{descr}}                    package description
+# ${{exec}}                     startup script name
+# ${{chdir}}                    app directory
+# ${{retries}}                  retries for startup
+# ${{retryTimeout}}             retry timeout
+# ${{app_name}}                 normalized app name
+# ${{daemon_user}}              daemon user
+# -------------------------------------------------
+
+# Setting JAVA_OPTS
+# -----------------
+JAVA_OPTS="-Dpidfile.path=/var/run/${{app_name}}.pid -Dconfig.file=/etc/${{app_name}}/application.conf -Dlogger.file=/etc/${{app_name}}/logger.xml $JAVA_OPTS"
+
+# Setting PIDFILE
+# ---------------
+PIDFILE="/var/run/${{app_name}}.pid"

@@ -19,6 +19,7 @@ package kafka.manager.utils
 
 import java.nio.charset.StandardCharsets
 
+import kafka.common.TopicAndPartition
 import org.apache.curator.framework.CuratorFramework
 import org.apache.zookeeper.CreateMode
 import org.apache.zookeeper.KeeperException.{NodeExistsException, NoNodeException}
@@ -29,6 +30,7 @@ import org.apache.zookeeper.data.Stat
  * https://git-wip-us.apache.org/repos/asf?p=kafka.git;a=blob;f=core/src/main/scala/kafka/utils/ZkUtils.scala
  */
 object ZkUtils {
+
   val ConsumersPath = "/consumers"
   val BrokerIdsPath = "/brokers/ids"
   val BrokerTopicsPath = "/brokers/topics"
@@ -61,12 +63,12 @@ object ZkUtils {
 
   /**
    * Update the value of a persistent node with the given path and data.
-   * create parrent directory if necessary. Never throw NodeExistException.
+   * create parent directory if necessary. Never throw NodeExistException.
    * Return the updated path zkVersion
    */
-  def updatePersistentPath(curator: CuratorFramework, path: String, ba: Array[Byte]) = {
+  def updatePersistentPath(curator: CuratorFramework, path: String, ba: Array[Byte], version: Int = -1) = {
     try {
-      curator.setData().forPath(path, ba)
+      curator.setData().withVersion(version).forPath(path, ba)
     } catch {
       case e: NoNodeException => {
         try {
@@ -103,6 +105,19 @@ object ZkUtils {
     val stat: Stat = new Stat()
     val dataStr: String = curator.getData.storingStatIn(stat).forPath(path)
     (dataStr, stat)
+  }
+  
+  def readDataMaybeNull(curator: CuratorFramework, path: String): (Option[String], Stat) = {
+    val stat: Stat = new Stat()
+    try {
+      val dataStr: String = curator.getData.storingStatIn(stat).forPath(path)
+      (Option(dataStr), stat)
+    } catch {
+      case e: NoNodeException => {
+        (None, stat)
+      }
+      case e2: Throwable => throw e2
+    }
   }
 
 

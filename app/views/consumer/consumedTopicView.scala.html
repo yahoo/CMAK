@@ -1,0 +1,31 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import scalaz.{\/}
+@(cluster:String,
+  consumer: String,
+  consumerType: String,
+  topic: String,
+  errorOrConsumedTopicState: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.ConsumedTopicState
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+
+@theMenu = {
+    @views.html.navigation.clusterMenu(cluster,"Topic Consumption","",menus.clusterMenus(cluster)(
+        errorOrConsumedTopicState.toOption.map(_.clusterContext.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
+}
+
+@main(
+    "Consumed Topic View",
+    menu = theMenu,
+    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndClusterAndConsumerWithType("Consumer View",cluster,consumer,consumerType,topic))) {
+<div class="col-md-12 un-pad-me">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>@consumer / @topic</h3>
+        </div>
+        @errorOrConsumedTopicState.fold(views.html.errors.onApiError(_),views.html.consumer.consumedTopicViewContent(cluster,consumer,topic,_))
+    </div>
+</div>
+}
+

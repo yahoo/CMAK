@@ -1,0 +1,50 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import kafka.manager.model.ActorModel.ConsumerType
+@import kafka.manager.model.ActorModel.ConsumerIdentity
+@import kafka.manager.model.ClusterContext
+@(cluster: String, consumers: IndexedSeq[((String, ConsumerType), Option[ConsumerIdentity])],
+        clusterContext: ClusterContext)(implicit messages: play.api.i18n.Messages)
+
+@getConsumedTopicSummary(state: kafka.manager.model.ActorModel.ConsumedTopicState) = {
+    @state.percentageCovered match {
+        case i if i <=  99 => {
+            <span style="background-color: #F2DEDE">
+                (@state.percentageCovered% coverage, @state.totalLag.getOrElse("Lag unavailable") lag)
+            </span>
+        }
+        case i => {(@state.percentageCovered% coverage, @state.totalLag.getOrElse("Lag unavailable") lag)}
+    }
+}
+    <table class="table" id="consumer-table">
+        <thead>
+        <tr><th>Consumer</th>
+            <th>Type</th>
+            @if(clusterContext.config.pollConsumers) {
+            <th>Topics it consumes from</th>
+            }
+        </tr>
+        </thead>
+        <tbody>
+        @for( ((consumer, consumerType), consumerIdentityOpt) <- consumers) {
+            <tr>
+                <td><a href="@routes.Consumer.consumer(cluster,consumer,consumerType.toString)">@consumer</a></td>
+                <td>@consumerType.toString</td>
+                @if(clusterContext.config.pollConsumers) {
+                <td>
+                    @consumerIdentityOpt.fold{
+                        No details available for this consumer at this time
+                    }{ a:kafka.manager.model.ActorModel.ConsumerIdentity =>
+                        @for((topic: String, state: kafka.manager.model.ActorModel.ConsumedTopicState) <- a.topicMap) {
+                            <a href="@routes.Consumer.consumerAndTopic(cluster,consumer,topic,consumerType.toString)">@topic</a>:
+                            @getConsumedTopicSummary(state) <br>
+                        }
+                    }
+                </td>
+                }
+            </tr>
+        }
+        </tbody>
+    </table>

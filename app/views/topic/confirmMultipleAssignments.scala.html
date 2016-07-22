@@ -1,0 +1,81 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import scalaz.{\/}
+@import b3.vertical.fieldConstructor
+@(cluster: String,
+  errorOrForm: kafka.manager.ApiError \/ (Form[models.form.GenerateMultipleAssignments], kafka.manager.model.ClusterContext)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+
+@theMenu = {
+    @views.html.navigation.clusterMenu(cluster,"Topic","Confirm Assignments",menus.clusterMenus(cluster)(
+        errorOrForm.toOption.map(_._2.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
+}
+
+@checkboxWithLink(field: play.api.data.Field, topic: String) = {
+    @b3.inputFormGroup(field, withFeedback = false, withLabelFor = false, b3.Args.withDefault(Seq(), 'disabled -> false)) { fieldInfo =>
+    <div class="checkbox">
+        <label for="@fieldInfo.id">
+            <input type="checkbox" id="@fieldInfo.id" name="@fieldInfo.name" value="true" @if(fieldInfo.value == Some("true")){checked} @toHtmlArgs(fieldInfo.innerArgsMap)>
+            <a href="@routes.Topic.topic(cluster,topic)">@topic</a>
+        </label>
+    </div>
+    }
+}
+
+@renderForm(confirmForm: Form[models.form.GenerateMultipleAssignments]) = {
+    <h4>Choose topics and brokers for reassignments:</h4>
+    @b3.form(routes.ReassignPartitions.handleGenerateMultipleAssignments(cluster)) {
+        <table class="table">
+            <thead>
+            <tr><th>Topics</th><th>Brokers</th></tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>
+                    <button type="button" class="btn btn-default" onClick="checkBoxSelect('topics',true);">
+                        <b>Select All</b>
+                    </button>
+                    <button type="button" class="btn btn-default" onClick="checkBoxSelect('topics',false);">
+                        <b>Select None</b>
+                    </button>
+                    @helper.repeat(confirmForm("topics"), min = 1) { topicSelectForm =>
+                        @b3.hidden(topicSelectForm("name").name,topicSelectForm("name").value.getOrElse(""))
+                        @checkboxWithLink(topicSelectForm("selected"),topicSelectForm("name").value.getOrElse(""))
+                    }
+                </td>
+                <td>
+                    <button type="button" class="btn btn-default" onClick="checkBoxSelect('brokers',true);">
+                        <b>Select All</b>
+                    </button>
+                    <button type="button" class="btn btn-default" onClick="checkBoxSelect('brokers',false);">
+                        <b>Select None</b>
+                    </button>
+                    @helper.repeat(confirmForm("brokers"), min = 1) { brokerSelectForm =>
+                        @b3.hidden(brokerSelectForm("id").name,brokerSelectForm("id").value.getOrElse(-1))
+                        @b3.hidden(brokerSelectForm("host").name,brokerSelectForm("host").value.getOrElse(""))
+                        @b3.checkbox(brokerSelectForm("selected"), '_text -> s"${brokerSelectForm("id").value.getOrElse(-1)} - ${brokerSelectForm("host").value.getOrElse("")}")
+                    }
+                </td>
+            </tr>
+            </tbody>
+        </table>
+        @b3.submit('class -> "btn btn-primary btn-block"){ Generate Partition Assignments }
+        <a href="@routes.Topic.topics(cluster)" class="cancel-button btn btn-default" role="button">Cancel</a>
+    }
+}
+
+@main(
+  "Confirm Multiple Assignment",
+  menu = theMenu,
+  breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Topics",cluster))) {
+<div class="col-md-12 un-pad-me">
+    <div class="panel panel-default">
+        <div class="panel-heading"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>Confirm Assignments</h3></div>
+        <div class="panel-body">
+            @errorOrForm.fold( views.html.errors.onApiError(_), t => renderForm(t._1))
+        </div>
+    </div>
+</div>
+}

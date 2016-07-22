@@ -1,0 +1,19 @@
+language: scala
+sudo: true
+jdk: oraclejdk8
+install: true
+script: travis_wait 30 ./sbt clean coverage assembly
+scala:
+  - 2.11.7
+#after_success:
+#  - sbt coverageReport coveralls
+
+cache:
+  directories:
+  - $HOME/.sbt/0.13/dependency
+  - $HOME/.sbt/boot/scala*
+  - $HOME/.sbt/launchers
+  - $HOME/.ivy2/cache
+before_cache:
+  - find $HOME/.sbt -name "*.lock" -type f -delete
+  - find $HOME/.ivy2/cache -name "ivydata-*.properties" -type f -delete

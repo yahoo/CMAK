@@ -8,10 +8,13 @@
   errorOrSuccess: IndexedSeq[kafka.manager.ApiError] \/ Unit,
   actionTitle: String,
   successLink: models.FollowLink,
-  errorLink: models.FollowLink)
+  errorLink: models.FollowLink)(implicit messages: play.api.i18n.Messages)
 
 @link(followLink: FollowLink) = {
-    <a href="@followLink.url">@followLink.title</a>
+    <div class="alert alert-success" role="alert">Done!</div>
+    <div class="alert alert-info" role="alert">
+        <a href="@followLink.url">@followLink.title</a>
+    </div>
 }
 
 @main(actionTitle, menu = theMenu, breadcrumbs = views.html.navigation.breadCrumbs(crumbs)) {
