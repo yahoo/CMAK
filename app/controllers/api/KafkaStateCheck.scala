@@ -56,12 +56,10 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     val active = clusterList.active.map(cc => Map("name" -> cc.name, "status" -> "active"))
     val pending = clusterList.pending.map(cc => Map("name" -> cc.name, "status" -> "pending"))
 
-    if (status.getOrElse(None) == "active") {
-      Json.obj("clusters" -> active.sortBy(_("name")))
-    } else if (status.getOrElse(None) == "pending") {
-      Json.obj("clusters" -> pending.sortBy(_("name")))
-    } else {
-      Json.obj("clusters" -> (active ++ pending).sortBy(_("name")))
+    status match {
+      case Some("active") => Json.obj("clusters" -> active.sortBy(_("name")))
+      case Some("pending") => Json.obj("clusters" -> pending.sortBy(_("name")))
+      case _ => Json.obj("clusters" -> (active ++ pending).sortBy(_("name")))
     }
   }
 
