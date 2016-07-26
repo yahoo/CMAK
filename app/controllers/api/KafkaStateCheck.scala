@@ -14,8 +14,8 @@ import play.api.libs.json._
 import play.api.mvc._
 
 /**
-  * @author jisookim0513
-  */
+ * @author jisookim0513
+ */
 
 class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManagerContext)
                       (implicit af: ApplicationFeatures, menus: Menus) extends Controller with I18nSupport {
