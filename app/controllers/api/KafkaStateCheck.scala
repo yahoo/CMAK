@@ -7,6 +7,7 @@ package controllers.api
 
 import controllers.KafkaManagerContext
 import features.ApplicationFeatures
+import kafka.manager.model.ActorModel.KMClusterList
 import models.navigation.Menus
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.json._
@@ -37,6 +38,35 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
       errorOrTopicList.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
         topicList => Ok(Json.obj("topics" -> topicList.list.sorted))
+      )
+    }
+  }
+
+  def clusters(status: Option[String]) = Action.async { implicit request =>
+    kafkaManager.getClusterList.map { errorOrClusterList =>
+      errorOrClusterList.fold(
+        error => BadRequest(Json.obj("msg" -> error.msg)),
+        clusterList => Ok(getClusterListJson(clusterList, status))
+      )
+    }
+  }
+
+  def getClusterListJson(clusterList: KMClusterList, status: Option[String]) = {
+    val active = clusterList.active.map(cc => Map("name" -> cc.name, "status" -> "active"))
+    val pending = clusterList.pending.map(cc => Map("name" -> cc.name, "status" -> "pending"))
+
+    status match {
+      case Some("active") => Json.obj("clusters" -> active.sortBy(_("name")))
+      case Some("pending") => Json.obj("clusters" -> pending.sortBy(_("name")))
+      case _ => Json.obj("clusters" -> (active ++ pending).sortBy(_("name")))
+    }
+  }
+
+  def brokersSkewPercentage(c: String, t: String) = Action.async { implicit request =>
+    kafkaManager.getTopicIdentity(c, t).map { errorOrTopicIdentity =>
+      errorOrTopicIdentity.fold(
+        error => BadRequest(Json.obj("msg" -> error.msg)),
+        topicIdentity => Ok(Json.obj("topic" -> t, "brokersSkewPercentage" -> topicIdentity.brokersSkewPercentage))
       )
     }
   }
