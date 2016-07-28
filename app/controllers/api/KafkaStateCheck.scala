@@ -7,7 +7,7 @@ package controllers.api
 
 import controllers.KafkaManagerContext
 import features.ApplicationFeatures
-import kafka.manager.model.ActorModel.KMClusterList
+import kafka.manager.model.ActorModel.{KMClusterList, TopicIdentity, TopicPartitionIdentity}
 import models.navigation.Menus
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.json._
@@ -41,6 +41,34 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
       )
     }
   }
+
+  def topicIdentities(c: String) = Action.async { implicit request =>
+    kafkaManager.getTopicListExtended(c).map { errorOrTopicList =>
+      errorOrTopicList.fold(
+        error => BadRequest(Json.obj("msg" -> error.msg)),
+        topicIdentityList => Ok(getTopicIdentitiesListJson(topicIdentityList.list))
+      )
+    }
+  }
+
+  def getTopicIdentitiesListJson(topicIdentities: IndexedSeq[(String, Option[TopicIdentity])]) = {
+    Json.obj("topicIdentities" -> (for {
+      (tn, tiOpt) <- topicIdentities
+      ti <- tiOpt
+    } yield Map("name" -> tn, "partitions" -> ti.partitions.toString,
+        "numBrokers" -> ti.numBrokers.toString,
+        "brokersSpreadPercentage" -> ti.brokersSpreadPercentage.toString,
+        "brokersSkewPercentage" -> ti.brokersSkewPercentage.toString,
+        "replicationFactor" -> ti.replicationFactor.toString,
+        "partitionIdentities" -> getPartitionIdentitiesMap(ti.partitionsIdentity).mkString("[", ", ", "]"))
+      ).mkString("[", ", ", "]"))
+  }
+
+    def getPartitionIdentitiesMap(partitionsIdentity: Map[Int,TopicPartitionIdentity]) = {
+      for {
+        (pn, tpi) <- partitionsIdentity
+      } yield Map("partNum" -> pn.toString, "isr" -> tpi.isr.mkString("[", ", ", "]"))
+    }
 
   def clusters(status: Option[String]) = Action.async { implicit request =>
     kafkaManager.getClusterList.map { errorOrClusterList =>
