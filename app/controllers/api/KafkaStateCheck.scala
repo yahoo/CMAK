@@ -12,6 +12,9 @@ import models.navigation.Menus
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.json._
 import play.api.mvc._
+import org.json4s.jackson.Serialization
+
+import scala.collection.immutable.ListMap
 
 /**
  * @author jisookim0513
@@ -52,22 +55,23 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
   }
 
   def getTopicIdentitiesListJson(topicIdentities: IndexedSeq[(String, Option[TopicIdentity])]) = {
-    Json.obj("topicIdentities" -> (for {
+    implicit val formats = org.json4s.DefaultFormats
+    Serialization.write("topicIdentities" -> (for {
       (tn, tiOpt) <- topicIdentities
       ti <- tiOpt
-    } yield Map("name" -> tn, "partitions" -> ti.partitions.toString,
-        "numBrokers" -> ti.numBrokers.toString,
-        "brokersSpreadPercentage" -> ti.brokersSpreadPercentage.toString,
-        "brokersSkewPercentage" -> ti.brokersSkewPercentage.toString,
-        "replicationFactor" -> ti.replicationFactor.toString,
-        "partitionIdentities" -> getPartitionIdentitiesMap(ti.partitionsIdentity).mkString("[", ", ", "]"))
-      ).mkString("[", ", ", "]"))
+    } yield ListMap("topic" -> tn, "partitions" -> ti.partitions,
+        "numBrokers" -> ti.numBrokers,
+        "brokersSpreadPercentage" -> ti.brokersSpreadPercentage,
+        "brokersSkewPercentage" -> ti.brokersSkewPercentage,
+        "replicationFactor" -> ti.replicationFactor,
+        "partitionIdentities" -> getPartitionIdentitiesMap(ti.partitionsIdentity))
+      ))
   }
 
     def getPartitionIdentitiesMap(partitionsIdentity: Map[Int,TopicPartitionIdentity]) = {
       for {
         (pn, tpi) <- partitionsIdentity
-      } yield Map("partNum" -> pn.toString, "isr" -> tpi.isr.mkString("[", ", ", "]"))
+      } yield ListMap("partNum" -> pn, "isr" -> tpi.isr)
     }
 
   def clusters(status: Option[String]) = Action.async { implicit request =>
