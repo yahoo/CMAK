@@ -70,8 +70,10 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
 
     def getPartitionIdentitiesMap(partitionsIdentity: Map[Int,TopicPartitionIdentity]) = {
       for {
-        (pn, tpi) <- partitionsIdentity
-      } yield ListMap("partNum" -> pn, "isr" -> tpi.isr)
+        (pn, tpi) <- ListMap(partitionsIdentity.toSeq.sortBy(_._1):_*)
+      } yield ListMap("partNum" -> pn,  "isr" -> tpi.isr,
+        "isPreferredLeader" -> tpi.isPreferredLeader,
+        "isUnderReplicated" -> tpi.isUnderReplicated)
     }
 
   def clusters(status: Option[String]) = Action.async { implicit request =>
