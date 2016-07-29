@@ -96,15 +96,6 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     }
   }
 
-  def brokersSkewPercentage(c: String, t: String) = Action.async { implicit request =>
-    kafkaManager.getTopicIdentity(c, t).map { errorOrTopicIdentity =>
-      errorOrTopicIdentity.fold(
-        error => BadRequest(Json.obj("msg" -> error.msg)),
-        topicIdentity => Ok(Json.obj("topic" -> t, "brokersSkewPercentage" -> topicIdentity.brokersSkewPercentage))
-      )
-    }
-  }
-
   def underReplicatedPartitions(c: String, t: String) = Action.async { implicit request =>
     kafkaManager.getTopicIdentity(c, t).map { errorOrTopicIdentity =>
       errorOrTopicIdentity.fold(
