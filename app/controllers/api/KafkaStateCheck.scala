@@ -59,13 +59,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     Serialization.write("topicIdentities" -> (for {
       (tn, tiOpt) <- topicIdentities
       ti <- tiOpt
-    } yield ListMap("topic" -> tn, "partitions" -> ti.partitions,
-        "numBrokers" -> ti.numBrokers,
-        "brokersSpreadPercentage" -> ti.brokersSpreadPercentage,
-        "brokersSkewPercentage" -> ti.brokersSkewPercentage,
-        "replicationFactor" -> ti.replicationFactor,
-        "partitionIdentities" -> getPartitionIdentitiesMap(ti.partitionsIdentity))
-      ))
+      } yield tiOpt))
   }
 
     def getPartitionIdentitiesMap(partitionsIdentity: Map[Int,TopicPartitionIdentity]) = {
