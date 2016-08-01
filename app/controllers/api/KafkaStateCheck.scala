@@ -14,7 +14,6 @@ import play.api.libs.json._
 import play.api.mvc._
 import org.json4s.jackson.Serialization
 
-import scala.collection.immutable.ListMap
 
 /**
  * @author jisookim0513
@@ -56,19 +55,11 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
 
   def getTopicIdentitiesListJson(topicIdentities: IndexedSeq[(String, Option[TopicIdentity])]) = {
     implicit val formats = org.json4s.DefaultFormats
-    Serialization.write("topicIdentities" -> (for {
+    = Serialization.writePretty("topicIdentities" -> (for {
       (tn, tiOpt) <- topicIdentities
       ti <- tiOpt
       } yield tiOpt))
   }
-
-    def getPartitionIdentitiesMap(partitionsIdentity: Map[Int,TopicPartitionIdentity]) = {
-      for {
-        (pn, tpi) <- ListMap(partitionsIdentity.toSeq.sortBy(_._1):_*)
-      } yield ListMap("partNum" -> pn,  "isr" -> tpi.isr,
-        "isPreferredLeader" -> tpi.isPreferredLeader,
-        "isUnderReplicated" -> tpi.isUnderReplicated)
-    }
 
   def clusters(status: Option[String]) = Action.async { implicit request =>
     kafkaManager.getClusterList.map { errorOrClusterList =>
