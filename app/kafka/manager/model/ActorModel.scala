@@ -409,9 +409,75 @@ import scala.language.reflectiveCalls
 
     import org.json4s.jackson.JsonMethods._
     import org.json4s.scalaz.JsonScalaz._
+//    import org.json4s._
+//    import org.json4s.jackson.Serialization
 
 import scala.language.reflectiveCalls
-    
+//
+//    implicit val formats = Serialization.formats(FullTypeHints(List(classOf[TopicIdentity])))
+//
+//    implicit def topicIdentityJSONW: JSONW[TopicIdentity] = new JSONW[TopicIdentity] {
+//      def write(ti: TopicIdentity) =
+//        makeObj(("topic" -> toJSON(ti.topic))
+//          :: ("readVersion" -> toJSON(ti.readVersion))
+//          :: ("partitions" -> toJSON(ti.partitions))
+//          :: ("partitionsIdentity" -> toJSON(ti.partitionsIdentity))
+//          :: ("numBrokers" -> toJSON(ti.numBrokers))
+//          :: ("configReadVersion" -> toJSON(ti.configReadVersion))
+//          :: ("config" -> toJSON(ti.config))
+//          :: ("clusterContext" -> toJSON(ti.clusterContext))
+//          :: ("metrics" -> toJSON(ti.metrics))
+//          :: ("size" -> toJSON(ti.size))
+//          :: ("replicationFactor" -> toJSON(ti.replicationFactor))
+//          :: ("partitionsByBroker" -> toJSON(ti.partitionsByBroker))
+//          :: ("summedTopicOffsets" -> toJSON(ti.summedTopicOffsets))
+//          :: ("preferredReplicasPercentage" -> toJSON(ti.preferredReplicasPercentage))
+//          :: ("underReplicatedPercentage" -> toJSON(ti.underReplicatedPercentage))
+//          :: ("topicBrokers" -> toJSON(ti.topicBrokers))
+//          :: ("brokersSkewPercentage" -> toJSON(ti.brokersSkewPercentage))
+//          :: ("brokersSpreadPercentage" -> toJSON(ti.brokersSpreadPercentage))
+//          :: ("producerRate" -> toJSON(ti.producerRate))
+//          :: Nil)
+//    }
+//
+//    implicit def topicIdentityJSONR: JSONR[TopicIdentity] = new JSONR[TopicIdentity] {
+//      def read(json: JValue): Result[TopicIdentity] = {
+//        for {
+//          topic <- fieldExtended[String]("topic")(json)
+//          readVersion <- fieldExtended[Int]("readVersion")(json)
+//          partitions <- fieldExtended[Int]("partitions")(json)
+//          partitionsIdentity <- fieldExtended[Map[Int, TopicPartitionIdentity]]("partitionsIdentity")(json)
+//          numBrokers <- fieldExtended[Int]("numBrokers")(json)
+//          configReadVersion <- fieldExtended[Int]("configReadVersion")(json)
+//          config <- fieldExtended[List[(String, String)]]("config")(json)
+//          clusterContext <- fieldExtended[ClusterContext]("clusterContext")(json)
+//          metrics <- fieldExtended[Option[BrokerMetrics]]("metrics")(json)
+//          size <- fieldExtended[Option[String]]("size")(json)
+//          replicationFactor <- fieldExtended[Int]("replicationFactor")(json)
+//          partitionsByBroker <- fieldExtended[IndexedSeq[BrokerTopicPartitions]]("partitionsByBroker")(json)
+//          summedTopicOffsets <- fieldExtended[Long]("summedTopicOffsets")(json)
+//          preferredReplicasPercentage <- fieldExtended[Int]("preferredReplicasPercentage")(json)
+//          topicBrokers <- fieldExtended[Int]("topicBrokers")(json)
+//          brokersSkewPercentage <- fieldExtended[Int]("brokersSkewPercentage")(json)
+//          brokersSpreadPercentage <- fieldExtended[Int]("brokersSpreadPercentage")(json)
+//          producerRate <- fieldExtended[String]("producerRate")(json)
+//        } yield {
+//          TopicIdentity(
+//            topic = topic
+//            , readVersion = readVersion
+//            , partitions = partitions
+//            , partitionsIdentity = partitionsIdentity
+//            , numBrokers = numBrokers
+//            , configReadVersion = configReadVersion
+//            , config = config
+//            , clusterContext = clusterContext
+//            , metrics = metrics
+//            , size = size
+//          )
+//        }
+//      }
+//    }
+
     private[this] def getPartitionReplicaMap(td: TopicDescription) : Map[String, List[Int]] = {
       // Get the topic description information
       val descJson = parse(td.description._2)
