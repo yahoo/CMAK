@@ -13,6 +13,7 @@ import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.json._
 import play.api.mvc._
 import org.json4s.jackson.Serialization
+import org.json4s.jackson.JsonMethods._
 
 
 /**
@@ -55,7 +56,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
 
   def getTopicIdentitiesListJson(topicIdentities: IndexedSeq[(String, Option[TopicIdentity])]) = {
     implicit val formats = org.json4s.DefaultFormats
-    = Serialization.writePretty("topicIdentities" -> (for {
+    Serialization.writePretty("topicIdentities" -> (for {
       (tn, tiOpt) <- topicIdentities
       ti <- tiOpt
       } yield tiOpt))
