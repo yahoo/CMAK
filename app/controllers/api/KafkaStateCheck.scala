@@ -7,7 +7,7 @@ package controllers.api
 
 import controllers.KafkaManagerContext
 import features.ApplicationFeatures
-import kafka.manager.model.ActorModel.{KMClusterList, TopicIdentity, TopicPartitionIdentity}
+import kafka.manager.model.ActorModel.{KMClusterList, TopicIdentity, TopicPartitionIdentity, VerboseTopicIdentity}
 import models.navigation.Menus
 import play.api.i18n.{ I18nSupport, MessagesApi }
 import play.api.libs.json._
@@ -56,11 +56,14 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
   }
 
   def getTopicIdentitiesListJson(topicIdentities: IndexedSeq[(String, Option[TopicIdentity])]) = {
+    import TopicIdentity._
+
     implicit val formats = org.json4s.DefaultFormats
     Serialization.writePretty("topicIdentities" -> (for {
       (tn, tiOpt) <- topicIdentities
       ti <- tiOpt
       } yield tiOpt))
+//  } yield tiOpt.map(VerboseTopicIdentity(_))))
   }
 
   def clusters(status: Option[String]) = Action.async { implicit request =>
