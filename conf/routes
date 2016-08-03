@@ -55,7 +55,7 @@ POST        /clusters/:c/logkafkas/:h/:l/enableConfig     controllers.Logkafka.h
 GET         /api/status/:c/brokers                        controllers.api.KafkaStateCheck.brokers(c:String)
 GET         /api/status/:c/topics                         controllers.api.KafkaStateCheck.topics(c:String)
 GET         /api/status/:c/topicIdentities                controllers.api.KafkaStateCheck.topicIdentities(c:String)
-GET         /api/status/clusters                          controllers.api.KafkaStateCheck.clusters(status:Option[String])
+GET         /api/status/clusters                          controllers.api.KafkaStateCheck.clusters
 GET         /api/status/:c/:t/underReplicatedPartitions   controllers.api.KafkaStateCheck.underReplicatedPartitions(c:String,t:String)
 GET         /api/status/:c/:t/unavailablePartitions       controllers.api.KafkaStateCheck.unavailablePartitions(c:String,t:String)
 
