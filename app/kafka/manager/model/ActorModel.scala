@@ -13,9 +13,6 @@ import kafka.manager.jmx._
 import kafka.manager.utils
 import kafka.manager.utils.zero81.ForceReassignmentCommand
 import org.joda.time.DateTime
-import org.json4s._
-import org.json4s.jackson.Serialization
-import org.json4s.scalaz.JsonScalaz._
 
 import scala.collection.immutable.Queue
 import scala.concurrent.duration.Duration
@@ -294,7 +291,10 @@ object ActorModel {
 
     import org.json4s.jackson.JsonMethods._
     import org.json4s.scalaz.JsonScalaz._
-
+//    import org.json4s.JValue
+//    import org.json4s.FullTypeHints
+//    import org.json4s.jackson.Serialization
+//
 //    implicit val formats = Serialization.formats(FullTypeHints(List(classOf[TopicPartitionIdentity])))
 //
 //    implicit def topicPartitionIdentityJSONW: JSONW[TopicPartitionIdentity] = new JSONW[TopicPartitionIdentity] {
@@ -455,38 +455,6 @@ import scala.language.reflectiveCalls
     val producerRate: String = BigDecimal(partitionsIdentity.map(_._2.rateOfChange.getOrElse(0D)).sum).setScale(2, BigDecimal.RoundingMode.HALF_UP).toString()
   }
 
-  case class VerboseTopicIdentity(topic:String,
-                                  readVersion: Int,
-                                  partitions:Int,
-                                  partitionsIdentity: Map[Int,TopicPartitionIdentity],
-                                  numBrokers: Int,
-                                  configReadVersion: Int,
-                                  config: List[(String,String)],
-                                  clusterContext: ClusterContext,
-                                  metrics: Option[BrokerMetrics] = None,
-                                  size: Option[String] = None,
-                                  replicationFactor: Int) {
-
-  }
-
-  object VerboseTopicIdentity {
-
-    def apply(ti: TopicIdentity): VerboseTopicIdentity = {
-      VerboseTopicIdentity(ti.topic,
-        ti.readVersion,
-        ti.partitions,
-        ti.partitionsIdentity,
-        ti.numBrokers,
-        ti.configReadVersion,
-        ti.config,
-        ti.clusterContext,
-        ti.metrics,
-      ti.size,
-      ti.replicationFactor)
-    }
-
-  }
-
   object TopicIdentity extends Logging {
 
     import org.json4s.jackson.JsonMethods._
@@ -496,69 +464,69 @@ import scala.language.reflectiveCalls
 
 import scala.language.reflectiveCalls
 
-    implicit val formats = Serialization.formats(FullTypeHints(List(classOf[TopicIdentity])))
-
-    implicit def topicIdentityJSONW: JSONW[TopicIdentity] = new JSONW[TopicIdentity] {
-      def write(ti: TopicIdentity) =
-        makeObj(("topic" -> toJSON(ti.topic))
-          :: ("readVersion" -> toJSON(ti.readVersion))
-          :: ("partitions" -> toJSON(ti.partitions))
-          :: ("partitionsIdentity" -> toJSON(ti.partitionsIdentity))
-          :: ("numBrokers" -> toJSON(ti.numBrokers))
-          :: ("configReadVersion" -> toJSON(ti.configReadVersion))
-          :: ("config" -> toJSON(ti.config))
-          :: ("clusterContext" -> toJSON(ti.clusterContext))
-          :: ("metrics" -> toJSON(ti.metrics))
-          :: ("size" -> toJSON(ti.size))
-          :: ("replicationFactor" -> toJSON(ti.replicationFactor))
-          :: ("partitionsByBroker" -> toJSON(ti.partitionsByBroker))
-          :: ("summedTopicOffsets" -> toJSON(ti.summedTopicOffsets))
-          :: ("preferredReplicasPercentage" -> toJSON(ti.preferredReplicasPercentage))
-          :: ("underReplicatedPercentage" -> toJSON(ti.underReplicatedPercentage))
-          :: ("topicBrokers" -> toJSON(ti.topicBrokers))
-          :: ("brokersSkewPercentage" -> toJSON(ti.brokersSkewPercentage))
-          :: ("brokersSpreadPercentage" -> toJSON(ti.brokersSpreadPercentage))
-          :: ("producerRate" -> toJSON(ti.producerRate))
-          :: Nil)
-    }
-
-    implicit def topicIdentityJSONR: JSONR[TopicIdentity] = new JSONR[TopicIdentity] {
-      def read(json: JValue): Result[TopicIdentity] = {
-        for {
-          topic <- fieldExtended[String]("topic")(json)
-          readVersion <- fieldExtended[Int]("readVersion")(json)
-          partitions <- fieldExtended[Int]("partitions")(json)
-          partitionsIdentity <- fieldExtended[Map[Int, TopicPartitionIdentity]]("partitionsIdentity")(json)
-          numBrokers <- fieldExtended[Int]("numBrokers")(json)
-          configReadVersion <- fieldExtended[Int]("configReadVersion")(json)
-          config <- fieldExtended[List[(String, String)]]("config")(json)
-          clusterContext <- fieldExtended[ClusterContext]("clusterContext")(json)
-          metrics <- fieldExtended[Option[BrokerMetrics]]("metrics")(json)
-          size <- fieldExtended[Option[String]]("size")(json)
-          replicationFactor <- fieldExtended[Int]("replicationFactor")(json)
-          partitionsByBroker <- fieldExtended[IndexedSeq[BrokerTopicPartitions]]("partitionsByBroker")(json)
-          summedTopicOffsets <- fieldExtended[Long]("summedTopicOffsets")(json)
-          preferredReplicasPercentage <- fieldExtended[Int]("preferredReplicasPercentage")(json)
-          topicBrokers <- fieldExtended[Int]("topicBrokers")(json)
-          brokersSkewPercentage <- fieldExtended[Int]("brokersSkewPercentage")(json)
-          brokersSpreadPercentage <- fieldExtended[Int]("brokersSpreadPercentage")(json)
-          producerRate <- fieldExtended[String]("producerRate")(json)
-        } yield {
-          TopicIdentity(
-            topic = topic
-            , readVersion = readVersion
-            , partitions = partitions
-            , partitionsIdentity = partitionsIdentity
-            , numBrokers = numBrokers
-            , configReadVersion = configReadVersion
-            , config = config
-            , clusterContext = clusterContext
-            , metrics = metrics
-            , size = size
-          )
-        }
-      }
-    }
+//    implicit val formats = Serialization.formats(FullTypeHints(List(classOf[TopicIdentity])))
+//
+//    implicit def topicIdentityJSONW: JSONW[TopicIdentity] = new JSONW[TopicIdentity] {
+//      def write(ti: TopicIdentity) =
+//        makeObj(("topic" -> toJSON(ti.topic))
+//          :: ("readVersion" -> toJSON(ti.readVersion))
+//          :: ("partitions" -> toJSON(ti.partitions))
+//          :: ("partitionsIdentity" -> toJSON(ti.partitionsIdentity))
+//          :: ("numBrokers" -> toJSON(ti.numBrokers))
+//          :: ("configReadVersion" -> toJSON(ti.configReadVersion))
+//          :: ("config" -> toJSON(ti.config))
+//          :: ("clusterContext" -> toJSON(ti.clusterContext))
+//          :: ("metrics" -> toJSON(ti.metrics))
+//          :: ("size" -> toJSON(ti.size))
+//          :: ("replicationFactor" -> toJSON(ti.replicationFactor))
+//          :: ("partitionsByBroker" -> toJSON(ti.partitionsByBroker))
+//          :: ("summedTopicOffsets" -> toJSON(ti.summedTopicOffsets))
+//          :: ("preferredReplicasPercentage" -> toJSON(ti.preferredReplicasPercentage))
+//          :: ("underReplicatedPercentage" -> toJSON(ti.underReplicatedPercentage))
+//          :: ("topicBrokers" -> toJSON(ti.topicBrokers))
+//          :: ("brokersSkewPercentage" -> toJSON(ti.brokersSkewPercentage))
+//          :: ("brokersSpreadPercentage" -> toJSON(ti.brokersSpreadPercentage))
+//          :: ("producerRate" -> toJSON(ti.producerRate))
+//          :: Nil)
+//    }
+//
+//    implicit def topicIdentityJSONR: JSONR[TopicIdentity] = new JSONR[TopicIdentity] {
+//      def read(json: JValue): Result[TopicIdentity] = {
+//        for {
+//          topic <- fieldExtended[String]("topic")(json)
+//          readVersion <- fieldExtended[Int]("readVersion")(json)
+//          partitions <- fieldExtended[Int]("partitions")(json)
+//          partitionsIdentity <- fieldExtended[Map[Int, TopicPartitionIdentity]]("partitionsIdentity")(json)
+//          numBrokers <- fieldExtended[Int]("numBrokers")(json)
+//          configReadVersion <- fieldExtended[Int]("configReadVersion")(json)
+//          config <- fieldExtended[List[(String, String)]]("config")(json)
+//          clusterContext <- fieldExtended[ClusterContext]("clusterContext")(json)
+//          metrics <- fieldExtended[Option[BrokerMetrics]]("metrics")(json)
+//          size <- fieldExtended[Option[String]]("size")(json)
+//          replicationFactor <- fieldExtended[Int]("replicationFactor")(json)
+//          partitionsByBroker <- fieldExtended[IndexedSeq[BrokerTopicPartitions]]("partitionsByBroker")(json)
+//          summedTopicOffsets <- fieldExtended[Long]("summedTopicOffsets")(json)
+//          preferredReplicasPercentage <- fieldExtended[Int]("preferredReplicasPercentage")(json)
+//          topicBrokers <- fieldExtended[Int]("topicBrokers")(json)
+//          brokersSkewPercentage <- fieldExtended[Int]("brokersSkewPercentage")(json)
+//          brokersSpreadPercentage <- fieldExtended[Int]("brokersSpreadPercentage")(json)
+//          producerRate <- fieldExtended[String]("producerRate")(json)
+//        } yield {
+//          TopicIdentity(
+//            topic = topic
+//            , readVersion = readVersion
+//            , partitions = partitions
+//            , partitionsIdentity = partitionsIdentity
+//            , numBrokers = numBrokers
+//            , configReadVersion = configReadVersion
+//            , config = config
+//            , clusterContext = clusterContext
+//            , metrics = metrics
+//            , size = size
+//          )
+//        }
+//      }
+//    }
 
     private[this] def getPartitionReplicaMap(td: TopicDescription) : Map[String, List[Int]] = {
       // Get the topic description information

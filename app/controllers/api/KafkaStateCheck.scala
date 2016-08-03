@@ -7,7 +7,7 @@ package controllers.api
 
 import controllers.KafkaManagerContext
 import features.ApplicationFeatures
-import kafka.manager.model.ActorModel.{KMClusterList, TopicIdentity, TopicPartitionIdentity, VerboseTopicIdentity}
+import kafka.manager.model.ActorModel.{KMClusterList, TopicIdentity}
 import models.navigation.Menus
 import play.api.i18n.{ I18nSupport, MessagesApi }
 import play.api.libs.json._
@@ -63,26 +63,15 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
       (tn, tiOpt) <- topicIdentities
       ti <- tiOpt
       } yield tiOpt))
-//  } yield tiOpt.map(VerboseTopicIdentity(_))))
   }
 
-  def clusters(status: Option[String]) = Action.async { implicit request =>
+  def clusters = Action.async { implicit request =>
+    implicit val formats = org.json4s.DefaultFormats
     kafkaManager.getClusterList.map { errorOrClusterList =>
       errorOrClusterList.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
-        clusterList => Ok(getClusterListJson(clusterList, status))
+        clusterList => Ok(Serialization.writePretty("clusters" -> errorOrClusterList.getOrElse(None)))
       )
-    }
-  }
-
-  def getClusterListJson(clusterList: KMClusterList, status: Option[String]) = {
-    val active = clusterList.active.map(cc => Map("name" -> cc.name, "status" -> "active"))
-    val pending = clusterList.pending.map(cc => Map("name" -> cc.name, "status" -> "pending"))
-
-    status match {
-      case Some("active") => Json.obj("clusters" -> active.sortBy(_("name")))
-      case Some("pending") => Json.obj("clusters" -> pending.sortBy(_("name")))
-      case _ => Json.obj("clusters" -> (active ++ pending).sortBy(_("name")))
     }
   }
 
