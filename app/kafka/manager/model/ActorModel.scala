@@ -5,7 +5,6 @@
 
 package kafka.manager.model
 
-import java.nio.charset.StandardCharsets
 import java.util.Properties
 
 import grizzled.slf4j.Logging
@@ -14,7 +13,6 @@ import kafka.manager.jmx._
 import kafka.manager.utils
 import kafka.manager.utils.zero81.ForceReassignmentCommand
 import org.joda.time.DateTime
-import org.json4s.scalaz.JsonScalaz._
 
 import scala.collection.immutable.Queue
 import scala.concurrent.duration.Duration
@@ -352,7 +350,7 @@ import scala.language.reflectiveCalls
 
   case class BrokerTopicPartitions(id: Int, partitions: IndexedSeq[Int], isSkewed: Boolean)
 
-//  implicit val formats = Serialization.formats(FullTypeHints(List(classOf[ClusterFeatures])))
+  import org.json4s.scalaz.JsonScalaz._
 
   implicit def brokerTopicPartitionsJSONW: JSONW[BrokerTopicPartitions] = new JSONW[BrokerTopicPartitions] {
     def write(a: BrokerTopicPartitions) =
@@ -446,6 +444,7 @@ import scala.language.reflectiveCalls
 
 import scala.language.reflectiveCalls
 
+    
     implicit val formats = Serialization.formats(FullTypeHints(List(classOf[TopicIdentity])))
 
     implicit def topicIdentityJSONW: JSONW[TopicIdentity] = new JSONW[TopicIdentity] {

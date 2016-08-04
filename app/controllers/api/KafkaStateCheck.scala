@@ -14,7 +14,6 @@ import play.api.libs.json._
 import play.api.mvc._
 import scala.concurrent.Future
 import org.json4s.jackson.Serialization
-import scala.collection.immutable.ListMap
 import org.json4s.jackson.JsonMethods._
 
 /**
