@@ -14,7 +14,6 @@ import play.api.libs.json._
 import play.api.mvc._
 import org.json4s.jackson.Serialization
 
-
 /**
  * @author jisookim0513
  */
