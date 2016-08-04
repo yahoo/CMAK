@@ -468,10 +468,6 @@ import scala.language.reflectiveCalls
     }
 
     val producerRate: String = BigDecimal(partitionsIdentity.map(_._2.rateOfChange.getOrElse(0D)).sum).setScale(2, BigDecimal.RoundingMode.HALF_UP).toString()
-
-    import org.json4s.scalaz.JsonScalaz._
-
-    val pi: TopicPartitionIdentity = partitionsIdentity.get(0).get
   }
 
   object TopicIdentity extends Logging {
@@ -490,7 +486,7 @@ import scala.language.reflectiveCalls
         makeObj(("topic" -> toJSON(ti.topic))
           :: ("readVersion" -> toJSON(ti.readVersion))
           :: ("partitions" -> toJSON(ti.partitions))
-//          :: ("partitionsIdentity" -> toJSON(ti.partitionsIdentity.mapValues(toJSON(_))))
+          :: ("partitionsIdentity" -> toJSON(ti.partitionsIdentity.values.toList.sortBy(_.partNum)))
           :: ("numBrokers" -> toJSON(ti.numBrokers))
           :: ("configReadVersion" -> toJSON(ti.configReadVersion))
           :: ("config" -> toJSON(ti.config))
@@ -506,7 +502,6 @@ import scala.language.reflectiveCalls
           :: ("brokersSkewPercentage" -> toJSON(ti.brokersSkewPercentage))
           :: ("brokersSpreadPercentage" -> toJSON(ti.brokersSpreadPercentage))
           :: ("producerRate" -> toJSON(ti.producerRate))
-          :: ("test" -> toJSON(ti.pi))
           :: Nil)
     }
 
