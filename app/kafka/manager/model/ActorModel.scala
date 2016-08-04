@@ -14,8 +14,6 @@ import kafka.manager.jmx._
 import kafka.manager.utils
 import kafka.manager.utils.zero81.ForceReassignmentCommand
 import org.joda.time.DateTime
-import org.json4s.FullTypeHints
-import org.json4s.jackson.Serialization
 import org.json4s.scalaz.JsonScalaz._
 
 import scala.collection.immutable.Queue
@@ -23,8 +21,7 @@ import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success, Try}
 import scalaz.{NonEmptyList, Validation}
-//import spray.json._
-//import org.json4s.DefaultJsonFormats
+
 
 /**
  * @author hiral
@@ -317,36 +314,6 @@ object ActorModel {
           :: Nil)
     }
 
-//    implicit def topicPartitionIdentityJSONR: JSONR[TopicPartitionIdentity] = new JSONR[TopicPartitionIdentity] {
-//      def read(json: JValue): Result[TopicPartitionIdentity] = {
-//        for {
-//          partNum <- fieldExtended[Int]("partNum")(json)
-//          leader <- fieldExtended[Int]("leader")(json)
-//          latestOffset <- fieldExtended[Option[Long]]("latestOffset")(json)
-//          rateOfChange <- fieldExtended[Option[Double]]("rateOfChange")(json)
-//          isr <- fieldExtended[Seq[Int]]("isr")(json)
-//          replicas <- fieldExtended[Seq[Int]]("replicas")(json)
-//          isPreferredLeader <- fieldExtended[Boolean]("isPreferredLeader")(json)
-//          isUnderReplicated <- fieldExtended[Boolean]("isUnderReplicated")(json)
-//          leaderSize <- fieldExtended[Option[Long]]("leaderSize")(json)
-//          size <- fieldExtended[Option[String]]("size")(json)
-//        } yield {
-//          TopicPartitionIdentity(
-//            partNum = partNum
-//            , leader = leader
-//            , latestOffset = latestOffset
-//            , rateOfChange = rateOfChange
-//            , isr = isr
-//            , replicas = replicas
-//            , isPreferredLeader = isPreferredLeader
-//            , isUnderReplicated = isUnderReplicated
-//            , leaderSize = leaderSize
-//            , size = size
-//          )
-//        }
-//      }
-//    }
-
 import scala.language.reflectiveCalls
     import scalaz.syntax.applicative._
 
@@ -504,44 +471,6 @@ import scala.language.reflectiveCalls
           :: ("producerRate" -> toJSON(ti.producerRate))
           :: Nil)
     }
-
-//    implicit def topicIdentityJSONR: JSONR[TopicIdentity] = new JSONR[TopicIdentity] {
-//      def read(json: JValue): Result[TopicIdentity] = {
-//        for {
-//          topic <- fieldExtended[String]("topic")(json)
-//          readVersion <- fieldExtended[Int]("readVersion")(json)
-//          partitions <- fieldExtended[Int]("partitions")(json)
-//          partitionsIdentity <- fieldExtended[Map[Int, TopicPartitionIdentity]]("partitionsIdentity")(json)
-//          numBrokers <- fieldExtended[Int]("numBrokers")(json)
-//          configReadVersion <- fieldExtended[Int]("configReadVersion")(json)
-//          config <- fieldExtended[List[(String, String)]]("config")(json)
-//          clusterContext <- fieldExtended[ClusterContext]("clusterContext")(json)
-//          metrics <- fieldExtended[Option[BrokerMetrics]]("metrics")(json)
-//          size <- fieldExtended[Option[String]]("size")(json)
-//          replicationFactor <- fieldExtended[Int]("replicationFactor")(json)
-//          partitionsByBroker <- fieldExtended[IndexedSeq[BrokerTopicPartitions]]("partitionsByBroker")(json)
-//          summedTopicOffsets <- fieldExtended[Long]("summedTopicOffsets")(json)
-//          preferredReplicasPercentage <- fieldExtended[Int]("preferredReplicasPercentage")(json)
-//          topicBrokers <- fieldExtended[Int]("topicBrokers")(json)
-//          brokersSkewPercentage <- fieldExtended[Int]("brokersSkewPercentage")(json)
-//          brokersSpreadPercentage <- fieldExtended[Int]("brokersSpreadPercentage")(json)
-//          producerRate <- fieldExtended[String]("producerRate")(json)
-//        } yield {
-//          TopicIdentity(
-//            topic = topic
-//            , readVersion = readVersion
-//            , partitions = partitions
-//            , partitionsIdentity = partitionsIdentity
-//            , numBrokers = numBrokers
-//            , configReadVersion = configReadVersion
-//            , config = config
-//            , clusterContext = clusterContext
-//            , metrics = metrics
-//            , size = size
-//          )
-//        }
-//      }
-//    }
 
     private[this] def getPartitionReplicaMap(td: TopicDescription) : Map[String, List[Int]] = {
       // Get the topic description information

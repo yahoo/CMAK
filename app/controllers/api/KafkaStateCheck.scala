@@ -7,7 +7,7 @@ package controllers.api
 
 import controllers.KafkaManagerContext
 import features.ApplicationFeatures
-import kafka.manager.model.ActorModel.{KMClusterList, TopicIdentity}
+import kafka.manager.model.ActorModel.{TopicIdentity}
 import models.navigation.Menus
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.json._

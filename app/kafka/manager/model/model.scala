@@ -8,7 +8,6 @@ package kafka.manager.model
 import java.nio.charset.StandardCharsets
 
 import kafka.manager.features.ClusterFeatures
-import org.json4s.scalaz.JsonScalaz._
 
 import scala.util.Try
 import scala.util.matching.Regex
@@ -343,10 +342,8 @@ object ClusterContext {
         :: ("config" -> toJSON(a.config))
         :: Nil)
   }
-
-//  implicit def clusterContextJSONR: JSONR[ClusterContext] = ClusterContext.applyJSON(
-//    fieldExtended[ClusterFeatures]("clusterFeatures"), fieldExtended[Int]("zkMaxRetry"))
 }
+
 case class ClusterConfig (name: String
                           , curatorConfig : CuratorConfig
                           , enabled: Boolean
