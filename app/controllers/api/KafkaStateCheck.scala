@@ -56,13 +56,13 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
   }
 
   def getTopicIdentitiesListJson(topicIdentities: IndexedSeq[(String, Option[TopicIdentity])]) = {
-    import TopicIdentity._
+    import org.json4s.scalaz.JsonScalaz._
 
     implicit val formats = org.json4s.DefaultFormats
     Serialization.writePretty("topicIdentities" -> (for {
       (tn, tiOpt) <- topicIdentities
       ti <- tiOpt
-      } yield tiOpt))
+      } yield toJSON(tiOpt)))
   }
 
   def clusters = Action.async { implicit request =>
