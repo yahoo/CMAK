@@ -13,7 +13,6 @@ import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.json._
 import play.api.mvc._
 import org.json4s.jackson.Serialization
-import org.json4s.jackson.JsonMethods._
 
 
 /**
