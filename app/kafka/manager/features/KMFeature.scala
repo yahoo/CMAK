@@ -53,6 +53,11 @@ object ClusterFeature extends Logging {
 case class ClusterFeatures(features: Set[ClusterFeature])
 
 object ClusterFeatures {
+  import org.json4s._
+  import org.json4s.jackson.Serialization
+  import org.json4s.scalaz.JsonScalaz._
+  import scala.language.reflectiveCalls
+
   val default = ClusterFeatures(Set())
   
   def from(clusterConfig: ClusterConfig) : ClusterFeatures = {
@@ -74,5 +79,13 @@ object ClusterFeatures {
       buffer+=KMPollConsumersFeature
 
     ClusterFeatures(buffer.toSet)
+  }
+
+  implicit val formats = Serialization.formats(FullTypeHints(List(classOf[ClusterFeatures])))
+
+  implicit def clusterFeaturesJSONW: JSONW[ClusterFeatures] = new JSONW[ClusterFeatures] {
+    def write(a: ClusterFeatures) =
+      makeObj(("features" -> toJSON(a.features.map(_.toString).toList))
+        :: Nil)
   }
 }

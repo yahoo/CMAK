@@ -5,6 +5,7 @@
 
 package kafka.manager.model
 
+import java.nio.charset.StandardCharsets
 import java.util.Properties
 
 import grizzled.slf4j.Logging
@@ -13,12 +14,17 @@ import kafka.manager.jmx._
 import kafka.manager.utils
 import kafka.manager.utils.zero81.ForceReassignmentCommand
 import org.joda.time.DateTime
+import org.json4s.FullTypeHints
+import org.json4s.jackson.Serialization
+import org.json4s.scalaz.JsonScalaz._
 
 import scala.collection.immutable.Queue
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success, Try}
 import scalaz.{NonEmptyList, Validation}
+//import spray.json._
+//import org.json4s.DefaultJsonFormats
 
 /**
  * @author hiral
@@ -291,27 +297,26 @@ object ActorModel {
 
     import org.json4s.jackson.JsonMethods._
     import org.json4s.scalaz.JsonScalaz._
-//    import org.json4s.JValue
-//    import org.json4s.FullTypeHints
-//    import org.json4s.jackson.Serialization
-//
-//    implicit val formats = Serialization.formats(FullTypeHints(List(classOf[TopicPartitionIdentity])))
-//
-//    implicit def topicPartitionIdentityJSONW: JSONW[TopicPartitionIdentity] = new JSONW[TopicPartitionIdentity] {
-//      def write(tpi: TopicPartitionIdentity) =
-//        makeObj(("partNum" -> toJSON(tpi.partNum))
-//          :: ("leader" -> toJSON(tpi.leader))
-//          :: ("latestOffset" -> toJSON(tpi.latestOffset))
-//          :: ("rateOfChange" -> toJSON(tpi.rateOfChange))
-//          :: ("isr" -> toJSON(tpi.isr))
-//          :: ("replicas" -> toJSON(tpi.replicas))
-//          :: ("isPreferredLeader" -> toJSON(tpi.isPreferredLeader))
-//          :: ("isUnderReplicated" -> toJSON(tpi.isUnderReplicated))
-//          :: ("leaderSize" -> toJSON(tpi.leaderSize))
-//          :: ("size" -> toJSON(tpi.size))
-//          :: Nil)
-//    }
-//
+    import org.json4s.FullTypeHints
+    import org.json4s.jackson.Serialization
+
+    implicit val formats = Serialization.formats(FullTypeHints(List(classOf[TopicPartitionIdentity])))
+
+    implicit def topicPartitionIdentityJSONW: JSONW[TopicPartitionIdentity] = new JSONW[TopicPartitionIdentity] {
+      def write(tpi: TopicPartitionIdentity) =
+        makeObj(("partNum" -> toJSON(tpi.partNum))
+          :: ("leader" -> toJSON(tpi.leader))
+          :: ("latestOffset" -> toJSON(tpi.latestOffset))
+          :: ("rateOfChange" -> toJSON(tpi.rateOfChange))
+          :: ("isr" -> toJSON(tpi.isr.toList))
+          :: ("replicas" -> toJSON(tpi.replicas.toList))
+          :: ("isPreferredLeader" -> toJSON(tpi.isPreferredLeader))
+          :: ("isUnderReplicated" -> toJSON(tpi.isUnderReplicated))
+          :: ("leaderSize" -> toJSON(tpi.leaderSize))
+          :: ("size" -> toJSON(tpi.size))
+          :: Nil)
+    }
+
 //    implicit def topicPartitionIdentityJSONR: JSONR[TopicPartitionIdentity] = new JSONR[TopicPartitionIdentity] {
 //      def read(json: JValue): Result[TopicPartitionIdentity] = {
 //        for {
@@ -379,6 +384,16 @@ import scala.language.reflectiveCalls
   }
 
   case class BrokerTopicPartitions(id: Int, partitions: IndexedSeq[Int], isSkewed: Boolean)
+
+//  implicit val formats = Serialization.formats(FullTypeHints(List(classOf[ClusterFeatures])))
+
+  implicit def brokerTopicPartitionsJSONW: JSONW[BrokerTopicPartitions] = new JSONW[BrokerTopicPartitions] {
+    def write(a: BrokerTopicPartitions) =
+      makeObj(("id" -> toJSON(a.id))
+        :: ("partitions" -> toJSON(a.partitions.toList))
+        :: ("isSkewed" -> toJSON(a.isSkewed))
+        :: Nil)
+  }
   
   case class PartitionOffsetsCapture(updateTimeMillis: Long, offsetsMap: Map[Int, Long])
 
@@ -453,6 +468,10 @@ import scala.language.reflectiveCalls
     }
 
     val producerRate: String = BigDecimal(partitionsIdentity.map(_._2.rateOfChange.getOrElse(0D)).sum).setScale(2, BigDecimal.RoundingMode.HALF_UP).toString()
+
+    import org.json4s.scalaz.JsonScalaz._
+
+    val pi: TopicPartitionIdentity = partitionsIdentity.get(0).get
   }
 
   object TopicIdentity extends Logging {
@@ -464,32 +483,33 @@ import scala.language.reflectiveCalls
 
 import scala.language.reflectiveCalls
 
-//    implicit val formats = Serialization.formats(FullTypeHints(List(classOf[TopicIdentity])))
-//
-//    implicit def topicIdentityJSONW: JSONW[TopicIdentity] = new JSONW[TopicIdentity] {
-//      def write(ti: TopicIdentity) =
-//        makeObj(("topic" -> toJSON(ti.topic))
-//          :: ("readVersion" -> toJSON(ti.readVersion))
-//          :: ("partitions" -> toJSON(ti.partitions))
-//          :: ("partitionsIdentity" -> toJSON(ti.partitionsIdentity))
-//          :: ("numBrokers" -> toJSON(ti.numBrokers))
-//          :: ("configReadVersion" -> toJSON(ti.configReadVersion))
-//          :: ("config" -> toJSON(ti.config))
-//          :: ("clusterContext" -> toJSON(ti.clusterContext))
-//          :: ("metrics" -> toJSON(ti.metrics))
-//          :: ("size" -> toJSON(ti.size))
-//          :: ("replicationFactor" -> toJSON(ti.replicationFactor))
-//          :: ("partitionsByBroker" -> toJSON(ti.partitionsByBroker))
-//          :: ("summedTopicOffsets" -> toJSON(ti.summedTopicOffsets))
-//          :: ("preferredReplicasPercentage" -> toJSON(ti.preferredReplicasPercentage))
-//          :: ("underReplicatedPercentage" -> toJSON(ti.underReplicatedPercentage))
-//          :: ("topicBrokers" -> toJSON(ti.topicBrokers))
-//          :: ("brokersSkewPercentage" -> toJSON(ti.brokersSkewPercentage))
-//          :: ("brokersSpreadPercentage" -> toJSON(ti.brokersSpreadPercentage))
-//          :: ("producerRate" -> toJSON(ti.producerRate))
-//          :: Nil)
-//    }
-//
+    implicit val formats = Serialization.formats(FullTypeHints(List(classOf[TopicIdentity])))
+
+    implicit def topicIdentityJSONW: JSONW[TopicIdentity] = new JSONW[TopicIdentity] {
+      def write(ti: TopicIdentity) =
+        makeObj(("topic" -> toJSON(ti.topic))
+          :: ("readVersion" -> toJSON(ti.readVersion))
+          :: ("partitions" -> toJSON(ti.partitions))
+//          :: ("partitionsIdentity" -> toJSON(ti.partitionsIdentity.mapValues(toJSON(_))))
+          :: ("numBrokers" -> toJSON(ti.numBrokers))
+          :: ("configReadVersion" -> toJSON(ti.configReadVersion))
+          :: ("config" -> toJSON(ti.config))
+          :: ("clusterContext" -> toJSON(ti.clusterContext))
+          :: ("metrics" -> toJSON(ti.metrics))
+          :: ("size" -> toJSON(ti.size))
+          :: ("replicationFactor" -> toJSON(ti.replicationFactor))
+          :: ("partitionsByBroker" -> toJSON(ti.partitionsByBroker.toList))
+          :: ("summedTopicOffsets" -> toJSON(ti.summedTopicOffsets))
+          :: ("preferredReplicasPercentage" -> toJSON(ti.preferredReplicasPercentage))
+          :: ("underReplicatedPercentage" -> toJSON(ti.underReplicatedPercentage))
+          :: ("topicBrokers" -> toJSON(ti.topicBrokers))
+          :: ("brokersSkewPercentage" -> toJSON(ti.brokersSkewPercentage))
+          :: ("brokersSpreadPercentage" -> toJSON(ti.brokersSpreadPercentage))
+          :: ("producerRate" -> toJSON(ti.producerRate))
+          :: ("test" -> toJSON(ti.pi))
+          :: Nil)
+    }
+
 //    implicit def topicIdentityJSONR: JSONR[TopicIdentity] = new JSONR[TopicIdentity] {
 //      def read(json: JValue): Result[TopicIdentity] = {
 //        for {
@@ -745,6 +765,11 @@ import scala.language.reflectiveCalls
   }
 
   object BrokerMetrics {
+    import org.json4s._
+    import org.json4s.jackson.Serialization
+    import org.json4s.scalaz.JsonScalaz._
+    import scala.language.reflectiveCalls
+
     val DEFAULT = BrokerMetrics(
       MeterMetric(0, 0, 0, 0, 0),
       MeterMetric(0, 0, 0, 0, 0),
@@ -754,6 +779,19 @@ import scala.language.reflectiveCalls
       MeterMetric(0, 0, 0, 0, 0),
       OSMetric(0D, 0D),
       SegmentsMetric(0L))
+
+    implicit def brokerMetricsJSONW: JSONW[BrokerMetrics] = new JSONW[BrokerMetrics] {
+      def write(a: BrokerMetrics) =
+        makeObj(("bytesInPerSec" -> toJSON(a.bytesInPerSec))
+          :: ("bytesOutPerSec" -> toJSON(a.bytesOutPerSec))
+          :: ("bytesRejectedPerSec" -> toJSON(a.bytesRejectedPerSec))
+          :: ("failedFetchRequestsPerSec" -> toJSON(a.failedFetchRequestsPerSec))
+          :: ("failedProduceRequestsPerSec" -> toJSON(a.failedProduceRequestsPerSec))
+          :: ("messagesInPerSec" -> toJSON(a.messagesInPerSec))
+          :: ("oSystemMetric" -> toJSON(a.oSystemMetrics))
+          :: ("size" -> toJSON(a.size))
+          :: Nil)
+    }
   }
 
   case class BrokerClusterStats(perMessages: BigDecimal, perIncoming: BigDecimal, perOutgoing: BigDecimal)
