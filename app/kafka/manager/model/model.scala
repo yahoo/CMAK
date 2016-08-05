@@ -154,24 +154,6 @@ object ClusterConfig {
   implicit def curatorConfigJSONR: JSONR[CuratorConfig] = CuratorConfig.applyJSON(
     fieldExtended[String]("zkConnect"), fieldExtended[Int]("zkMaxRetry"), fieldExtended[Int]("baseSleepTimeMs"), fieldExtended[Int]("maxSleepTimeMs"))
 
-  implicit def clusterConfigJSONW: JSONW[ClusterConfig] = new JSONW[ClusterConfig] {
-    def write(a: ClusterConfig) =
-      makeObj(("name" -> toJSON(a.name))
-      :: ("curatorConfig" -> toJSON(a.curatorConfig))
-      :: ("enabled" -> toJSON(a.enabled))
-      :: ("kafkaVersion" -> toJSON(a.version.toString))
-      :: ("jmxEnabled" -> toJSON(a.jmxEnabled))
-      :: ("jmxUser" -> toJSON(a.jmxUser))
-      :: ("jmxPass" -> toJSON(a.jmxPass))
-      :: ("pollConsumers" -> toJSON(a.pollConsumers))
-      :: ("filterConsumers" -> toJSON(a.filterConsumers))
-      :: ("logkafkaEnabled" -> toJSON(a.logkafkaEnabled))
-      :: ("activeOffsetCacheEnabled" -> toJSON(a.activeOffsetCacheEnabled))
-      :: ("displaySizeEnabled" -> toJSON(a.displaySizeEnabled))
-      :: ("tuning" -> toJSON(a.tuning))
-      :: Nil)
-  }
-
   def serialize(config: ClusterConfig) : Array[Byte] = {
     val json = makeObj(("name" -> toJSON(config.name))
       :: ("curatorConfig" -> toJSON(config.curatorConfig))
@@ -255,9 +237,7 @@ case class ClusterTuning(brokerViewUpdatePeriodSeconds: Option[Int]
                         )
 object ClusterTuning {
   import scalaz.{Failure,Success}
-  import scalaz.syntax.applicative._
   import org.json4s._
-  import org.json4s.jackson.JsonMethods._
   import org.json4s.jackson.Serialization
   import org.json4s.scalaz.JsonScalaz._
   import scala.language.reflectiveCalls
@@ -327,23 +307,6 @@ object ClusterTuning {
 }
 
 case class ClusterContext(clusterFeatures: ClusterFeatures, config: ClusterConfig)
-
-object ClusterContext {
-  import org.json4s._
-  import org.json4s.jackson.Serialization
-  import org.json4s.scalaz.JsonScalaz._
-  import scala.language.reflectiveCalls
-
-  implicit val formats = Serialization.formats(FullTypeHints(List(classOf[ClusterContext])))
-
-  implicit def clusterContextJSONW: JSONW[ClusterContext] = new JSONW[ClusterContext] {
-    def write(a: ClusterContext) =
-      makeObj(("clusterFeatures" -> toJSON(a.clusterFeatures))
-        :: ("config" -> toJSON(a.config))
-        :: Nil)
-  }
-}
-
 case class ClusterConfig (name: String
                           , curatorConfig : CuratorConfig
                           , enabled: Boolean

@@ -292,25 +292,6 @@ object ActorModel {
 
     import org.json4s.jackson.JsonMethods._
     import org.json4s.scalaz.JsonScalaz._
-    import org.json4s.FullTypeHints
-    import org.json4s.jackson.Serialization
-
-    implicit val formats = Serialization.formats(FullTypeHints(List(classOf[TopicPartitionIdentity])))
-
-    implicit def topicPartitionIdentityJSONW: JSONW[TopicPartitionIdentity] = new JSONW[TopicPartitionIdentity] {
-      def write(tpi: TopicPartitionIdentity) =
-        makeObj(("partNum" -> toJSON(tpi.partNum))
-          :: ("leader" -> toJSON(tpi.leader))
-          :: ("latestOffset" -> toJSON(tpi.latestOffset))
-          :: ("rateOfChange" -> toJSON(tpi.rateOfChange))
-          :: ("isr" -> toJSON(tpi.isr.toList))
-          :: ("replicas" -> toJSON(tpi.replicas.toList))
-          :: ("isPreferredLeader" -> toJSON(tpi.isPreferredLeader))
-          :: ("isUnderReplicated" -> toJSON(tpi.isUnderReplicated))
-          :: ("leaderSize" -> toJSON(tpi.leaderSize))
-          :: ("size" -> toJSON(tpi.size))
-          :: Nil)
-    }
 
 import scala.language.reflectiveCalls
     import scalaz.syntax.applicative._
@@ -350,16 +331,6 @@ import scala.language.reflectiveCalls
 
   case class BrokerTopicPartitions(id: Int, partitions: IndexedSeq[Int], isSkewed: Boolean)
 
-  import org.json4s.scalaz.JsonScalaz._
-
-  implicit def brokerTopicPartitionsJSONW: JSONW[BrokerTopicPartitions] = new JSONW[BrokerTopicPartitions] {
-    def write(a: BrokerTopicPartitions) =
-      makeObj(("id" -> toJSON(a.id))
-        :: ("partitions" -> toJSON(a.partitions.toList))
-        :: ("isSkewed" -> toJSON(a.isSkewed))
-        :: Nil)
-  }
-  
   case class PartitionOffsetsCapture(updateTimeMillis: Long, offsetsMap: Map[Int, Long])
 
   object PartitionOffsetsCapture {
@@ -444,7 +415,6 @@ import scala.language.reflectiveCalls
 
 import scala.language.reflectiveCalls
 
-    
     implicit val formats = Serialization.formats(FullTypeHints(List(classOf[TopicIdentity])))
 
     implicit def topicIdentityJSONW: JSONW[TopicIdentity] = new JSONW[TopicIdentity] {
@@ -452,15 +422,15 @@ import scala.language.reflectiveCalls
         makeObj(("topic" -> toJSON(ti.topic))
           :: ("readVersion" -> toJSON(ti.readVersion))
           :: ("partitions" -> toJSON(ti.partitions))
-          :: ("partitionsIdentity" -> toJSON(ti.partitionsIdentity.values.toList.sortBy(_.partNum)))
+          :: ("partitionsIdentity" -> Extraction.decompose(ti.partitionsIdentity.values.toList.sortBy(_.partNum)))
           :: ("numBrokers" -> toJSON(ti.numBrokers))
           :: ("configReadVersion" -> toJSON(ti.configReadVersion))
           :: ("config" -> toJSON(ti.config))
-          :: ("clusterContext" -> toJSON(ti.clusterContext))
-          :: ("metrics" -> toJSON(ti.metrics))
+          :: ("clusterContext" -> Extraction.decompose(ti.clusterContext))
+          :: ("metrics" -> Extraction.decompose(ti.metrics))
           :: ("size" -> toJSON(ti.size))
           :: ("replicationFactor" -> toJSON(ti.replicationFactor))
-          :: ("partitionsByBroker" -> toJSON(ti.partitionsByBroker.toList))
+          :: ("partitionsByBroker" -> Extraction.decompose(ti.partitionsByBroker.toList))
           :: ("summedTopicOffsets" -> toJSON(ti.summedTopicOffsets))
           :: ("preferredReplicasPercentage" -> toJSON(ti.preferredReplicasPercentage))
           :: ("underReplicatedPercentage" -> toJSON(ti.underReplicatedPercentage))
@@ -688,9 +658,6 @@ import scala.language.reflectiveCalls
   }
 
   object BrokerMetrics {
-    import org.json4s._
-    import org.json4s.jackson.Serialization
-    import org.json4s.scalaz.JsonScalaz._
     import scala.language.reflectiveCalls
 
     val DEFAULT = BrokerMetrics(
@@ -702,19 +669,6 @@ import scala.language.reflectiveCalls
       MeterMetric(0, 0, 0, 0, 0),
       OSMetric(0D, 0D),
       SegmentsMetric(0L))
-
-    implicit def brokerMetricsJSONW: JSONW[BrokerMetrics] = new JSONW[BrokerMetrics] {
-      def write(a: BrokerMetrics) =
-        makeObj(("bytesInPerSec" -> toJSON(a.bytesInPerSec))
-          :: ("bytesOutPerSec" -> toJSON(a.bytesOutPerSec))
-          :: ("bytesRejectedPerSec" -> toJSON(a.bytesRejectedPerSec))
-          :: ("failedFetchRequestsPerSec" -> toJSON(a.failedFetchRequestsPerSec))
-          :: ("failedProduceRequestsPerSec" -> toJSON(a.failedProduceRequestsPerSec))
-          :: ("messagesInPerSec" -> toJSON(a.messagesInPerSec))
-          :: ("oSystemMetric" -> toJSON(a.oSystemMetrics))
-          :: ("size" -> toJSON(a.size))
-          :: Nil)
-    }
   }
 
   case class BrokerClusterStats(perMessages: BigDecimal, perIncoming: BigDecimal, perOutgoing: BigDecimal)
