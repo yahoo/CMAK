@@ -314,18 +314,6 @@ case class OSMetric(processCpuLoad: Double,
   }
 }
 
-object OSMetric {
-  import org.json4s.scalaz.JsonScalaz._
-  import scala.language.reflectiveCalls
-
-  implicit def OSMetricJSONW: JSONW[OSMetric] = new JSONW[OSMetric] {
-    def write(a: OSMetric) =
-      makeObj(("processCpuLoad" -> toJSON(a.processCpuLoad))
-        :: ("systemCpuLoad" -> toJSON(a.processCpuLoad))
-        :: Nil)
-  }
-}
-
 case class SegmentsMetric(bytes: Long) {
   def +(o: SegmentsMetric) : SegmentsMetric = {
     SegmentsMetric(o.bytes + bytes)
@@ -333,17 +321,6 @@ case class SegmentsMetric(bytes: Long) {
 
   def formatSize = {
     FormatMetric.sizeFormat(bytes)
-  }
-}
-
-object SegmentsMetric {
-  import org.json4s.scalaz.JsonScalaz._
-  import scala.language.reflectiveCalls
-
-  implicit def SegmentsMetricJSONW: JSONW[SegmentsMetric] = new JSONW[SegmentsMetric] {
-    def write(a: SegmentsMetric) =
-      makeObj(("bytes" -> toJSON(a.bytes))
-        :: Nil)
   }
 }
 
@@ -376,21 +353,6 @@ case class MeterMetric(count: Long,
       o.fiveMinuteRate + fiveMinuteRate, 
       o.oneMinuteRate + oneMinuteRate, 
       o.meanRate + meanRate)
-  }
-}
-
-object MeterMetric {
-  import org.json4s.scalaz.JsonScalaz._
-  import scala.language.reflectiveCalls
-
-  implicit def MeterMetricJSONW: JSONW[MeterMetric] = new JSONW[MeterMetric] {
-    def write(a: MeterMetric) =
-      makeObj(("features" -> toJSON(a.count))
-        :: ("fifteenMinuteRate" -> toJSON(a.fifteenMinuteRate))
-        :: ("fiveMinuteRate" -> toJSON(a.fiveMinuteRate))
-        :: ("oneMinuteRate" -> toJSON(a.oneMinuteRate))
-        :: ("meanRate" -> toJSON(a.meanRate))
-        :: Nil)
   }
 }
 
