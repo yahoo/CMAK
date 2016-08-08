@@ -48,7 +48,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     kafkaManager.getTopicListExtended(c).map { errorOrTopicListExtended =>
       errorOrTopicListExtended.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
-        topicListExtended => Ok(Serialization.writePretty("topicIdentities" -> topicListExtended.list.map {case (_, topicIdentity) => toJSON(topicIdentity)}))
+        topicListExtended => Ok(Serialization.writePretty("topicIdentities" -> topicListExtended.list.flatMap(_._2).map(toJSON(_))))
       )
     }
   }
