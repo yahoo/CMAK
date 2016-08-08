@@ -415,7 +415,7 @@ import scala.language.reflectiveCalls
 import scala.language.reflectiveCalls
 
     implicit val formats = Serialization.formats(FullTypeHints(List(classOf[TopicIdentity])))
-    // Adding a write method to transform/sort the partitionsIdentity to be more readable in JSON
+    // Adding a write method to transform/sort the partitionsIdentity to be more readable in JSON and include Topic Identity vals
     implicit def topicIdentityJSONW: JSONW[TopicIdentity] = new JSONW[TopicIdentity] {
       def write(ti: TopicIdentity) =
         makeObj(("topic" -> toJSON(ti.topic))
