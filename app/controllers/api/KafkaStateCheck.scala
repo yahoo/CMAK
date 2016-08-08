@@ -7,7 +7,6 @@ package controllers.api
 
 import controllers.KafkaManagerContext
 import features.ApplicationFeatures
-import kafka.manager.model.ActorModel.TopicIdentity
 import models.navigation.Menus
 import play.api.i18n.{ I18nSupport, MessagesApi }
 import play.api.libs.json._
@@ -48,11 +47,10 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
   def topicIdentities(c: String) = Action.async { implicit request =>
     implicit val formats = org.json4s.DefaultFormats
     import org.json4s.scalaz.JsonScalaz._
-
-    kafkaManager.getTopicListExtended(c).map { errorOrTopicList =>
-      errorOrTopicList.fold(
+    kafkaManager.getTopicListExtended(c).map { errorOrTopicListExtended =>
+      errorOrTopicListExtended.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
-        topicIdentityList => Ok(Serialization.writePretty("topicIdentities" -> topicIdentityList.list.map(tup => toJSON(tup._2))))
+        topicListExtended => Ok(Serialization.writePretty("topicIdentities" -> topicListExtended.list.map {case (_, topicIdentity) => toJSON(topicIdentity)}))
       )
     }
   }

@@ -20,7 +20,6 @@ import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success, Try}
 import scalaz.{NonEmptyList, Validation}
 
-
 /**
  * @author hiral
  */
@@ -416,7 +415,7 @@ import scala.language.reflectiveCalls
 import scala.language.reflectiveCalls
 
     implicit val formats = Serialization.formats(FullTypeHints(List(classOf[TopicIdentity])))
-
+    // Adding a write method to transform/sort the partitionsIdentity to be more readable in JSON
     implicit def topicIdentityJSONW: JSONW[TopicIdentity] = new JSONW[TopicIdentity] {
       def write(ti: TopicIdentity) =
         makeObj(("topic" -> toJSON(ti.topic))
@@ -430,7 +429,7 @@ import scala.language.reflectiveCalls
           :: ("metrics" -> Extraction.decompose(ti.metrics))
           :: ("size" -> toJSON(ti.size))
           :: ("replicationFactor" -> toJSON(ti.replicationFactor))
-          :: ("partitionsByBroker" -> Extraction.decompose(ti.partitionsByBroker.toList))
+          :: ("partitionsByBroker" -> Extraction.decompose(ti.partitionsByBroker))
           :: ("summedTopicOffsets" -> toJSON(ti.summedTopicOffsets))
           :: ("preferredReplicasPercentage" -> toJSON(ti.preferredReplicasPercentage))
           :: ("underReplicatedPercentage" -> toJSON(ti.underReplicatedPercentage))
@@ -658,8 +657,6 @@ import scala.language.reflectiveCalls
   }
 
   object BrokerMetrics {
-    import scala.language.reflectiveCalls
-
     val DEFAULT = BrokerMetrics(
       MeterMetric(0, 0, 0, 0, 0),
       MeterMetric(0, 0, 0, 0, 0),

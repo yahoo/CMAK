@@ -237,7 +237,9 @@ case class ClusterTuning(brokerViewUpdatePeriodSeconds: Option[Int]
                         )
 object ClusterTuning {
   import scalaz.{Failure,Success}
+  import scalaz.syntax.applicative._
   import org.json4s._
+  import org.json4s.jackson.JsonMethods._
   import org.json4s.jackson.Serialization
   import org.json4s.scalaz.JsonScalaz._
   import scala.language.reflectiveCalls

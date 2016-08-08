@@ -53,8 +53,6 @@ object ClusterFeature extends Logging {
 case class ClusterFeatures(features: Set[ClusterFeature])
 
 object ClusterFeatures {
-  import scala.language.reflectiveCalls
-
   val default = ClusterFeatures(Set())
   
   def from(clusterConfig: ClusterConfig) : ClusterFeatures = {
