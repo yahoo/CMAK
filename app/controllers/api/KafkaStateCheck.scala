@@ -14,6 +14,7 @@ import play.api.mvc._
 import scala.concurrent.Future
 import org.json4s.jackson.Serialization
 import org.json4s.jackson.JsonMethods._
+import org.json4s.scalaz.JsonScalaz.toJSON
 
 /**
  * @author jisookim0513
@@ -46,7 +47,6 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
 
   def topicIdentities(c: String) = Action.async { implicit request =>
     implicit val formats = org.json4s.DefaultFormats
-    import org.json4s.scalaz.JsonScalaz._
     kafkaManager.getTopicListExtended(c).map { errorOrTopicListExtended =>
       errorOrTopicListExtended.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
