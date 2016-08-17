@@ -18,9 +18,10 @@ package kafka.manager.utils.zero90
 
 import java.nio.ByteBuffer
 
-import kafka.common.{KafkaException, TopicAndPartition, OffsetAndMetadata}
+import kafka.common.{KafkaException, OffsetAndMetadata}
 import kafka.coordinator.{GroupMetadataKey, GroupTopicPartition, OffsetKey, BaseKey}
 import org.apache.kafka.clients.consumer.internals.ConsumerProtocol
+import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.protocol.types.Type._
 import org.apache.kafka.common.protocol.types.{ArrayOf, Field, Schema, Struct}
 
@@ -199,7 +200,7 @@ object GroupMetadataManager {
       val topic = key.get(OFFSET_KEY_TOPIC_FIELD).asInstanceOf[String]
       val partition = key.get(OFFSET_KEY_PARTITION_FIELD).asInstanceOf[Int]
 
-      OffsetKey(version, GroupTopicPartition(group, TopicAndPartition(topic, partition)))
+      OffsetKey(version, GroupTopicPartition(group, new TopicPartition(topic, partition)))
 
     } else if (version == CURRENT_GROUP_KEY_SCHEMA_VERSION) {
       // version 2 refers to offset
