@@ -12,13 +12,13 @@ import kafka.consumer._
 import kafka.manager.model.Kafka_0_8_2_0
 import kafka.manager.utils.AdminUtils
 import kafka.message.{NoCompressionCodec, DefaultCompressionCodec}
-import kafka.producer.{KeyedMessage, ProducerConfig, Producer}
 import kafka.serializer.DefaultDecoder
 import org.apache.curator.framework.imps.CuratorFrameworkState
 import org.apache.curator.framework.{CuratorFrameworkFactory, CuratorFramework}
 import org.apache.curator.retry.ExponentialBackoffRetry
 import org.apache.curator.test.TestingServer
 import org.apache.kafka.clients.consumer.{ConsumerRecords, KafkaConsumer}
+import org.apache.kafka.clients.producer.{ProducerConfig, KafkaProducer, ProducerRecord}
 
 import scala.util.Try
 
@@ -171,27 +171,23 @@ case class SimpleProducer(topic: String,
 
   props.put("compression.codec", codec.toString)
   props.put("producer.type", if(synchronously) "sync" else "async")
-  props.put("metadata.broker.list", brokerList)
+  props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerList)
+  props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer")
+  props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArraySerializer")
+
   props.put("batch.num.messages", batchSize.toString)
   props.put("message.send.max.retries", messageSendMaxRetries.toString)
   props.put("request.required.acks",requestRequiredAcks.toString)
   props.put("client.id",clientId.toString)
 
-  val producer = new Producer[AnyRef, AnyRef](new ProducerConfig(props))
+  val producer = new KafkaProducer[AnyRef, AnyRef](props)
 
-  def kafkaMesssage(message: Array[Byte], partition: Array[Byte]): KeyedMessage[AnyRef, AnyRef] = {
-    if (partition == null) {
-      new KeyedMessage(topic,message)
-    } else {
-      new KeyedMessage(topic,partition,message)
-    }
-  }
+  def send(message: String, partition: Integer): Unit = send(message.getBytes("UTF8"), partition)
 
-  def send(message: String, partition: String = null): Unit = send(message.getBytes("UTF8"), if (partition == null) null else partition.getBytes("UTF8"))
-
-  def send(message: Array[Byte], partition: Array[Byte]): Unit = {
+  def send(message: Array[Byte], partition: Integer): Unit = {
     try {
-      producer.send(kafkaMesssage(message, partition))
+      val future = producer.send(new ProducerRecord[AnyRef,AnyRef](topic, partition, null, message))
+      if(synchronously) future.get()
     } catch {
       case e: Exception =>
         e.printStackTrace

@@ -85,7 +85,7 @@ class TestKafkaManager extends CuratorAwareTest with BaseTest {
         var count = 0
         while(!hlShutdown.get()) {
           simpleProducer.foreach { p =>
-            p.send(s"simple message $count")
+            p.send(s"simple message $count", null)
             count+=1
             Thread.sleep(500)
           }
