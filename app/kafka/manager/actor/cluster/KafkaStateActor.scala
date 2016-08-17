@@ -295,7 +295,7 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
               lastUpdateTimeMillis = System.currentTimeMillis()
             } catch {
               case e: Exception =>
-                warn("Failed to process a message from offset topic!", e)
+                warn(s"Failed to process a message from offset topic on cluster ${clusterContext.config.name}!", e)
             }
           }
         } finally {
