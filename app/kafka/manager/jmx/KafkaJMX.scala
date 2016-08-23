@@ -8,7 +8,10 @@ package kafka.manager.jmx
 import java.io.File
 import java.{util => ju}
 import javax.management._
+import javax.management.remote.rmi.RMIConnectorServer
 import javax.management.remote.{JMXConnectorFactory, JMXServiceURL, JMXConnector}
+import javax.naming.Context
+import javax.rmi.ssl.SslRMIClientSocketFactory
 
 import com.yammer.metrics.reporting.JmxReporter.GaugeMBean
 import grizzled.slf4j.Logging
@@ -21,33 +24,37 @@ import scala.util.{Failure, Try}
 
 object KafkaJMX extends Logging {
   
-  private[this] val defaultJmxConnectorProperties : java.util.Map[String, _] = {
-    import scala.collection.JavaConverters._
-    Map(
-      "jmx.remote.x.request.waiting.timeout" -> "3000",
-      "jmx.remote.x.notification.fetch.timeout" -> "3000",
-      "sun.rmi.transport.connectionTimeout" -> "3000",
-      "sun.rmi.transport.tcp.handshakeTimeout" -> "3000",
-      "sun.rmi.transport.tcp.responseTimeout" -> "3000"
-    ).asJava
-  }
+  private[this] val defaultJmxConnectorProperties = Map[String, Any] (
+    "jmx.remote.x.request.waiting.timeout" -> "3000",
+    "jmx.remote.x.notification.fetch.timeout" -> "3000",
+    "sun.rmi.transport.connectionTimeout" -> "3000",
+    "sun.rmi.transport.tcp.handshakeTimeout" -> "3000",
+    "sun.rmi.transport.tcp.responseTimeout" -> "3000"
+  )
 
-  def doWithConnection[T](jmxHost: String, jmxPort: Int, jmxUser: Option[String], jmxPass: Option[String])(fn: MBeanServerConnection => T) : Try[T] = {
+  def doWithConnection[T](jmxHost: String, jmxPort: Int, jmxUser: Option[String], jmxPass: Option[String], jmxSsl: Boolean)(fn: MBeanServerConnection => T) : Try[T] = {
     val urlString = s"service:jmx:rmi:///jndi/rmi://$jmxHost:$jmxPort/jmxrmi"
     val url = new JMXServiceURL(urlString)
     try {
       require(jmxPort > 0, "No jmx port but jmx polling enabled!")
-      val jmxConnectorProperties : java.util.Map[String, _] = {
-        val withCreds: Option[java.util.Map[String, _]] = for {
-          user <- jmxUser
-          pass <- jmxPass
-        } yield {
-          val creds: Array[String] = Array(user, pass)
-          (defaultJmxConnectorProperties.asScala ++ Map(JMXConnector.CREDENTIALS -> creds)).asJava
-        }
-        withCreds.getOrElse(defaultJmxConnectorProperties)
+      val credsProps: Option[Map[String, _]] = for {
+        user <- jmxUser
+        pass <- jmxPass
+      } yield {
+        Map(JMXConnector.CREDENTIALS -> Array(user, pass))
       }
-      val jmxc = JMXConnectorFactory.connect(url, jmxConnectorProperties)
+      val sslProps: Option[Map[String, _]] = if (jmxSsl) {
+        val clientSocketFactory = new SslRMIClientSocketFactory()
+        Some(Map(
+          Context.SECURITY_PROTOCOL -> "ssl",
+          RMIConnectorServer.RMI_CLIENT_SOCKET_FACTORY_ATTRIBUTE -> clientSocketFactory,
+          "com.sun.jndi.rmi.factory.socket" -> clientSocketFactory
+        ))
+      } else {
+        None
+      }
+      val jmxConnectorProperties = List(credsProps, sslProps).flatten.foldRight(defaultJmxConnectorProperties)(_ ++ _)
+      val jmxc = JMXConnectorFactory.connect(url, jmxConnectorProperties.asJava)
       try {
         Try {
           fn(jmxc.getMBeanServerConnection)
