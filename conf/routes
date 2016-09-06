@@ -27,8 +27,8 @@ GET         /clusters/:c/assignment/confirm               controllers.ReassignPa
 POST        /clusters/:c/assignment/generate              controllers.ReassignPartitions.handleGenerateAssignment(c:String,t:String)
 GET         /clusters/:c/assignments/confirm              controllers.ReassignPartitions.confirmMultipleAssignments(c:String)
 POST        /clusters/:c/assignments/generate             controllers.ReassignPartitions.handleGenerateMultipleAssignments(c:String)
-#GET         /clusters/:c/assignments/manual               controllers.ReassignPartitions.manualMultipleAssignments(c:String)
-#POST        /clusters/:c/assignments/manual               controllers.ReassignPartitions.handleManualAssignment(c:String)
+#GET        /clusters/:c/assignments/manual               controllers.ReassignPartitions.manualMultipleAssignments(c:String)
+#POST       /clusters/:c/assignments/manual               controllers.ReassignPartitions.handleManualAssignment(c:String)
 GET         /clusters/:c/assignments/run                  controllers.ReassignPartitions.runMultipleAssignments(c:String)
 POST        /clusters/:c/assignments/run                  controllers.ReassignPartitions.handleRunMultipleAssignments(c:String)
 GET         /addCluster                                   controllers.Cluster.addCluster
