@@ -59,8 +59,8 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     }
   }
 
-  def topicSummaryAction(cluster: String, consumer: String, topic: String) = Action.async { implicit request =>
-    getTopicSummary(cluster, consumer, topic).map { errorOrTopicSummary =>
+  def topicSummaryAction(cluster: String, consumer: String, topic: String, consumerType: String) = Action.async { implicit request =>
+    getTopicSummary(cluster, consumer, topic, consumerType).map { errorOrTopicSummary =>
       errorOrTopicSummary.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
         topicSummary => {
@@ -69,8 +69,8 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     }
   }
 
-  def getTopicSummary(cluster: String, consumer: String, topic: String) = {
-    kafkaManager.getConsumedTopicState(cluster, consumer, topic).map { errorOrTopicSummary =>
+  def getTopicSummary(cluster: String, consumer: String, topic: String, consumerType: String) = {
+    kafkaManager.getConsumedTopicState(cluster, consumer, topic, consumerType).map { errorOrTopicSummary =>
       errorOrTopicSummary.map(
         topicSummary => {
           Json.obj("totalLag" -> topicSummary.totalLag, "percentageCovered" -> topicSummary.percentageCovered)
@@ -78,20 +78,20 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     }
   }
 
-  def groupSummaryAction(cluster: String, consumer: String) = Action.async { implicit request =>
-    kafkaManager.getConsumerIdentity(cluster, consumer).flatMap { errorOrConsumedTopicSummary =>
+  def groupSummaryAction(cluster: String, consumer: String, consumerType: String) = Action.async { implicit request =>
+    kafkaManager.getConsumerIdentity(cluster, consumer, consumerType).flatMap { errorOrConsumedTopicSummary =>
       errorOrConsumedTopicSummary.fold(
         error =>
           Future.successful(BadRequest(Json.obj("msg" -> error.msg))),
-        consumedTopicSummary => getGroupSummary(cluster, consumer, consumedTopicSummary.topicMap.keys).map { topics =>
+        consumedTopicSummary => getGroupSummary(cluster, consumer, consumedTopicSummary.topicMap.keys, consumerType).map { topics =>
           Ok(JsObject(topics))
         })
     }
   }
 
-  def getGroupSummary(cluster: String, consumer: String, groups: Iterable[String]): Future[Map[String, JsObject]] = {
+  def getGroupSummary(cluster: String, consumer: String, groups: Iterable[String], consumerType: String): Future[Map[String, JsObject]] = {
     val cosumdTopicSummary: List[Future[(String, JsObject)]] = groups.toList.map { group =>
-      getTopicSummary(cluster, consumer, group)
+      getTopicSummary(cluster, consumer, group, consumerType)
         .map(topicSummary => group -> topicSummary.getOrElse(Json.obj()))
     }
     Future.sequence(cosumdTopicSummary).map(_.toMap)

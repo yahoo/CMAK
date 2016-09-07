@@ -148,7 +148,7 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
   }
 
   test("topic summary") {
-    val future = kafkaStateCheck.get.topicSummaryAction(testClusterName, "null", testTopicName).apply(FakeRequest())
+    val future = kafkaStateCheck.get.topicSummaryAction(testClusterName, "null", testTopicName, "KF").apply(FakeRequest())
     assert(status(future) === OK)
     val json = Json.parse(contentAsJson(future).toString())
     (json \ "totalLag").asOpt[Int] should not be empty
@@ -156,13 +156,13 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
   }
   
   test("get unavailable topic summary") {
-    val future = kafkaStateCheck.get.topicSummaryAction("non-existent", "null", "weird").apply(FakeRequest())
+    val future = kafkaStateCheck.get.topicSummaryAction("non-existent", "null", "weird", "KF").apply(FakeRequest())
     assert(status(future) === BAD_REQUEST)
 
   }
 
   test("get unavailable group summary") {
-    val future = kafkaStateCheck.get.groupSummaryAction("non-existent", "weird").apply(FakeRequest())
+    val future = kafkaStateCheck.get.groupSummaryAction("non-existent", "weird", "KF").apply(FakeRequest())
     assert(status(future) === BAD_REQUEST)
   }
 }
