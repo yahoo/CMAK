@@ -34,6 +34,7 @@
         @b3.checkbox(form("jmxEnabled"), '_text -> "Enable JMX Polling (Set JMX_PORT env variable before starting kafka server)")
         @b3.text(form("jmxUser"), '_label -> "JMX Auth Username")
         @b3.text(form("jmxPass"), '_label -> "JMX Auth Password")
+        @b3.checkbox(form("jmxSsl"), '_text -> "JMX with SSL")
         @b3.checkbox(form("pollConsumers"), '_text -> "Poll consumer information (Not recommended for large # of consumers)")
         @b3.checkbox(form("filterConsumers"), '_text -> "Filter out inactive consumers")
         @b3.checkbox(form("logkafkaEnabled"), '_text -> "Enable Logkafka")

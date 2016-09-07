@@ -29,7 +29,7 @@ class TestReassignPartitions extends CuratorAwareTest with BaseTest {
 
   private[this] val brokerList = Set(1,2,3)
 
-  private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, tuning = Option(defaultTuning))
+  private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning))
   private[this] val defaultClusterContext = ClusterContext(ClusterFeatures.from(defaultClusterConfig), defaultClusterConfig)
 
   private[this] def mytopic1 : TopicIdentity = getTopicIdentity("mytopic1")

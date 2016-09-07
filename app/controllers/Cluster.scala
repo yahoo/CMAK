@@ -76,6 +76,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
       , "jmxEnabled" -> boolean
       , "jmxUser" -> optional(text)
       , "jmxPass" -> optional(text)
+      , "jmxSsl" -> boolean
       , "pollConsumers" -> boolean
       , "filterConsumers" -> boolean
       , "logkafkaEnabled" -> boolean
@@ -113,6 +114,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
       "jmxEnabled" -> boolean,
       "jmxUser" -> optional(text),
       "jmxPass" -> optional(text),
+      "jmxSsl" -> boolean,
       "pollConsumers" -> boolean,
       "filterConsumers" -> boolean,
       "logkafkaEnabled" -> boolean,
@@ -149,6 +151,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
       ,false
       ,None
       ,None
+      ,false
       ,false
       ,false
       ,false
@@ -195,6 +198,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
             cc.jmxEnabled,
             cc.jmxUser,
             cc.jmxPass,
+            cc.jmxSsl,
             cc.pollConsumers,
             cc.filterConsumers,
             cc.logkafkaEnabled,
@@ -219,6 +223,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
             clusterConfig.jmxEnabled,
             clusterConfig.jmxUser,
             clusterConfig.jmxPass,
+            clusterConfig.jmxSsl,
             clusterConfig.pollConsumers,
             clusterConfig.filterConsumers,
             clusterConfig.tuning,
@@ -286,6 +291,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
               clusterOperation.clusterConfig.jmxEnabled,
               clusterOperation.clusterConfig.jmxUser,
               clusterOperation.clusterConfig.jmxPass,
+              clusterOperation.clusterConfig.jmxSsl,
               clusterOperation.clusterConfig.pollConsumers,
               clusterOperation.clusterConfig.filterConsumers,
               clusterOperation.clusterConfig.tuning,
