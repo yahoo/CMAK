@@ -5,38 +5,38 @@
 
 package controller.api
 
-import com.typesafe.config.{ConfigFactory, Config}
+import com.typesafe.config.{ ConfigFactory, Config }
 import controllers.KafkaManagerContext
 import controllers.api.KafkaStateCheck
 import features.ApplicationFeatures
-import kafka.manager.utils.{CuratorAwareTest, KafkaServerInTest}
+import kafka.manager.utils.{ CuratorAwareTest, KafkaServerInTest }
 import kafka.test.SeededBroker
 import models.navigation.Menus
 import org.scalatest.mock.MockitoSugar
 import play.api.i18n.MessagesApi
-import play.api.{Configuration, Play}
+import play.api.{ Configuration, Play }
 import play.api.inject.ApplicationLifecycle
 import play.api.libs.json.Json
 import play.api.test.Helpers._
-import play.api.test.{FakeApplication, FakeRequest}
-import play.mvc.Http.Status.{BAD_REQUEST, OK}
+import play.api.test.{ FakeApplication, FakeRequest }
+import play.mvc.Http.Status.{ BAD_REQUEST, OK }
 
+import org.scalatest.Matchers._
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Try
 
-
 class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with MockitoSugar {
-  private[this] val broker = new SeededBroker("controller-api-test",4)
+  private[this] val broker = new SeededBroker("controller-api-test", 4)
   override val kafkaServerZkPath = broker.getZookeeperConnectionString
-  private[this] val duration = FiniteDuration(10,SECONDS)
+  private[this] val duration = FiniteDuration(10, SECONDS)
 
   private[this] val testClusterName = "kafka-sc-test-cluster"
   private[this] val testTopicName = "kafka-sc-test-topic"
-  private[this] var kafkaManagerContext : Option[KafkaManagerContext] = None
-  private[this] var kafkaStateCheck : Option[KafkaStateCheck] = None
+  private[this] var kafkaManagerContext: Option[KafkaManagerContext] = None
+  private[this] var kafkaStateCheck: Option[KafkaStateCheck] = None
 
-  override protected def beforeAll() : Unit = {
+  override protected def beforeAll(): Unit = {
     super.beforeAll()
     //lazy val app : FakeApplication = {
     //  FakeApplication(additionalConfiguration = Map("kafka-manager.zkhosts" -> kafkaServerZkPath))
@@ -82,14 +82,14 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
   }
 
   private[this] def createTopic() = {
-    val future = kafkaManagerContext.get.getKafkaManager.createTopic(testClusterName,testTopicName,4,1)
-    val result = Await.result(future,duration)
+    val future = kafkaManagerContext.get.getKafkaManager.createTopic(testClusterName, testTopicName, 4, 1)
+    val result = Await.result(future, duration)
     result.toEither.left.foreach(apiError => sys.error(apiError.msg))
   }
 
   private[this] def deleteTopic() = {
-    val future = kafkaManagerContext.get.getKafkaManager.deleteTopic(testClusterName,testTopicName)
-    val result = Await.result(future,duration)
+    val future = kafkaManagerContext.get.getKafkaManager.deleteTopic(testClusterName, testTopicName)
+    val result = Await.result(future, duration)
   }
 
   private[this] def disableCluster() = {
@@ -99,7 +99,7 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
   }
   private[this] def deleteCluster() = {
     val future = kafkaManagerContext.get.getKafkaManager.deleteCluster(testClusterName)
-    Await.result(future,duration)
+    Await.result(future, duration)
     Thread.sleep(3000)
   }
 
@@ -144,6 +144,25 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
 
   test("get unavailable partitions of non-existing topic in non-existing cluster") {
     val future = kafkaStateCheck.get.unavailablePartitions("non-existent", "weird").apply(FakeRequest())
+    assert(status(future) === BAD_REQUEST)
+  }
+
+  test("topic summary") {
+    val future = kafkaStateCheck.get.topicSummaryAction(testClusterName, "null", testTopicName, "KF").apply(FakeRequest())
+    assert(status(future) === OK)
+    val json = Json.parse(contentAsJson(future).toString())
+    (json \ "totalLag").asOpt[Int] should not be empty
+    (json \ "percentageCovered").asOpt[Int] should not be empty
+  }
+  
+  test("get unavailable topic summary") {
+    val future = kafkaStateCheck.get.topicSummaryAction("non-existent", "null", "weird", "KF").apply(FakeRequest())
+    assert(status(future) === BAD_REQUEST)
+
+  }
+
+  test("get unavailable group summary") {
+    val future = kafkaStateCheck.get.groupSummaryAction("non-existent", "weird", "KF").apply(FakeRequest())
     assert(status(future) === BAD_REQUEST)
   }
 }
