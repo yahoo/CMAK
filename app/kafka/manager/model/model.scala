@@ -187,7 +187,7 @@ object ClusterConfig {
           val jmxEnabled = fieldExtended[Boolean]("jmxEnabled")(json)
           val jmxUser = fieldExtended[Option[String]]("jmxUser")(json)
           val jmxPass = fieldExtended[Option[String]]("jmxPass")(json)
-          val jmxSsl = field[Boolean]("jmxSsl")(json)
+          val jmxSsl = fieldExtended[Boolean]("jmxSsl")(json)
           val pollConsumers = fieldExtended[Boolean]("pollConsumers")(json)
           val filterConsumers = fieldExtended[Boolean]("filterConsumers")(json)
           val logkafkaEnabled = fieldExtended[Boolean]("logkafkaEnabled")(json)
