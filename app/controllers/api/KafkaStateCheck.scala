@@ -12,6 +12,8 @@ import play.api.i18n.{ I18nSupport, MessagesApi }
 import play.api.libs.json._
 import play.api.mvc._
 import scala.concurrent.Future
+import org.json4s.jackson.Serialization
+import org.json4s.scalaz.JsonScalaz.toJSON
 
 /**
  * @author jisookim0513
@@ -38,6 +40,26 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
       errorOrTopicList.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
         topicList => Ok(Json.obj("topics" -> topicList.list.sorted))
+      )
+    }
+  }
+
+  def topicIdentities(c: String) = Action.async { implicit request =>
+    implicit val formats = org.json4s.DefaultFormats
+    kafkaManager.getTopicListExtended(c).map { errorOrTopicListExtended =>
+      errorOrTopicListExtended.fold(
+        error => BadRequest(Json.obj("msg" -> error.msg)),
+        topicListExtended => Ok(Serialization.writePretty("topicIdentities" -> topicListExtended.list.flatMap(_._2).map(toJSON(_))))
+      )
+    }
+  }
+
+  def clusters = Action.async { implicit request =>
+    implicit val formats = org.json4s.DefaultFormats
+    kafkaManager.getClusterList.map { errorOrClusterList =>
+      errorOrClusterList.fold(
+        error => BadRequest(Json.obj("msg" -> error.msg)),
+        clusterList => Ok(Serialization.writePretty("clusters" -> errorOrClusterList.toOption))
       )
     }
   }
