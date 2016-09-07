@@ -16,7 +16,7 @@ import org.scalatest.mock.MockitoSugar
 import play.api.i18n.MessagesApi
 import play.api.{ Configuration, Play }
 import play.api.inject.ApplicationLifecycle
-import play.api.libs.json.Json
+import play.api.libs.json.{JsDefined, Json}
 import play.api.test.Helpers._
 import play.api.test.{ FakeApplication, FakeRequest }
 import play.mvc.Http.Status.{ BAD_REQUEST, OK }
@@ -164,5 +164,21 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
   test("get unavailable group summary") {
     val future = kafkaStateCheck.get.groupSummaryAction("non-existent", "weird", "KF").apply(FakeRequest())
     assert(status(future) === BAD_REQUEST)
+  }
+
+  test("get clusters") {
+    val future = kafkaStateCheck.get.clusters.apply(FakeRequest())
+    assert(status(future) === OK)
+    val json = Json.parse(contentAsJson(future).toString())
+    println(Json.prettyPrint(json))
+    assert((json \ "clusters").isInstanceOf[JsDefined])
+  }
+
+  test("get topic identities") {
+    val future = kafkaStateCheck.get.topicIdentities(testClusterName).apply(FakeRequest())
+    assert(status(future) === OK)
+    val json = Json.parse(contentAsJson(future).toString())
+    println(Json.prettyPrint(json))
+    assert((json \ "topicIdentities").isInstanceOf[JsDefined])
   }
 }
