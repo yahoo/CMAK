@@ -67,7 +67,7 @@ class TestClusterConfig extends FunSuite with Matchers {
   test("deserialize without version and jmxEnabled") {
     val cc = ClusterConfig("qa","0.8.2.0","localhost:2181", jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = None)
     val serialize: String = ClusterConfig.serialize(cc)
-    val noverison = serialize.replace(""","kafkaVersion":"0.8.2.0"""","").replace(""""jmxEnabled":false""","").replace(""""jmxSsl":false""","")
+    val noverison = serialize.replace(""","kafkaVersion":"0.8.2.0"""","").replace(""","jmxEnabled":false""","").replace(""","jmxSsl":false""","")
     assert(!noverison.contains("kafkaVersion"))
     assert(!noverison.contains("jmxEnabled"))
     assert(!noverison.contains("jmxSsl"))
