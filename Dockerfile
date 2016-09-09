@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM java:7
+FROM java:8
 
 ENV app /kafka-manager
 WORKDIR ${app}
