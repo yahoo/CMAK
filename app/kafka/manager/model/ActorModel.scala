@@ -329,7 +329,7 @@ import scala.language.reflectiveCalls
   }
 
   case class BrokerTopicPartitions(id: Int, partitions: IndexedSeq[Int], isSkewed: Boolean)
-  
+
   case class PartitionOffsetsCapture(updateTimeMillis: Long, offsetsMap: Map[Int, Long])
 
   object PartitionOffsetsCapture {
@@ -409,9 +409,37 @@ import scala.language.reflectiveCalls
 
     import org.json4s.jackson.JsonMethods._
     import org.json4s.scalaz.JsonScalaz._
+    import org.json4s._
+    import org.json4s.jackson.Serialization
 
 import scala.language.reflectiveCalls
-    
+
+    implicit val formats = Serialization.formats(FullTypeHints(List(classOf[TopicIdentity])))
+    // Adding a write method to transform/sort the partitionsIdentity to be more readable in JSON and include Topic Identity vals
+    implicit def topicIdentityJSONW: JSONW[TopicIdentity] = new JSONW[TopicIdentity] {
+      def write(ti: TopicIdentity) =
+        makeObj(("topic" -> toJSON(ti.topic))
+          :: ("readVersion" -> toJSON(ti.readVersion))
+          :: ("partitions" -> toJSON(ti.partitions))
+          :: ("partitionsIdentity" -> Extraction.decompose(ti.partitionsIdentity.values.toList.sortBy(_.partNum)))
+          :: ("numBrokers" -> toJSON(ti.numBrokers))
+          :: ("configReadVersion" -> toJSON(ti.configReadVersion))
+          :: ("config" -> toJSON(ti.config))
+          :: ("clusterContext" -> Extraction.decompose(ti.clusterContext))
+          :: ("metrics" -> Extraction.decompose(ti.metrics))
+          :: ("size" -> toJSON(ti.size))
+          :: ("replicationFactor" -> toJSON(ti.replicationFactor))
+          :: ("partitionsByBroker" -> Extraction.decompose(ti.partitionsByBroker))
+          :: ("summedTopicOffsets" -> toJSON(ti.summedTopicOffsets))
+          :: ("preferredReplicasPercentage" -> toJSON(ti.preferredReplicasPercentage))
+          :: ("underReplicatedPercentage" -> toJSON(ti.underReplicatedPercentage))
+          :: ("topicBrokers" -> toJSON(ti.topicBrokers))
+          :: ("brokersSkewPercentage" -> toJSON(ti.brokersSkewPercentage))
+          :: ("brokersSpreadPercentage" -> toJSON(ti.brokersSpreadPercentage))
+          :: ("producerRate" -> toJSON(ti.producerRate))
+          :: Nil)
+    }
+
     private[this] def getPartitionReplicaMap(td: TopicDescription) : Map[String, List[Int]] = {
       // Get the topic description information
       val descJson = parse(td.description._2)
@@ -551,7 +579,7 @@ import scala.language.reflectiveCalls
     // Percentage of the partitions that have an owner
     def percentageCovered : Int =
     if (numPartitions != 0) {
-      val numCovered = partitionOwners.size
+      val numCovered = partitionOwners.count(_._2.nonEmpty)
       100 * numCovered / numPartitions
     } else {
       100 // if there are no partitions to cover, they are all covered!
