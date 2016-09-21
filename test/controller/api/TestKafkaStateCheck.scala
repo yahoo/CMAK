@@ -153,6 +153,9 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
     val json = Json.parse(contentAsJson(future).toString())
     (json \ "totalLag").asOpt[Int] should not be empty
     (json \ "percentageCovered").asOpt[Int] should not be empty
+    (json \ "partitionOffsets").asOpt[Seq[Long]] should not be empty
+    (json \ "partitionLatestOffsets").asOpt[Seq[Long]] should not be empty
+    (json \ "owners").asOpt[Seq[String]] should not be empty
   }
   
   test("get unavailable topic summary") {
