@@ -95,7 +95,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     kafkaManager.getConsumedTopicState(cluster, consumer, topic, consumerType).map { errorOrTopicSummary =>
       errorOrTopicSummary.map(
         topicSummary => {
-          Json.obj("totalLag" -> topicSummary.totalLag, "percentageCovered" -> topicSummary.percentageCovered)
+          Json.obj("totalLag" -> topicSummary.totalLag, "percentageCovered" -> topicSummary.percentageCovered, "partitionOffsets" -> topicSummary.partitionOffsets.map {case (pnum, offset) => offset}, "partitionLatestOffsets" -> topicSummary.partitionLatestOffsets.map {case (pnum, latestOffset) => latestOffset}, "owners" -> topicSummary.partitionOwners.map {case (pnum, owner) => owner}   )
         })
     }
   }
