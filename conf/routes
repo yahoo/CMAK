@@ -60,6 +60,7 @@ GET    /api/status/:c/:t/underReplicatedPartitions          controllers.api.Kafk
 GET    /api/status/:c/:t/unavailablePartitions              controllers.api.KafkaStateCheck.unavailablePartitions(c:String,t:String)
 GET    /api/status/:cluster/:consumer/:topic/topicSummary   controllers.api.KafkaStateCheck.topicSummaryAction(cluster:String, consumer:String, topic:String, consumerType:String)
 GET    /api/status/:cluster/:consumer/groupSummary          controllers.api.KafkaStateCheck.groupSummaryAction(cluster:String, consumer:String, consumerType:String)
+GET    /api/status/:cluster/consumersSummary                controllers.api.KafkaStateCheck.consumersSummaryAction(cluster:String)
 
 # Versioned Assets
 GET    /vassets/*file                                       controllers.Assets.versioned(path="/public", file: Asset)
