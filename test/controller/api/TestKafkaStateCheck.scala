@@ -184,4 +184,12 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
     println(Json.prettyPrint(json))
     assert((json \ "topicIdentities").isInstanceOf[JsDefined])
   }
+
+  test("consumers summary") {
+    val future = kafkaStateCheck.get.consumersSummaryAction(testClusterName).apply(FakeRequest())
+    assert(status(future) === OK)
+    val json = Json.parse(contentAsJson(future).toString())
+    (json \ "consumers").asOpt[Seq[Map[String, String]]] should not be empty
+  }
+ 
 }
