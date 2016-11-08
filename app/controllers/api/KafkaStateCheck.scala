@@ -95,7 +95,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     kafkaManager.getConsumedTopicState(cluster, consumer, topic, consumerType).map { errorOrTopicSummary =>
       errorOrTopicSummary.map(
         topicSummary => {
-          Json.obj("totalLag" -> topicSummary.totalLag, "percentageCovered" -> topicSummary.percentageCovered)
+          Json.obj("totalLag" -> topicSummary.totalLag, "percentageCovered" -> topicSummary.percentageCovered, "partitionOffsets" -> topicSummary.partitionOffsets.map {case (pnum, offset) => offset}, "partitionLatestOffsets" -> topicSummary.partitionLatestOffsets.map {case (pnum, latestOffset) => latestOffset}, "owners" -> topicSummary.partitionOwners.map {case (pnum, owner) => owner}   )
         })
     }
   }
@@ -118,4 +118,15 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     }
     Future.sequence(cosumdTopicSummary).map(_.toMap)
   }
+  
+  def consumersSummaryAction(cluster: String) = Action.async { implicit request =>
+    implicit val formats = org.json4s.DefaultFormats
+    kafkaManager.getConsumerListExtended(cluster).map { errorOrConsumersSummary =>
+      errorOrConsumersSummary.fold(
+        error => BadRequest(Json.obj("msg" -> error.msg)),
+        consumersSummary => Ok(Serialization.writePretty("consumers" -> consumersSummary.list.map{case ((consumer, consumerType), consumerIdentity) => Map("name" -> consumer, "type" -> consumerType.toString, "topics" -> consumerIdentity.map(_.topicMap.keys))}))
+        )
+    }
+  }
+
 }

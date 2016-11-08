@@ -153,6 +153,9 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
     val json = Json.parse(contentAsJson(future).toString())
     (json \ "totalLag").asOpt[Int] should not be empty
     (json \ "percentageCovered").asOpt[Int] should not be empty
+    (json \ "partitionOffsets").asOpt[Seq[Long]] should not be empty
+    (json \ "partitionLatestOffsets").asOpt[Seq[Long]] should not be empty
+    (json \ "owners").asOpt[Seq[String]] should not be empty
   }
   
   test("get unavailable topic summary") {
@@ -181,4 +184,12 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
     println(Json.prettyPrint(json))
     assert((json \ "topicIdentities").isInstanceOf[JsDefined])
   }
+
+  test("consumers summary") {
+    val future = kafkaStateCheck.get.consumersSummaryAction(testClusterName).apply(FakeRequest())
+    assert(status(future) === OK)
+    val json = Json.parse(contentAsJson(future).toString())
+    (json \ "consumers").asOpt[Seq[Map[String, String]]] should not be empty
+  }
+ 
 }

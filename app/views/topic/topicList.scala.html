@@ -12,11 +12,24 @@
 }
 
 @topicScripts = {
-    <script ype="text/javascript">
-    $(document).ready(function() {
-        $('#topics-table').DataTable();
-    } );
-    </script>
+    @if(errorOrTopics.fold(err=>false,tl=>tl.list.headOption.map(opt => opt._2.map(ti => ti.clusterContext.config.displaySizeEnabled).getOrElse(false)).getOrElse(false))){
+        <script src="https://cdn.datatables.net/plug-ins/1.10.10/sorting/file-size.js"></script>
+        <script ype="text/javascript">
+        $(document).ready(function() {
+            $('#topics-table').DataTable( {
+                columnDefs: [
+                    { type: 'file-size', targets: 7 }
+                ]
+            } );
+        } );
+        </script>
+    } else {
+        <script ype="text/javascript">
+        $(document).ready(function() {
+            $('#topics-table').DataTable();
+        } );
+        </script>
+    }
 }
 
 @main(
