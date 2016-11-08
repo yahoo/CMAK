@@ -70,3 +70,6 @@ GET    /assets/*file                                        controllers.Assets.a
 
 # WebJars
 GET    /webjars/*file                                       controllers.WebJarAssets.at(file)
+
+# Ping / Health Check
+GET    /api/health                                          controllers.ApiHealth.ping
