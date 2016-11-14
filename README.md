@@ -165,6 +165,27 @@ If you'd like to create a Debian or RPM package instead, you can run one of:
 
     sbt rpm:packageBin
 
+Docker
+------
+
+Run docker image with:
+
+    docker run -d --name kafka-manager -e ZK_HOSTS=zk1:2181 -p 9000 kafka-manager:latest
+
+To use SSL with kafka-manager use the consumer.properties file:
+
+    # consumer.properties
+    security.protocol=SSL
+    ssl.truststore.location=/etc/kafka/manager.truststore.jks
+    ssl.truststore.password=truststorepassword
+    ssl.keystore.location=/etc/kafka/manager.keystore.jks
+    ssl.keystore.password=keystorepassword
+    ssl.key.password=keypassword
+
+And then run container with:
+
+    docker run -d --name kafka-manager -v /path/to/consumer.properties:/app/consumer.properties -v /path/to/kafka-manager-certs:/etc/kafka -e CONSUMER_PROPERTIES_FILE=/app/consumer.properties -e ZK_HOSTS=zk1:2181 -p 9000 kafka-manager:latest
+
 Credits
 -------
 
