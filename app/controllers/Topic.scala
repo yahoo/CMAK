@@ -54,6 +54,7 @@ class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManager
   val kafka_0_9_0_1_Default = CreateTopic("",1,1,TopicConfigs.configNames(Kafka_0_9_0_1).map(n => TConfig(n,None)).toList)
   val kafka_0_10_0_0_Default = CreateTopic("",1,1,TopicConfigs.configNames(Kafka_0_10_0_0).map(n => TConfig(n,None)).toList)
   val kafka_0_10_0_1_Default = CreateTopic("",1,1,TopicConfigs.configNames(Kafka_0_10_0_1).map(n => TConfig(n,None)).toList)
+  val kafka_0_10_1_0_Default = CreateTopic("",1,1,TopicConfigs.configNames(Kafka_0_10_1_0).map(n => TConfig(n,None)).toList)
 
   val defaultCreateForm = Form(
     mapping(
@@ -140,6 +141,7 @@ class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManager
           case Kafka_0_9_0_1 => (defaultCreateForm.fill(kafka_0_9_0_1_Default), clusterContext)
           case Kafka_0_10_0_0 => (defaultCreateForm.fill(kafka_0_10_0_0_Default), clusterContext)
           case Kafka_0_10_0_1 => (defaultCreateForm.fill(kafka_0_10_0_1_Default), clusterContext)
+          case Kafka_0_10_1_0 => (defaultCreateForm.fill(kafka_0_10_1_0_Default), clusterContext)
         }
       }
     }
@@ -376,6 +378,7 @@ class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManager
           case Kafka_0_9_0_1 => TopicConfigs.configNames(Kafka_0_9_0_1).map(n => (n,TConfig(n,None))).toMap
           case Kafka_0_10_0_0 => TopicConfigs.configNames(Kafka_0_10_0_0).map(n => (n,TConfig(n,None))).toMap
           case Kafka_0_10_0_1 => TopicConfigs.configNames(Kafka_0_10_0_1).map(n => (n,TConfig(n,None))).toMap
+          case Kafka_0_10_1_0 => TopicConfigs.configNames(Kafka_0_10_1_0).map(n => (n,TConfig(n,None))).toMap
         }
         val combinedMap = defaultConfigMap ++ ti.config.toMap.map(tpl => tpl._1 -> TConfig(tpl._1,Option(tpl._2)))
         (defaultUpdateConfigForm.fill(UpdateTopicConfig(ti.topic,combinedMap.toList.map(_._2),ti.configReadVersion)),
