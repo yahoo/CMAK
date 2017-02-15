@@ -85,5 +85,6 @@ rpmRelease := "1"
 rpmVendor := "yahoo"
 rpmUrl := Some("https://github.com/yahoo/kafka-manager")
 rpmLicense := Some("Apache")
+rpmGroup := Some("kafka-manager")
 
 /* End RPM Settings */
