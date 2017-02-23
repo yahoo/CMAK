@@ -116,7 +116,7 @@
                     <td>@topicIdentity.partitions</td>
                 </tr>
                 <tr>
-                    <td>Sum of partition offsets</td>
+                    <td><span title="Represents the theoretical size of the topic">Sum of partition offsets</span></td>
                     <td>@topicIdentity.summedTopicOffsets</td>
                 </tr>
                 <tr>
@@ -128,25 +128,25 @@
                     <td>@topicIdentity.topicBrokers</td>
                 </tr>
                 <tr>
-                    <td>Preferred Replicas %</td>
+                    <td><span title="Percentage of replicas leader being preferred (first in the list of replicas)">Preferred Replicas %</td>
                     <td class="@getPreferredReplicasLevel(topicIdentity.preferredReplicasPercentage)">
                         @topicIdentity.preferredReplicasPercentage
                     </td>
                 </tr>
                 <tr>
-                    <td>Brokers Skewed %</td>
+                    <td><span title="Percentage of brokers having more partitions than the average">Brokers Skewed %</span></td>
                     <td class="@getBrokersSkewedLevel(topicIdentity.brokersSkewPercentage)">
                         @topicIdentity.brokersSkewPercentage
                     </td>
                 </tr>
                 <tr>
-                    <td>Brokers Spread %</td>
+                    <td><span title="Percentage of cluster brokers having partitions from the topic">Brokers Spread %</span></td>
                     <td class="@getBrokersSpreadLevel(topicIdentity.brokersSpreadPercentage)">
                         @topicIdentity.brokersSpreadPercentage
                     </td>
                 </tr>
                 <tr>
-                    <td>Under-replicated %</td>
+                    <td><span title="Percentage of partitions having a missing replica">Under-replicated %</span></td>
                     <td class="@getUnderReplicatedLevel(topicIdentity.underReplicatedPercentage)">
                         @topicIdentity.underReplicatedPercentage
                     </td>
@@ -239,7 +239,7 @@
             <div class="panel-heading"><h4>Partitions by Broker</h4></div>
             <table class="table" style="table-layout: fixed; width: 100%">
                 <thead>
-                <tr><th>Broker</th><th># of Partitions</th><th>Partitions</th><th>Skewed?</th></tr>
+                <tr><th>Broker</th><th># of Partitions</th><th>Partitions</th><th><span title="Broker has more partitions than the average">Skewed?</span></th></tr>
                 </thead>
                 <tbody>
                 @for(btp <- topicIdentity.partitionsByBroker) {
