@@ -23,7 +23,10 @@ object TopicConfigs {
     Kafka_0_8_2_1 -> zero82.LogConfig,
     Kafka_0_8_2_2 -> zero82.LogConfig,
     Kafka_0_9_0_0 -> zero90.LogConfig,
-    Kafka_0_9_0_1 -> zero90.LogConfig
+    Kafka_0_9_0_1 -> zero90.LogConfig,
+    Kafka_0_10_0_0 -> zero90.LogConfig,
+    Kafka_0_10_0_1 -> zero90.LogConfig,
+    Kafka_0_10_1_0 -> zero90.LogConfig
     )
 
   def configNames(version: KafkaVersion) : Set[String] = {

@@ -18,9 +18,10 @@ package kafka.manager.utils.zero90
 
 import java.nio.ByteBuffer
 
-import kafka.common.{KafkaException, TopicAndPartition, OffsetAndMetadata}
+import kafka.common.{KafkaException, OffsetAndMetadata}
 import kafka.coordinator.{GroupMetadataKey, GroupTopicPartition, OffsetKey, BaseKey}
 import org.apache.kafka.clients.consumer.internals.ConsumerProtocol
+import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.protocol.types.Type._
 import org.apache.kafka.common.protocol.types.{ArrayOf, Field, Schema, Struct}
 
@@ -60,12 +61,23 @@ object GroupMetadataManager {
   private val GROUP_METADATA_KEY_SCHEMA = new Schema(new Field("group", STRING))
   private val GROUP_KEY_GROUP_FIELD = GROUP_METADATA_KEY_SCHEMA.get("group")
 
-  private val MEMBER_METADATA_V0 = new Schema(new Field("member_id", STRING),
+  private val MEMBER_METADATA_V0 = new Schema(
+    new Field("member_id", STRING),
     new Field("client_id", STRING),
     new Field("client_host", STRING),
     new Field("session_timeout", INT32),
     new Field("subscription", BYTES),
     new Field("assignment", BYTES))
+
+  private val MEMBER_METADATA_V1 = new Schema(
+    new Field("member_id", STRING),
+    new Field("client_id", STRING),
+    new Field("client_host", STRING),
+    new Field("session_timeout", INT32),
+    new Field("rebalance_timeout", INT32),
+    new Field("subscription", BYTES),
+    new Field("assignment", BYTES))
+
   private val MEMBER_METADATA_MEMBER_ID_V0 = MEMBER_METADATA_V0.get("member_id")
   private val MEMBER_METADATA_CLIENT_ID_V0 = MEMBER_METADATA_V0.get("client_id")
   private val MEMBER_METADATA_CLIENT_HOST_V0 = MEMBER_METADATA_V0.get("client_host")
@@ -73,17 +85,40 @@ object GroupMetadataManager {
   private val MEMBER_METADATA_SUBSCRIPTION_V0 = MEMBER_METADATA_V0.get("subscription")
   private val MEMBER_METADATA_ASSIGNMENT_V0 = MEMBER_METADATA_V0.get("assignment")
 
+  private val MEMBER_METADATA_MEMBER_ID_V1 = MEMBER_METADATA_V1.get("member_id")
+  private val MEMBER_METADATA_CLIENT_ID_V1 = MEMBER_METADATA_V1.get("client_id")
+  private val MEMBER_METADATA_CLIENT_HOST_V1 = MEMBER_METADATA_V1.get("client_host")
+  private val MEMBER_METADATA_SESSION_TIMEOUT_V1 = MEMBER_METADATA_V1.get("session_timeout")
+  private val MEMBER_METADATA_REBALANCE_TIMEOUT_V1 = MEMBER_METADATA_V1.get("rebalance_timeout")
+  private val MEMBER_METADATA_SUBSCRIPTION_V1 = MEMBER_METADATA_V1.get("subscription")
+  private val MEMBER_METADATA_ASSIGNMENT_V1 = MEMBER_METADATA_V1.get("assignment")
 
-  private val GROUP_METADATA_VALUE_SCHEMA_V0 = new Schema(new Field("protocol_type", STRING),
+
+  private val GROUP_METADATA_VALUE_SCHEMA_V0 = new Schema(
+    new Field("protocol_type", STRING),
     new Field("generation", INT32),
     new Field("protocol", STRING),
     new Field("leader", STRING),
     new Field("members", new ArrayOf(MEMBER_METADATA_V0)))
+
+  private val GROUP_METADATA_VALUE_SCHEMA_V1 = new Schema(
+      new Field("protocol_type", STRING),
+      new Field("generation", INT32),
+      new Field("protocol", NULLABLE_STRING),
+      new Field("leader", NULLABLE_STRING),
+      new Field("members", new ArrayOf(MEMBER_METADATA_V1)))
+
   private val GROUP_METADATA_PROTOCOL_TYPE_V0 = GROUP_METADATA_VALUE_SCHEMA_V0.get("protocol_type")
   private val GROUP_METADATA_GENERATION_V0 = GROUP_METADATA_VALUE_SCHEMA_V0.get("generation")
   private val GROUP_METADATA_PROTOCOL_V0 = GROUP_METADATA_VALUE_SCHEMA_V0.get("protocol")
   private val GROUP_METADATA_LEADER_V0 = GROUP_METADATA_VALUE_SCHEMA_V0.get("leader")
   private val GROUP_METADATA_MEMBERS_V0 = GROUP_METADATA_VALUE_SCHEMA_V0.get("members")
+
+  private val GROUP_METADATA_PROTOCOL_TYPE_V1 = GROUP_METADATA_VALUE_SCHEMA_V1.get("protocol_type")
+  private val GROUP_METADATA_GENERATION_V1 = GROUP_METADATA_VALUE_SCHEMA_V1.get("generation")
+  private val GROUP_METADATA_PROTOCOL_V1 = GROUP_METADATA_VALUE_SCHEMA_V1.get("protocol")
+  private val GROUP_METADATA_LEADER_V1 = GROUP_METADATA_VALUE_SCHEMA_V1.get("leader")
+  private val GROUP_METADATA_MEMBERS_V1 = GROUP_METADATA_VALUE_SCHEMA_V1.get("members")
 
   // map of versions to key schemas as data types
   private val MESSAGE_TYPE_SCHEMAS = Map(
@@ -98,7 +133,7 @@ object GroupMetadataManager {
   private val CURRENT_OFFSET_VALUE_SCHEMA_VERSION = 1.toShort
 
   // map of version of group metadata value schemas
-  private val GROUP_VALUE_SCHEMAS = Map(0 -> GROUP_METADATA_VALUE_SCHEMA_V0)
+  private val GROUP_VALUE_SCHEMAS = Map(0 -> GROUP_METADATA_VALUE_SCHEMA_V0,1 -> GROUP_METADATA_VALUE_SCHEMA_V1)
   private val CURRENT_GROUP_VALUE_SCHEMA_VERSION = 0.toShort
 
   private val CURRENT_OFFSET_KEY_SCHEMA = schemaForKey(CURRENT_OFFSET_KEY_SCHEMA_VERSION)
@@ -199,7 +234,7 @@ object GroupMetadataManager {
       val topic = key.get(OFFSET_KEY_TOPIC_FIELD).asInstanceOf[String]
       val partition = key.get(OFFSET_KEY_PARTITION_FIELD).asInstanceOf[Int]
 
-      OffsetKey(version, GroupTopicPartition(group, TopicAndPartition(topic, partition)))
+      OffsetKey(version, GroupTopicPartition(group, new TopicPartition(topic, partition)))
 
     } else if (version == CURRENT_GROUP_KEY_SCHEMA_VERSION) {
       // version 2 refers to offset
@@ -275,6 +310,37 @@ object GroupMetadataManager {
             //val sessionTimeout = memberMetadata.get(MEMBER_METADATA_SESSION_TIMEOUT_V0).asInstanceOf[Int]
             val subscription = ConsumerProtocol.deserializeSubscription(memberMetadata.get(MEMBER_METADATA_SUBSCRIPTION_V0).asInstanceOf[ByteBuffer])
             val assignment = ConsumerProtocol.deserializeAssignment(memberMetadata.get(MEMBER_METADATA_ASSIGNMENT_V0).asInstanceOf[ByteBuffer])
+
+            import collection.JavaConverters._
+            val member = new MemberMetadata(
+              memberId
+              , groupId
+              , clientId
+              , clientHost
+              //, sessionTimeout
+              , List((group.protocol, subscription.topics().asScala.toSet))
+              , assignment.partitions().asScala.map(tp => tp.topic() -> tp.partition()).toSet
+            )
+            group.add(memberId, member)
+        }
+        group
+      } else if (version == 1){
+        val protocolType = value.get(GROUP_METADATA_PROTOCOL_TYPE_V1).asInstanceOf[String]
+
+        val generationId = value.get(GROUP_METADATA_GENERATION_V1).asInstanceOf[Int]
+        val leaderId = value.get(GROUP_METADATA_LEADER_V1).asInstanceOf[String]
+        val protocol = value.get(GROUP_METADATA_PROTOCOL_V1).asInstanceOf[String]
+        val group = new GroupMetadata(groupId, protocolType, generationId, leaderId, protocol)
+
+        value.getArray(GROUP_METADATA_MEMBERS_V1).foreach {
+          case memberMetadataObj =>
+            val memberMetadata = memberMetadataObj.asInstanceOf[Struct]
+            val memberId = memberMetadata.get(MEMBER_METADATA_MEMBER_ID_V1).asInstanceOf[String]
+            val clientId = memberMetadata.get(MEMBER_METADATA_CLIENT_ID_V1).asInstanceOf[String]
+            val clientHost = memberMetadata.get(MEMBER_METADATA_CLIENT_HOST_V1).asInstanceOf[String]
+            //val sessionTimeout = memberMetadata.get(MEMBER_METADATA_SESSION_TIMEOUT_V0).asInstanceOf[Int]
+            val subscription = ConsumerProtocol.deserializeSubscription(memberMetadata.get(MEMBER_METADATA_SUBSCRIPTION_V1).asInstanceOf[ByteBuffer])
+            val assignment = ConsumerProtocol.deserializeAssignment(memberMetadata.get(MEMBER_METADATA_ASSIGNMENT_V1).asInstanceOf[ByteBuffer])
 
             import collection.JavaConverters._
             val member = new MemberMetadata(

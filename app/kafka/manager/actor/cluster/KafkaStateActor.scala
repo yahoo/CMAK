@@ -143,7 +143,7 @@ class KafkaAdminClient(context: => ActorContext, adminClientActorPath: ActorPath
 
 
 object KafkaManagedOffsetCache {
-  val supportedVersions: Set[KafkaVersion] = Set(Kafka_0_8_2_0, Kafka_0_8_2_1, Kafka_0_8_2_2, Kafka_0_9_0_0, Kafka_0_9_0_1)
+  val supportedVersions: Set[KafkaVersion] = Set(Kafka_0_8_2_0, Kafka_0_8_2_1, Kafka_0_8_2_2, Kafka_0_9_0_0, Kafka_0_9_0_1, Kafka_0_10_0_0, Kafka_0_10_0_1, Kafka_0_10_1_0)
   val ConsumerOffsetTopic = "__consumer_offsets"
 
   def isSupported(version: KafkaVersion) : Boolean = {
@@ -295,7 +295,7 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
               lastUpdateTimeMillis = System.currentTimeMillis()
             } catch {
               case e: Exception =>
-                warn("Failed to process a message from offset topic!", e)
+                warn(s"Failed to process a message from offset topic on cluster ${clusterContext.config.name}!", e)
             }
           }
         } finally {
