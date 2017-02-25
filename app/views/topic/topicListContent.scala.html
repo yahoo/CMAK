@@ -49,10 +49,10 @@
     <tr><th>Topic</th>
         <th># Partitions</th>
         <th># Brokers</th>
-        <th>Brokers Spread %</th>
-        <th>Brokers Skew %</th>
+        <th><span title="Percentage of cluster brokers having partitions from the topic">Brokers Spread %</span></th>
+        <th><span title="Percentage of brokers having more partitions than the average">Brokers Skew %</span></th>
         <th># Replicas</th>
-        <th>Under Replicated %</th>
+        <th><span title="Percentage of partitions having a missing replica">Under Replicated %</span></th>
         @if(displayTopicSize){
         <th>Leader Size</th>
         }
