@@ -7,10 +7,12 @@ package controllers.api
 
 import controllers.KafkaManagerContext
 import features.ApplicationFeatures
+import kafka.manager.model.ActorModel.BrokerIdentity
 import models.navigation.Menus
-import play.api.i18n.{ I18nSupport, MessagesApi }
+import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.json._
 import play.api.mvc._
+
 import scala.concurrent.Future
 import org.json4s.jackson.Serialization
 import org.json4s.scalaz.JsonScalaz.toJSON
@@ -26,11 +28,21 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
 
   private[this] val kafkaManager = kafkaManagerContext.getKafkaManager
 
+  implicit val brokerIdentityWrites = Json.writes[BrokerIdentity]
+
   def brokers(c: String) = Action.async { implicit request =>
     kafkaManager.getBrokerList(c).map { errorOrBrokerList =>
       errorOrBrokerList.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
         brokerList => Ok(Json.obj("brokers" -> brokerList.list.map(bi => bi.id).sorted))
+      )
+    }
+  }
+  def brokersExtended(c: String) = Action.async { implicit request =>
+    kafkaManager.getBrokerList(c).map { errorOrBrokerList =>
+      errorOrBrokerList.fold(
+        error => BadRequest(Json.obj("msg" -> error.msg)),
+        brokerList => Ok(Json.obj("brokers" -> brokerList.list))
       )
     }
   }
