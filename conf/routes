@@ -53,6 +53,7 @@ POST   /clusters/:c/logkafkas/:h/:l/updateConfig            controllers.Logkafka
 POST   /clusters/:c/logkafkas/:h/:l/disableConfig           controllers.Logkafka.handleDisableConfig(c:String, h:String, l:String)
 POST   /clusters/:c/logkafkas/:h/:l/enableConfig            controllers.Logkafka.handleEnableConfig(c:String, h:String, l:String)
 GET    /api/status/:c/brokers                               controllers.api.KafkaStateCheck.brokers(c:String)
+GET    /api/status/:c/brokers/extended                      controllers.api.KafkaStateCheck.brokersExtended(c:String)
 GET    /api/status/:c/topics                                controllers.api.KafkaStateCheck.topics(c:String)
 GET    /api/status/:c/topicIdentities                       controllers.api.KafkaStateCheck.topicIdentities(c:String)
 GET    /api/status/clusters                                 controllers.api.KafkaStateCheck.clusters
