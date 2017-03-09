@@ -381,10 +381,11 @@ trait OffsetCache extends Logging {
     val time = -1
     val nOffsets = 1
     val simpleConsumerBufferSize = 256 * 1024
+    val currentActiveBrokerSet:Set[String] = getBrokerList().list.map(_.host).toSet
 
     val partitionsByBroker = optPartitionsWithLeaders.map {
       listOfPartAndBroker => listOfPartAndBroker.collect {
-        case (part, broker) if broker.isDefined => (broker.get, part)
+        case (part, broker) if broker.isDefined && currentActiveBrokerSet(broker.get.host) => (broker.get, part)
       }.groupBy(_._1)
     }
 
@@ -436,7 +437,7 @@ trait OffsetCache extends Logging {
 
   protected def getTopicDescription(topic: String, interactive: Boolean) : Option[TopicDescription]
 
-  protected def getBrokerList : BrokerList
+  protected def getBrokerList : () => BrokerList
 
   protected def readConsumerOffsetByTopicPartition(consumer: String, topic: String, tpi: Map[Int, TopicPartitionIdentity]) : Map[Int, Long]
   
@@ -458,14 +459,14 @@ trait OffsetCache extends Logging {
 
   private[this] var kafkaManagedOffsetCache : Option[KafkaManagedOffsetCache] = None
 
-  private[this] lazy val secureKafka = getBrokerList.list.exists(_.secure)
+  private[this] lazy val secureKafka = getBrokerList().list.exists(_.secure)
 
   def start() : Unit = {
     if(KafkaManagedOffsetCache.isSupported(clusterContext.config.version)) {
       if(kafkaManagedOffsetCache.isEmpty) {
         info("Starting kafka managed offset cache ...")
         Try {
-          val bl = getBrokerList
+          val bl = getBrokerList()
           require(bl.list.nonEmpty, "Cannot consume from offset topic when there are no brokers!")
           val of = new KafkaManagedOffsetCache(clusterContext, kafkaAdminClient, consumerProperties, bl)
           kafkaManagedOffsetCache = Option(of)
@@ -608,7 +609,7 @@ case class OffsetCacheActive(curator: CuratorFramework
                              , socketTimeoutMillis: Int
                              , kafkaVersion: KafkaVersion
                              , consumerProperties: Option[Properties]
-                             , getBrokerList : BrokerList
+                             , getBrokerList : () => BrokerList
                               )
                             (implicit protected[this] val ec: ExecutionContext, val cf: ClusterFeatures) extends OffsetCache {
 
@@ -725,7 +726,7 @@ case class OffsetCachePassive(curator: CuratorFramework
                               , socketTimeoutMillis: Int
                               , kafkaVersion: KafkaVersion
                               , consumerProperties: Option[Properties]
-                              , getBrokerList : BrokerList
+                              , getBrokerList : () => BrokerList
                                )
                              (implicit protected[this] val ec: ExecutionContext, val cf: ClusterFeatures) extends OffsetCache {
 
@@ -959,7 +960,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
         , config.simpleConsumerSocketTimeoutMillis
         , config.clusterContext.config.version
         , config.consumerProperties
-        , getBrokerList
+        , () => getBrokerList
       )(longRunningExecutionContext, cf)
     else
       new OffsetCachePassive( config.curator
@@ -971,7 +972,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
         , config .simpleConsumerSocketTimeoutMillis
         , config.clusterContext.config.version
         , config.consumerProperties
-        , getBrokerList
+        , () => getBrokerList
       )(longRunningExecutionContext, cf)
   }
 

@@ -15,7 +15,6 @@ import kafka.manager.utils.zero81.ForceReassignmentCommand
 import org.joda.time.DateTime
 
 import scala.collection.immutable.Queue
-import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success, Try}
 import scalaz.{NonEmptyList, Validation}
@@ -412,7 +411,8 @@ import scala.language.reflectiveCalls
     import org.json4s._
     import org.json4s.jackson.Serialization
 
-import scala.language.reflectiveCalls
+    import scala.language.reflectiveCalls
+    import scala.concurrent.duration._
 
     implicit val formats = Serialization.formats(FullTypeHints(List(classOf[TopicIdentity])))
     // Adding a write method to transform/sort the partitionsIdentity to be more readable in JSON and include Topic Identity vals
@@ -459,7 +459,7 @@ import scala.language.reflectiveCalls
       partMap.map { case (partition, replicas) =>
         val partitionNum = partition.toInt
         // block on the futures that hold the latest produced offset in each partition
-        val partitionOffsets: Option[PartitionOffsetsCapture] = Await.ready(td.partitionOffsets, Duration.Inf).value.get match {
+        val partitionOffsets: Option[PartitionOffsetsCapture] = Await.ready(td.partitionOffsets, 2 second).value.get match {
           case Success(offsetMap) =>
             Option(offsetMap)
           case Failure(e) =>
@@ -467,7 +467,7 @@ import scala.language.reflectiveCalls
         }
 
         val previousPartitionOffsets: Option[PartitionOffsetsCapture] = tdPrevious.flatMap {
-          ptd => Await.ready(ptd.partitionOffsets, Duration.Inf).value.get match {
+          ptd => Await.ready(ptd.partitionOffsets, 2 second).value.get match {
             case Success(offsetMap) =>
               Option(offsetMap)
             case Failure(e) =>
@@ -587,12 +587,14 @@ import scala.language.reflectiveCalls
   }
 
   object ConsumedTopicState {
+    import scala.concurrent.duration._
+
     def from(ctd: ConsumedTopicDescription, clusterContext: ClusterContext): ConsumedTopicState = {
       val partitionOffsetsMap = ctd.partitionOffsets.getOrElse(Map.empty)
       val partitionOwnersMap = ctd.partitionOwners.getOrElse(Map.empty)
       // block on the futures that hold the latest produced offset in each partition
       val topicOffsetsOptMap: Map[Int, Long]= ctd.topicDescription.map{td: TopicDescription =>
-        Await.ready(td.partitionOffsets, Duration.Inf).value.get match {
+        Await.ready(td.partitionOffsets, 2 second).value.get match {
         case Success(offsetMap) =>
           offsetMap.offsetsMap
         case Failure(e) =>
