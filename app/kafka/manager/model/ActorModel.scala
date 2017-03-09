@@ -566,14 +566,19 @@ import scala.language.reflectiveCalls
     lazy val totalLag : Option[Long] = {
       // only defined if every partition has a latest offset
       if (partitionLatestOffsets.values.size == numPartitions && partitionLatestOffsets.size == numPartitions) {
-          Some(partitionLatestOffsets.values.sum - partitionOffsets.values.sum)
+          val activePartitionsOffsets = partitionOffsets.filter(ptLtOffset => ptLtOffset._2 != -1)
+          Some(partitionLatestOffsets.filterKeys(activePartitionsOffsets.keySet).values.sum -
+              activePartitionsOffsets.values.sum)
       } else None
     }
     def topicOffsets(partitionNum: Int) : Option[Long] = partitionLatestOffsets.get(partitionNum)
 
     def partitionLag(partitionNum: Int) : Option[Long] = {
-      topicOffsets(partitionNum).flatMap{topicOffset =>
-        partitionOffsets.get(partitionNum).map(topicOffset - _)}
+      if (partitionOffsets.get(partitionNum).getOrElse(-1) != -1) {
+        topicOffsets(partitionNum).flatMap { topicOffset =>
+          partitionOffsets.get(partitionNum).map(topicOffset - _)
+        }
+      } else None
     }
 
     // Percentage of the partitions that have an owner
