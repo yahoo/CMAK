@@ -459,19 +459,29 @@ import scala.language.reflectiveCalls
       partMap.map { case (partition, replicas) =>
         val partitionNum = partition.toInt
         // block on the futures that hold the latest produced offset in each partition
-        val partitionOffsets: Option[PartitionOffsetsCapture] = Await.ready(td.partitionOffsets, 2 second).value.get match {
-          case Success(offsetMap) =>
-            Option(offsetMap)
-          case Failure(e) =>
-            None
-        }
-
-        val previousPartitionOffsets: Option[PartitionOffsetsCapture] = tdPrevious.flatMap {
-          ptd => Await.ready(ptd.partitionOffsets, 2 second).value.get match {
+        val partitionOffsets: Option[PartitionOffsetsCapture] = Try {
+          Await.ready(td.partitionOffsets, 2 second).value.get match {
             case Success(offsetMap) =>
               Option(offsetMap)
             case Failure(e) =>
               None
+          }
+        } match  {
+          case Failure(e) => None
+          case Success(r) => r
+        }
+
+        val previousPartitionOffsets: Option[PartitionOffsetsCapture] = tdPrevious.flatMap {
+          ptd => Try {
+            Await.ready(ptd.partitionOffsets, 2 second).value.get match {
+              case Success(offsetMap) =>
+                Option(offsetMap)
+              case Failure(e) =>
+                None
+            }
+          } match {
+            case Failure(e) => None
+            case Success(r) => r
           }
         }
         
@@ -599,12 +609,18 @@ import scala.language.reflectiveCalls
       val partitionOwnersMap = ctd.partitionOwners.getOrElse(Map.empty)
       // block on the futures that hold the latest produced offset in each partition
       val topicOffsetsOptMap: Map[Int, Long]= ctd.topicDescription.map{td: TopicDescription =>
-        Await.ready(td.partitionOffsets, 2 second).value.get match {
-        case Success(offsetMap) =>
-          offsetMap.offsetsMap
-        case Failure(e) =>
-          Map.empty[Int, Long]
-      }}.getOrElse(Map.empty)
+        Try {
+          Await.ready(td.partitionOffsets, 2 second).value.get match {
+            case Success(offsetMap) =>
+              offsetMap.offsetsMap
+            case Failure(e) =>
+              Map.empty[Int, Long]
+          }
+        } match {
+          case Failure(e) => Map.empty[Int, Long]
+          case Success(r) => r
+        }
+      }.getOrElse(Map.empty)
 
       ConsumedTopicState(
         ctd.consumer, 
