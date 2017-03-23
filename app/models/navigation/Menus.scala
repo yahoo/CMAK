@@ -31,7 +31,7 @@ class Menus(implicit applicationFeatures: ApplicationFeatures) {
     val defaultItems = IndexedSeq("List".clusterRouteMenuItem(cluster))
     
     val items = {
-      if(applicationFeatures.features(KMTopicManagerFeature) && clusterFeatures.features(KMRestrictedFeature))
+      if(applicationFeatures.features(KMTopicManagerFeature) && !clusterFeatures.features(KMRestrictedFeature))
         defaultItems.+:("Create".clusterRouteMenuItem(cluster))
       else
         defaultItems
