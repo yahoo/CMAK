@@ -20,6 +20,7 @@ sealed trait ClusterFeature extends KMFeature
 
 case object KMLogKafkaFeature extends ClusterFeature
 case object KMDeleteTopicFeature extends ClusterFeature
+case object KMRestrictedFeature extends ClusterFeature
 case object KMJMXMetricsFeature extends ClusterFeature
 case object KMDisplaySizeFeature extends ClusterFeature
 case object KMPollConsumersFeature extends ClusterFeature
@@ -72,6 +73,9 @@ object ClusterFeatures {
 
     if(clusterConfig.pollConsumers)
       buffer+=KMPollConsumersFeature
+
+    if(clusterConfig.restrictOperations)
+      buffer+=KMRestrictedFeature
 
     ClusterFeatures(buffer.toSet)
   }

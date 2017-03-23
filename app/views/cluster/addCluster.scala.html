@@ -32,6 +32,7 @@
         @b3.text(form("jmxUser"), '_label -> "JMX Auth Username")
         @b3.text(form("jmxPass"), '_label -> "JMX Auth Password")
         @b3.checkbox(form("jmxSsl"), '_text -> "JMX with SSL")
+        @b3.checkbox(form("restrictOperations"), '_text -> "Restrict the Operations(Non-Disruptive View only mode)")
         @b3.checkbox(form("logkafkaEnabled"), '_text -> "Enable Logkafka")
         @b3.checkbox(form("pollConsumers"), '_text -> "Poll consumer information (Not recommended for large # of consumers)")
         @b3.checkbox(form("filterConsumers"), '_text -> "Filter out inactive consumers")

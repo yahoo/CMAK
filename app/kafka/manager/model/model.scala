@@ -106,6 +106,7 @@ object ClusterConfig {
             , jmxUser: Option[String]
             , jmxPass: Option[String]
             , jmxSsl: Boolean
+            , restrictOperations:Boolean
             , pollConsumers: Boolean
             , filterConsumers: Boolean
             , logkafkaEnabled: Boolean = false
@@ -128,6 +129,7 @@ object ClusterConfig {
       , jmxUser
       , jmxPass
       , jmxSsl
+      , restrictOperations
       , pollConsumers
       , filterConsumers
       , logkafkaEnabled
@@ -138,10 +140,10 @@ object ClusterConfig {
   }
 
   def customUnapply(cc: ClusterConfig) : Option[(
-    String, String, String, Int, Boolean, Option[String], Option[String], Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, Option[ClusterTuning])] = {
+    String, String, String, Int, Boolean, Option[String], Option[String], Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, Option[ClusterTuning])] = {
     Some((
       cc.name, cc.version.toString, cc.curatorConfig.zkConnect, cc.curatorConfig.zkMaxRetry,
-      cc.jmxEnabled, cc.jmxUser, cc.jmxPass, cc.jmxSsl, cc.pollConsumers, cc.filterConsumers,
+      cc.jmxEnabled, cc.jmxUser, cc.jmxPass, cc.jmxSsl, cc.restrictOperations, cc.pollConsumers, cc.filterConsumers,
       cc.logkafkaEnabled, cc.activeOffsetCacheEnabled, cc.displaySizeEnabled, cc.tuning
       )
     )
@@ -178,6 +180,7 @@ object ClusterConfig {
       :: ("jmxUser" -> toJSON(config.jmxUser))
       :: ("jmxPass" -> toJSON(config.jmxPass))
       :: ("jmxSsl" -> toJSON(config.jmxSsl))
+      :: ("restrictOperations" -> toJSON(config.restrictOperations))
       :: ("pollConsumers" -> toJSON(config.pollConsumers))
       :: ("filterConsumers" -> toJSON(config.filterConsumers))
       :: ("logkafkaEnabled" -> toJSON(config.logkafkaEnabled))
@@ -201,6 +204,7 @@ object ClusterConfig {
           val jmxUser = fieldExtended[Option[String]]("jmxUser")(json)
           val jmxPass = fieldExtended[Option[String]]("jmxPass")(json)
           val jmxSsl = fieldExtended[Boolean]("jmxSsl")(json)
+          val restrictOperations = fieldExtended[Boolean]("restrictOperations")(json)
           val pollConsumers = fieldExtended[Boolean]("pollConsumers")(json)
           val filterConsumers = fieldExtended[Boolean]("filterConsumers")(json)
           val logkafkaEnabled = fieldExtended[Boolean]("logkafkaEnabled")(json)
@@ -216,6 +220,7 @@ object ClusterConfig {
             jmxUser.getOrElse(None),
             jmxPass.getOrElse(None),
             jmxSsl.getOrElse(false),
+            restrictOperations.getOrElse(false),
             pollConsumers.getOrElse(false),
             filterConsumers.getOrElse(true),
             logkafkaEnabled.getOrElse(false),
@@ -335,6 +340,7 @@ case class ClusterConfig (name: String
                           , jmxUser: Option[String]
                           , jmxPass: Option[String]
                           , jmxSsl: Boolean
+                          , restrictOperations:Boolean
                           , pollConsumers: Boolean
                           , filterConsumers: Boolean
                           , logkafkaEnabled: Boolean

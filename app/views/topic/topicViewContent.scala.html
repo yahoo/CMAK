@@ -101,6 +101,64 @@
     }
 }
 
+@renderOperations = {
+    @if(topicIdentity.clusterContext.config.restrictOperations){
+    <div class="alert alert-info" role="alert">
+        Operations are restricted for @cluster Cluster (Enable at the cluster configurations)
+    </div>
+    } else {
+        <table class="table">
+            <tbody>
+            <tr>
+                @if(topicIdentity.clusterContext.clusterFeatures.features(kafka.manager.features.KMDeleteTopicFeature)) {
+                <td>
+                    <a href="@routes.Topic.confirmDeleteTopic(cluster,topic)" class='btn btn-primary btn-block'>Delete Topic</a>
+                </td>
+                }
+                @features.app(features.KMReassignPartitionsFeature) {
+                <td>
+                    @b3.form(routes.ReassignPartitions.handleOperation(cluster,topic)) {
+                    @reassignPartitionOperation match {
+                    case ForceRunAssignment => {
+                    <fieldset>
+                        <input type="hidden" name="operation" value="force">
+                        <input type="hidden" name="brokers" value="@Seq()">
+                        @b3.submit('class -> "btn btn-primary btn-block"){ Force Reassign Partitions }
+                    </fieldset>
+                    }
+                    case _ => {
+                    <fieldset>
+                        <input type="hidden" name="operation" value="run">
+                        <input type="hidden" name="brokers" value="@Seq()">
+                        @b3.submit('class -> "btn btn-primary btn-block"){ Reassign Partitions }
+                    </fieldset>
+                    }
+                    }
+                    }
+                </td>
+                <td>
+                    <a href="@routes.ReassignPartitions.confirmAssignment(cluster,topic)" class="submit-button btn btn-primary" role="button">Generate Partition Assignments</a>
+                </td>
+                }
+            </tr>
+            <tr>
+                <td>
+                    <a href="@routes.Topic.addPartitions(cluster,topic)" class="submit-button btn btn-primary" role="button">Add Partitions</a>
+                </td>
+                <td>
+                    <a href="@routes.Topic.updateConfig(cluster,topic)" class="submit-button btn btn-primary" role="button">Update Config</a>
+                </td>
+                @features.app(features.KMReassignPartitionsFeature) {
+                <td>
+                    <a href="@routes.ReassignPartitions.manualAssignments(cluster, topic)" class="submit-button btn btn-primary" role="button">Manual Partition Assignments</a>
+                </td>
+                }
+            </tr>
+            </tbody>
+        </table>
+    }
+}
+
 
 <div class="row">
     <div class="col-md-5">
@@ -128,7 +186,7 @@
                     <td>@topicIdentity.topicBrokers</td>
                 </tr>
                 <tr>
-                    <td><span title="Percentage of replicas leader being preferred (first in the list of replicas)">Preferred Replicas %</td>
+                    <td><span title="Percentage of replicas leader being preferred (first in the list of replicas)">Preferred Replicas %</span></td>
                     <td class="@getPreferredReplicasLevel(topicIdentity.preferredReplicasPercentage)">
                         @topicIdentity.preferredReplicasPercentage
                     </td>
@@ -184,55 +242,7 @@
         @features.app(features.KMTopicManagerFeature) {
         <div class="panel panel-default">
             <div class="panel-heading"><h4>Operations</h4></div>
-            <table class="table">
-                <tbody>
-                <tr>
-                    @if(topicIdentity.clusterContext.clusterFeatures.features(kafka.manager.features.KMDeleteTopicFeature)) {
-                    <td>
-                        <a href="@routes.Topic.confirmDeleteTopic(cluster,topic)" class='btn btn-primary btn-block'>Delete Topic</a>
-                    </td>
-                    }
-                    @features.app(features.KMReassignPartitionsFeature) {
-                    <td>
-                        @b3.form(routes.ReassignPartitions.handleOperation(cluster,topic)) {
-                            @reassignPartitionOperation match {
-                                case ForceRunAssignment => {
-                                    <fieldset>
-                                        <input type="hidden" name="operation" value="force">
-                                        <input type="hidden" name="brokers" value="@Seq()">
-                                        @b3.submit('class -> "btn btn-primary btn-block"){ Force Reassign Partitions }
-                                    </fieldset>
-                                }
-                                case _ => {
-                                    <fieldset>
-                                        <input type="hidden" name="operation" value="run">
-                                        <input type="hidden" name="brokers" value="@Seq()">
-                                        @b3.submit('class -> "btn btn-primary btn-block"){ Reassign Partitions }
-                                    </fieldset>
-                                }
-                            }
-                        }
-                    </td>
-                    <td>
-                        <a href="@routes.ReassignPartitions.confirmAssignment(cluster,topic)" class="submit-button btn btn-primary" role="button">Generate Partition Assignments</a>
-                    </td>
-                    }
-                </tr>
-                <tr>
-                    <td>
-                        <a href="@routes.Topic.addPartitions(cluster,topic)" class="submit-button btn btn-primary" role="button">Add Partitions</a>
-                    </td>
-                    <td>
-                        <a href="@routes.Topic.updateConfig(cluster,topic)" class="submit-button btn btn-primary" role="button">Update Config</a>
-                    </td>
-                    @features.app(features.KMReassignPartitionsFeature) {
-                    <td>
-                        <a href="@routes.ReassignPartitions.manualAssignments(cluster, topic)" class="submit-button btn btn-primary" role="button">Manual Partition Assignments</a>
-                    </td>
-                    }
-                </tr>
-                </tbody>
-            </table>
+            @renderOperations
         </div>
         }
         <div class="panel panel-default">
