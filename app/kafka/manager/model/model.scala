@@ -67,7 +67,7 @@ object KafkaVersion {
     "0.10.2.0" -> Kafka_0_10_2_0
   )
 
-  val formSelectList : IndexedSeq[(String,String)] = supportedVersions.toIndexedSeq.filterNot(_._1.contains("beta")).map(t => (t._1,t._2.toString))
+  val formSelectList : IndexedSeq[(String,String)] = supportedVersions.toIndexedSeq.filterNot(_._1.contains("beta")).map(t => (t._1,t._2.toString)).sortBy(_._1)
 
   def apply(s: String) : KafkaVersion = {
     supportedVersions.get(s) match {
