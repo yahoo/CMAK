@@ -65,7 +65,7 @@ Broker View
 Requirements
 ------------
 
-1. [Kafka 0.8.1.1 or 0.8.2.* or 0.9.0.*](http://kafka.apache.org/downloads.html)
+1. [Kafka 0.8.1.1 or 0.8.2.* or 0.9.0.* or 0.10.0.*](http://kafka.apache.org/downloads.html)
 2. Java 8+
 
 Configuration
