@@ -59,8 +59,8 @@ GET    /api/status/:c/topicIdentities                       controllers.api.Kafk
 GET    /api/status/clusters                                 controllers.api.KafkaStateCheck.clusters
 GET    /api/status/:c/:t/underReplicatedPartitions          controllers.api.KafkaStateCheck.underReplicatedPartitions(c:String,t:String)
 GET    /api/status/:c/:t/unavailablePartitions              controllers.api.KafkaStateCheck.unavailablePartitions(c:String,t:String)
-GET    /api/status/:cluster/:consumer/:topic/topicSummary   controllers.api.KafkaStateCheck.topicSummaryAction(cluster:String, consumer:String, topic:String, consumerType:String)
-GET    /api/status/:cluster/:consumer/groupSummary          controllers.api.KafkaStateCheck.groupSummaryAction(cluster:String, consumer:String, consumerType:String)
+GET    /api/status/:cluster/:consumer/:topic/:consumerType/topicSummary   controllers.api.KafkaStateCheck.topicSummaryAction(cluster:String, consumer:String, topic:String, consumerType:String)
+GET    /api/status/:cluster/:consumer/:consumerType/groupSummary          controllers.api.KafkaStateCheck.groupSummaryAction(cluster:String, consumer:String, consumerType:String)
 GET    /api/status/:cluster/consumersSummary                controllers.api.KafkaStateCheck.consumersSummaryAction(cluster:String)
 
 # Versioned Assets
@@ -71,3 +71,6 @@ GET    /assets/*file                                        controllers.Assets.a
 
 # WebJars
 GET    /webjars/*file                                       controllers.WebJarAssets.at(file)
+
+# Ping / Health Check
+GET    /api/health                                          controllers.ApiHealth.ping
