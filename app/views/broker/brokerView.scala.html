@@ -13,9 +13,13 @@
 
 @brokerScripts = {
     <script ype="text/javascript">
-    $(document).ready(function() {
-        $('#broker-table').DataTable();
-    } );
+        $(document).ready(function() {
+            $('#broker-table').DataTable(
+                    {
+                        "lengthMenu": [[-1, 50, 25, 10], ["All", 50, 25, 10]]
+                    }
+            );
+        } );
     </script>
 }
 

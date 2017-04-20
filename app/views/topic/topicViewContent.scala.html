@@ -31,7 +31,16 @@
 
 @getBrokersSkewedLevel(percentage: Int) = {
     @percentage match {
-        case i if i > 0 => {warning}
+        case i if i > 0 && i <= 33 => {warning}
+        case i if i >= 34 => {danger}
+        case i => {}
+    }
+}
+
+@getBrokersLeaderSkewedLevel(percentage: Int) = {
+    @percentage match {
+        case i if i > 0 && i <= 33 => {warning}
+        case i if i >= 34 => {danger}
         case i => {}
     }
 }
@@ -137,6 +146,12 @@
                     <td><span title="Percentage of brokers having more partitions than the average">Brokers Skewed %</span></td>
                     <td class="@getBrokersSkewedLevel(topicIdentity.brokersSkewPercentage)">
                         @topicIdentity.brokersSkewPercentage
+                    </td>
+                </tr>
+                <tr>
+                    <td><span title="Percentage of brokers having more partitions as leader than the average">Brokers Skewed %</span></td>
+                    <td class="@getBrokersLeaderSkewedLevel(topicIdentity.brokersLeaderSkewPercentage)">
+                        @topicIdentity.brokersLeaderSkewPercentage
                     </td>
                 </tr>
                 <tr>
