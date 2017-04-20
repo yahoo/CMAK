@@ -378,13 +378,14 @@ import scala.language.reflectiveCalls
 
       val brokersForTopic = brokerPartitionsMap.keySet.size
       val avgPartitionsPerBroker : Double = Math.ceil((1.0 * partitions) / brokersForTopic * replicationFactor)
+      val avgPartitions : Double = Math.ceil((1.0 * partitions) / brokersForTopic)
 
       brokerPartitionsMap.map {
         case (brokerId, brokerPartitions)=>
           val partitions = brokerPartitions.view.map(_._1).toIndexedSeq.sorted
           val leaders = brokerPartitions.view.filter(_._2).map(_._1).toIndexedSeq.sorted
           BrokerTopicPartitions(brokerId, partitions,
-            brokerPartitions.size > avgPartitionsPerBroker, leaders, leaders.size > avgPartitionsPerBroker)
+            brokerPartitions.size > avgPartitionsPerBroker, leaders, leaders.size > avgPartitions)
       }.toIndexedSeq.sortBy(_.id)
     }
 
