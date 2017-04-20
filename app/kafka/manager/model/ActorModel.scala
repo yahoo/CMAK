@@ -410,6 +410,12 @@ import scala.language.reflectiveCalls
       100 // everthing is spreaded if nothing has to be spreaded
     }
 
+    val brokerLeaderSkewPercentage : Int = {
+      if(topicBrokers > 0)
+        (100 * partitionsByBroker.count(_.isLeaderSkewed)) / topicBrokers
+      else 0
+    }
+
     val producerRate: String = BigDecimal(partitionsIdentity.map(_._2.rateOfChange.getOrElse(0D)).sum).setScale(2, BigDecimal.RoundingMode.HALF_UP).toString()
   }
 
