@@ -410,7 +410,7 @@ import scala.language.reflectiveCalls
       100 // everthing is spreaded if nothing has to be spreaded
     }
 
-    val brokerLeaderSkewPercentage : Int = {
+    val brokersLeaderSkewPercentage : Int = {
       if(topicBrokers > 0)
         (100 * partitionsByBroker.count(_.isLeaderSkewed)) / topicBrokers
       else 0
