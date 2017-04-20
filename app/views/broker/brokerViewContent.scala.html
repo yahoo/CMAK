@@ -22,6 +22,7 @@
                         <tbody>
                         <tr><td># of Topics</td><td>@brokerView.numTopics</td></tr>
                         <tr><td># of Partitions</td><td>@brokerView.numPartitions</td></tr>
+                        <tr><td># of Partitions as Leader</td><td>@brokerView.numPartitionsAsLeader</td></tr>
                         @if(brokerView.clusterContext.clusterFeatures.features(kafka.manager.features.KMJMXMetricsFeature)) {
                         <tr><td>% of Messages</td><td>@brokerView.stats.map(_.perMessages)</td></tr>
                         <tr><td>% of Incoming</td><td>@brokerView.stats.map(_.perIncoming)</td></tr>
@@ -74,6 +75,7 @@
                     <th>Partitions on Broker</th>
                     <th>Partitions</th>
                     <th><span title="Broker has more partitions than the average">Skewed?</span></th>
+                    <th># Partitions as Leader</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -82,9 +84,10 @@
                     <td><a href="@routes.Topic.topic(cluster,ti.topic)">@ti.topic</a></td>
                     <td>@ti.replicationFactor</td>
                     <td>@ti.partitions</td>
-                    <td>@bp.size</td>
-                    <td style="word-wrap: break-word">@bp.mkString("(",",",")")</td>
+                    <td>@bp.partitions.size</td>
+                    <td style="word-wrap: break-word">@bp.partitions.mkString("(",",",")")</td>
                     <td>@ti.partitionsByBroker.find(_.id == brokerId).map(_.isSkewed).getOrElse("Unknown")</td>
+                    <td>@bp.partitionsAsLeader.size</td>
                 </tr>
                 }
                 </tbody>
