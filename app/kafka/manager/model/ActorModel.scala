@@ -45,12 +45,14 @@ object ActorModel {
   case class BVGetTopicMetrics(topic: String) extends BVRequest
   case object BVGetBrokerMetrics extends BVRequest
   case class BVGetBrokerTopicPartitionSizes(topic: String) extends BVRequest
-  case class BVView(topicPartitions: Map[TopicIdentity, IndexedSeq[Int]], clusterContext: ClusterContext,
+  case class BrokerTopicInfo(partitions: IndexedSeq[Int], partitionsAsLeader: IndexedSeq[Int])
+  case class BVView(topicPartitions: Map[TopicIdentity, BrokerTopicInfo], clusterContext: ClusterContext,
                     metrics: Option[BrokerMetrics] = None,
                     messagesPerSecCountHistory: Option[Queue[BrokerMessagesPerSecCount]] = None,
                     stats: Option[BrokerClusterStats] = None) extends QueryResponse {
     def numTopics : Int = topicPartitions.size
-    def numPartitions : Int = topicPartitions.values.foldLeft(0)((acc,i) => acc + i.size)
+    def numPartitions : Int = topicPartitions.values.foldLeft(0)((acc,i) => acc + i.partitions.size)
+    def numPartitionsAsLeader : Int = topicPartitions.values.foldLeft(0)((acc,i) => acc + i.partitionsAsLeader.size)
   }
 
   case class BVUpdateTopicMetricsForBroker(id: Int, metrics: IndexedSeq[(String,BrokerMetrics)]) extends CommandRequest
@@ -327,7 +329,7 @@ import scala.language.reflectiveCalls
     }
   }
 
-  case class BrokerTopicPartitions(id: Int, partitions: IndexedSeq[Int], isSkewed: Boolean)
+  case class BrokerTopicPartitions(id: Int, partitions: IndexedSeq[Int], isSkewed: Boolean, leaders: IndexedSeq[Int], isLeaderSkewed: Boolean)
 
   case class PartitionOffsetsCapture(updateTimeMillis: Long, offsetsMap: Map[Int, Long])
 
@@ -367,16 +369,22 @@ import scala.language.reflectiveCalls
     val replicationFactor : Int = partitionsIdentity.head._2.replicas.size
 
     val partitionsByBroker : IndexedSeq[BrokerTopicPartitions] = {
-      val brokerPartitionsMap : Map[Int, Iterable[Int]] =
-        partitionsIdentity.toList.flatMap(t => t._2.isr.map(i => (i,t._2.partNum))).groupBy(_._1).mapValues(_.map(_._2))
+      val brokerPartitionsMap : Map[Int, Iterable[(Int, Boolean)]] =
+        partitionsIdentity
+          .toList
+          .flatMap(t => t._2.isr.map(i => (i,t._2.partNum, i == t._2.leader)))
+          .groupBy(_._1)
+          .mapValues(l => l.map(t => (t._2, t._3)))
 
       val brokersForTopic = brokerPartitionsMap.keySet.size
       val avgPartitionsPerBroker : Double = Math.ceil((1.0 * partitions) / brokersForTopic * replicationFactor)
 
       brokerPartitionsMap.map {
         case (brokerId, brokerPartitions)=>
-          BrokerTopicPartitions(brokerId, brokerPartitions.toIndexedSeq.sorted,
-            brokerPartitions.size > avgPartitionsPerBroker)
+          val partitions = brokerPartitions.view.map(_._1).toIndexedSeq.sorted
+          val leaders = brokerPartitions.view.filter(_._2).map(_._1).toIndexedSeq.sorted
+          BrokerTopicPartitions(brokerId, partitions,
+            brokerPartitions.size > avgPartitionsPerBroker, leaders, leaders.size > avgPartitionsPerBroker)
       }.toIndexedSeq.sortBy(_.id)
     }
 

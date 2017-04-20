@@ -239,16 +239,20 @@
             <div class="panel-heading"><h4>Partitions by Broker</h4></div>
             <table class="table" style="table-layout: fixed; width: 100%">
                 <thead>
-                <tr><th>Broker</th><th># of Partitions</th><th>Partitions</th><th><span title="Broker has more partitions than the average">Skewed?</span></th></tr>
+                <tr><th>Broker</th><th># of Partitions</th><th># as Leader</th><th>Partitions</th><th><span title="Broker has more partitions than the average">Skewed?</span></th><th><span title="Broker has more partitions as leaders than the average">Leader Skewed?</span></th></tr>
                 </thead>
                 <tbody>
                 @for(btp <- topicIdentity.partitionsByBroker) {
                 <tr>
                     <td><a href="@routes.Cluster.broker(cluster,btp.id)">@btp.id</a></td>
                     <td>@btp.partitions.size</td>
+                    <td>@btp.leaders.size</td>
                     <td style="word-wrap: break-word">@btp.partitions.mkString("(",",",")")</td>
                     <td class="@getBrokerIsSkewedLevel(btp.isSkewed)">
                         @btp.isSkewed
+                    </td>
+                    <td class="@getBrokerIsSkewedLevel(btp.isLeaderSkewed)">
+                        @btp.isLeaderSkewed
                     </td>
                 </tr>
                 }
