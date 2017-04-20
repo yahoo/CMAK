@@ -84,10 +84,10 @@
                     <td><a href="@routes.Topic.topic(cluster,ti.topic)">@ti.topic</a></td>
                     <td>@ti.replicationFactor</td>
                     <td>@ti.partitions</td>
-                    <td>@bp.size</td>
-                    <td style="word-wrap: break-word">@bp.mkString("(",",",")")</td>
+                    <td>@bp.partitions.size</td>
+                    <td style="word-wrap: break-word">@bp.partitions.mkString("(",",",")")</td>
                     <td>@ti.partitionsByBroker.find(_.id == brokerId).map(_.isSkewed).getOrElse("Unknown")</td>
-                    <td>@ti.partitionsByBroker.find(_.id == brokerId).map(_.leaders.size).getOrElse(0)</td>
+                    <td>@bp.partitionsAsLeader.size</td>
                 </tr>
                 }
                 </tbody>
