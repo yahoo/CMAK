@@ -45,6 +45,20 @@ libraryDependencies ++= Seq(
 
 routesGenerator := InjectedRoutesGenerator
 
+/* Publish to Bintray */
+publishTo := Some("Bintray jCenter" at "http://dl.bintray.com/yahoo")
+credentials += Credentials(Path.userHome / ".bintray" / ".credentials")
+
+// disable publishing the main jars produced by `package`
+publishArtifact in (Compile, packageBin) := false
+publishArtifact in (Compile, packageDoc) := false
+publishArtifact in (Compile, packageSrc) := false
+// disable publishing the main zip produced by `dist`
+//publishArtifact in (Compile, distZip) := true
+
+// TODO: Not sure how to just publish .zip file.
+
+
 LessKeys.compress in Assets := true
 
 pipelineStages := Seq(digest, gzip)
