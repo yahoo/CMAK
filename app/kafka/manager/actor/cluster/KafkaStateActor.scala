@@ -6,11 +6,12 @@
 package kafka.manager.actor.cluster
 
 import java.io.Closeable
+import java.net.InetAddress
 import java.nio.ByteBuffer
 import java.util.Properties
 import java.util.concurrent.{ConcurrentLinkedDeque, TimeUnit}
 
-import akka.actor.{Props, ActorRef, ActorContext, ActorPath}
+import akka.actor.{ActorContext, ActorPath, ActorRef, Props}
 import akka.pattern._
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import grizzled.slf4j.Logging
@@ -18,20 +19,20 @@ import kafka.admin.AdminClient
 import kafka.api.{OffsetRequest, PartitionOffsetRequestInfo}
 import kafka.common.{OffsetAndMetadata, TopicAndPartition}
 import kafka.consumer._
-import kafka.coordinator.{GroupSummary, GroupMetadataKey, OffsetKey}
+import kafka.coordinator.{GroupMetadataKey, GroupSummary, OffsetKey}
 import kafka.manager._
 import kafka.manager.base.cluster.{BaseClusterQueryActor, BaseClusterQueryCommandActor}
 import kafka.manager.base.{LongRunningPoolActor, LongRunningPoolConfig}
-import kafka.manager.features.{ClusterFeatures, KMPollConsumersFeature, KMDeleteTopicFeature}
+import kafka.manager.features.{ClusterFeatures, KMDeleteTopicFeature, KMPollConsumersFeature}
 import kafka.manager.model.ActorModel._
 import kafka.manager.model._
 import kafka.manager.utils.ZkUtils
 import kafka.manager.utils.zero81.{PreferredReplicaLeaderElectionCommand, ReassignPartitionCommand}
-import kafka.manager.utils.zero90.{MemberMetadata, GroupMetadata}
+import kafka.manager.utils.zero90.{GroupMetadata, MemberMetadata}
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.cache._
-import org.apache.kafka.clients.consumer.{ConsumerRecords, Consumer, KafkaConsumer}
+import org.apache.kafka.clients.consumer.{Consumer, ConsumerRecords, KafkaConsumer}
 import org.joda.time.{DateTime, DateTimeZone}
 
 import scala.collection.concurrent.TrieMap
@@ -178,16 +179,23 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
   private[this] var shutdown: Boolean = false
 
   private[this] def createKafkaConsumer(): Consumer[Array[Byte], Array[Byte]] = {
+    val hostname = InetAddress.getLocalHost.getHostName
     val props: Properties = new Properties()
-    props.put("group.id", "KafkaManagerOffsetCache")
-    props.put("bootstrap.servers", bootstrapBrokerList.list.map(bi => s"${bi.host}:${bi.port}").mkString(","))
-    props.put("exclude.internal.topics", "false")
-    props.put("enable.auto.commit", "false")
-    props.put("key.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer")
-    props.put("value.deserializer", "org.apache.kafka.common.serialization.ByteArrayDeserializer")
-    props.put("auto.offset.reset", "latest")
+    props.put(org.apache.kafka.clients.consumer.ConsumerConfig.GROUP_ID_CONFIG, s"KMOffsetCache-$hostname")
+    props.put(org.apache.kafka.clients.consumer.ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapBrokerList.list.map(bi => s"${bi.host}:${bi.port}").mkString(","))
+    props.put(org.apache.kafka.clients.consumer.ConsumerConfig.EXCLUDE_INTERNAL_TOPICS_CONFIG, "false")
+    props.put(org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false")
+    props.put(org.apache.kafka.clients.consumer.ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArrayDeserializer")
+    props.put(org.apache.kafka.clients.consumer.ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArrayDeserializer")
+    props.put(org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest")
     consumerProperties.foreach {
       cp => props.putAll(cp)
+    }
+    Try {
+      info("Constructing new kafka consumer client using these properties: ")
+      props.asScala.foreach {
+        case (k, v) => info(s"$k=$v")
+      }
     }
     new KafkaConsumer[Array[Byte], Array[Byte]](props)
   }
