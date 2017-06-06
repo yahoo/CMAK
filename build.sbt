@@ -9,6 +9,8 @@ version := "1.3.3.7"
 
 scalaVersion := "2.11.8"
 
+licenses := Seq("Apache-2.0" -> new URL("http://www.apache.org/licenses/LICENSE-2.0.txt"))
+
 scalacOptions ++= Seq("-Xlint:-missing-interpolator","-Xfatal-warnings","-deprecation","-feature","-language:implicitConversions","-language:postfixOps","-Xmax-classfile-name","240")
 
 // From https://www.playframework.com/documentation/2.3.x/ProductionDist
@@ -28,11 +30,11 @@ libraryDependencies ++= Seq(
   "org.webjars" % "backbonejs" % "1.2.3",
   "org.webjars" % "underscorejs" % "1.8.3",
   "org.webjars" % "dustjs-linkedin" % "2.6.1-1",
-  "org.apache.curator" % "curator-framework" % "2.10.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
-  "org.apache.curator" % "curator-recipes" % "2.10.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
+  "org.apache.curator" % "curator-framework" % "2.12.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
+  "org.apache.curator" % "curator-recipes" % "2.12.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
   "org.json4s" %% "json4s-jackson" % "3.4.0",
   "org.json4s" %% "json4s-scalaz" % "3.4.0",
-  "org.slf4j" % "log4j-over-slf4j" % "1.7.12",
+  "org.slf4j" % "log4j-over-slf4j" % "1.7.21",
   "com.adrianhurt" %% "play-bootstrap3" % "0.4.5-P24",
   "org.clapper" %% "grizzled-slf4j" % "1.0.2",
   "org.apache.kafka" %% "kafka" % "0.10.0.1" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),

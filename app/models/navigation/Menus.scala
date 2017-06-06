@@ -5,8 +5,8 @@
 
 package models.navigation
 
-import features.{KMTopicManagerFeature, KMClusterManagerFeature, ApplicationFeatures}
-import kafka.manager.features.{KMLogKafkaFeature, ClusterFeatures}
+import features.{ApplicationFeatures, KMClusterManagerFeature, KMTopicManagerFeature}
+import kafka.manager.features.{ClusterFeatures, KMLogKafkaFeature, KMRestrictedFeature}
 
 /**
  * @author hiral
@@ -27,11 +27,11 @@ class Menus(implicit applicationFeatures: ApplicationFeatures) {
     Option(Menu("Cluster", items, None))
   }
 
-  private[this] def topicMenu(cluster: String) : Option[Menu] = {
+  private[this] def topicMenu(cluster: String, clusterFeatures: ClusterFeatures) : Option[Menu] = {
     val defaultItems = IndexedSeq("List".clusterRouteMenuItem(cluster))
     
     val items = {
-      if(applicationFeatures.features(KMTopicManagerFeature))
+      if(applicationFeatures.features(KMTopicManagerFeature) && !clusterFeatures.features(KMRestrictedFeature))
         defaultItems.+:("Create".clusterRouteMenuItem(cluster))
       else
         defaultItems
@@ -71,7 +71,7 @@ class Menus(implicit applicationFeatures: ApplicationFeatures) {
     IndexedSeq(
       clusterMenu(cluster),
       brokersMenu(cluster),
-      topicMenu(cluster),
+      topicMenu(cluster, clusterFeatures),
       preferredReplicaElectionMenu(cluster),
       reassignPartitionsMenu(cluster),
       consumersMenu(cluster),

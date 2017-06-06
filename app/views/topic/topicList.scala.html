@@ -37,6 +37,32 @@
     }
 }
 
+@renderOperations = {
+
+    @if(errorOrTopics.fold(err=>false,tl=>tl.list.headOption.map(opt => opt._2.map(ti => ti.clusterContext.config.restrictOperations && ti.clusterContext.config.name.equals(cluster)).getOrElse(false)).getOrElse(false))){
+        <div class="alert alert-info" role="alert">
+            Operations are restricted for @cluster Cluster (Enable at the cluster configurations)
+        </div>
+    } else {
+        <table class="table">
+            <tr>
+                @features.app(features.KMReassignPartitionsFeature) {
+                <td>
+                    <a href="@routes.ReassignPartitions.confirmMultipleAssignments(cluster)" class="submit-button btn btn-primary" role="button">Generate Partition Assignments</a>
+                </td>
+                <td>
+                    <a href="@routes.ReassignPartitions.runMultipleAssignments(cluster)" class="submit-button btn btn-primary" role="button">Run Partition Assignments</a>
+                </td>
+                }
+                <td>
+                    <a href="@routes.Topic.addPartitionsToMultipleTopics(cluster)" class="submit-button btn btn-primary" role="button">Add Partitions</a>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    }
+}
+
 @main(
     "Topic List",
     menu = theMenu,
@@ -46,22 +72,7 @@
         @features.app(features.KMTopicManagerFeature) {
         <div class="panel panel-default">
             <div class="panel-heading"><h4>Operations</h4></div>
-            <table class="table">
-                <tr>
-                    @features.app(features.KMReassignPartitionsFeature) {
-                    <td>
-                        <a href="@routes.ReassignPartitions.confirmMultipleAssignments(cluster)" class="submit-button btn btn-primary" role="button">Generate Partition Assignments</a>
-                    </td>
-                    <td>
-                        <a href="@routes.ReassignPartitions.runMultipleAssignments(cluster)" class="submit-button btn btn-primary" role="button">Run Partition Assignments</a>
-                    </td>
-                    }
-                    <td>
-                        <a href="@routes.Topic.addPartitionsToMultipleTopics(cluster)" class="submit-button btn btn-primary" role="button">Add Partitions</a>
-                    </td>
-                </tr>
-                </tbody>
-            </table>
+            @renderOperations
         </div>
         }
     </div>
