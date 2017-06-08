@@ -1,0 +1,5 @@
+image: scrapinghub
+
+script:
+  - build_docker_image
+  - push_docker_image
