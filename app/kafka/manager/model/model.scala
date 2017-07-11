@@ -48,6 +48,18 @@ case object Kafka_0_10_1_0 extends KafkaVersion {
   override def toString = "0.10.1.0"
 }
 
+case object Kafka_0_10_1_1 extends KafkaVersion {
+  override def toString = "0.10.1.1"
+}
+
+case object Kafka_0_10_2_0 extends KafkaVersion {
+  override def toString = "0.10.2.0"
+}
+
+case object Kafka_0_10_2_1 extends KafkaVersion {
+  override def toString = "0.10.2.1"
+}
+
 object KafkaVersion {
   val supportedVersions: Map[String,KafkaVersion] = Map(
     "0.8.1.1" -> Kafka_0_8_1_1,
@@ -59,7 +71,10 @@ object KafkaVersion {
     "0.9.0.1" -> Kafka_0_9_0_1,
     "0.10.0.0" -> Kafka_0_10_0_0,
     "0.10.0.1" -> Kafka_0_10_0_1,
-    "0.10.1.0" -> Kafka_0_10_1_0
+    "0.10.1.0" -> Kafka_0_10_1_0,
+    "0.10.1.1" -> Kafka_0_10_1_1,
+    "0.10.2.0" -> Kafka_0_10_2_0,
+    "0.10.2.1" -> Kafka_0_10_2_1
   )
 
   val formSelectList : IndexedSeq[(String,String)] = supportedVersions.toIndexedSeq.filterNot(_._1.contains("beta")).map(t => (t._1,t._2.toString))
@@ -147,12 +162,13 @@ object ClusterConfig {
     )
   }
 
-  import scalaz.{Failure,Success}
   import scalaz.syntax.applicative._
+  import scalaz.{Failure, Success}
   import org.json4s._
   import org.json4s.jackson.JsonMethods._
   import org.json4s.jackson.Serialization
   import org.json4s.scalaz.JsonScalaz._
+
   import scala.language.reflectiveCalls
 
   implicit val formats = Serialization.formats(FullTypeHints(List(classOf[ClusterConfig])))
@@ -254,12 +270,10 @@ case class ClusterTuning(brokerViewUpdatePeriodSeconds: Option[Int]
                          , kafkaAdminClientThreadPoolQueueSize: Option[Int]
                         )
 object ClusterTuning {
-  import scalaz.{Failure,Success}
-  import scalaz.syntax.applicative._
   import org.json4s._
-  import org.json4s.jackson.JsonMethods._
   import org.json4s.jackson.Serialization
   import org.json4s.scalaz.JsonScalaz._
+
   import scala.language.reflectiveCalls
 
   implicit val formats = Serialization.formats(FullTypeHints(List(classOf[ClusterTuning])))
