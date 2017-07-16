@@ -94,4 +94,28 @@ class TestClusterConfig extends FunSuite with Matchers {
     assert(deserialize.isSuccess === true)
     assert(cc == deserialize.get)
   }
+
+  test("serialize and deserialize 0.10.1.1") {
+    val cc = ClusterConfig("qa", "0.10.1.1", "localhost:2181", jmxEnabled = false, pollConsumers = true, filterConsumers = true, activeOffsetCacheEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = None)
+    val serialize: String = ClusterConfig.serialize(cc)
+    val deserialize = ClusterConfig.deserialize(serialize)
+    assert(deserialize.isSuccess === true)
+    assert(cc == deserialize.get)
+  }
+
+  test("serialize and deserialize 0.10.2.0") {
+    val cc = ClusterConfig("qa", "0.10.2.0", "localhost:2181", jmxEnabled = false, pollConsumers = true, filterConsumers = true, activeOffsetCacheEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = None)
+    val serialize: String = ClusterConfig.serialize(cc)
+    val deserialize = ClusterConfig.deserialize(serialize)
+    assert(deserialize.isSuccess === true)
+    assert(cc == deserialize.get)
+  }
+
+  test("serialize and deserialize 0.10.2.1") {
+    val cc = ClusterConfig("qa", "0.10.2.1", "localhost:2181", jmxEnabled = false, pollConsumers = true, filterConsumers = true, activeOffsetCacheEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = None)
+    val serialize: String = ClusterConfig.serialize(cc)
+    val deserialize = ClusterConfig.deserialize(serialize)
+    assert(deserialize.isSuccess === true)
+    assert(cc == deserialize.get)
+  }
 }

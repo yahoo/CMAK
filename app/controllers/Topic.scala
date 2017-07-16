@@ -7,26 +7,26 @@ package controllers
 
 import java.util.Properties
 
-import features.{KMTopicManagerFeature, ApplicationFeatures}
-import kafka.manager.model._
-import ActorModel.TopicIdentity
-import kafka.manager.features.ClusterFeatures
-import kafka.manager.utils.TopicConfigs
+import features.{ApplicationFeatures, KMTopicManagerFeature}
 import kafka.manager.ApiError
+import kafka.manager.features.ClusterFeatures
+import kafka.manager.model.ActorModel.TopicIdentity
+import kafka.manager.model._
+import kafka.manager.utils.TopicConfigs
 import models.FollowLink
-import models.form.ReassignPartitionOperation.{RunAssignment, ForceRunAssignment}
+import models.form.ReassignPartitionOperation.{ForceRunAssignment, RunAssignment}
 import models.form._
 import models.navigation.Menus
 import play.api.data.Form
 import play.api.data.Forms._
-import play.api.data.validation.{Valid, Invalid, Constraint}
 import play.api.data.validation.Constraints._
+import play.api.data.validation.{Constraint, Invalid, Valid}
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.mvc._
 
 import scala.concurrent.Future
-import scala.util.{Success, Failure, Try}
-import scalaz.{\/-, -\/}
+import scala.util.{Failure, Success, Try}
+import scalaz.-\/
 
 /**
  * @author hiral
@@ -55,6 +55,9 @@ class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManager
   val kafka_0_10_0_0_Default = CreateTopic("",1,1,TopicConfigs.configNames(Kafka_0_10_0_0).map(n => TConfig(n,None)).toList)
   val kafka_0_10_0_1_Default = CreateTopic("",1,1,TopicConfigs.configNames(Kafka_0_10_0_1).map(n => TConfig(n,None)).toList)
   val kafka_0_10_1_0_Default = CreateTopic("",1,1,TopicConfigs.configNames(Kafka_0_10_1_0).map(n => TConfig(n,None)).toList)
+  val kafka_0_10_1_1_Default = CreateTopic("",1,1,TopicConfigs.configNames(Kafka_0_10_1_1).map(n => TConfig(n,None)).toList)
+  val kafka_0_10_2_0_Default = CreateTopic("",1,1,TopicConfigs.configNames(Kafka_0_10_2_0).map(n => TConfig(n,None)).toList)
+  val kafka_0_10_2_1_Default = CreateTopic("",1,1,TopicConfigs.configNames(Kafka_0_10_2_1).map(n => TConfig(n,None)).toList)
 
   val defaultCreateForm = Form(
     mapping(
@@ -142,6 +145,10 @@ class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManager
           case Kafka_0_10_0_0 => (defaultCreateForm.fill(kafka_0_10_0_0_Default), clusterContext)
           case Kafka_0_10_0_1 => (defaultCreateForm.fill(kafka_0_10_0_1_Default), clusterContext)
           case Kafka_0_10_1_0 => (defaultCreateForm.fill(kafka_0_10_1_0_Default), clusterContext)
+          case Kafka_0_10_1_1 => (defaultCreateForm.fill(kafka_0_10_1_1_Default), clusterContext)
+          case Kafka_0_10_2_0 => (defaultCreateForm.fill(kafka_0_10_2_0_Default), clusterContext)
+          case Kafka_0_10_2_1 => (defaultCreateForm.fill(kafka_0_10_2_1_Default), clusterContext)
+
         }
       }
     }
@@ -379,6 +386,9 @@ class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManager
           case Kafka_0_10_0_0 => TopicConfigs.configNames(Kafka_0_10_0_0).map(n => (n,TConfig(n,None))).toMap
           case Kafka_0_10_0_1 => TopicConfigs.configNames(Kafka_0_10_0_1).map(n => (n,TConfig(n,None))).toMap
           case Kafka_0_10_1_0 => TopicConfigs.configNames(Kafka_0_10_1_0).map(n => (n,TConfig(n,None))).toMap
+          case Kafka_0_10_1_1 => TopicConfigs.configNames(Kafka_0_10_1_1).map(n => (n,TConfig(n,None))).toMap
+          case Kafka_0_10_2_0 => TopicConfigs.configNames(Kafka_0_10_2_0).map(n => (n,TConfig(n,None))).toMap
+          case Kafka_0_10_2_1 => TopicConfigs.configNames(Kafka_0_10_2_1).map(n => (n,TConfig(n,None))).toMap
         }
         val combinedMap = defaultConfigMap ++ ti.config.toMap.map(tpl => tpl._1 -> TConfig(tpl._1,Option(tpl._2)))
         (defaultUpdateConfigForm.fill(UpdateTopicConfig(ti.topic,combinedMap.toList.map(_._2),ti.configReadVersion)),
