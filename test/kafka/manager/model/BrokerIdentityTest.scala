@@ -15,7 +15,9 @@ class BrokerIdentityTest extends FunSuite with Matchers {
     assert(biVal.isSuccess)
     val bi = biVal.toOption.get
     assert(bi.host === "host.com")
-    assert(bi.port === 9092)
+    assert(bi.endpoints.contains(SASL_PLAINTEXT))
+    assert(bi.endpoints(SASL_PLAINTEXT) === 9092)
+    assert(bi.endpointsString === "SASL_PLAINTEXT:9092")
     assert(bi.secure === true)
   }
 
@@ -26,7 +28,9 @@ class BrokerIdentityTest extends FunSuite with Matchers {
     assert(biVal.isSuccess)
     val bi = biVal.toOption.get
     assert(bi.host === "host.com")
-    assert(bi.port === 9092)
+    assert(bi.endpoints.contains(PLAINTEXT))
+    assert(bi.endpoints(PLAINTEXT) === 9092)
+    assert(bi.endpointsString === "PLAINTEXT:9092")
     assert(bi.secure === false)
 
   }
@@ -38,7 +42,9 @@ class BrokerIdentityTest extends FunSuite with Matchers {
     assert(biVal.isSuccess)
     val bi = biVal.toOption.get
     assert(bi.host === "host.com")
-    assert(bi.port === 9092)
+    assert(bi.endpoints.contains(PLAINTEXT))
+    assert(bi.endpoints(PLAINTEXT) === 9092)
+    assert(bi.endpointsString === "PLAINTEXT:9092")
     assert(bi.secure === false)
 
   }

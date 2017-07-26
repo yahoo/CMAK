@@ -257,8 +257,9 @@ object ActorModel {
               val parsedList: List[JsonScalaz.Result[(String, Int, SecurityProtocol)]] = endpointList.map {
                 endpoint =>
                   Validation.fromTryCatchNonFatal {
-                    val arr = endpoint.split("://")(1).split(":")
-                    (arr(0), arr(1).toInt, SecurityProtocol(endpoint.toUpperCase))
+                    val arr1 = endpoint.split("://")
+                    val arr2 = arr1(1).split(":")
+                    (arr2(0), arr2(1).toInt, SecurityProtocol(arr1(0).toUpperCase))
                   }.leftMap[JsonScalaz.Error](t => UncategorizedError("endpoints", t.getMessage, List.empty)).toValidationNel
               }
               val result: JsonScalaz.Result[(String, Map[SecurityProtocol, Int])] = parsedList.find(_.isSuccess).fold({
