@@ -84,7 +84,7 @@ case class KafkaAdminClientActor(config: KafkaAdminClientActorConfig) extends Ba
     val targetBrokers : IndexedSeq[BrokerIdentity] = bl.list
     val brokerListStr: String = targetBrokers.map {
       b =>
-        val port = b.endpoints.get(config.clusterContext.config.securityProtocol)
+        val port = b.endpoints(config.clusterContext.config.securityProtocol)
         s"${b.host}:$port"
     }.mkString(",")
     val props = new Properties()
@@ -192,7 +192,7 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
     val hostname = InetAddress.getLocalHost.getHostName
     val brokerListStr: String = bootstrapBrokerList.list.map {
       b =>
-        val port = b.endpoints.get(clusterContext.config.securityProtocol)
+        val port = b.endpoints(clusterContext.config.securityProtocol)
         s"${b.host}:$port"
     }.mkString(",")
     val props: Properties = new Properties()
