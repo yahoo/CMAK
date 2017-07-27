@@ -67,9 +67,9 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
     }
   }
 
-  val validateSecurityProtocol: Constraint[String] = Constraint("validate security protocol") { version =>
+  val validateSecurityProtocol: Constraint[String] = Constraint("validate security protocol") { string =>
     Try {
-      KafkaVersion(version)
+      SecurityProtocol(string)
     } match {
       case Failure(t) => Invalid(t.getMessage)
       case Success(_) => Valid
