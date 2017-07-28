@@ -77,7 +77,7 @@ object KafkaVersion {
     "0.10.2.1" -> Kafka_0_10_2_1
   )
 
-  val formSelectList : IndexedSeq[(String,String)] = supportedVersions.toIndexedSeq.filterNot(_._1.contains("beta")).map(t => (t._1,t._2.toString))
+  val formSelectList : IndexedSeq[(String,String)] = supportedVersions.toIndexedSeq.filterNot(_._1.contains("beta")).map(t => (t._1,t._2.toString)).sortWith((a, b) => sortVersion(a._1, b._1))
 
   def apply(s: String) : KafkaVersion = {
     supportedVersions.get(s) match {
@@ -88,6 +88,20 @@ object KafkaVersion {
 
   def unapply(v: KafkaVersion) : Option[String] = {
     Some(v.toString)
+  }
+
+  private def sortVersion(versionNum: String, kafkaVersion: String): Boolean = {
+    val separator = "\\."
+    val versionNumList = versionNum.split(separator, -1).toList
+    val kafkaVersionList = kafkaVersion.split(separator, -1).toList
+    def compare(a: List[String], b: List[String]): Boolean = a.nonEmpty match {
+      case true if b.nonEmpty =>
+        if (a.head == b.head) compare(a.tail, b.tail) else a.head.toInt < b.head.toInt
+      case true if b.isEmpty => false
+      case false if b.nonEmpty => true
+      case _ => true
+    }
+    compare(versionNumList, kafkaVersionList)
   }
 }
 
