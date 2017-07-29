@@ -11,7 +11,7 @@ import org.scalatest.FunSuite
   */
 class KafkaVersionTest extends FunSuite {
 
-  test("check supportedVersion") {
+  test("check supportedVersions") {
     val expected: Map[String, KafkaVersion] = Map(
       "0.8.1.1" -> Kafka_0_8_1_1,
       "0.8.2-beta" -> Kafka_0_8_2_0,
