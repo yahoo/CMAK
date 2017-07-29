@@ -30,6 +30,13 @@ class KafkaVersionTest extends FunSuite {
     expected.foreach(v => assertResult(v._2)(KafkaVersion(v._1)))
   }
 
+  test("apply method: Not supported version.") {
+    val expected: String = "0.7.0.0"
+    intercept[IllegalArgumentException] {
+      KafkaVersion(expected)
+    }
+  }
+
   test("check supportedVersions") {
     val expected: Map[String, KafkaVersion] = Map(
       "0.8.1.1" -> Kafka_0_8_1_1,
