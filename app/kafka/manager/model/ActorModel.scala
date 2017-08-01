@@ -232,7 +232,7 @@ object ActorModel {
     def endpointsString: String = endpoints.toList.map(tpl => s"${tpl._1.stringId}:${tpl._2}").mkString(",")
   }
 
-  object BrokerIdentity {
+  object BrokerIdentity extends Logging {
     import org.json4s.jackson.JsonMethods._
     import org.json4s.scalaz.JsonScalaz
     import org.json4s.scalaz.JsonScalaz._
@@ -260,8 +260,12 @@ object ActorModel {
                     val arr1 = endpoint.split("://")
                     val arr2 = arr1(1).split(":")
                     (arr2(0), arr2(1).toInt, SecurityProtocol(arr1(0).toUpperCase))
-                  }.leftMap[JsonScalaz.Error](t => UncategorizedError("endpoints", t.getMessage, List.empty)).toValidationNel
+                  }.leftMap[JsonScalaz.Error](t => {
+                    error(s"Failed to parse endpoint : $endpoint", t)
+                    UncategorizedError("endpoints", t.getMessage, List.empty)
+                  }).toValidationNel
               }
+              /*
               val result: JsonScalaz.Result[(String, Map[SecurityProtocol, Int])] = parsedList.find(_.isSuccess).fold({
                 val err: JsonScalaz.Result[(String, Map[SecurityProtocol, Int])] = Validation.failureNel(UncategorizedError("endpoints", s"failed to parse host and port from json : $config", List.empty).asInstanceOf[JsonScalaz.Error])
                 err
@@ -275,6 +279,30 @@ object ActorModel {
                   }.successNel[JsonScalaz.Error]
                   result
               }
+               */
+              import _root_.scalaz.Scalaz._
+              val endpoints: JsonScalaz.Result[List[(String, Int, SecurityProtocol)]] = parsedList.filter(_.isSuccess).sequence[JsonScalaz.Result, (String, Int, SecurityProtocol)]
+              val result: JsonScalaz.Result[(String, Map[SecurityProtocol, Int])] = endpoints.flatMap {
+                list =>
+                  list.foldRight(("", Map.empty[SecurityProtocol, Int])) {
+                    case ((host: String, port: Int, endpointType: SecurityProtocol), (_, map: Map[SecurityProtocol, Int])) =>
+                    (host, map.+(endpointType -> port))
+                  }.successNel[JsonScalaz.Error]
+
+              }
+
+                  /*
+              match {
+                case NonEmptyList(errors) =>
+                case endpoints =>
+                  endpoints.foldRight(("", Map.empty[SecurityProtocol, Int])) {
+                    case (host: String, port: Int, endpointType: SecurityProtocol), (_, map: Map[SecurityProtocol, Int])) =>
+                      (host, map.+(endpointType -> port))
+
+                  }.successNel[JsonScalaz.Error]
+                  result
+              }
+              */
               result
           }
       }
