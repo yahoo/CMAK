@@ -8,6 +8,7 @@ package controllers.api
 import controllers.KafkaManagerContext
 import features.ApplicationFeatures
 import kafka.manager.model.ActorModel.BrokerIdentity
+import kafka.manager.model.SecurityProtocol
 import models.navigation.Menus
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.libs.json._
@@ -27,6 +28,14 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
   import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
   private[this] val kafkaManager = kafkaManagerContext.getKafkaManager
+
+  import play.api.libs.json._
+
+  implicit val endpointMapWrites = new Writes[Map[SecurityProtocol, Int]] {
+    override def writes(o: Map[SecurityProtocol, Int]): JsValue = Json.obj(
+      "endpoints" -> o.toSeq.map(tpl => s"${tpl._1.stringId}:${tpl._2}")
+    )
+  }
 
   implicit val brokerIdentityWrites = Json.writes[BrokerIdentity]
 

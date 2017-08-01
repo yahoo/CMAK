@@ -29,6 +29,7 @@
                                 <input type="hidden" name="name" value="@cluster.name">
                                 <input type="hidden" name="kafkaVersion" value="@cluster.version.toString">
                                 <input type="hidden" name="zkHosts" value="@cluster.curatorConfig.zkConnect">
+                                <input type="hidden" name="securityProtocol" value="@cluster.securityProtocol.stringId">
                                 <input type="hidden" name="operation" value="Disable">
                                 @b3.submit('class -> "btn btn-warning ops-button"){ Disable }
                                 }
@@ -37,6 +38,7 @@
                                 <input type="hidden" name="name" value="@cluster.name">
                                 <input type="hidden" name="kafkaVersion" value="@cluster.version.toString">
                                 <input type="hidden" name="zkHosts" value="@cluster.curatorConfig.zkConnect">
+                                <input type="hidden" name="securityProtocol" value="@cluster.securityProtocol.stringId">
                                 <input type="hidden" name="operation" value="Enable">
                                 @b3.submit('class -> "btn btn-success ops-button"){ Enable }
                                 }
@@ -44,6 +46,7 @@
                                 <input type="hidden" name="name" value="@cluster.name">
                                 <input type="hidden" name="kafkaVersion" value="@cluster.version.toString">
                                 <input type="hidden" name="zkHosts" value="@cluster.curatorConfig.zkConnect">
+                                <input type="hidden" name="securityProtocol" value="@cluster.securityProtocol.stringId">
                                 <input type="hidden" name="operation" value="Delete">
                                 @b3.submit('class -> "btn btn-danger ops-button"){ Delete }
                                 }

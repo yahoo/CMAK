@@ -484,6 +484,7 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
         && newConfig.activeOffsetCacheEnabled == currentConfig.activeOffsetCacheEnabled
         && newConfig.displaySizeEnabled == currentConfig.displaySizeEnabled
         && newConfig.tuning == currentConfig.tuning
+        && newConfig.securityProtocol == currentConfig.securityProtocol
       ) {
         //nothing changed
         false

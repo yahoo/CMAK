@@ -247,6 +247,7 @@ class KafkaManager(akkaConfig: Config) extends Logging {
                  pollConsumers: Boolean,
                  filterConsumers: Boolean,
                  tuning: Option[ClusterTuning],
+                 securityProtocol: String,
                  logkafkaEnabled: Boolean = false,
                  activeOffsetCacheEnabled: Boolean = false,
                  displaySizeEnabled: Boolean = false): Future[ApiError \/ Unit] =
@@ -256,6 +257,7 @@ class KafkaManager(akkaConfig: Config) extends Logging {
       version,
       zkHosts,
       tuning = tuning,
+      securityProtocol = securityProtocol,
       jmxEnabled = jmxEnabled,
       jmxUser = jmxUser,
       jmxPass = jmxPass,
@@ -280,6 +282,7 @@ class KafkaManager(akkaConfig: Config) extends Logging {
                     pollConsumers: Boolean,
                     filterConsumers: Boolean,
                     tuning: Option[ClusterTuning],
+                    securityProtocol: String,
                     logkafkaEnabled: Boolean = false,
                     activeOffsetCacheEnabled: Boolean = false,
                     displaySizeEnabled: Boolean = false): Future[ApiError \/ Unit] =
@@ -289,6 +292,7 @@ class KafkaManager(akkaConfig: Config) extends Logging {
       version,
       zkHosts,
       tuning = tuning,
+      securityProtocol = securityProtocol,
       jmxEnabled = jmxEnabled,
       jmxUser = jmxUser,
       jmxPass = jmxPass,

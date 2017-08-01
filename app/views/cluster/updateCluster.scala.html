@@ -55,6 +55,7 @@
         @b3.number(form("tuning.offsetCacheThreadPoolQueueSize"), '_label -> "offsetCacheThreadPoolQueueSize")
         @b3.number(form("tuning.kafkaAdminClientThreadPoolSize"), '_label -> "kafkaAdminClientThreadPoolSize")
         @b3.number(form("tuning.kafkaAdminClientThreadPoolQueueSize"), '_label -> "kafkaAdminClientThreadPoolQueueSize")
+        @b3.select( form("securityProtocol"), options = kafka.manager.model.SecurityProtocol.formSelectList, '_label -> "Security Protocol" )
         @b3.submit('class -> "submit-button btn btn-primary btn"){ Save }
         <a href="@routes.Application.index()" class="cancel-button btn btn-default" role="button">Cancel</a>
     </fieldset>

@@ -5,21 +5,21 @@
 
 package controllers
 
-import features.{KMClusterManagerFeature, ApplicationFeatures}
-import kafka.manager.model.{CuratorConfig, ClusterTuning, KafkaVersion, ClusterConfig}
+import features.{ApplicationFeatures, KMClusterManagerFeature}
+import kafka.manager.model._
 import kafka.manager.ApiError
 import models.FollowLink
 import models.form._
 import models.navigation.Menus
 import play.api.data.Form
 import play.api.data.Forms._
-import play.api.data.validation.{Valid, Invalid, Constraint}
+import play.api.data.validation.{Constraint, Invalid, Valid}
 import play.api.data.validation.Constraints._
 import play.api.i18n.{I18nSupport, MessagesApi}
 import play.api.mvc._
 
 import scala.concurrent.Future
-import scala.util.{Success, Failure, Try}
+import scala.util.{Failure, Success, Try}
 import scalaz.{-\/, \/-}
 
 /**
@@ -67,6 +67,15 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
     }
   }
 
+  val validateSecurityProtocol: Constraint[String] = Constraint("validate security protocol") { string =>
+    Try {
+      SecurityProtocol(string)
+    } match {
+      case Failure(t) => Invalid(t.getMessage)
+      case Success(_) => Valid
+    }
+  }
+
   val clusterConfigForm = Form(
     mapping(
       "name" -> nonEmptyText.verifying(maxLength(250), validateName)
@@ -101,6 +110,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
           , "kafkaAdminClientThreadPoolQueueSize" -> optional(number(10, 1000))
         )(ClusterTuning.apply)(ClusterTuning.unapply)
       )
+      , "securityProtocol" -> nonEmptyText.verifying(validateSecurityProtocol)
     )(ClusterConfig.apply)(ClusterConfig.customUnapply)
   )
 
@@ -139,6 +149,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
           , "kafkaAdminClientThreadPoolQueueSize" -> optional(number(10, 1000))
         )(ClusterTuning.apply)(ClusterTuning.unapply)
       )
+      , "securityProtocol" -> nonEmptyText.verifying(validateSecurityProtocol)
     )(ClusterOperation.apply)(ClusterOperation.customUnapply)
   )
 
@@ -158,6 +169,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
       ,false
       ,false
       ,Option(defaultTuning)
+      ,PLAINTEXT
     )
   }
 
@@ -204,7 +216,8 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
             cc.logkafkaEnabled,
             cc.activeOffsetCacheEnabled,
             cc.displaySizeEnabled,
-            cc.tuning
+            cc.tuning,
+            cc.securityProtocol.stringId
           ))
         }))
       }
@@ -227,6 +240,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
             clusterConfig.pollConsumers,
             clusterConfig.filterConsumers,
             clusterConfig.tuning,
+            clusterConfig.securityProtocol.stringId,
             clusterConfig.logkafkaEnabled,
             clusterConfig.activeOffsetCacheEnabled,
             clusterConfig.displaySizeEnabled
@@ -295,6 +309,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
               clusterOperation.clusterConfig.pollConsumers,
               clusterOperation.clusterConfig.filterConsumers,
               clusterOperation.clusterConfig.tuning,
+              clusterOperation.clusterConfig.securityProtocol.stringId,
               clusterOperation.clusterConfig.logkafkaEnabled,
               clusterOperation.clusterConfig.activeOffsetCacheEnabled,
               clusterOperation.clusterConfig.displaySizeEnabled

@@ -5,7 +5,7 @@
 
 package models.form
 
-import kafka.manager.model.{ClusterTuning, ClusterConfig}
+import kafka.manager.model.{ClusterConfig, ClusterTuning, SecurityProtocol}
 
 /**
  * @author hiral
@@ -45,17 +45,18 @@ object ClusterOperation {
             , activeOffsetCacheEnabled: Boolean
             , displaySizeEnabled: Boolean
             , tuning: Option[ClusterTuning]
+            , securityProtocol: String
            ): ClusterOperation = {
     ClusterOperation(operation,ClusterConfig(name, version, zkHosts, zkMaxRetry, jmxEnabled, jmxUser, jmxPass, jmxSsl,
-      pollConsumers, filterConsumers, logkafkaEnabled, activeOffsetCacheEnabled, displaySizeEnabled, tuning))
+      pollConsumers, filterConsumers, logkafkaEnabled, activeOffsetCacheEnabled, displaySizeEnabled, tuning, securityProtocol))
   }
 
-  def customUnapply(co: ClusterOperation) : Option[(String, String, String, String, Int, Boolean, Option[String], Option[String], Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, Option[ClusterTuning])] = {
+  def customUnapply(co: ClusterOperation) : Option[(String, String, String, String, Int, Boolean, Option[String], Option[String], Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, Option[ClusterTuning], String)] = {
     Option((co.op.toString, co.clusterConfig.name, co.clusterConfig.version.toString,
             co.clusterConfig.curatorConfig.zkConnect, co.clusterConfig.curatorConfig.zkMaxRetry,
             co.clusterConfig.jmxEnabled, co.clusterConfig.jmxUser, co.clusterConfig.jmxPass, co.clusterConfig.jmxSsl,
             co.clusterConfig.pollConsumers, co.clusterConfig.filterConsumers, co.clusterConfig.logkafkaEnabled,
-            co.clusterConfig.activeOffsetCacheEnabled, co.clusterConfig.displaySizeEnabled, co.clusterConfig.tuning))
+            co.clusterConfig.activeOffsetCacheEnabled, co.clusterConfig.displaySizeEnabled, co.clusterConfig.tuning, co.clusterConfig.securityProtocol.stringId))
   }
 }
 

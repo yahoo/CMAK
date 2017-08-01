@@ -15,7 +15,9 @@ class BrokerIdentityTest extends FunSuite with Matchers {
     assert(biVal.isSuccess)
     val bi = biVal.toOption.get
     assert(bi.host === "host.com")
-    assert(bi.port === 9092)
+    assert(bi.endpoints.contains(SASL_PLAINTEXT))
+    assert(bi.endpoints(SASL_PLAINTEXT) === 9092)
+    assert(bi.endpointsString === "SASL_PLAINTEXT:9092")
     assert(bi.secure === true)
   }
 
@@ -26,8 +28,26 @@ class BrokerIdentityTest extends FunSuite with Matchers {
     assert(biVal.isSuccess)
     val bi = biVal.toOption.get
     assert(bi.host === "host.com")
-    assert(bi.port === 9092)
+    assert(bi.endpoints.contains(PLAINTEXT))
+    assert(bi.endpoints(PLAINTEXT) === 9092)
+    assert(bi.endpointsString === "PLAINTEXT:9092")
     assert(bi.secure === false)
+
+  }
+
+  test("successfully parse json with endpoints with plaintext and sasl") {
+    val jsonString = """{"jmx_port":-1,"timestamp":"1462400864268","endpoints":["PLAINTEXT://host.com:9092", "SASL_PLAINTEXT://host.com:9093"],"host":"host.com","version":2,"port":9092}"""
+
+    val biVal = BrokerIdentity.from(1, jsonString)
+    assert(biVal.isSuccess)
+    val bi = biVal.toOption.get
+    assert(bi.host === "host.com")
+    assert(bi.endpoints.contains(PLAINTEXT))
+    assert(bi.endpoints.contains(SASL_PLAINTEXT))
+    assert(bi.endpoints(PLAINTEXT) === 9092)
+    assert(bi.endpoints(SASL_PLAINTEXT) === 9093)
+    assert(bi.endpointsString === "SASL_PLAINTEXT:9093,PLAINTEXT:9092")
+    assert(bi.secure === true)
 
   }
 
@@ -38,7 +58,9 @@ class BrokerIdentityTest extends FunSuite with Matchers {
     assert(biVal.isSuccess)
     val bi = biVal.toOption.get
     assert(bi.host === "host.com")
-    assert(bi.port === 9092)
+    assert(bi.endpoints.contains(PLAINTEXT))
+    assert(bi.endpoints(PLAINTEXT) === 9092)
+    assert(bi.endpointsString === "PLAINTEXT:9092")
     assert(bi.secure === false)
 
   }
