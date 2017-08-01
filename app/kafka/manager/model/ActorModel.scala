@@ -265,21 +265,6 @@ object ActorModel {
                     UncategorizedError("endpoints", t.getMessage, List.empty)
                   }).toValidationNel
               }
-              /*
-              val result: JsonScalaz.Result[(String, Map[SecurityProtocol, Int])] = parsedList.find(_.isSuccess).fold({
-                val err: JsonScalaz.Result[(String, Map[SecurityProtocol, Int])] = Validation.failureNel(UncategorizedError("endpoints", s"failed to parse host and port from json : $config", List.empty).asInstanceOf[JsonScalaz.Error])
-                err
-              }
-              ) {
-                r =>
-                  val result: JsonScalaz.Result[(String, Map[SecurityProtocol, Int])] = r.foldRight(("", Map.empty[SecurityProtocol, Int])) {
-                    case ((host: String, port: Int, endpointType: SecurityProtocol), (_, map: Map[SecurityProtocol, Int])) =>
-                      (host, map.+(endpointType -> port))
-
-                  }.successNel[JsonScalaz.Error]
-                  result
-              }
-               */
               import _root_.scalaz.Scalaz._
               val endpoints: JsonScalaz.Result[List[(String, Int, SecurityProtocol)]] = parsedList.filter(_.isSuccess).sequence[JsonScalaz.Result, (String, Int, SecurityProtocol)]
               val result: JsonScalaz.Result[(String, Map[SecurityProtocol, Int])] = endpoints.flatMap {
@@ -291,18 +276,6 @@ object ActorModel {
 
               }
 
-                  /*
-              match {
-                case NonEmptyList(errors) =>
-                case endpoints =>
-                  endpoints.foldRight(("", Map.empty[SecurityProtocol, Int])) {
-                    case (host: String, port: Int, endpointType: SecurityProtocol), (_, map: Map[SecurityProtocol, Int])) =>
-                      (host, map.+(endpointType -> port))
-
-                  }.successNel[JsonScalaz.Error]
-                  result
-              }
-              */
               result
           }
       }
