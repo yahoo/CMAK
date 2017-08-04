@@ -156,6 +156,16 @@ add the -java-home option as follows:
 
     $ bin/kafka-manager -java-home /usr/local/oracle-java-8
 
+Starting the service with Security
+----------------------------------
+
+To add JAAS configuration for SASL, add the config file location at start:
+
+    $ bin/kafka-manager -Djava.security.auth.login.config=/path/to/my-jaas.conf
+
+NOTE: Make sure the user running kafka manager has read permissions on the jaas config file
+
+
 Packaging
 ---------
 
