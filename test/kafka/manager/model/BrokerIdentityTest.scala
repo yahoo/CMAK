@@ -36,11 +36,11 @@ class BrokerIdentityTest extends FunSuite with Matchers {
   }
 
   test("successfully parse json with unparseable endpoints") {
-    val jsonString = """{"endpoints":["INSIDE://c4458563815b:9092","OUTSIDE://ec2-35-162-25-239.us-west-2.compute.amazonaws.com:9094"],"rack":"us-west-2a","jmx_port":9999,"host":"c4458563815b","timestamp":"1501702861441","port":9092,"version":4}"""
+    val jsonString = """{"endpoints":["INSIDE://inside:9092","OUTSIDE://outside.com:9094"],"rack":"us-west-2a","jmx_port":9999,"host":"inside","timestamp":"1501702861441","port":9092,"version":4}"""
     val biVal = BrokerIdentity.from(1, jsonString)
     assert(biVal.isSuccess)
     val bi = biVal.toOption.get
-    assert(bi.host === "c4458563815b")
+    assert(bi.host === "inside")
     assert(bi.endpoints.contains(PLAINTEXT))
     assert(bi.endpoints(PLAINTEXT) === 9092)
     assert(bi.endpointsString === "PLAINTEXT:9092")
