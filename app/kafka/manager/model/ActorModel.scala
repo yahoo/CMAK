@@ -266,17 +266,21 @@ object ActorModel {
                   }).toValidationNel
               }
               import _root_.scalaz.Scalaz._
-              val endpoints: JsonScalaz.Result[List[(String, Int, SecurityProtocol)]] = parsedList.filter(_.isSuccess).sequence[JsonScalaz.Result, (String, Int, SecurityProtocol)]
-              val result: JsonScalaz.Result[(String, Map[SecurityProtocol, Int])] = endpoints.flatMap {
-                list =>
-                  list.foldRight(("", Map.empty[SecurityProtocol, Int])) {
-                    case ((host: String, port: Int, endpointType: SecurityProtocol), (_, map: Map[SecurityProtocol, Int])) =>
-                    (host, map.+(endpointType -> port))
-                  }.successNel[JsonScalaz.Error]
+              val listOfValidation: List[JsonScalaz.Result[(String, Int, SecurityProtocol)]] = parsedList.filter(_.isSuccess)
+              if(listOfValidation.nonEmpty) {
+                val endpoints: JsonScalaz.Result[List[(String, Int, SecurityProtocol)]] = parsedList.filter(_.isSuccess).sequence[JsonScalaz.Result, (String, Int, SecurityProtocol)]
+                val result: JsonScalaz.Result[(String, Map[SecurityProtocol, Int])] = endpoints.flatMap {
+                  list =>
+                    list.foldRight(("", Map.empty[SecurityProtocol, Int])) {
+                      case ((host: String, port: Int, endpointType: SecurityProtocol), (_, map: Map[SecurityProtocol, Int])) =>
+                        (host, map.+(endpointType -> port))
+                    }.successNel[JsonScalaz.Error]
 
+                }
+                result
+              } else {
+                (hostResult |@| portResult |@| DEFAULT_SECURE)((a, b, c) => (a, Map(PLAINTEXT.asInstanceOf[SecurityProtocol] -> b)))
               }
-
-              result
           }
       }
       for {
