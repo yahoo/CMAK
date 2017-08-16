@@ -18,7 +18,7 @@ trait TopicConfigs {
 object TopicConfigs {
   
   val topicConfigsByVersion : Map[KafkaVersion, TopicConfigs] = Map(
-    Kafka_0_8_1_1 -> zero81.LogConfig, 
+    Kafka_0_8_1_1 -> zero81.LogConfig,
     Kafka_0_8_2_0 -> zero82.LogConfig,
     Kafka_0_8_2_1 -> zero82.LogConfig,
     Kafka_0_8_2_2 -> zero82.LogConfig,
@@ -29,7 +29,8 @@ object TopicConfigs {
     Kafka_0_10_1_0 -> zero90.LogConfig,
     Kafka_0_10_1_1 -> zero90.LogConfig,
     Kafka_0_10_2_0 -> zero90.LogConfig,
-    Kafka_0_10_2_1 -> zero90.LogConfig
+    Kafka_0_10_2_1 -> zero90.LogConfig,
+    Kafka_0_11_0_0 -> zero90.LogConfig
     )
 
   def configNames(version: KafkaVersion) : Set[String] = {
