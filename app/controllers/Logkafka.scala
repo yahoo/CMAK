@@ -78,6 +78,8 @@ class Logkafka (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaMana
     LogkafkaNewConfigs.configMaps(Kafka_0_10_2_0).map{case(k,v) => LKConfig(k,Some(v))}.toList)
   val kafka_0_10_2_1_Default = CreateLogkafka("","",
     LogkafkaNewConfigs.configMaps(Kafka_0_10_2_1).map{case(k,v) => LKConfig(k,Some(v))}.toList)
+  val kafka_0_11_0_0_Default = CreateLogkafka("","",
+    LogkafkaNewConfigs.configMaps(Kafka_0_11_0_0).map{case(k,v) => LKConfig(k,Some(v))}.toList)
 
   val defaultCreateForm = Form(
     mapping(
@@ -128,6 +130,7 @@ class Logkafka (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaMana
           case Kafka_0_10_1_1 => (defaultCreateForm.fill(kafka_0_10_1_1_Default), clusterContext)
           case Kafka_0_10_2_0 => (defaultCreateForm.fill(kafka_0_10_2_0_Default), clusterContext)
           case Kafka_0_10_2_1 => (defaultCreateForm.fill(kafka_0_10_2_1_Default), clusterContext)
+          case Kafka_0_11_0_0 => (defaultCreateForm.fill(kafka_0_11_0_0_Default), clusterContext)
         }
       }
     }
@@ -222,6 +225,7 @@ class Logkafka (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaMana
       case Kafka_0_10_1_1 => LogkafkaNewConfigs.configNames(Kafka_0_10_1_1).map(n => (n,LKConfig(n,None))).toMap
       case Kafka_0_10_2_0 => LogkafkaNewConfigs.configNames(Kafka_0_10_2_0).map(n => (n,LKConfig(n,None))).toMap
       case Kafka_0_10_2_1 => LogkafkaNewConfigs.configNames(Kafka_0_10_2_1).map(n => (n,LKConfig(n,None))).toMap
+      case Kafka_0_11_0_0 => LogkafkaNewConfigs.configNames(Kafka_0_11_0_0).map(n => (n,LKConfig(n,None))).toMap
     }
     val identityOption = li.identityMap.get(log_path)
     if (identityOption.isDefined) {
