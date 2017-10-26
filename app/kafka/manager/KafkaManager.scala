@@ -193,15 +193,20 @@ class KafkaManager(akkaConfig: Config) extends Logging {
   {
     implicit val ec = apiExecutionContext
     system.actorSelection(kafkaManagerActor).ask(msg).map {
-      case err: ActorErrorResponse => -\/(ApiError.from(err))
+      case err: ActorErrorResponse => 
+        error(s"Failed on input : $msg")
+        -\/(ApiError.from(err))
       case o: Output =>
         Try {
           fn(o)
         } match {
-          case Failure(t) => -\/(ApiError.fromThrowable(t))
+          case Failure(t) => 
+            error(s"Failed on input : $msg")
+            -\/(ApiError.fromThrowable(t))
           case Success(foutput) => \/-(foutput)
         }
     }.recover { case t: Throwable =>
+      error(s"Failed on input : $msg", t)
       -\/(ApiError.fromThrowable(t))
     }
   }
