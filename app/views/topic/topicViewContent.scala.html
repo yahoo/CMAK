@@ -6,6 +6,7 @@
 @import kafka.manager.model.ActorModel.ConsumerType
 @import models.form.ReassignPartitionOperation
 @import models.form.ReassignPartitionOperation._
+@import kafka.manager.utils.LongFormatted
 @(cluster:String
 , topic: String
 , topicIdentity: kafka.manager.model.ActorModel.TopicIdentity
@@ -126,7 +127,7 @@
                 </tr>
                 <tr>
                     <td><span title="Represents the theoretical size of the topic">Sum of partition offsets</span></td>
-                    <td>@topicIdentity.summedTopicOffsets</td>
+                    <td>@topicIdentity.summedTopicOffsets.formattedAsDecimal</td>
                 </tr>
                 <tr>
                     <td>Total number of Brokers</td>
@@ -303,7 +304,7 @@
                 @for((_,tpi) <- topicIdentity.partitionsIdentity.toIndexedSeq.sortBy(_._2.partNum)) {
                 <tr>
                     <td>@tpi.partNum</td>
-                    <td>@tpi.latestOffset.getOrElse(" ")</td>
+                    <td>@tpi.latestOffset.map(_.formattedAsDecimal).getOrElse(" ")</td>
                     <td class="@getPartitionLeaderLevel(tpi.leader)">
                         <a href="@routes.Cluster.broker(cluster,tpi.leader)">@tpi.leader</a>
                     </td>
