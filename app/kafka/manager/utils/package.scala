@@ -6,6 +6,7 @@
 package kafka.manager
 
 import java.nio.charset.StandardCharsets
+import java.text.NumberFormat
 
 /**
  * @author hiral
@@ -15,6 +16,11 @@ package object utils {
   import org.json4s.jackson.JsonMethods._
   import org.json4s.jackson.Serialization.{read, write}
   implicit val formats = DefaultFormats
+  private[this] val numberFormat = NumberFormat.getInstance()
+  
+  implicit class LongFormatted(val x: Long) {
+    def formattedAsDecimal = numberFormat.format(x)  
+  }
 
   implicit def serializeString(data: String) : Array[Byte] = {
     data.getBytes(StandardCharsets.UTF_8)

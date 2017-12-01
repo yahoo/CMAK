@@ -3,6 +3,7 @@
 * See accompanying LICENSE file.
 *@
 @import b3.vertical.fieldConstructor
+@import kafka.manager.utils.LongFormatted
 @(cluster:String, consumer: String, topic: String, state: kafka.manager.model.ActorModel.ConsumedTopicState
 )(implicit messages: play.api.i18n.Messages)
 
@@ -29,7 +30,7 @@
                 <tbody>
                 <tr>
                     <td>Total Lag</td>
-                    <td>@state.totalLag.getOrElse(" ")</td>
+                    <td>@state.totalLag.map(_.formattedAsDecimal).getOrElse(" ")</td>
                 </tr>
                 <tr>
                     <td>% of Partitions assigned to a consumer instance</td>
@@ -52,9 +53,9 @@
                 @for(tp:Int <- 0 until state.numPartitions) {
                 <tr>
                     <td>@tp</td>
-                    <td>@state.topicOffsets(tp).getOrElse(" ")</td>
-                    <td>@state.partitionOffsets.get(tp)</td>
-                    <td>@state.partitionLag(tp).getOrElse(" ") </td>
+                    <td>@state.topicOffsets(tp).map(_.formattedAsDecimal).getOrElse(" ")</td>
+                    <td>@state.partitionOffsets.get(tp).map(_.formattedAsDecimal).getOrElse(" ")</td>
+                    <td>@state.partitionLag(tp).map(_.formattedAsDecimal).getOrElse(" ")</td>
                     <td class="@ifPartitionNotOwned(state.partitionOwners.get(tp))">@state.partitionOwners.get(tp).getOrElse("None")</td>
                 </tr>
                 }

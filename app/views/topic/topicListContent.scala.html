@@ -2,6 +2,7 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
+@import kafka.manager.utils.LongFormatted
 @(cluster: String,
   topics: IndexedSeq[((String, Option[kafka.manager.model.ActorModel.TopicIdentity]),Boolean)],
   topicsUnderReassignment: IndexedSeq[String],
@@ -87,7 +88,7 @@
           }
           @if(pollConsumers){
           @topicIdentity.map{ ti => <td>@ti.producerRate</td>}.getOrElse{<td> </td>}
-          @topicIdentity.map{ ti => <td>@ti.summedTopicOffsets</td>}.getOrElse{<td> </td>}
+          @topicIdentity.map{ ti => <td>@ti.summedTopicOffsets.formattedAsDecimal</td>}.getOrElse{<td> </td>}
           }
       </tr>
     }
