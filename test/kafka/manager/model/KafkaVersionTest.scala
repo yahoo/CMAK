@@ -59,7 +59,9 @@ class KafkaVersionTest extends FunSuite {
       ("0.10.1.1","0.10.1.1"),
       ("0.10.2.0","0.10.2.0"),
       ("0.10.2.1","0.10.2.1"),
-      ("0.11.0.0","0.11.0.0")
+      ("0.11.0.0","0.11.0.0"),
+      ("0.11.0.2","0.11.0.2"),
+      ("1.0.0","1.0.0")
     )
     assertResult(expected)(KafkaVersion.formSelectList)
   }
