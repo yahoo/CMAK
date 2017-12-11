@@ -197,7 +197,7 @@ object ActorModel {
   case class TopicDescription(topic: String,
                               description: (Int,String),
                               partitionState: Option[Map[String, String]], 
-                              partitionOffsets: Future[PartitionOffsetsCapture],
+                              partitionOffsets: PartitionOffsetsCapture,
                               config:Option[(Int,String)]) extends  QueryResponse
   case class TopicDescriptions(descriptions: IndexedSeq[TopicDescription], lastUpdateMillis: Long) extends QueryResponse
 
@@ -492,31 +492,10 @@ import scala.language.reflectiveCalls
       // Assign the partition data to the TPI format
       partMap.map { case (partition, replicas) =>
         val partitionNum = partition.toInt
-        // block on the futures that hold the latest produced offset in each partition
-        val partitionOffsets: Option[PartitionOffsetsCapture] = Try {
-          Await.ready(td.partitionOffsets, 2 second).value.get match {
-            case Success(offsetMap) =>
-              Option(offsetMap)
-            case Failure(e) =>
-              None
-          }
-        } match  {
-          case Failure(e) => None
-          case Success(r) => r
-        }
-
-        val previousPartitionOffsets: Option[PartitionOffsetsCapture] = tdPrevious.flatMap {
-          ptd => Try {
-            Await.ready(ptd.partitionOffsets, 2 second).value.get match {
-              case Success(offsetMap) =>
-                Option(offsetMap)
-              case Failure(e) =>
-                None
-            }
-          } match {
-            case Failure(e) => None
-            case Success(r) => r
-          }
+        val partitionOffsets: Option[PartitionOffsetsCapture] = Some(td.partitionOffsets)
+        val previousPartitionOffsets: Option[PartitionOffsetsCapture] = tdPrevious match {
+          case Some(tdP) => Some(tdP.partitionOffsets)
+          case None => None
         }
         
         val currentOffsetOption = partitionOffsets.flatMap(_.offsetsMap.get(partitionNum))
@@ -641,20 +620,11 @@ import scala.language.reflectiveCalls
     def from(ctd: ConsumedTopicDescription, clusterContext: ClusterContext): ConsumedTopicState = {
       val partitionOffsetsMap = ctd.partitionOffsets.getOrElse(Map.empty)
       val partitionOwnersMap = ctd.partitionOwners.getOrElse(Map.empty)
-      // block on the futures that hold the latest produced offset in each partition
-      val topicOffsetsOptMap: Map[Int, Long]= ctd.topicDescription.map{td: TopicDescription =>
-        Try {
-          Await.ready(td.partitionOffsets, 2 second).value.get match {
-            case Success(offsetMap) =>
-              offsetMap.offsetsMap
-            case Failure(e) =>
-              Map.empty[Int, Long]
-          }
-        } match {
-          case Failure(e) => Map.empty[Int, Long]
-          case Success(r) => r
-        }
-      }.getOrElse(Map.empty)
+
+      val topicOffsetsOptMap: Map[Int, Long]= ctd.topicDescription match {
+        case Some(td) => td.partitionOffsets.offsetsMap
+        case None => Map.empty
+      }
 
       ConsumedTopicState(
         ctd.consumer, 
