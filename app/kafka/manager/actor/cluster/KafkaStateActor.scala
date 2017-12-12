@@ -1072,9 +1072,12 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
     Option(topicsTreeCache.getCurrentData(topicPath)).map( childData => (childData.getStat.getVersion,asString(childData.getData)))
   }
 
-  def getTopicPartitionOffsetsNew(topic: String): PartitionOffsetsCapture = {
+  def getTopicPartitionOffsetsNotFuture(topic: String, interactive: Boolean): PartitionOffsetsCapture = {
       var partitionOffsets = PartitionOffsetsCapture(System.currentTimeMillis(), Map())
-      if (kafkaTopicOffsetCaptureMap.contains(topic)) {
+
+      val loadOffsets = featureGateFold(KMPollConsumersFeature)(false, true)
+      if ((interactive || loadOffsets) &&
+        kafkaTopicOffsetCaptureMap.contains(topic)) {
         partitionOffsets = kafkaTopicOffsetCaptureMap(topic)
       }
 
@@ -1090,7 +1093,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
         val statePath = s"$partitionsPath/$part/state"
         Option(topicsTreeCache.getCurrentData(statePath)).map(cd => (part, asString(cd.getData)))
       }
-      partitionOffsets = getTopicPartitionOffsetsNew(topic)
+      partitionOffsets = getTopicPartitionOffsetsNotFuture(topic, interactive)
       topicConfig = getTopicConfigString(topic)
     } yield TopicDescription(topic, description, Option(states), partitionOffsets, topicConfig)
   }
