@@ -98,7 +98,7 @@ class TestCreateTopic extends CuratorAwareTest with BaseTest {
       val stat = new Stat()
       val json:String = curator.getData.storingStatIn(stat).forPath(ZkUtils.getTopicPath("mytopic"))
       val configJson : String = curator.getData.forPath(ZkUtils.getTopicConfigPath("mytopic"))
-      val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion(),json),None,Future.successful(PartitionOffsetsCapture.EMPTY),Option((-1,configJson))),None,None,defaultClusterContext,None)
+      val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion(),json),None,PartitionOffsetsCapture.EMPTY,Option((-1,configJson))),None,None,defaultClusterContext,None)
       assert(td.partitions == 10)
       assert(td.replicationFactor == 3)
     }
@@ -122,7 +122,7 @@ class TestCreateTopic extends CuratorAwareTest with BaseTest {
         val stat = new Stat
         val json:String = curator.getData.storingStatIn(stat).forPath(ZkUtils.getTopicPath("mytopic"))
         val configJson : String = curator.getData.forPath(ZkUtils.getTopicConfigPath("mytopic"))
-        val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion,json),None,Future.successful(PartitionOffsetsCapture.EMPTY),Option((-1,configJson))),None,None,defaultClusterContext,None)
+        val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion,json),None,PartitionOffsetsCapture.EMPTY,Option((-1,configJson))),None,None,defaultClusterContext,None)
         val numPartitions = td.partitions
         adminUtils.addPartitions(curator, td.topic, numPartitions, td.partitionsIdentity.mapValues(_.replicas.toSeq),brokerList, stat.getVersion)
       }
@@ -136,7 +136,7 @@ class TestCreateTopic extends CuratorAwareTest with BaseTest {
         val stat = new Stat
         val json:String = curator.getData.storingStatIn(stat).forPath(ZkUtils.getTopicPath("mytopic"))
         val configJson : String = curator.getData.forPath(ZkUtils.getTopicConfigPath("mytopic"))
-        val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion,json),None,Future.successful(PartitionOffsetsCapture.EMPTY),Option((-1,configJson))),None,None,defaultClusterContext,None)
+        val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion,json),None,PartitionOffsetsCapture.EMPTY,Option((-1,configJson))),None,None,defaultClusterContext,None)
         val numPartitions = td.partitions + 2
         adminUtils.addPartitions(curator, td.topic, numPartitions, td.partitionsIdentity.mapValues(_.replicas.toSeq),brokerList,stat.getVersion)
       }
@@ -149,7 +149,7 @@ class TestCreateTopic extends CuratorAwareTest with BaseTest {
       val stat = new Stat
       val json:String = curator.getData.storingStatIn(stat).forPath(ZkUtils.getTopicPath("mytopic"))
       val configJson : String = curator.getData.forPath(ZkUtils.getTopicConfigPath("mytopic"))
-      val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion,json),None,Future.successful(PartitionOffsetsCapture.EMPTY),Option((-1,configJson))),None,None,defaultClusterContext,None)
+      val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion,json),None,PartitionOffsetsCapture.EMPTY,Option((-1,configJson))),None,None,defaultClusterContext,None)
       val numPartitions = td.partitions + 2
       adminUtils.addPartitions(curator, td.topic, numPartitions, td.partitionsIdentity.mapValues(_.replicas.toSeq),brokerList,stat.getVersion)
 
@@ -157,7 +157,7 @@ class TestCreateTopic extends CuratorAwareTest with BaseTest {
       {
         val json: String = curator.getData.forPath(ZkUtils.getTopicPath("mytopic"))
         val configJson: String = curator.getData.forPath(ZkUtils.getTopicConfigPath("mytopic"))
-        val td = TopicIdentity.from(3, TopicDescription("mytopic", (-1,json), None, Future.successful(PartitionOffsetsCapture.EMPTY), Option((-1,configJson))),None,None,defaultClusterContext,None)
+        val td = TopicIdentity.from(3, TopicDescription("mytopic", (-1,json), None, PartitionOffsetsCapture.EMPTY, Option((-1,configJson))),None,None,defaultClusterContext,None)
         assert(td.partitions === numPartitions, "Failed to add partitions!")
         assert(td.config.toMap.apply(kafka.manager.utils.zero82.LogConfig.RententionMsProp) === "1800000")
       }
@@ -172,7 +172,7 @@ class TestCreateTopic extends CuratorAwareTest with BaseTest {
       val configStat = new Stat
       val configJson : String = curator.getData.storingStatIn(configStat).forPath(ZkUtils.getTopicConfigPath("mytopic"))
       val configReadVersion = configStat.getVersion
-      val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion,json),None,Future.successful(PartitionOffsetsCapture.EMPTY),Option((configReadVersion,configJson))),None,None,defaultClusterContext,None)
+      val td = TopicIdentity.from(3,TopicDescription("mytopic",(stat.getVersion,json),None,PartitionOffsetsCapture.EMPTY,Option((configReadVersion,configJson))),None,None,defaultClusterContext,None)
       val properties = new Properties()
       td.config.foreach { case (k,v) => properties.put(k,v)}
       properties.setProperty(kafka.manager.utils.zero82.LogConfig.RententionMsProp,"3600000")
@@ -183,7 +183,7 @@ class TestCreateTopic extends CuratorAwareTest with BaseTest {
         val json: String = curator.getData.forPath(ZkUtils.getTopicPath("mytopic"))
         val configStat = new Stat
         val configJson : String = curator.getData.storingStatIn(configStat).forPath(ZkUtils.getTopicConfigPath("mytopic"))
-        val td = TopicIdentity.from(3, TopicDescription("mytopic", (-1,json), None, Future.successful(PartitionOffsetsCapture.EMPTY), Option((configStat.getVersion,configJson))),None,None,defaultClusterContext,None)
+        val td = TopicIdentity.from(3, TopicDescription("mytopic", (-1,json), None, PartitionOffsetsCapture.EMPTY, Option((configStat.getVersion,configJson))),None,None,defaultClusterContext,None)
         assert(td.config.toMap.apply(kafka.manager.utils.zero82.LogConfig.RententionMsProp) === "3600000")
         assert(configReadVersion != configStat.getVersion)
       }
