@@ -1414,7 +1414,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
               }
       } catch {
         case e: Exception =>
-          log.error("KafkaTopicOffsetGetter exception | ", e)
+          log.error(e, s"KafkaTopicOffsetGetter exception ")
       }
 
       if (!shutdown) {
