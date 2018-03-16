@@ -76,4 +76,21 @@ class BrokerIdentityTest extends FunSuite with Matchers {
     assert(bi.secure === false)
 
   }
+
+  test("successfully parse json with listener names") {
+    val jsonString = """{"listener_security_protocol_map":{"PLAINTEXT":"PLAINTEXT","PUBLIC":"SASL_PLAINTEXT"},"endpoints":["PLAINTEXT://host.com:9092","PUBLIC://publichost.com:19092"],"host":"host.com","port":9092,"jmx_port":-1,"version":4}"""
+
+    val biVal = BrokerIdentity.from(1, jsonString)
+    assert(biVal.isSuccess)
+    val bi = biVal.toOption.get
+    assert(bi.host === "host.com")
+    assert(bi.endpoints.size === 2)
+    assert(bi.endpoints.contains(PLAINTEXT))
+    assert(bi.endpoints(PLAINTEXT) === 9092)
+    assert(bi.endpoints.contains(SASL_PLAINTEXT))
+    assert(bi.endpoints(SASL_PLAINTEXT) === 19092)
+    assert(bi.endpointsString === "SASL_PLAINTEXT:19092,PLAINTEXT:9092")
+    assert(bi.secure === true)
+    assert(bi.nonSecure === true)
+  }
 }
