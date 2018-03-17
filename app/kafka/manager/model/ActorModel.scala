@@ -236,6 +236,7 @@ object ActorModel {
     import org.json4s.jackson.JsonMethods._
     import org.json4s.scalaz.JsonScalaz
     import org.json4s.scalaz.JsonScalaz._
+    import org.json4s.JValue
 
     import scala.language.reflectiveCalls
     import scalaz.Validation.FlatMap._
@@ -243,6 +244,14 @@ object ActorModel {
     import scalaz.syntax.applicative._
 
     val DEFAULT_SECURE : JsonScalaz.Result[Boolean] = false.successNel
+
+    def getSecurityProtocol(protocol: String, configJson: JValue): SecurityProtocol = {
+      val protocolFromListenerName = (configJson \ "listener_security_protocol_map" \ protocol).values
+      if (protocolFromListenerName == None)
+        SecurityProtocol(protocol)
+      else
+        SecurityProtocol(protocolFromListenerName.toString)
+    }
 
     implicit def from(brokerId: Int, config: String): Validation[NonEmptyList[JsonScalaz.Error],BrokerIdentity]= {
       val json = parse(config)
@@ -259,7 +268,7 @@ object ActorModel {
                   Validation.fromTryCatchNonFatal {
                     val arr1 = endpoint.split("://")
                     val arr2 = arr1(1).split(":")
-                    (arr2(0), arr2(1).toInt, SecurityProtocol(arr1(0).toUpperCase))
+                    (arr2(0), arr2(1).toInt, getSecurityProtocol(arr1(0).toUpperCase, json))
                   }.leftMap[JsonScalaz.Error](t => {
                     error(s"Failed to parse endpoint : $endpoint", t)
                     UncategorizedError("endpoints", t.getMessage, List.empty)
