@@ -16,11 +16,14 @@
 }
 
 @renderForm(confirmForm: Form[models.form.GenerateAssignment]) = {
-    <h4>Choose brokers to reassign topic @topic to:</h4>
+    <h4>Choose brokers to reassign topic <b>@topic</b> to:</h4>
     @b3.form(routes.ReassignPartitions.handleGenerateAssignment(cluster,topic)) {
         <table class="table">
             <thead>
-            <tr><th>Brokers</th></tr>
+            <tr>
+                <th>Brokers</th>
+                <th>Replication</th>
+            </tr>
             </thead>
             <tbody>
             <tr>
@@ -36,6 +39,9 @@
                     @b3.hidden(brokerSelectForm("host").name,brokerSelectForm("host").value.getOrElse(""))
                     @b3.checkbox(brokerSelectForm("selected"), '_text -> s"${brokerSelectForm("id").value.getOrElse(-1)} - ${brokerSelectForm("host").value.getOrElse("")}")
                 }
+                </td>
+                <td>
+                    @b3.number(confirmForm("replicationFactor"), '_label -> "Replication factor (optional)")
                 </td>
             </tr>
             </tbody>
