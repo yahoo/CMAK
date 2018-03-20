@@ -59,6 +59,17 @@ coverageExcludedPackages := "<empty>;controllers.*;views.*;models.*"
  * Allow packaging as part of the build
  */
 enablePlugins(SbtNativePackager)
+/*
+ * Enable systemd as systemloader
+ */
+
+enablePlugins(SystemdPlugin)
+
+/*
+ * Start service as user root
+ */
+
+daemonUser in Linux := "root"
 
 /* Debian Settings - to create, run as:
    $ sbt debian:packageBin
