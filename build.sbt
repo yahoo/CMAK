@@ -44,7 +44,8 @@ libraryDependencies ++= Seq(
   "com.yammer.metrics" % "metrics-core" % "2.2.0" force(),
   "ch.qos.logback" % "logback-core" % "1.1.3",
   "com.fasterxml.jackson.core" % "jackson-core" % "2.8.9",
-  "com.fasterxml.jackson.core" % "jackson-databind" % "2.8.9"
+  "com.fasterxml.jackson.core" % "jackson-databind" % "2.8.9",
+  "net.java.dev.jna" % "jna" % "3.4.0"
 )
 
 routesGenerator := InjectedRoutesGenerator
