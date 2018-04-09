@@ -42,7 +42,9 @@ libraryDependencies ++= Seq(
   "org.apache.curator" % "curator-test" % "2.10.0" % "test",
   "org.mockito" % "mockito-core" % "1.10.19" % "test",
   "com.yammer.metrics" % "metrics-core" % "2.2.0" force(),
-  "ch.qos.logback" % "logback-core" % "1.1.3"
+  "ch.qos.logback" % "logback-core" % "1.1.3",
+  "com.fasterxml.jackson.core" % "jackson-core" % "2.8.9",
+  "com.fasterxml.jackson.core" % "jackson-databind" % "2.8.9"
 )
 
 routesGenerator := InjectedRoutesGenerator
