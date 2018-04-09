@@ -36,6 +36,7 @@ libraryDependencies ++= Seq(
   "com.adrianhurt" %% "play-bootstrap3" % "0.4.5-P24",
   "org.clapper" %% "grizzled-slf4j" % "1.0.2",
   "org.apache.kafka" %% "kafka" % "0.10.0.1" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
+//  "ci.arenadata.io/artifactory/adsm-centos7-x64" %% "kafka" % "0.10.0.1" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
   "com.beachape" %% "enumeratum" % "1.4.4",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "org.apache.curator" % "curator-test" % "2.10.0" % "test",
@@ -67,9 +68,9 @@ enablePlugins(SbtNativePackager)
    http://www.scala-sbt.org/sbt-native-packager/formats/debian.html
 */
 
-maintainer := "Yahoo <yahoo@example.com>"
-packageSummary := "A tool for managing Apache Kafka"
-packageDescription := "A tool for managing Apache Kafka"
+maintainer := "Arenadata <ke@arenadata.io>"
+packageSummary := "A tool for managing Arenadata Streaming"
+packageDescription := "A tool for managing Arenadata Streaming"
 
 /* End Debian Settings */
 
@@ -82,9 +83,11 @@ packageDescription := "A tool for managing Apache Kafka"
 */
 
 rpmRelease := "1"
-rpmVendor := "yahoo"
-rpmUrl := Some("https://github.com/yahoo/kafka-manager")
+rpmVendor := "Arenadata"
+rpmUrl := Some("https://github.com/arenadata/adsm")
 rpmLicense := Some("Apache")
 rpmGroup := Some("kafka-manager")
+//* defaultLinuxInstallLocation := "/usr/lib/kafka-manager"
+rpmPrefix := Some("/usr/lib/kafka-manager")
 
 /* End RPM Settings */

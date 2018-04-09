@@ -3,12 +3,23 @@
  * See accompanying LICENSE file.
  */
 // Comment to get more information during initialization
-logLevel := Level.Info
+logLevel := Level.Debug
 
 resolvers += Resolver.url(
   "bintray-sbt-plugin-releases",
   url("http://dl.bintray.com/content/sbt/sbt-plugin-releases"))(
     Resolver.ivyStylePatterns)
+/**
+resolvers += Resolver.url(
+  "ads-repository",
+  url("https://.."))(
+  Resolver.ivyStylePatterns)
+
+resolvers += Resolver.url("my-test-repo") artifacts
+        "https://example.org/[organisation]/[module]/[revision]/[artifact].[ext]"
+
+resolvers += "Local ADS Repository" at "file://usr/lib/kafka/libs"
+**/
 
 addSbtPlugin("me.lessis" % "bintray-sbt" % "0.3.0")
 
