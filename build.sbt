@@ -47,7 +47,7 @@ libraryDependencies ++= Seq(
   "com.fasterxml.jackson.core" % "jackson-databind" % "2.8.9",
   "com.fasterxml.jackson.core" % "jackson-annotations" % "2.8.9",
   "net.java.dev.jna" % "jna" % "3.4.0",
-  "org.eclipse.sisu" % "org.eclipse.sisu.plexus" % "0.3.3"
+  "org.eclipse.sisu" % "org.eclipse.sisu.plexus" % "0.3.0"
 )
 
 routesGenerator := InjectedRoutesGenerator
