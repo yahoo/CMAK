@@ -45,6 +45,7 @@ libraryDependencies ++= Seq(
   "ch.qos.logback" % "logback-core" % "1.1.3",
   "com.fasterxml.jackson.core" % "jackson-core" % "2.8.9",
   "com.fasterxml.jackson.core" % "jackson-databind" % "2.8.9",
+  "com.fasterxml.jackson.core" % "jackson-annotations" % "2.8.9",
   "net.java.dev.jna" % "jna" % "3.4.0"
 )
 
@@ -102,7 +103,7 @@ rpmVendor := "Arenadata"
 rpmUrl := Some("https://github.com/arenadata/adsm")
 rpmLicense := Some("Apache")
 rpmGroup := Some("kafka-manager")
-//* defaultLinuxInstallLocation := "/usr/lib/kafka-manager"
-rpmPrefix := Some("/usr/lib/kafka-manager")
+defaultLinuxInstallLocation := "/usr/lib/kafka-manager"
+/**rpmPrefix := Some("/usr/lib/kafka-manager")
 
 /* End RPM Settings */
