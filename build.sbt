@@ -2,6 +2,10 @@
  * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
  * See accompanying LICENSE file.
  */
+
+import com.typesafe.sbt.packager.rpm.RpmPlugin.autoImport._
+import com.typesafe.sbt.packager.archetypes.ServerLoader
+
 name := """kafka-manager"""
 
 /* For packaging purposes, -SNAPSHOT MUST contain a digit */
@@ -104,7 +108,8 @@ rpmVendor := "Arenadata"
 rpmUrl := Some("https://github.com/arenadata/adsm")
 rpmLicense := Some("Apache")
 rpmGroup := Some("kafka-manager")
-defaultLinuxInstallLocation := "/usr/lib/kafka-manager"
-/**rpmPrefix := Some("/usr/lib/kafka-manager")
+defaultLinuxInstallLocation := "/usr/lib"
+serverLoading in Rpm := ServerLoader.Systemd
+/**rpmPrefix := Some("/usr/lib")
 
 /* End RPM Settings */
