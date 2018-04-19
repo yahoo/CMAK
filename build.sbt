@@ -110,6 +110,6 @@ rpmLicense := Some("Apache")
 rpmGroup := Some("kafka-manager")
 defaultLinuxInstallLocation := "/usr/lib"
 serverLoading in Rpm := ServerLoader.Systemd
-/**rpmPrefix := Some("/usr/lib")
+//**rpmPrefix := Some("/usr/lib")
 
 /* End RPM Settings */
