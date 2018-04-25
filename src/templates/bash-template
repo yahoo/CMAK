@@ -469,7 +469,7 @@ declare -r real_script_path="$(realpath "$0")"
 declare -r app_home="$(realpath "$(dirname "$real_script_path")")"
 # TODO - Check whether this is ok in cygwin...
 declare -r lib_dir="$(realpath "${app_home}/../lib")"
-#declare -a app_mainclass=(${{app_mainclass}})
+declare -a app_mainclass=(${{app_mainclass}})
 
 ${{template_declares}}
 # java_cmd is overrode in process_args when -java-home is used
