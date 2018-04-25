@@ -7,13 +7,13 @@
     <conversionRule conversionWord="coloredLevel" converterClass="play.api.Logger$ColoredLevel" />
 
     <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <file>${application.home}/logs/application.log</file>
+        <file>/var/log/kafka-manager/kafka-manager-start.log</file>
         <encoder>
            <pattern>%date - [%level] - from %logger in %thread %n%message%n%xException%n</pattern>
         </encoder>
 
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
-            <fileNamePattern>${application.home}/logs/application.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <fileNamePattern>/var/log/kafka-manager/kafka-manager-start.%d{yyyy-MM-dd}.log</fileNamePattern>
             <maxHistory>5</maxHistory>
             <totalSizeCap>5GB</totalSizeCap>
         </rollingPolicy>
