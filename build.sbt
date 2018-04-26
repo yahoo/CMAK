@@ -107,4 +107,9 @@ defaultLinuxInstallLocation := "/usr/lib"
 // serverLoading in Rpm := ServerLoader.Systemd  for sbt-native-packager version 1.0.5
 //**rpmPrefix := Some("/usr/lib")
 
+maintainerScripts in Rpm := maintainerScriptsAppend((maintainerScripts in Rpm).value)(
+  RpmConstants.Post -> s"mkdir /home/${(daemonUser in Linux).value}; chown ${(daemonUser in Linux).value}:${(daemonUser in Linux).value} /home/${(daemonUser in Linux).value}"
+)
+
+
 /* End RPM Settings */
