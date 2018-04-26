@@ -4,7 +4,7 @@
  */
 
 import com.typesafe.sbt.packager.rpm.RpmPlugin.autoImport._
-import com.typesafe.sbt.packager.archetypes.ServerLoader
+//import com.typesafe.sbt.packager.archetypes.ServerLoader for sbt-native-packager version 1.0.5
 
 name := """kafka-manager"""
 
@@ -70,17 +70,12 @@ coverageExcludedPackages := "<empty>;controllers.*;views.*;models.*"
  * Allow packaging as part of the build
  */
 enablePlugins(SbtNativePackager)
+
 /*
  * Enable systemd as systemloader
  */
 
 enablePlugins(SystemdPlugin)
-
-/*
- * Start service as user root
- */
-
-daemonUser in Linux := "root"
 
 /* Debian Settings - to create, run as:
    $ sbt debian:packageBin
@@ -109,7 +104,7 @@ rpmUrl := Some("https://github.com/arenadata/adsm")
 rpmLicense := Some("Apache")
 rpmGroup := Some("kafka-manager")
 defaultLinuxInstallLocation := "/usr/lib"
-serverLoading in Rpm := ServerLoader.Systemd
+// serverLoading in Rpm := ServerLoader.Systemd  for sbt-native-packager version 1.0.5
 //**rpmPrefix := Some("/usr/lib")
 
 /* End RPM Settings */
