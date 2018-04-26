@@ -7,6 +7,7 @@ Type=forking
 WorkingDirectory=${{chdir}}
 EnvironmentFile=${{env_config}}
 ExecStart=${{chdir}}/bin/${{exec}} start
+ExecStop=${{chdir}}/bin/${{exec}} stop
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 RestartSec=${{retryTimeout}}
