@@ -5,7 +5,7 @@ Requires=${{start_facilities}}
 [Service]
 Type=forking
 WorkingDirectory=${{chdir}}
-EnvironmentFile=${{env_config}}
+#EnvironmentFile=${{env_config}}
 ExecStart=${{chdir}}/bin/${{exec}} start
 ExecStop=${{chdir}}/bin/${{exec}} stop
 ExecReload=/bin/kill -HUP $MAINPID
