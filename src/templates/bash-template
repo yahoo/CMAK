@@ -276,6 +276,12 @@ loadConfigFile() {
 # Now check to see if it's a good enough version
 # TODO - Check to see if we have a configured default java version, otherwise use 1.6
 java_version_check() {
+  if [ -n "$JAVA_HOME" ]; then
+    java_cmd="$JAVA_HOME/bin/java"
+    echo
+    echo "JAVA_HOME is set $JAVA_HOME"
+    echo
+  fi
   readonly java_version=$("$java_cmd" -version 2>&1 | awk -F '"' '/version/ {print $2}')
   if [[ "$java_version" == "" ]]; then
     echo
