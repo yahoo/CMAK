@@ -8,7 +8,7 @@ PID=0
 APP_NAME=kafka-manager
 PID_DIR="/var/run/$APP_NAME"
 LOG_DIR="/var/log/$APP_NAME"
-
+LOG_FILE="$LOG_DIR/$APP_NAME.log"
 #Name of PID file
 PID_FILE="$PID_DIR/$APP_NAME.pid"
 
@@ -364,7 +364,7 @@ startService() {
    printf "Starting Kafka Manager"
 
    rm -f $PID_FILE
-   run "$@" >>/dev/null & echo $! > $PID_FILE
+   run "$@" >> $LOG_FILE & echo $! > $PID_FILE
 
    getPID
    isServiceRunning $PID
