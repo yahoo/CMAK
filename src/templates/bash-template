@@ -5,10 +5,11 @@
 ###  ------------------------------- ###
 
 PID=0
-APP_NAME=kafka-manager
-PID_DIR="/var/run/$APP_NAME"
-LOG_DIR="/var/log/$APP_NAME"
-LOG_FILE="$LOG_DIR/$APP_NAME.log"
+#[ -z $APP_NAME ] && APP_NAME=kafka-manager
+#[ -z $PID_DIR ] && PID_DIR="/var/run/$APP_NAME"
+#[ -z $LOG_DIR ] && LOG_DIR="/var/log/$APP_NAME"
+#[ -z $JAVA_OPTS ] && JAVA_OPTS="-Dhttp.port=9898"
+
 #Name of PID file
 PID_FILE="$PID_DIR/$APP_NAME.pid"
 
