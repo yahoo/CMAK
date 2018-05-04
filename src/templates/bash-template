@@ -420,7 +420,7 @@ statusService() {
 main(){
   case "$1" in
     start)
-      startService
+      startService "${@:2}"
       ;;
     stop)
       stopService
