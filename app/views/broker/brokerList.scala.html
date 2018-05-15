@@ -27,7 +27,7 @@
     "Broker List",
     menu = theMenu,
     breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Brokers",cluster))) {
-    <div class="col-md-7 un-pad-me">
+    <div class="col-lg-6">
         <div class="panel panel-default">
             <div class="panel-heading">
                 <h3>
@@ -39,7 +39,7 @@
             @errorOrBrokers.fold( views.html.errors.onApiError(_), views.html.broker.brokerListContent(cluster,_) )
         </div>
     </div>
-    <div class="col-md-5 un-pad-me">
+    <div class="col-lg-6">
         <div class="panel panel-default">
             <div class="panel-heading"><h3>Combined Metrics</h3></div>
             @errorOrBrokers.fold( views.html.errors.onApiError(_), bl => renderBrokerMetrics(bl))
