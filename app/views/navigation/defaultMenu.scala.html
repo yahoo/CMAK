@@ -1,4 +1,4 @@
-@*
+i@*
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
@@ -12,8 +12,10 @@
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
             </button>
-            <img src="@routes.Assets.versioned("images/favicon.png")">
-            <a class="navbar-brand un-float-me" href="@routes.Application.index()">Kafka Manager</a>
+            <!--<img src="@routes.Assets.versioned("images/favicon.png")">-->
+            <a class="navbar-brand" href="@routes.Application.index()">
+		<img src="@routes.Assets.versioned("images/favicon.png")">
+		<span>Kafka Manager</span></a>
         </div>
         @navHtml
     </div>
