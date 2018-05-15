@@ -8,7 +8,7 @@
 
             <table class="table">
                 <thead>
-                <tr><th>Active</th><th>Operations</th><th>Version</th></tr>
+                <tr><th>Active</th><th>Version</th><th class="text-center">Operations</th></tr>
                 </thead>
                 <tbody>
                 @for(cluster <- clusters) {
@@ -20,8 +20,13 @@
                             @cluster.name
                         }
                     </td>
-                    <td>
-                        <div class="btn-group-horizontal" role="group" aria-label="...">
+                    
+		    <td>
+                        @cluster.version.toString
+                    </td>
+
+		    <td class="text-center">
+                        <div class="btn-group-horizontal fix-col-cluster-list" role="group" aria-label="...">
                         @features.app(features.KMClusterManagerFeature) {
                             @if(cluster.enabled) {
                                 <a href="@routes.Cluster.updateCluster(cluster.name)" class="btn btn-default ops-button" role="button">Modify</a>

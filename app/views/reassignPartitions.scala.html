@@ -62,10 +62,10 @@
     "Reassign Partitions",
     menu = theMenu,
     breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Reassign Partitions",cluster))) {
-<div class="col-md-6 un-pad-me">
+<div class="col-lg-12">
     <div class="panel panel-default">
         <div class="panel-heading"><h3>Reassign Partitions</h3></div>
-        <div class="col-md-12">
+        <div class="col-lg-12">
             @errorOrStatus.fold[Html](views.html.errors.onApiError(_), renderView(cluster, _))
         </div>
     </div>
