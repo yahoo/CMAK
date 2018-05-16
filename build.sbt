@@ -9,7 +9,7 @@ import com.typesafe.sbt.packager.rpm.RpmPlugin.autoImport._
 name := """kafka-manager"""
 
 /* For packaging purposes, -SNAPSHOT MUST contain a digit */
-version := "1.1"
+version := "1.1.1"
 
 scalaVersion := "2.11.8"
 
