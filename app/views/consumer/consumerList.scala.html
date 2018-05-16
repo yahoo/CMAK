@@ -28,8 +28,8 @@
     menu = theMenu,
     breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Consumers",cluster)),
     scripts=consumerScripts) {
-    <div class="col-md-12">
-        <div class="panel panel-default">
+    <div class="col-lg-12">
+        <div class="panel panel-default add-bar">
             <div class="panel-heading"><h3>Consumers</h3></div>
             @errorOrConsumers.fold(
                 views.html.errors.onApiError(_),

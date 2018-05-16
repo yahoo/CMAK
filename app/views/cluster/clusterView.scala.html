@@ -15,7 +15,7 @@
     "Kafka Manager",
     menu = theMenu,
     breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Summary",cluster))) {
-<div class="col-md-6 un-pad-me">
+<div class="col-lg-12">
     @errorOrClusterView.fold(views.html.errors.onApiError(_),views.html.cluster.clusterViewContent(cluster,_))
 </div>
 }
