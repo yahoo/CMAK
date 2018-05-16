@@ -44,7 +44,7 @@
     "Create Logkafka",
     menu = theMenu,
     breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Create Logkafka",cluster))) {
-    <div class="col-md-12 un-pad-me">
+    <div class="col-lg-12">
         <div class="panel panel-default">
             <div class="panel-heading"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>Create Logkafka</h3></div>
             @errorOrForm.fold( views.html.errors.onApiError(_), t => renderForm(t._1))

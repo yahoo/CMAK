@@ -8,7 +8,7 @@
 <html>
 <head>
     <title>@title</title>
-    <link rel="shortcut icon" type="image/png" href="@routes.Assets.versioned("images/favicon.png")">
+    <link rel="shortcut icon" type="image/png" href="@routes.Assets.versioned("images/logo.png")">
     <link rel='stylesheet' href='@routes.WebJarAssets.at(WebJarAssets.locate("css/bootstrap.min.css"))'>
     <script>
         @Html(org.webjars.RequireJS.getSetupJavaScript(routes.WebJarAssets.at("").url))
@@ -24,9 +24,9 @@
 <body role="document">
 
 @menu
-
-<div class="container-fluid" role="main">
 @breadcrumbs
+
+<div role="main">
 @content
 </div>
 
