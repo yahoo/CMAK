@@ -19,11 +19,12 @@ package kafka.manager.utils.zero90
 import java.nio.ByteBuffer
 
 import kafka.common.{KafkaException, OffsetAndMetadata}
-import kafka.coordinator.{GroupMetadataKey, GroupTopicPartition, OffsetKey, BaseKey}
+import kafka.coordinator.group.{BaseKey, GroupMetadataKey, GroupTopicPartition, OffsetKey}
 import org.apache.kafka.clients.consumer.internals.ConsumerProtocol
 import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.protocol.types.Type._
 import org.apache.kafka.common.protocol.types.{ArrayOf, Field, Schema, Struct}
+import org.apache.kafka.common.requests.DescribeGroupsResponse
 
 import scala.collection.Map
 
@@ -392,9 +393,9 @@ case class GroupMetadata(groupId: String
 
 object MemberMetadata {
   import collection.JavaConverters._
-  def from(groupId: String, groupSummary: kafka.coordinator.GroupSummary, memberSummary: kafka.coordinator.MemberSummary) : MemberMetadata = {
-    val subscription = ConsumerProtocol.deserializeSubscription(ByteBuffer.wrap(memberSummary.metadata))
-    val assignment = ConsumerProtocol.deserializeAssignment(ByteBuffer.wrap(memberSummary.assignment))
+  def from(groupId: String, groupSummary: DescribeGroupsResponse.GroupMetadata, memberSummary: DescribeGroupsResponse.GroupMember) : MemberMetadata = {
+    val subscription = ConsumerProtocol.deserializeSubscription(ByteBuffer.wrap(memberSummary.memberMetadata().array()))
+    val assignment = ConsumerProtocol.deserializeAssignment(ByteBuffer.wrap(memberSummary.memberAssignment().array()))
     MemberMetadata(memberSummary.memberId
       , groupId, memberSummary.clientId
       , memberSummary. clientHost

@@ -19,7 +19,7 @@ import kafka.admin.AdminClient
 import kafka.api.{OffsetRequest, PartitionOffsetRequestInfo}
 import kafka.common.{OffsetAndMetadata, TopicAndPartition}
 import kafka.consumer._
-import kafka.coordinator.{GroupMetadataKey, GroupSummary, OffsetKey}
+import kafka.coordinator.group.{GroupMetadataKey, GroupSummary, OffsetKey}
 import kafka.manager._
 import kafka.manager.base.cluster.{BaseClusterQueryActor, BaseClusterQueryCommandActor}
 import kafka.manager.base.{LongRunningPoolActor, LongRunningPoolConfig}
@@ -34,6 +34,7 @@ import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.cache._
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.{Consumer, ConsumerRecords, KafkaConsumer}
+import org.apache.kafka.common.requests.DescribeGroupsResponse
 import org.joda.time.{DateTime, DateTimeZone}
 
 import scala.collection.concurrent.TrieMap
@@ -104,16 +105,16 @@ case class KafkaAdminClientActor(config: KafkaAdminClientActorConfig) extends Ba
     } else {
       implicit val ec = longRunningExecutionContext
       request match {
-        case KAGetGroupSummary(groupList: Seq[String], enqueue: java.util.Queue[(String, kafka.coordinator.GroupSummary)]) =>
+        case KAGetGroupSummary(groupList: Seq[String], enqueue: java.util.Queue[(String, DescribeGroupsResponse.GroupMetadata)]) =>
           Future {
             groupList.foreach {
               group =>
                 try {
                   adminClientOption.foreach {
                     client =>
-                      val summary = client.describeGroup(group)
-                      if(summary != null) {
-                        enqueue.offer(group -> summary)
+                      val groupMetadata = client.describeConsumerGroupHandler(client.findCoordinator(group, 1000), group)
+                      if (groupMetadata != null) {
+                        enqueue.offer(group -> groupMetadata)
                       }
                   }
                 } catch {
@@ -145,7 +146,7 @@ case class KafkaAdminClientActor(config: KafkaAdminClientActorConfig) extends Ba
 }
 
 class KafkaAdminClient(context: => ActorContext, adminClientActorPath: ActorPath) {
-  def enqueueGroupMetadata(groupList: Seq[String], queue: java.util.Queue[(String, GroupSummary)]) : Unit = {
+  def enqueueGroupMetadata(groupList: Seq[String], queue: java.util.Queue[(String, DescribeGroupsResponse.GroupMetadata)]) : Unit = {
     Try {
       context.actorSelection(adminClientActorPath).tell(KAGetGroupSummary(groupList, queue), ActorRef.noSender)
     }
@@ -173,7 +174,7 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
   val consumerTopicSetMap = new TrieMap[String, mutable.Set[String]]()
   val groupTopicPartitionMemberMap = new TrieMap[(String, String, Int), MemberMetadata]()
 
-  private[this] val queue = new ConcurrentLinkedDeque[(String, GroupSummary)]()
+  private[this] val queue = new ConcurrentLinkedDeque[(String, DescribeGroupsResponse.GroupMetadata)]()
 
   @volatile
   private[this] var lastUpdateTimeMillis : Long = 0
@@ -233,7 +234,7 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
   private[this] def dequeueAndProcessBackFill(): Unit = {
     while(!queue.isEmpty) {
       val (groupId, summary) = queue.pop()
-      summary.members.foreach {
+      summary.members.asScala.foreach {
         member =>
           try {
             val mm = MemberMetadata.from(groupId, summary, member)
@@ -431,7 +432,7 @@ trait OffsetCache extends Logging {
                 try {
                   val topicAndPartitions = parts.map(tpl => (TopicAndPartition(topic, tpl._2), PartitionOffsetRequestInfo(time, nOffsets)))
                   val request = OffsetRequest(topicAndPartitions.toMap)
-                  simpleConsumer.getOffsetsBefore(request).partitionErrorAndOffsets.map(tpl => (tpl._1.asTuple._2, tpl._2.offsets.headOption))
+                  simpleConsumer.getOffsetsBefore(request).partitionErrorAndOffsets.map(tpl => (tpl._1.partition, tpl._2.offsets.headOption))
                 } finally {
                   simpleConsumer.close()
                 }
