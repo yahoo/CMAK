@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import grizzled.slf4j.Logging
 import kafka.consumer._
-import kafka.manager.model.Kafka_0_8_2_0
+import kafka.manager.model.{Kafka_0_8_2_0, Kafka_1_1_0}
 import kafka.manager.utils.AdminUtils
 import kafka.message.{DefaultCompressionCodec, NoCompressionCodec}
 import kafka.serializer.DefaultDecoder
@@ -39,7 +39,7 @@ class SeededBroker(seedTopic: String, partitions: Int) {
   zookeeper.start()
   private[this] val broker = new KafkaTestBroker(zookeeper,zookeeperConnectionString)
   
-  private[this] val adminUtils = new AdminUtils(Kafka_0_8_2_0)
+  private[this] val adminUtils = new AdminUtils(Kafka_1_1_0)
 
   //seed with table
   {
