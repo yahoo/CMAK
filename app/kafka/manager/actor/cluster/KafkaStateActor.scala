@@ -16,10 +16,9 @@ import akka.pattern._
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import grizzled.slf4j.Logging
 import kafka.admin.AdminClient
-import kafka.api.{OffsetRequest, PartitionOffsetRequestInfo}
+import kafka.api.PartitionOffsetRequestInfo
 import kafka.common.{OffsetAndMetadata, TopicAndPartition}
-import kafka.consumer._
-import kafka.coordinator.group.{GroupMetadataKey, GroupSummary, OffsetKey}
+import kafka.coordinator.group.{GroupMetadataKey, OffsetKey}
 import kafka.manager._
 import kafka.manager.base.cluster.{BaseClusterQueryActor, BaseClusterQueryCommandActor}
 import kafka.manager.base.{LongRunningPoolActor, LongRunningPoolConfig}
@@ -34,10 +33,13 @@ import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.cache._
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.{Consumer, ConsumerRecords, KafkaConsumer}
+import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.requests.DescribeGroupsResponse
 import org.joda.time.{DateTime, DateTimeZone}
 
+import scala.collection.JavaConversions.{mapAsScalaMap, _}
 import scala.collection.concurrent.TrieMap
+import scala.collection.immutable.Map
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
@@ -414,10 +416,8 @@ trait OffsetCache extends Logging {
       }.groupBy(_._1)
     }
 
-    def getSimpleConsumer(bi: BrokerIdentity) = {
-      require(bi.nonSecure, "Cannot fetch log size without PLAINTEXT endpoint!")
-      val port: Int = bi.endpoints(PLAINTEXT)
-      new SimpleConsumer(bi.host, port, getSimpleConsumerSocketTimeoutMillis, 256 * 1024, clientId)
+    def getKafkaConsumer() = {
+      new KafkaConsumer(consumerProperties.get)
     }
 
     // Get the latest offset for each partition
@@ -426,25 +426,26 @@ trait OffsetCache extends Logging {
         Future.failed(new IllegalArgumentException(s"Do not have partitions and their leaders for topic $topic"))
       } { partitionsWithLeaders =>
         try {
-          val listOfFutures = partitionsWithLeaders.toList.map(tpl => (getSimpleConsumer(tpl._1), tpl._2)).map {
-            case (simpleConsumer, parts) =>
-              val f: Future[Map[Int, Option[Long]]] = Future {
+          val listOfFutures = partitionsWithLeaders.toList.map(tpl => (tpl._2)).map {
+            case (parts) =>
+              val kafkaConsumer = getKafkaConsumer()
+              val f: Future[Map[TopicPartition, java.lang.Long]] = Future {
                 try {
                   val topicAndPartitions = parts.map(tpl => (TopicAndPartition(topic, tpl._2), PartitionOffsetRequestInfo(time, nOffsets)))
-                  val request = OffsetRequest(topicAndPartitions.toMap)
-                  simpleConsumer.getOffsetsBefore(request).partitionErrorAndOffsets.map(tpl => (tpl._1.partition, tpl._2.offsets.headOption))
+                  val request: List[TopicPartition] = topicAndPartitions.map(f => new TopicPartition(f._1.topic, f._1.partition))
+                  kafkaConsumer.endOffsets(request.asJava).asScala.toMap
                 } finally {
-                  simpleConsumer.close()
+                  kafkaConsumer.close()
                 }
               }
               f.recover { case t =>
                 error(s"[topic=$topic] An error has occurred while getting topic offsets from broker $parts", t)
-                Map.empty[Int, Option[Long]]
+                Map.empty[TopicPartition, java.lang.Long]
               }
           }
-          val result: Future[Map[Int, Option[Long]]] = Future.sequence(listOfFutures).map(_.foldRight(Map.empty[Int, Option[Long]])((b, a) => b ++ a))
-          result.map(m => PartitionOffsetsCapture(System.currentTimeMillis(), m.mapValues(_.getOrElse(0L))))
-        } 
+          val result: Future[Map[TopicPartition, java.lang.Long]] = Future.sequence(listOfFutures).map(_.foldRight(Map.empty[TopicPartition, java.lang.Long])((b, a) => b ++ a))
+          result.map(m => PartitionOffsetsCapture(System.currentTimeMillis(), m.map(f => (f._1.partition(), f._2.toLong))))
+        }
         catch {
           case e: Exception =>
             error(s"Failed to get offsets for topic $topic", e)
@@ -1388,10 +1389,10 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
 
                     var tpList = broker2TopicPartitionMap(broker)
                     val port: Int = broker.endpoints(PLAINTEXT)
-                    var simpleConsumer = new SimpleConsumer(broker.host, port, config.simpleConsumerSocketTimeoutMillis, 256 * 1024, "kafkaTopicOffsetGetter")
+                    var kafkaConsumer = new KafkaConsumer(kaConfig.consumerProperties.get)
                     try {
-                      val request = OffsetRequest(tpList.toMap)
-                      var tpOffsetMap = simpleConsumer.getOffsetsBefore(request).partitionErrorAndOffsets
+                      val request = tpList.toList.map( f => new TopicPartition(f._1.topic, f._1.partition)).toList
+                      var tpOffsetMap = kafkaConsumer.endOffsets(request)
 
                       var topicOffsetMap : Map[Int, Long] = null 
                       tpOffsetMap.keys.foreach(tp => {
@@ -1401,11 +1402,11 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
                           topicOffsetMap = Map()
                         }
 
-                        topicOffsetMap += (tp.partition -> tpOffsetMap(tp).offsets.headOption.getOrElse(0))
+                        topicOffsetMap += (tp.partition -> tpOffsetMap(tp))
                         kafkaTopicOffsetMap += (tp.topic -> topicOffsetMap)
                       })
                     } finally {
-                      simpleConsumer.close()
+                      kafkaConsumer.close()
                     }
                   })
                 }

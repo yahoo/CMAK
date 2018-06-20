@@ -19,6 +19,7 @@ import scala.collection.immutable.Queue
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success, Try}
 import scalaz.{NonEmptyList, Validation}
+import scala.collection.immutable.Map
 
 /**
  * @author hiral
