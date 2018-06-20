@@ -43,6 +43,7 @@ import scala.collection.immutable.Map
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
+import org.apache.kafka.clients.consumer.ConsumerConfig._
 
 /**
  * @author hiral
@@ -199,13 +200,13 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
         s"${b.host}:$port"
     }.mkString(",")
     val props: Properties = new Properties()
-    props.put(org.apache.kafka.clients.consumer.ConsumerConfig.GROUP_ID_CONFIG, s"KMOffsetCache-$hostname")
-    props.put(org.apache.kafka.clients.consumer.ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, brokerListStr)
-    props.put(org.apache.kafka.clients.consumer.ConsumerConfig.EXCLUDE_INTERNAL_TOPICS_CONFIG, "false")
-    props.put(org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false")
-    props.put(org.apache.kafka.clients.consumer.ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArrayDeserializer")
-    props.put(org.apache.kafka.clients.consumer.ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArrayDeserializer")
-    props.put(org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest")
+    props.put(GROUP_ID_CONFIG, s"KMOffsetCache-$hostname")
+    props.put(BOOTSTRAP_SERVERS_CONFIG, brokerListStr)
+    props.put(EXCLUDE_INTERNAL_TOPICS_CONFIG, "false")
+    props.put(ENABLE_AUTO_COMMIT_CONFIG, "false")
+    props.put(KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArrayDeserializer")
+    props.put(VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArrayDeserializer")
+    props.put(AUTO_OFFSET_RESET_CONFIG, "latest")
     consumerProperties.foreach {
       cp => props.putAll(cp)
     }
@@ -1389,7 +1390,9 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
 
                     var tpList = broker2TopicPartitionMap(broker)
                     val port: Int = broker.endpoints(PLAINTEXT)
-                    var kafkaConsumer = new KafkaConsumer(kaConfig.consumerProperties.get)
+                    require(kaConfig.consumerProperties.isDefined, "Cannot instantiate KafkaConsumer, consumer properties missing")
+                    kaConfig.consumerProperties.get.put(BOOTSTRAP_SERVERS_CONFIG, s"${broker.host}:$port")
+                    val kafkaConsumer = new KafkaConsumer(kaConfig.consumerProperties.get)
                     try {
                       val request = tpList.toList.map( f => new TopicPartition(f._1.topic, f._1.partition)).toList
                       var tpOffsetMap = kafkaConsumer.endOffsets(request)

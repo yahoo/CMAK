@@ -118,7 +118,7 @@ class TestKafkaManager extends CuratorAwareTest with BaseTest {
   }
 
   test("add cluster") {
-    val future = kafkaManager.addCluster("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(kafkaManager.defaultTuning), securityProtocol="PLAINTEXT")
+    val future = kafkaManager.addCluster("dev","1.1.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(kafkaManager.defaultTuning), securityProtocol="PLAINTEXT")
     val result = Await.result(future,duration)
     assert(result.isRight === true)
     Thread.sleep(2000)
