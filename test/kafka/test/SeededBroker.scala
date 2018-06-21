@@ -19,10 +19,12 @@ import org.apache.curator.retry.ExponentialBackoffRetry
 import org.apache.curator.test.TestingServer
 import org.apache.kafka.clients.consumer.{ConsumerRecords, KafkaConsumer}
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
-import org.apache.kafka.streams.kstream.{ForeachAction, KStream}
+import org.apache.kafka.streams.kstream.{ForeachAction, KStream, Printed}
 import org.apache.kafka.streams.{KafkaStreams, StreamsBuilder}
 import org.apache.kafka.clients.consumer.ConsumerConfig._
 import org.apache.kafka.clients.CommonClientConfigs
+import org.apache.kafka.common.serialization.{ByteArrayDeserializer, Serdes}
+import org.apache.kafka.streams.StreamsConfig
 
 import scala.util.Try
 
@@ -47,7 +49,7 @@ class SeededBroker(seedTopic: String, partitions: Int) {
   }
 
   private[this] val commonConsumerConfig = new Properties()
-  commonConsumerConfig.put(BOOTSTRAP_SERVERS_CONFIG, s"localhost:${broker.getPort}")
+  commonConsumerConfig.put(BOOTSTRAP_SERVERS_CONFIG, getBrokerConnectionString)
   commonConsumerConfig.put(REQUEST_TIMEOUT_MS_CONFIG, "11000")
   commonConsumerConfig.put(SESSION_TIMEOUT_MS_CONFIG, "10000")
   commonConsumerConfig.put(RECEIVE_BUFFER_CONFIG, s"${64 * 1024}")
@@ -119,16 +121,24 @@ case class HighLevelConsumer(topic: String,
                     commonConsumerConfig: Properties,
                     readFromStartOfStream: Boolean = true) extends Logging {
 
-  commonConsumerConfig.put("application.id", "test-app")
-  commonConsumerConfig.put(GROUP_ID_CONFIG, groupId)
-  commonConsumerConfig.put(AUTO_COMMIT_INTERVAL_MS_CONFIG, "1000")
-  commonConsumerConfig.put(AUTO_OFFSET_RESET_CONFIG, if(readFromStartOfStream) "earliest" else "latest")
-
+  commonConsumerConfig.put(StreamsConfig.APPLICATION_ID_CONFIG, groupId)
+  commonConsumerConfig.put(StreamsConfig.CLIENT_ID_CONFIG, groupId)
+  commonConsumerConfig.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.ByteArray().getClass.getName)
+  commonConsumerConfig.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.ByteArray().getClass.getName)
+  commonConsumerConfig.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, "100" )
+  commonConsumerConfig.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, "0")
 
   info("setup:start topic=%s for bk=%s and groupId=%s".format(topic,commonConsumerConfig.getProperty(BOOTSTRAP_SERVERS_CONFIG),groupId))
   val streamsBuilder = new StreamsBuilder
   val kstream : KStream[Array[Byte], Array[Byte]] = streamsBuilder.stream(topic)
+
   val kafkaStreams = new KafkaStreams(streamsBuilder.build(), commonConsumerConfig)
+  kafkaStreams.setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler {
+    override def uncaughtException(t: Thread, e: Throwable): Unit = {
+      error("Failed to initialize KafkStreams", e)
+    }
+  })
+
   kafkaStreams.start()
   info("setup:complete topic=%s for bk=%s and groupId=%s".format(topic,commonConsumerConfig.getProperty(BOOTSTRAP_SERVERS_CONFIG),groupId))
 
