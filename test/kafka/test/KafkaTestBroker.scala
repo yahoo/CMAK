@@ -40,7 +40,7 @@ class KafkaTestBroker(zookeeper: CuratorFramework, zookeeperConnectionString: St
     p.setProperty("log.dirs", getLogDir)
     p.setProperty("log.retention.hours", "1")
     p.setProperty("offsets.topic.replication.factor", "1")
-    p.setProperty("delete.topic.enable", "false") // Mark the topic for deletion in zookeeper
+    p.setProperty("delete.topic.enable", "true")
     new KafkaConfig(p)
   }
 
