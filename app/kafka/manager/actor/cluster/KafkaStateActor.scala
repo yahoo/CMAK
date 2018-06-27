@@ -44,6 +44,7 @@ import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import org.apache.kafka.clients.consumer.ConsumerConfig._
+import org.apache.kafka.common.serialization.Serdes
 
 /**
  * @author hiral
@@ -1390,11 +1391,10 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
                      return 
                     }
 
-                    var tpList = broker2TopicPartitionMap(broker)
+                    val tpList = broker2TopicPartitionMap(broker)
                     val port: Int = broker.endpoints(PLAINTEXT)
-                    require(kaConfig.consumerProperties.isDefined, "Cannot instantiate KafkaConsumer, consumer properties missing")
-                    kaConfig.consumerProperties.get.put(BOOTSTRAP_SERVERS_CONFIG, s"${broker.host}:$port")
-                    val kafkaConsumer = new KafkaConsumer(kaConfig.consumerProperties.get)
+                    val consumerProperties = kaConfig.consumerProperties.getOrElse(getDefaultConsumerProperties(s"${broker.host}:$port"))
+                    val kafkaConsumer = new KafkaConsumer(consumerProperties)
                     try {
                       val request = tpList.toList.map( f => new TopicPartition(f._1.topic, f._1.partition)).toList
                       var tpOffsetMap = kafkaConsumer.endOffsets(request)
@@ -1434,6 +1434,15 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
 
   def close(): Unit = {
     this.shutdown = true
+  }
+
+  def getDefaultConsumerProperties(bootstrapServers: String): Properties = {
+    val properties = new Properties()
+    properties.put(BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
+    properties.put(GROUP_ID_CONFIG, getClass.getCanonicalName)
+    properties.put(KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArrayDeserializer")
+    properties.put(VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArrayDeserializer")
+    properties
   }
 }
 }
