@@ -7,7 +7,7 @@ package kafka.manager.utils
 
 import java.util.Properties
 
-import kafka.manager.model._
+import kafka.manager.model.{Kafka_1_0_0, _}
 
 trait LogkafkaNewConfigs {
   def configNames : Set[String]
@@ -32,7 +32,8 @@ object LogkafkaNewConfigs {
     Kafka_0_10_2_1 -> logkafka82.LogConfig,
     Kafka_0_11_0_0 -> logkafka82.LogConfig,
     Kafka_0_11_0_2 -> logkafka82.LogConfig,
-    Kafka_1_0_0 -> logkafka82.LogConfig
+    Kafka_1_0_0 -> logkafka82.LogConfig,
+    Kafka_1_1_0 -> logkafka82.LogConfig
     )
 
   def configNames(version: KafkaVersion) : Set[String] = {
