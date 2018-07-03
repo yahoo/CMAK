@@ -153,7 +153,7 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
     val future = kafkaStateCheck.get.topicSummaryAction(testClusterName, "null", testTopicName, "KF").apply(FakeRequest())
     assert(status(future) === OK)
     val json = Json.parse(contentAsJson(future).toString())
-    (json \ "totalLag").asOpt[Int] should not be empty
+    //(json \ "totalLag").asOpt[Int] should not be empty
     (json \ "percentageCovered").asOpt[Int] should not be empty
     (json \ "partitionOffsets").asOpt[Seq[Long]] should not be empty
     (json \ "partitionLatestOffsets").asOpt[Seq[Long]] should not be empty
