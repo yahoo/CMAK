@@ -13,6 +13,7 @@ import java.util.concurrent.{ConcurrentLinkedDeque, TimeUnit}
 
 import akka.actor.{ActorContext, ActorPath, ActorRef, Props}
 import akka.pattern._
+import com.github.benmanes.caffeine.cache.{Cache, Caffeine, RemovalCause, RemovalListener}
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import grizzled.slf4j.Logging
 import kafka.admin.AdminClient
@@ -44,7 +45,6 @@ import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import org.apache.kafka.clients.consumer.ConsumerConfig._
-import org.apache.kafka.common.serialization.Serdes
 
 /**
  * @author hiral
@@ -165,6 +165,12 @@ object KafkaManagedOffsetCache {
   def isSupported(version: KafkaVersion) : Boolean = {
     supportedVersions(version)
   }
+
+  def createSet[T](): mutable.Set[T] = {
+    import scala.collection.JavaConverters._
+    java.util.Collections.newSetFromMap(
+      new java.util.concurrent.ConcurrentHashMap[T, java.lang.Boolean]).asScala
+  }
 }
 
 case class KafkaManagedOffsetCache(clusterContext: ClusterContext
@@ -172,11 +178,33 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
                                    , consumerProperties: Option[Properties]
                                    , bootstrapBrokerList: BrokerList
                                    , groupMemberMetadataCheckMillis: Int = 30000
+                                   , groupTopicPartitionOffsetMaxSize: Int = 1000000
+                                   , groupTopicPartitionOffsetExpireDays: Int = 7
                                     ) extends Runnable with Closeable with Logging {
-  val groupTopicPartitionOffsetMap = new TrieMap[(String, String, Int), OffsetAndMetadata]()
+  val groupTopicPartitionOffsetSet: mutable.Set[(String, String, Int)] = KafkaManagedOffsetCache.createSet()
+  val groupTopicPartitionOffsetMap:Cache[(String, String, Int), OffsetAndMetadata] = Caffeine
+    .newBuilder()
+    .maximumSize(groupTopicPartitionOffsetMaxSize)
+    .expireAfterAccess(groupTopicPartitionOffsetExpireDays, TimeUnit.DAYS)
+    .removalListener(new RemovalListener[(String, String, Int), OffsetAndMetadata] {
+      override def onRemoval(key: (String, String, Int), value: OffsetAndMetadata, cause: RemovalCause): Unit = {
+        groupTopicPartitionOffsetSet.remove(key)
+      }
+    })
+    .build[(String, String, Int), OffsetAndMetadata]()
   val topicConsumerSetMap = new TrieMap[String, mutable.Set[String]]()
   val consumerTopicSetMap = new TrieMap[String, mutable.Set[String]]()
-  val groupTopicPartitionMemberMap = new TrieMap[(String, String, Int), MemberMetadata]()
+  val groupTopicPartitionMemberSet: mutable.Set[(String, String, Int)] = KafkaManagedOffsetCache.createSet()
+  val groupTopicPartitionMemberMap: Cache[(String, String, Int), MemberMetadata] = Caffeine
+    .newBuilder()
+    .maximumSize(groupTopicPartitionOffsetMaxSize)
+    .expireAfterAccess(groupTopicPartitionOffsetExpireDays, TimeUnit.DAYS)
+    .removalListener(new RemovalListener[(String, String, Int), MemberMetadata] {
+      override def onRemoval(key: (String, String, Int), value: MemberMetadata, cause: RemovalCause): Unit = {
+        groupTopicPartitionMemberSet.remove(key)
+      }
+    })
+    .build[(String, String, Int), MemberMetadata]()
 
   private[this] val queue = new ConcurrentLinkedDeque[(String, DescribeGroupsResponse.GroupMetadata)]()
 
@@ -224,7 +252,7 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
   private[this] def performGroupMetadataCheck() : Unit = {
     val currentMillis = System.currentTimeMillis()
     if((lastGroupMemberMetadataCheckMillis + groupMemberMetadataCheckMillis) < currentMillis) {
-      val diff = groupTopicPartitionOffsetMap.keySet.filterNot(groupTopicPartitionMemberMap.contains)
+      val diff = groupTopicPartitionOffsetSet.diff(groupTopicPartitionMemberSet)
       if(diff.nonEmpty) {
         val groupsToBackfill = diff.map(_._1).toSeq
         info(s"Backfilling group metadata for $groupsToBackfill")
@@ -246,8 +274,9 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
               case (topic, part) =>
                 val k = (groupId, topic, part)
                 //only add it if it hasn't already been added through a new update via the offset topic
-                if(!groupTopicPartitionMemberMap.contains(k)) {
-                  groupTopicPartitionMemberMap += (groupId, topic, part) -> mm
+                if(groupTopicPartitionMemberMap.getIfPresent(k) == null) {
+                  groupTopicPartitionMemberMap.put(k, mm)
+                  groupTopicPartitionMemberSet.add(k)
                 }
             }
           } catch {
@@ -286,7 +315,9 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
                 readMessageKey(ByteBuffer.wrap(record.key())) match {
                   case OffsetKey(version, key) =>
                     val value: OffsetAndMetadata = readOffsetMessageValue(ByteBuffer.wrap(record.value()))
-                    groupTopicPartitionOffsetMap += (key.group, key.topicPartition.topic, key.topicPartition.partition) -> value
+                    val newKey = (key.group, key.topicPartition.topic, key.topicPartition.partition)
+                    groupTopicPartitionOffsetMap.put(newKey, value)
+                    groupTopicPartitionOffsetSet.add(newKey)
                     val topic = key.topicPartition.topic
                     val group = key.group
                     val consumerSet = {
@@ -316,7 +347,9 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
                       mm =>
                         mm.assignment.foreach {
                           case (topic, part) =>
-                            groupTopicPartitionMemberMap += (key, topic, part) -> mm
+                            val newKey = (key, topic, part)
+                            groupTopicPartitionMemberMap.put(newKey, mm)
+                            groupTopicPartitionMemberSet.add(newKey)
                         }
                     }
                 }
@@ -341,11 +374,11 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
   }
 
   def getOffset(group: String, topic: String, part:Int) : Option[Long] = {
-    groupTopicPartitionOffsetMap.get((group, topic, part)).map(_.offset)
+    Option(groupTopicPartitionOffsetMap.getIfPresent((group, topic, part))).map(_.offset)
   }
 
   def getOwner(group: String, topic: String, part:Int) : Option[String] = {
-    groupTopicPartitionMemberMap.get((group, topic, part)).map(mm => s"${mm.memberId}:${mm.clientHost}")
+    Option(groupTopicPartitionMemberMap.getIfPresent((group, topic, part))).map(mm => s"${mm.memberId}:${mm.clientHost}")
   }
 
   def getConsumerTopics(group: String) : Set[String] = consumerTopicSetMap.get(group).map(_.toSet).getOrElse(Set.empty)
