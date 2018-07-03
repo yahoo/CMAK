@@ -28,7 +28,8 @@ import kafka.manager.model.ActorModel._
 import kafka.manager.model._
 import kafka.manager.utils.ZkUtils
 import kafka.manager.utils.zero81.{PreferredReplicaLeaderElectionCommand, ReassignPartitionCommand}
-import kafka.manager.utils.zero90.{GroupMetadata, MemberMetadata}
+//import kafka.manager.utils.zero90.{GroupMetadata, MemberMetadata}
+import kafka.manager.utils.one10.{GroupMetadata, MemberMetadata}
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.cache._
@@ -173,19 +174,26 @@ object KafkaManagedOffsetCache {
   }
 }
 
+object KafkaManagedOffsetCacheConfig {
+  val defaultGroupMemberMetadataCheckMillis: Int = 30000
+  val defaultGroupTopicPartitionOffsetMaxSize: Int = 1000000
+  val defaultGroupTopicPartitionOffsetExpireDays: Int = 7
+}
+import KafkaManagedOffsetCacheConfig._
+case class KafkaManagedOffsetCacheConfig(groupMemberMetadataCheckMillis: Int = defaultGroupMemberMetadataCheckMillis
+                                         , groupTopicPartitionOffsetMaxSize: Int = defaultGroupTopicPartitionOffsetMaxSize
+                                         , groupTopicPartitionOffsetExpireDays: Int = defaultGroupTopicPartitionOffsetExpireDays)
 case class KafkaManagedOffsetCache(clusterContext: ClusterContext
                                    , adminClient: KafkaAdminClient
                                    , consumerProperties: Option[Properties]
                                    , bootstrapBrokerList: BrokerList
-                                   , groupMemberMetadataCheckMillis: Int = 30000
-                                   , groupTopicPartitionOffsetMaxSize: Int = 1000000
-                                   , groupTopicPartitionOffsetExpireDays: Int = 7
+                                   , config: KafkaManagedOffsetCacheConfig
                                     ) extends Runnable with Closeable with Logging {
   val groupTopicPartitionOffsetSet: mutable.Set[(String, String, Int)] = KafkaManagedOffsetCache.createSet()
   val groupTopicPartitionOffsetMap:Cache[(String, String, Int), OffsetAndMetadata] = Caffeine
     .newBuilder()
-    .maximumSize(groupTopicPartitionOffsetMaxSize)
-    .expireAfterAccess(groupTopicPartitionOffsetExpireDays, TimeUnit.DAYS)
+    .maximumSize(config.groupTopicPartitionOffsetMaxSize)
+    .expireAfterAccess(config.groupTopicPartitionOffsetExpireDays, TimeUnit.DAYS)
     .removalListener(new RemovalListener[(String, String, Int), OffsetAndMetadata] {
       override def onRemoval(key: (String, String, Int), value: OffsetAndMetadata, cause: RemovalCause): Unit = {
         groupTopicPartitionOffsetSet.remove(key)
@@ -197,8 +205,8 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
   val groupTopicPartitionMemberSet: mutable.Set[(String, String, Int)] = KafkaManagedOffsetCache.createSet()
   val groupTopicPartitionMemberMap: Cache[(String, String, Int), MemberMetadata] = Caffeine
     .newBuilder()
-    .maximumSize(groupTopicPartitionOffsetMaxSize)
-    .expireAfterAccess(groupTopicPartitionOffsetExpireDays, TimeUnit.DAYS)
+    .maximumSize(config.groupTopicPartitionOffsetMaxSize)
+    .expireAfterAccess(config.groupTopicPartitionOffsetExpireDays, TimeUnit.DAYS)
     .removalListener(new RemovalListener[(String, String, Int), MemberMetadata] {
       override def onRemoval(key: (String, String, Int), value: MemberMetadata, cause: RemovalCause): Unit = {
         groupTopicPartitionMemberSet.remove(key)
@@ -214,7 +222,8 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
   private[this] var lastGroupMemberMetadataCheckMillis : Long = System.currentTimeMillis()
 
   import KafkaManagedOffsetCache._
-  import kafka.manager.utils.zero90.GroupMetadataManager._
+  //import kafka.manager.utils.zero90.GroupMetadataManager._
+  import kafka.manager.utils.one10.GroupMetadataManager._
 
   require(isSupported(clusterContext.config.version), s"Kafka version not support : ${clusterContext.config}")
 
@@ -251,7 +260,7 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
 
   private[this] def performGroupMetadataCheck() : Unit = {
     val currentMillis = System.currentTimeMillis()
-    if((lastGroupMemberMetadataCheckMillis + groupMemberMetadataCheckMillis) < currentMillis) {
+    if((lastGroupMemberMetadataCheckMillis + config.groupMemberMetadataCheckMillis) < currentMillis) {
       val diff = groupTopicPartitionOffsetSet.diff(groupTopicPartitionMemberSet)
       if(diff.nonEmpty) {
         val groupsToBackfill = diff.map(_._1).toSeq
@@ -366,6 +375,12 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
         }
       }
     }
+    groupTopicPartitionMemberSet.clear()
+    groupTopicPartitionMemberMap.invalidateAll()
+    groupTopicPartitionMemberMap.cleanUp()
+    groupTopicPartitionOffsetSet.clear()
+    groupTopicPartitionOffsetMap.invalidateAll()
+    groupTopicPartitionOffsetMap.cleanUp()
     info(s"KafkaManagedOffsetCache shut down for cluster ${clusterContext.config.name}")
   }
 
@@ -415,6 +430,8 @@ trait OffsetCache extends Logging {
   def getCacheTimeoutSecs: Int
 
   def getSimpleConsumerSocketTimeoutMillis: Int
+
+  def kafkaManagedOffsetCacheConfig: KafkaManagedOffsetCacheConfig
 
   protected[this] implicit def ec: ExecutionContext
   
@@ -532,7 +549,7 @@ trait OffsetCache extends Logging {
         Try {
           val bl = getBrokerList()
           require(bl.list.nonEmpty, "Cannot consume from offset topic when there are no brokers!")
-          val of = new KafkaManagedOffsetCache(clusterContext, kafkaAdminClient, consumerProperties, bl)
+          val of = new KafkaManagedOffsetCache(clusterContext, kafkaAdminClient, consumerProperties, bl, kafkaManagedOffsetCacheConfig)
           kafkaManagedOffsetCache = Option(of)
           val t = new Thread(of, "KafkaManagedOffsetCache")
           t.start()
@@ -675,6 +692,7 @@ case class OffsetCacheActive(curator: CuratorFramework
                              , socketTimeoutMillis: Int
                              , kafkaVersion: KafkaVersion
                              , consumerProperties: Option[Properties]
+                             , kafkaManagedOffsetCacheConfig: KafkaManagedOffsetCacheConfig
                              , getBrokerList : () => BrokerList
                               )
                             (implicit protected[this] val ec: ExecutionContext, val cf: ClusterFeatures) extends OffsetCache {
@@ -792,6 +810,7 @@ case class OffsetCachePassive(curator: CuratorFramework
                               , socketTimeoutMillis: Int
                               , kafkaVersion: KafkaVersion
                               , consumerProperties: Option[Properties]
+                              , kafkaManagedOffsetCacheConfig: KafkaManagedOffsetCacheConfig
                               , getBrokerList : () => BrokerList
                                )
                              (implicit protected[this] val ec: ExecutionContext, val cf: ClusterFeatures) extends OffsetCache {
@@ -908,6 +927,7 @@ case class KafkaStateActorConfig(curator: CuratorFramework
                                  , partitionOffsetCacheTimeoutSecs: Int
                                  , simpleConsumerSocketTimeoutMillis: Int
                                  , consumerProperties: Option[Properties]
+                                 , kafkaManagedOffsetCacheConfig: KafkaManagedOffsetCacheConfig
                                   )
 class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCommandActor with LongRunningPoolActor {
 
@@ -1027,6 +1047,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
         , config.simpleConsumerSocketTimeoutMillis
         , config.clusterContext.config.version
         , config.consumerProperties
+        , config.kafkaManagedOffsetCacheConfig
         , () => getBrokerList
       )(longRunningExecutionContext, cf)
     else
@@ -1039,6 +1060,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
         , config .simpleConsumerSocketTimeoutMillis
         , config.clusterContext.config.version
         , config.consumerProperties
+        , config.kafkaManagedOffsetCacheConfig
         , () => getBrokerList
       )(longRunningExecutionContext, cf)
   }
