@@ -367,9 +367,9 @@ object ClusterTuning {
         offsetCacheThreadPoolQueueSize <- fieldExtended[Option[Int]]("offsetCacheThreadPoolQueueSize")(json)
         kafkaAdminClientThreadPoolSize <- fieldExtended[Option[Int]]("kafkaAdminClientThreadPoolSize")(json)
         kafkaAdminClientThreadPoolQueueSize <- fieldExtended[Option[Int]]("kafkaAdminClientThreadPoolQueueSize")(json)
-        kafkaManagedOffsetMetadataCheckMillis <- fieldExtended[Option[Int]]("kafkaManagedOffsetMetadataCheckMillis")
-        kafkaManagedOffsetGroupCacheSize <- fieldExtended[Option[Int]]("kafkaManagedOffsetGroupCacheSize")
-        kafkaManagedOffsetGroupExpireDays <- fieldExtended[Option[Int]]("kafkaManagedOffsetGroupExpireDays")
+        kafkaManagedOffsetMetadataCheckMillis <- fieldExtended[Option[Int]]("kafkaManagedOffsetMetadataCheckMillis")(json)
+        kafkaManagedOffsetGroupCacheSize <- fieldExtended[Option[Int]]("kafkaManagedOffsetGroupCacheSize")(json)
+        kafkaManagedOffsetGroupExpireDays <- fieldExtended[Option[Int]]("kafkaManagedOffsetGroupExpireDays")(json)
       } yield {
         ClusterTuning(
           brokerViewUpdatePeriodSeconds = brokerViewUpdatePeriodSeconds
