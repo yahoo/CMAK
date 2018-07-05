@@ -27,7 +27,7 @@ import kafka.manager.model.ActorModel._
 import kafka.manager.model._
 import kafka.manager.utils.ZkUtils
 import kafka.manager.utils.zero81.{PreferredReplicaLeaderElectionCommand, ReassignPartitionCommand}
-import kafka.manager.utils.one10.{GroupMetadata, MemberMetadata, OffsetKey, GroupMetadataKey}
+import kafka.manager.utils.one10.{GroupMetadata, GroupMetadataKey, MemberMetadata, OffsetKey}
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.cache._
@@ -44,6 +44,8 @@ import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import org.apache.kafka.clients.consumer.ConsumerConfig._
+import org.apache.kafka.clients.consumer.internals.ConsumerProtocol
+import org.apache.kafka.common.protocol.Errors
 
 /**
   * @author hiral
@@ -101,6 +103,9 @@ case class KafkaAdminClientActor(config: KafkaAdminClientActorConfig) extends Ba
     AdminClient.create(props)
   }
 
+  private def isValidConsumerGroupResponse(metadata: DescribeGroupsResponse.GroupMetadata): Boolean =
+    metadata.error == Errors.NONE && (metadata.state == "Dead" || metadata.state == "Empty" || metadata.protocolType == ConsumerProtocol.PROTOCOL_TYPE)
+
   override def processQueryRequest(request: QueryRequest): Unit = {
     if(adminClientOption.isEmpty) {
       context.actorSelection(config.kafkaStateActorPath).tell(KSGetBrokers, self)
@@ -117,7 +122,11 @@ case class KafkaAdminClientActor(config: KafkaAdminClientActorConfig) extends Ba
                     client =>
                       val groupMetadata = client.describeConsumerGroupHandler(client.findCoordinator(group, 1000), group)
                       if (groupMetadata != null) {
-                        enqueue.offer(group -> groupMetadata)
+                        if(isValidConsumerGroupResponse(groupMetadata)) {
+                          enqueue.offer(group -> groupMetadata)
+                        } else {
+                          log.error(s"Invalid group metadata group=$group metadata.error=${groupMetadata.error} metadata.state=${groupMetadata.state()} metadata.protocolType=${groupMetadata.protocolType()}")
+                        }
                       }
                   }
                 } catch {
