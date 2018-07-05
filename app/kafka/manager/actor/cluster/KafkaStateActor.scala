@@ -113,7 +113,7 @@ case class KafkaAdminClientActor(config: KafkaAdminClientActorConfig) extends Ba
     } else {
       implicit val ec = longRunningExecutionContext
       request match {
-        case KAGetGroupSummary(groupList: Seq[String], enqueue: java.util.Queue[(String, DescribeGroupsResponse.GroupMetadata)]) =>
+        case KAGetGroupSummary(groupList: Seq[String], enqueue: java.util.Queue[(String, List[MemberMetadata])]) =>
           Future {
             groupList.foreach {
               group =>
@@ -123,7 +123,7 @@ case class KafkaAdminClientActor(config: KafkaAdminClientActorConfig) extends Ba
                       val groupMetadata = client.describeConsumerGroupHandler(client.findCoordinator(group, 1000), group)
                       if (groupMetadata != null) {
                         if(isValidConsumerGroupResponse(groupMetadata)) {
-                          enqueue.offer(group -> groupMetadata)
+                          enqueue.offer((group, groupMetadata.members().asScala.map(m => MemberMetadata.from(group, groupMetadata, m)).toList))
                         } else {
                           log.error(s"Invalid group metadata group=$group metadata.error=${groupMetadata.error} metadata.state=${groupMetadata.state()} metadata.protocolType=${groupMetadata.protocolType()}")
                         }
@@ -158,7 +158,7 @@ case class KafkaAdminClientActor(config: KafkaAdminClientActorConfig) extends Ba
 }
 
 class KafkaAdminClient(context: => ActorContext, adminClientActorPath: ActorPath) {
-  def enqueueGroupMetadata(groupList: Seq[String], queue: java.util.Queue[(String, DescribeGroupsResponse.GroupMetadata)]) : Unit = {
+  def enqueueGroupMetadata(groupList: Seq[String], queue: java.util.Queue[(String, List[MemberMetadata])]) : Unit = {
     Try {
       context.actorSelection(adminClientActorPath).tell(KAGetGroupSummary(groupList, queue), ActorRef.noSender)
     }
@@ -221,7 +221,7 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
     })
     .build[(String, String, Int), MemberMetadata]()
 
-  private[this] val queue = new ConcurrentLinkedDeque[(String, DescribeGroupsResponse.GroupMetadata)]()
+  private[this] val queue = new ConcurrentLinkedDeque[(String, List[MemberMetadata])]()
 
   @volatile
   private[this] var lastUpdateTimeMillis : Long = 0
@@ -281,17 +281,16 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
 
   private[this] def dequeueAndProcessBackFill(): Unit = {
     while(!queue.isEmpty) {
-      val (groupId, summary) = queue.pop()
-      summary.members.asScala.foreach {
+      val (groupId, members) = queue.pop()
+      members.foreach {
         member =>
           try {
-            val mm = MemberMetadata.from(groupId, summary, member)
-            mm.assignment.foreach {
+            member.assignment.foreach {
               case (topic, part) =>
                 val k = (groupId, topic, part)
                 //only add it if it hasn't already been added through a new update via the offset topic
                 if(groupTopicPartitionMemberMap.getIfPresent(k) == null) {
-                  groupTopicPartitionMemberMap.put(k, mm)
+                  groupTopicPartitionMemberMap.put(k, member)
                   groupTopicPartitionMemberSet.add(k)
                 }
             }

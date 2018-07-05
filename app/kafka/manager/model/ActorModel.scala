@@ -11,6 +11,7 @@ import grizzled.slf4j.Logging
 import kafka.common.TopicAndPartition
 import kafka.manager.jmx._
 import kafka.manager.utils
+import kafka.manager.utils.one10.MemberMetadata
 import kafka.manager.utils.zero81.ForceReassignmentCommand
 import org.apache.kafka.common.requests.DescribeGroupsResponse
 import org.joda.time.DateTime
@@ -177,7 +178,7 @@ object ActorModel {
   case class KSGetBrokerState(id: String) extends  KSRequest
 
   sealed trait KARequest extends QueryRequest
-  case class KAGetGroupSummary(groupList: Seq[String], enqueue: java.util.Queue[(String, DescribeGroupsResponse.GroupMetadata)]) extends QueryRequest
+  case class KAGetGroupSummary(groupList: Seq[String], enqueue: java.util.Queue[(String, List[MemberMetadata])]) extends QueryRequest
 
   case class TopicList(list: IndexedSeq[String], deleteSet: Set[String], clusterContext: ClusterContext) extends QueryResponse
   case class TopicConfig(topic: String, config: Option[(Int,String)]) extends QueryResponse

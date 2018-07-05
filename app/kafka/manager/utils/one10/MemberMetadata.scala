@@ -20,15 +20,15 @@ import java.nio.ByteBuffer
 
 import org.apache.kafka.clients.consumer.internals.ConsumerProtocol
 import org.apache.kafka.common.requests.DescribeGroupsResponse
-
+import org.apache.kafka.common.utils.Utils
 
 object MemberMetadata {
   import collection.JavaConverters._
   def from(groupId: String, groupSummary: DescribeGroupsResponse.GroupMetadata, memberSummary: DescribeGroupsResponse.GroupMember) : MemberMetadata = {
-    val assignment = ConsumerProtocol.deserializeAssignment(ByteBuffer.wrap(memberSummary.memberAssignment().array()))
+    val assignment = ConsumerProtocol.deserializeAssignment(ByteBuffer.wrap(Utils.readBytes(memberSummary.memberAssignment)))
     val topics: Set[String] = {
       try {
-        val subscription = ConsumerProtocol.deserializeSubscription(ByteBuffer.wrap(memberSummary.memberMetadata().array()))
+        val subscription = ConsumerProtocol.deserializeSubscription(ByteBuffer.wrap(Utils.readBytes(memberSummary.memberMetadata())))
         subscription.topics().asScala.toSet
       } catch {
         case e: Exception =>
