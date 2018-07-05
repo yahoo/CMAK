@@ -25,15 +25,23 @@ import org.apache.kafka.common.requests.DescribeGroupsResponse
 object MemberMetadata {
   import collection.JavaConverters._
   def from(groupId: String, groupSummary: DescribeGroupsResponse.GroupMetadata, memberSummary: DescribeGroupsResponse.GroupMember) : MemberMetadata = {
-    val subscription = ConsumerProtocol.deserializeSubscription(ByteBuffer.wrap(memberSummary.memberMetadata().array()))
     val assignment = ConsumerProtocol.deserializeAssignment(ByteBuffer.wrap(memberSummary.memberAssignment().array()))
+    val topics: Set[String] = {
+      try {
+        val subscription = ConsumerProtocol.deserializeSubscription(ByteBuffer.wrap(memberSummary.memberMetadata().array()))
+        subscription.topics().asScala.toSet
+      } catch {
+        case e: Exception =>
+          assignment.partitions().asScala.map(tp => tp.topic()).toSet
+      }
+    }
     MemberMetadata(
       memberSummary.memberId
       , groupId
       , memberSummary.clientId
       , memberSummary. clientHost
       , groupSummary.protocolType()
-      , List((groupSummary.protocol, subscription.topics().asScala.toSet))
+      , List((groupSummary.protocol, topics))
       , assignment.partitions().asScala.map(tp => tp.topic() -> tp.partition()).toSet
     )
 
