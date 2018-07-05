@@ -166,7 +166,7 @@ class TestKafkaManagerActor extends CuratorAwareTest with BaseTest {
   }
 
   test("update cluster tuning") {
-    val newTuning = getClusterTuning(3, 101, 11)
+    val newTuning = getClusterTuning(3, 101, 11, 10000, 10000, 1)
     val cc2 = ClusterConfig("dev","1.1.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, logkafkaEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false,
       tuning = Option(newTuning), securityProtocol="PLAINTEXT"
     )

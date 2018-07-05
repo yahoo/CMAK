@@ -10,10 +10,10 @@ import akka.actor.{ActorRef, ActorSystem, Kill, Props}
 import akka.pattern._
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
-import kafka.manager.actor.cluster.{KafkaStateActorConfig, KafkaStateActor, BrokerViewCacheActorConfig, BrokerViewCacheActor}
+import kafka.manager.actor.cluster.{BrokerViewCacheActor, BrokerViewCacheActorConfig, KafkaManagedOffsetCacheConfig, KafkaStateActor, KafkaStateActorConfig}
 import kafka.manager.base.LongRunningPoolConfig
 import kafka.manager.features.ClusterFeatures
-import kafka.manager.model.{ClusterConfig, ClusterContext, ActorModel}
+import kafka.manager.model.{ActorModel, ClusterConfig, ClusterContext}
 import kafka.manager.utils.KafkaServerInTest
 import ActorModel._
 import kafka.test.SeededBroker
@@ -45,7 +45,7 @@ class TestBrokerViewCacheActor extends KafkaServerInTest with BaseTest {
     super.beforeAll()
     val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning), securityProtocol="PLAINTEXT")
     val clusterContext = ClusterContext(ClusterFeatures.from(clusterConfig), clusterConfig)
-    val ksConfig = KafkaStateActorConfig(sharedCurator, "pinned-dispatcher", clusterContext, LongRunningPoolConfig(2,100), LongRunningPoolConfig(2,100), 5, 10000, None)
+    val ksConfig = KafkaStateActorConfig(sharedCurator, "pinned-dispatcher", clusterContext, LongRunningPoolConfig(2,100), LongRunningPoolConfig(2,100), 5, 10000, None, KafkaManagedOffsetCacheConfig())
     val props = Props(classOf[KafkaStateActor],ksConfig)
 
     kafkaStateActor = Some(system.actorOf(props.withDispatcher("pinned-dispatcher"),"ksa"))

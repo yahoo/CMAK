@@ -313,6 +313,9 @@ case class ClusterTuning(brokerViewUpdatePeriodSeconds: Option[Int]
                          , offsetCacheThreadPoolQueueSize: Option[Int]
                          , kafkaAdminClientThreadPoolSize: Option[Int]
                          , kafkaAdminClientThreadPoolQueueSize: Option[Int]
+                         , kafkaManagedOffsetMetadataCheckMillis: Option[Int]
+                         , kafkaManagedOffsetGroupCacheSize: Option[Int]
+                         , kafkaManagedOffsetGroupExpireDays: Option[Int]
                         )
 object ClusterTuning {
   import org.json4s._
@@ -340,6 +343,9 @@ object ClusterTuning {
         :: ("offsetCacheThreadPoolQueueSize" -> toJSON(tuning.offsetCacheThreadPoolQueueSize))
         :: ("kafkaAdminClientThreadPoolSize" -> toJSON(tuning.kafkaAdminClientThreadPoolSize))
         :: ("kafkaAdminClientThreadPoolQueueSize" -> toJSON(tuning.kafkaAdminClientThreadPoolQueueSize))
+        :: ("kafkaManagedOffsetMetadataCheckMillis" -> toJSON(tuning.kafkaManagedOffsetMetadataCheckMillis))
+        :: ("kafkaManagedOffsetGroupCacheSize" -> toJSON(tuning.kafkaManagedOffsetGroupCacheSize))
+        :: ("kafkaManagedOffsetGroupExpireDays" -> toJSON(tuning.kafkaManagedOffsetGroupExpireDays))
         :: Nil)
   }
 
@@ -361,6 +367,9 @@ object ClusterTuning {
         offsetCacheThreadPoolQueueSize <- fieldExtended[Option[Int]]("offsetCacheThreadPoolQueueSize")(json)
         kafkaAdminClientThreadPoolSize <- fieldExtended[Option[Int]]("kafkaAdminClientThreadPoolSize")(json)
         kafkaAdminClientThreadPoolQueueSize <- fieldExtended[Option[Int]]("kafkaAdminClientThreadPoolQueueSize")(json)
+        kafkaManagedOffsetMetadataCheckMillis <- fieldExtended[Option[Int]]("kafkaManagedOffsetMetadataCheckMillis")(json)
+        kafkaManagedOffsetGroupCacheSize <- fieldExtended[Option[Int]]("kafkaManagedOffsetGroupCacheSize")(json)
+        kafkaManagedOffsetGroupExpireDays <- fieldExtended[Option[Int]]("kafkaManagedOffsetGroupExpireDays")(json)
       } yield {
         ClusterTuning(
           brokerViewUpdatePeriodSeconds = brokerViewUpdatePeriodSeconds
@@ -378,6 +387,9 @@ object ClusterTuning {
           , offsetCacheThreadPoolQueueSize = offsetCacheThreadPoolQueueSize
           , kafkaAdminClientThreadPoolSize = kafkaAdminClientThreadPoolSize
           , kafkaAdminClientThreadPoolQueueSize = kafkaAdminClientThreadPoolQueueSize
+          , kafkaManagedOffsetMetadataCheckMillis = kafkaManagedOffsetMetadataCheckMillis
+          , kafkaManagedOffsetGroupCacheSize = kafkaManagedOffsetGroupCacheSize
+          , kafkaManagedOffsetGroupExpireDays = kafkaManagedOffsetGroupExpireDays
         )
       }
     }
