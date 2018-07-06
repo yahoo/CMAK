@@ -3,9 +3,9 @@
 * See accompanying LICENSE file.
 *@
 @import scalaz.{\/}
-@import b3.vertical.fieldConstructor
+@import b4.vertical.fieldConstructor
 @(cluster:String, errorOrStatus: kafka.manager.ApiError \/ Option[kafka.manager.model.ActorModel.ReassignPartitions]
-)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
 
 @theMenu = {
 @views.html.navigation.clusterMenu(cluster,"Reassign Partitions","",menus.clusterMenus(cluster)(

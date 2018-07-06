@@ -6,28 +6,27 @@
 package controllers
 
 import features.{ApplicationFeatures, KMClusterManagerFeature}
-import kafka.manager.model._
 import kafka.manager.ApiError
+import kafka.manager.model._
 import models.FollowLink
 import models.form._
 import models.navigation.Menus
 import play.api.data.Form
 import play.api.data.Forms._
-import play.api.data.validation.{Constraint, Invalid, Valid}
 import play.api.data.validation.Constraints._
-import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.data.validation.{Constraint, Invalid, Valid}
+import play.api.i18n.I18nSupport
 import play.api.mvc._
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import scalaz.{-\/, \/-}
 
 /**
  * @author hiral
  */
-class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManagerContext)
-              (implicit af: ApplicationFeatures, menus: Menus) extends Controller with I18nSupport {
-  import play.api.libs.concurrent.Execution.Implicits.defaultContext
+class Cluster (val cc: ControllerComponents, val kafkaManagerContext: KafkaManagerContext)
+              (implicit af: ApplicationFeatures, menus: Menus, ec:ExecutionContext) extends AbstractController(cc) with I18nSupport {
 
   private[this] val kafkaManager = kafkaManagerContext.getKafkaManager
   private[this] val defaultTuning = kafkaManager.defaultTuning
@@ -193,31 +192,31 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
     )
   }
 
-  def cluster(c: String) = Action.async {
+  def cluster(c: String) = Action.async { implicit request: RequestHeader =>
     kafkaManager.getClusterView(c).map { errorOrClusterView =>
       Ok(views.html.cluster.clusterView(c,errorOrClusterView)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }
   }
 
-  def brokers(c: String) = Action.async {
+  def brokers(c: String) = Action.async { implicit request: RequestHeader =>
     kafkaManager.getBrokerList(c).map { errorOrBrokerList =>
       Ok(views.html.broker.brokerList(c,errorOrBrokerList)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }
   }
 
-  def broker(c: String, b: Int) = Action.async {
+  def broker(c: String, b: Int) = Action.async { implicit request: RequestHeader =>
     kafkaManager.getBrokerView(c,b).map { errorOrBrokerView =>
       Ok(views.html.broker.brokerView(c,b,errorOrBrokerView)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }
   }
 
-  def addCluster = Action.async { implicit request =>
+  def addCluster = Action.async { implicit request: RequestHeader =>
     featureGate(KMClusterManagerFeature) {
       Future.successful(Ok(views.html.cluster.addCluster(clusterConfigForm.fill(defaultClusterConfig))).withHeaders("X-Frame-Options" -> "SAMEORIGIN"))
     }
   }
 
-  def updateCluster(c: String) = Action.async { implicit request =>
+  def updateCluster(c: String) = Action.async { implicit request: RequestHeader =>
     featureGate(KMClusterManagerFeature) {
       kafkaManager.getClusterConfig(c).map { errorOrClusterConfig =>
         Ok(views.html.cluster.updateCluster(c,errorOrClusterConfig.map { cc =>
@@ -247,7 +246,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
 
   }
 
-  def handleAddCluster = Action.async { implicit request =>
+  def handleAddCluster = Action.async { implicit request: Request[AnyContent] =>
     featureGate(KMClusterManagerFeature) {
       clusterConfigForm.bindFromRequest.fold(
         formWithErrors => Future.successful(BadRequest(views.html.cluster.addCluster(formWithErrors))),
@@ -283,7 +282,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
     }
   }
 
-  def handleUpdateCluster(c: String) = Action.async { implicit request =>
+  def handleUpdateCluster(c: String) = Action.async { implicit request: Request[AnyContent] =>
     featureGate(KMClusterManagerFeature) {
       updateForm.bindFromRequest.fold(
         formWithErrors => Future.successful(BadRequest(views.html.cluster.updateCluster(c, \/-(formWithErrors)))),

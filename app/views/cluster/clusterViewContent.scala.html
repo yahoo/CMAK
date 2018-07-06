@@ -3,7 +3,7 @@
 * See accompanying LICENSE file.
 *@
 @(cluster: String, clusterView: kafka.manager.model.ActorModel.CMView
-)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, request:RequestHeader)
 
 <div class="panel panel-default">
     <div class="panel-heading"><h3>Cluster Information</h3></div>

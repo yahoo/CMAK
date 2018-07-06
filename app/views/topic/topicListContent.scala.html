@@ -8,7 +8,7 @@
   topicsUnderReassignment: IndexedSeq[String],
   pollConsumers: Boolean,
   displayTopicSize: Boolean
-)(implicit messages: play.api.i18n.Messages)
+)(implicit messages: play.api.i18n.Messages, request:RequestHeader)
 
 @getDeletedLevel(deleted: Boolean) = {
     @deleted match {

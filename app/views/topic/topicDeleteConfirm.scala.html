@@ -2,14 +2,14 @@
 * Copyright 2016 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@import b3.vertical.fieldConstructor
+@import b4.vertical.fieldConstructor
 @import scalaz.{\/}
 @import kafka.manager.model.ActorModel.ConsumerType
 @(cluster:String,
   topic: String,
   errorOrTopicIdentity: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.TopicIdentity,
   optConsumerList: Option[Iterable[(String, ConsumerType)]]
-)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
 
 @theMenu = {
     @views.html.navigation.clusterMenu(cluster,"Topic","",menus.clusterMenus(cluster)(
@@ -29,10 +29,10 @@
         <div class="row">
             <div class="col-md-3"><button type="button" class="btn btn-primary btn-block" onclick="goBack()">No</button></div>
             <div class="col-md-2">
-                @b3.form(routes.Topic.handleDeleteTopic(cluster, topic)) {
+                @b4.form(routes.Topic.handleDeleteTopic(cluster, topic)) {
                     <fieldset>
-                        @b3.hidden("topic",topic)
-                        @b3.submit('class -> "btn btn-primary btn-block"){ Delete Topic }
+                        @b4.hidden("topic",topic)
+                        @b4.submit('class -> "btn btn-primary btn-block"){ Delete Topic }
                     </fieldset>
                 }
             </div>

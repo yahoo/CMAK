@@ -6,24 +6,19 @@ import java.util.UUID
 
 import com.unboundid.ldap.sdk._
 import javax.net.ssl.SSLSocketFactory
+import akka.stream.Materializer
 import org.apache.commons.codec.binary.Base64
 import play.api.Configuration
-import play.api.http.HeaderNames.AUTHORIZATION
-import play.api.http.HeaderNames.WWW_AUTHENTICATE
-import play.api.libs.Crypto
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
-import play.api.mvc.Cookie
-import play.api.mvc.Filter
-import play.api.mvc.RequestHeader
-import play.api.mvc.Result
+import play.api.http.HeaderNames.{AUTHORIZATION, WWW_AUTHENTICATE}
 import play.api.mvc.Results.Unauthorized
+import play.api.mvc.{Cookie, Filter, RequestHeader, Result}
 
 import scala.collection.JavaConverters._
-import scala.concurrent.Future
 import scala.util.{Success, Try}
 import grizzled.slf4j.Logging
+import scala.concurrent.{ExecutionContext, Future}
 
-class BasicAuthenticationFilter(configurationFactory: => BasicAuthenticationFilterConfiguration) extends Filter with Logging {
+class BasicAuthenticationFilter(configurationFactory: => BasicAuthenticationFilterConfiguration)(implicit val mat: Materializer, ec: ExecutionContext) extends Filter with Logging {
 
   def apply(next: RequestHeader => Future[Result])(requestHeader: RequestHeader): Future[Result] =
     if (configuration.enabled && isNotExcluded(requestHeader))
@@ -130,6 +125,7 @@ class BasicAuthenticationFilter(configurationFactory: => BasicAuthenticationFilt
     cookieValue(configuration.username, configuration.passwords)
 
   private def cookieValue(username: String, passwords: Set[String]): String =
+    //TODO: migration off crypto
     Crypto.sign(username + passwords.mkString(","))
 
   private def expectedHeaderValues(configuration: BasicAuthenticationFilterInternalAuthenticator) =
@@ -160,15 +156,11 @@ class BasicAuthenticationFilter(configurationFactory: => BasicAuthenticationFilt
 }
 
 object BasicAuthenticationFilter {
-  def apply() = new BasicAuthenticationFilter(
-    BasicAuthenticationFilterConfiguration.parse(
-      play.api.Play.current.configuration
+  def apply(configuration: => Configuration)(implicit mat: Materializer, ec: ExecutionContext): BasicAuthenticationFilter = {
+    new BasicAuthenticationFilter(
+      BasicAuthenticationFilterConfiguration.parse(configuration)
     )
-  )
-
-  def apply(configuration: => Configuration) = new BasicAuthenticationFilter(
-    BasicAuthenticationFilterConfiguration parse configuration
-  )
+  }
 }
 
 case class BasicAuthenticationFilterConfiguration(realm: String,
@@ -197,7 +189,7 @@ object BasicAuthenticationFilterConfiguration {
   private def credentialsMissingRealm(realm: String) =
     s"$realm: The username or password could not be found in the configuration."
 
-  def parse(configuration: Configuration) = {
+  def parse(configuration: Configuration): BasicAuthenticationFilterConfiguration = {
 
     val root = "basicAuthentication."
     def boolean(key: String) = configuration.getBoolean(root + key)
@@ -215,7 +207,7 @@ object BasicAuthenticationFilterConfiguration {
     val enabled = boolean("enabled").getOrElse(false)
     val ldapEnabled = boolean("ldap.enabled").getOrElse(false)
 
-    val excluded = configuration.getStringSeq(root + "excluded")
+    val excluded = configuration.getOptional[Seq[String]](root + "excluded")
       .getOrElse(Seq.empty)
       .toSet
 

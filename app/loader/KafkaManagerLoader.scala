@@ -5,7 +5,7 @@
 
 package loader
 
-import controllers.KafkaManagerContext
+import controllers.{AssetsComponents, BasicAuthenticationFilter, KafkaManagerContext}
 import features.ApplicationFeatures
 import models.navigation.Menus
 import play.api.ApplicationLoader
@@ -14,7 +14,6 @@ import play.api.BuiltInComponentsFromContext
 import play.api.i18n.I18nComponents
 import play.api.routing.Router
 import router.Routes
-import controllers.BasicAuthenticationFilter
 
 
 /**
@@ -26,22 +25,20 @@ class KafkaManagerLoader extends ApplicationLoader {
   }
 }
 
-class ApplicationComponents(context: Context) extends BuiltInComponentsFromContext(context) with I18nComponents {
+class ApplicationComponents(context: Context) extends BuiltInComponentsFromContext(context) with I18nComponents with AssetsComponents {
   private[this] implicit val applicationFeatures = ApplicationFeatures.getApplicationFeatures(context.initialConfiguration.underlying)
   private[this] implicit val menus = new Menus
+  private[this] implicit val ec = controllerComponents.executionContext
   private[this] val kafkaManagerContext = new KafkaManagerContext(applicationLifecycle, context.initialConfiguration)
-  private[this] lazy val applicationC = new controllers.Application(messagesApi, kafkaManagerContext)
-  private[this] lazy val clusterC = new controllers.Cluster(messagesApi, kafkaManagerContext)
-  private[this] lazy val topicC = new controllers.Topic(messagesApi, kafkaManagerContext)
-  private[this] lazy val logKafkaC = new controllers.Logkafka(messagesApi, kafkaManagerContext)
-  private[this] lazy val consumerC = new controllers.Consumer(messagesApi, kafkaManagerContext)
-  private[this] lazy val preferredReplicaElectionC= new controllers.PreferredReplicaElection(messagesApi, kafkaManagerContext)
-  private[this] lazy val reassignPartitionsC = new controllers.ReassignPartitions(messagesApi, kafkaManagerContext)
-  private[this] lazy val kafkaStateCheckC = new controllers.api.KafkaStateCheck(messagesApi, kafkaManagerContext)
-  private[this] lazy val assetsC = new controllers.Assets(httpErrorHandler)
-  private[this] lazy val webJarsAssetsC = new controllers.WebJarAssets(httpErrorHandler, context.initialConfiguration, context.environment)
-  private[this] lazy val apiHealthC = new controllers.ApiHealth(messagesApi)
-
+  private[this] lazy val applicationC = new controllers.Application(controllerComponents, kafkaManagerContext)
+  private[this] lazy val clusterC = new controllers.Cluster(controllerComponents, kafkaManagerContext)
+  private[this] lazy val topicC = new controllers.Topic(controllerComponents, kafkaManagerContext)
+  private[this] lazy val logKafkaC = new controllers.Logkafka(controllerComponents, kafkaManagerContext)
+  private[this] lazy val consumerC = new controllers.Consumer(controllerComponents, kafkaManagerContext)
+  private[this] lazy val preferredReplicaElectionC= new controllers.PreferredReplicaElection(controllerComponents, kafkaManagerContext)
+  private[this] lazy val reassignPartitionsC = new controllers.ReassignPartitions(controllerComponents, kafkaManagerContext)
+  private[this] lazy val kafkaStateCheckC = new controllers.api.KafkaStateCheck(controllerComponents, kafkaManagerContext)
+  private[this] lazy val apiHealthC = new controllers.ApiHealth(controllerComponents)
 
   override lazy val httpFilters = Seq(BasicAuthenticationFilter(context.initialConfiguration))
 
@@ -56,8 +53,7 @@ class ApplicationComponents(context: Context) extends BuiltInComponentsFromConte
     preferredReplicaElectionC,
     reassignPartitionsC, 
     kafkaStateCheckC, 
-    assetsC,
-    webJarsAssetsC,
+    assets,
     apiHealthC
-  ).withPrefix(context.initialConfiguration.getString("play.http.context").orNull)
+  ).withPrefix(context.initialConfiguration.getOptional[String]("play.http.context").orNull)
 }

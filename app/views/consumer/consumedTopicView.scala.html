@@ -8,7 +8,7 @@
   consumerType: String,
   topic: String,
   errorOrConsumedTopicState: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.ConsumedTopicState
-)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
 
 @theMenu = {
     @views.html.navigation.clusterMenu(cluster,"Topic Consumption","",menus.clusterMenus(cluster)(

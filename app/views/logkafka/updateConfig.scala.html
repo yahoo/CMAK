@@ -5,10 +5,10 @@
 @import scalaz.{\/}
 @(cluster: String, logkafka_id: String, log_path: String,
 errorOrForm: kafka.manager.ApiError \/ (Form[models.form.UpdateLogkafkaConfig], kafka.manager.model.ClusterContext)
-)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
 
 @import helper._
-@import b3.vertical.fieldConstructor
+@import b4.vertical.fieldConstructor
 @import controllers.routes
 
 @theMenu = {
@@ -17,7 +17,7 @@ errorOrForm: kafka.manager.ApiError \/ (Form[models.form.UpdateLogkafkaConfig], 
 }
         
 @renderForm(updateLogkafkaConfigForm: Form[models.form.UpdateLogkafkaConfig]) = {
-    @b3.form(routes.Logkafka.handleUpdateConfig(cluster, logkafka_id, log_path)) {
+    @b4.form(routes.Logkafka.handleUpdateConfig(cluster, logkafka_id, log_path)) {
         <table class="table">
             <thead>
             <tr><th>Update Config</th></tr>
@@ -25,17 +25,17 @@ errorOrForm: kafka.manager.ApiError \/ (Form[models.form.UpdateLogkafkaConfig], 
             <tbody>
                 <tr>
                     <td>
-                        @b3.text(updateLogkafkaConfigForm("logkafka_id"), '_label -> "Logkafka Id", 'placeholder -> "", 'autofocus -> true )
-                        @b3.text(updateLogkafkaConfigForm("log_path"), '_label -> "Log Path", 'placeholder -> "", 'autofocus -> true )
+                        @b4.text(updateLogkafkaConfigForm("logkafka_id"), '_label -> "Logkafka Id", 'placeholder -> "", 'autofocus -> true )
+                        @b4.text(updateLogkafkaConfigForm("log_path"), '_label -> "Log Path", 'placeholder -> "", 'autofocus -> true )
                         @helper.repeat(updateLogkafkaConfigForm("configs"), min = 1) { configsForm =>
-                            @b3.hidden(configsForm("name").name, configsForm("name").value.getOrElse(""))
-                            @b3.text(configsForm("value"), '_label -> configsForm("name").value.getOrElse(""))
+                            @b4.hidden(configsForm("name").name, configsForm("name").value.getOrElse(""))
+                            @b4.text(configsForm("value"), '_label -> configsForm("name").value.getOrElse(""))
                         }
                     </td>
                 </tr>
             </tbody>
         </table>
-        @b3.submit('class -> "submit-button btn btn-primary"){ Update Config }
+        @b4.submit('class -> "submit-button btn btn-primary"){ Update Config }
         <a href="@routes.Logkafka.logkafka(cluster,logkafka_id,log_path)" class="cancel-button btn btn-default" role="button">Cancel</a>
     }
 }

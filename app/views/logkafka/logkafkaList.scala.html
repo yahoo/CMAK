@@ -4,7 +4,7 @@
 *@
 @import scalaz.{\/}
 @(cluster:String, errorOrLogkafkas: kafka.manager.ApiError \/ (kafka.manager.LogkafkaListExtended, kafka.manager.model.ClusterContext)
-)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
 
 @theMenu = {
     @views.html.navigation.clusterMenu(cluster,"Logkafka","List",menus.clusterMenus(cluster)(

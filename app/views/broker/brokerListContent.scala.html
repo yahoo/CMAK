@@ -3,7 +3,7 @@
 * See accompanying LICENSE file.
 *@
 @import kafka.manager.model.ActorModel.BrokerIdentity
-@(cluster:String, brokerListExtended: kafka.manager.BrokerListExtended)(implicit messages: play.api.i18n.Messages)
+@(cluster:String, brokerListExtended: kafka.manager.BrokerListExtended)(implicit messages: play.api.i18n.Messages, request:RequestHeader)
 
             <table class="table">
                 <thead>
@@ -22,7 +22,7 @@
                 <tbody>
                 @for(broker <- brokerListExtended.list) {
                 <tr>
-                    <td><a href="@routes.Cluster.broker(cluster,broker.id.toInt)">@broker.id</a></td>
+                    <td><a href="@routes.Cluster.broker(cluster,broker.id.toInt).relative">@broker.id</a></td>
                     <td>@broker.host</td>
                     <td>@broker.endpointsString</td>
                     <td>@broker.jmxPort</td>

@@ -3,11 +3,11 @@
 * See accompanying LICENSE file.
 *@
 @import scalaz.{\/}
-@import b3.vertical.fieldConstructor
+@import b4.vertical.fieldConstructor
 @(cluster:String,
 errorOrStatus: kafka.manager.ApiError \/ Option[kafka.manager.model.ActorModel.PreferredReplicaElection],
 operationForm: Form[models.form.PreferredReplicaElectionOperation]
-)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
 
 @theMenu = {
 @views.html.navigation.clusterMenu(cluster,"Preferred Replica Election","",menus.clusterMenus(cluster)(
@@ -69,10 +69,10 @@ operationForm: Form[models.form.PreferredReplicaElectionOperation]
         <div class="col-md-12">
             @features.app(features.KMPreferredReplicaElectionFeature) {
                 <div class="row">
-                    @b3.form(routes.PreferredReplicaElection.handleRunElection(cluster)) {
+                    @b4.form(routes.PreferredReplicaElection.handleRunElection(cluster)) {
                     <fieldset>
                         <input type="hidden" name="operation" value="run">
-                        @b3.submit('class -> "btn btn-primary"){ Run Preferred Replica Election }
+                        @b4.submit('class -> "btn btn-primary"){ Run Preferred Replica Election }
                     </fieldset>
                     }
                 </div>

@@ -37,7 +37,6 @@ import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.requests.DescribeGroupsResponse
 import org.joda.time.{DateTime, DateTimeZone}
 
-import scala.collection.JavaConversions.{mapAsScalaMap, _}
 import scala.collection.concurrent.TrieMap
 import scala.collection.immutable.Map
 import scala.collection.mutable
@@ -530,8 +529,8 @@ trait OffsetCache extends Logging {
       }
     }
 
-    futureMap onFailure {
-      case t => error(s"[topic=$topic] An error has occurred while getting topic offsets", t)
+    futureMap.failed.foreach {
+      t => error(s"[topic=$topic] An error has occurred while getting topic offsets", t)
     }
     futureMap
   }
@@ -1489,7 +1488,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
                 try {
                   kafkaConsumer = Option(new KafkaConsumer(consumerProperties))
                   val request = tpList.map(f => new TopicPartition(f._1.topic, f._1.partition))
-                  var tpOffsetMapOption = kafkaConsumer.map(_.endOffsets(request))
+                  var tpOffsetMapOption = kafkaConsumer.map(_.endOffsets(request.asJavaCollection).asScala)
 
                   var topicOffsetMap: Map[Int, Long] = null
                   tpOffsetMapOption.foreach(tpOffsetMap => tpOffsetMap.keys.foreach(tp => {

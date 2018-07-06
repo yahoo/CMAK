@@ -5,7 +5,7 @@
 @import kafka.manager.model.ActorModel.BrokerIdentity
 @import scalaz.{\/}
 @(cluster:String, errorOrBrokers: kafka.manager.ApiError \/ kafka.manager.BrokerListExtended
-)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request: RequestHeader)
 
 @theMenu = {
     @views.html.navigation.clusterMenu(cluster,"Brokers","",menus.clusterMenus(cluster)(
@@ -18,7 +18,7 @@
         @views.html.common.brokerMetrics(bl.combinedMetric)
     } else {
         <div class="alert alert-info" role="alert">
-            Please enable JMX polling <a href="@routes.Cluster.updateCluster(cluster)" class="alert-link">here</a>.
+            Please enable JMX polling <a href="@routes.Cluster.updateCluster(cluster).relative" class="alert-link">here</a>.
         </div>
     }
 }

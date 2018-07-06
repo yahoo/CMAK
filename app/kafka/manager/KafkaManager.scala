@@ -21,7 +21,7 @@ import kafka.manager.utils.UtilException
 import kafka.manager.utils.zero81.ReassignPartitionErrors.ReplicationOutOfSync
 import kafka.manager.utils.zero81.{ForceOnReplicationOutOfSync, ForceReassignmentCommand, ReassignPartitionErrors}
 
-import scala.concurrent.{ExecutionContext, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
 import scala.util.{Failure, Success, Try}
@@ -247,7 +247,7 @@ class KafkaManager(akkaConfig: Config) extends Logging {
   def shutdown(): Unit = {
     implicit val ec = apiExecutionContext
     system.actorSelection(kafkaManagerActor).tell(KMShutdown, system.deadLetters)
-    system.shutdown()
+    Try(Await.ready(system.terminate(), Duration(30, TimeUnit.SECONDS)))
     apiExecutor.shutdown()
   }
 

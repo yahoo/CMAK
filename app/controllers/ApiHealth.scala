@@ -1,12 +1,13 @@
 package controllers
 
-import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.i18n.I18nSupport
 import play.api.mvc._
 
-class ApiHealth(val messagesApi: MessagesApi) extends Controller with I18nSupport {
+import scala.concurrent.ExecutionContext
 
-  def ping = Action {
+class ApiHealth(val cc: ControllerComponents)(implicit ec:ExecutionContext) extends AbstractController(cc) with I18nSupport {
+
+  def ping = Action { implicit request:RequestHeader =>
     Ok("healthy").withHeaders("X-Frame-Options" -> "SAMEORIGIN")
   }
-
 }

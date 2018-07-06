@@ -4,10 +4,10 @@
 *@
 @import scalaz.{\/}
 @(cluster: String, topic: String, errorOrForm: kafka.manager.ApiError \/ (Form[models.form.UpdateTopicConfig], kafka.manager.model.ClusterContext)
-)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
 
 @import helper._
-@import b3.vertical.fieldConstructor
+@import b4.vertical.fieldConstructor
 @import controllers.routes
 
 @theMenu = {
@@ -16,7 +16,7 @@
 }
         
 @renderForm(updateTopicConfigForm: Form[models.form.UpdateTopicConfig]) = {
-    @b3.form(routes.Topic.handleUpdateConfig(cluster, topic)) {
+    @b4.form(routes.Topic.handleUpdateConfig(cluster, topic)) {
         <table class="table">
             <thead>
             <tr><th>Update Config</th></tr>
@@ -24,17 +24,17 @@
             <tbody>
                 <tr>
                     <td>
-                        @b3.text(updateTopicConfigForm("topic"), '_label -> "Topic", 'placeholder -> "", 'autofocus -> true )
-                        @b3.hidden(updateTopicConfigForm("readVersion").name,updateTopicConfigForm("readVersion").value.getOrElse(-1))
+                        @b4.text(updateTopicConfigForm("topic"), '_label -> "Topic", 'placeholder -> "", 'autofocus -> true )
+                        @b4.hidden(updateTopicConfigForm("readVersion").name,updateTopicConfigForm("readVersion").value.getOrElse(-1))
                         @helper.repeat(updateTopicConfigForm("configs"), min = 1) { configsForm =>
-                            @b3.hidden(configsForm("name").name, configsForm("name").value.getOrElse(""))
-                            @b3.text(configsForm("value"), '_label -> configsForm("name").value.getOrElse(""))
+                            @b4.hidden(configsForm("name").name, configsForm("name").value.getOrElse(""))
+                            @b4.text(configsForm("value"), '_label -> configsForm("name").value.getOrElse(""))
                         }
                     </td>
                 </tr>
             </tbody>
         </table>
-        @b3.submit('class -> "submit-button btn btn-primary"){ Update Config }
+        @b4.submit('class -> "submit-button btn btn-primary"){ Update Config }
         <a href="@routes.Topic.topic(cluster,topic)" class="cancel-button btn btn-default" role="button">Cancel</a>
     }
 }

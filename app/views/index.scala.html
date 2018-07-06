@@ -4,7 +4,7 @@
 *@
 @import scalaz.{\/}
 @(errorOrClusters: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.KMClusterList
-)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
 
 @main(
     "Kafka Manager",

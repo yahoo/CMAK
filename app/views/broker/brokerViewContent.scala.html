@@ -2,14 +2,14 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@(cluster: String, brokerId: Int, brokerView :kafka.manager.model.ActorModel.BVView)(implicit messages: play.api.i18n.Messages)
+@(cluster: String, brokerId: Int, brokerView :kafka.manager.model.ActorModel.BVView)(implicit messages: play.api.i18n.Messages, request:RequestHeader)
 
 @renderBrokerMetrics = {
     @if(brokerView.clusterContext.clusterFeatures.features(kafka.manager.features.KMJMXMetricsFeature)) {
         @views.html.common.brokerMetrics(brokerView.metrics)
     } else {
         <div class="alert alert-info" role="alert">
-            Please enable JMX polling <a href="@routes.Cluster.updateCluster(cluster)" class="alert-link">here</a>.
+            Please enable JMX polling <a href="@routes.Cluster.updateCluster(cluster).relative" class="alert-link">here</a>.
         </div>
     }
 }

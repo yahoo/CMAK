@@ -5,9 +5,9 @@
 name := """kafka-manager"""
 
 /* For packaging purposes, -SNAPSHOT MUST contain a digit */
-version := "1.3.3.23"
+version := "2.0.0.0"
 
-scalaVersion := "2.11.8"
+scalaVersion := "2.12.6"
 
 scalacOptions ++= Seq("-Xlint:-missing-interpolator","-Xfatal-warnings","-deprecation","-feature","-language:implicitConversions","-language:postfixOps","-Xmax-classfile-name","240")
 
@@ -19,28 +19,28 @@ assemblyMergeStrategy in assembly := {
 }
 
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-actor" % "2.3.14",
-  "com.typesafe.akka" %% "akka-slf4j" % "2.3.14",
-  "com.google.code.findbugs" % "jsr305" % "2.0.1",
-  "org.webjars" %% "webjars-play" % "2.4.0-2",
-  "org.webjars" % "bootstrap" % "3.3.5",
-  "org.webjars" % "jquery" % "2.1.4",
-  "org.webjars" % "backbonejs" % "1.2.3",
+  "com.typesafe.akka" %% "akka-actor" % "2.5.13",
+  "com.typesafe.akka" %% "akka-slf4j" % "2.5.13",
+  "com.google.code.findbugs" % "jsr305" % "3.0.2",
+  "org.webjars" %% "webjars-play" % "2.6.2",
+  "org.webjars" % "bootstrap" % "4.1.1",
+  "org.webjars" % "jquery" % "3.3.1-1",
+  "org.webjars" % "backbonejs" % "1.3.3",
   "org.webjars" % "underscorejs" % "1.8.3",
-  "org.webjars" % "dustjs-linkedin" % "2.6.1-1",
-  "org.apache.curator" % "curator-framework" % "2.10.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
-  "org.apache.curator" % "curator-recipes" % "2.10.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
+  "org.webjars" % "dustjs-linkedin" % "2.7.2",
+  "org.apache.curator" % "curator-framework" % "2.12.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
+  "org.apache.curator" % "curator-recipes" % "2.12.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
   "org.json4s" %% "json4s-jackson" % "3.6.3",
   "org.json4s" %% "json4s-scalaz" % "3.6.3",
-  "org.slf4j" % "log4j-over-slf4j" % "1.7.12",
-  "com.adrianhurt" %% "play-bootstrap3" % "0.4.5-P24",
-  "org.clapper" %% "grizzled-slf4j" % "1.0.2",
+  "org.slf4j" % "log4j-over-slf4j" % "1.7.25",
+  "com.adrianhurt" %% "play-bootstrap" % "1.4-P26-B4",
+  "org.clapper" %% "grizzled-slf4j" % "1.3.2",
   "org.apache.kafka" %% "kafka" % "1.1.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
   "org.apache.kafka" % "kafka-streams" % "1.1.0",
-  "com.beachape" %% "enumeratum" % "1.4.4",
+  "com.beachape" %% "enumeratum" % "1.5.13",
   "com.github.ben-manes.caffeine" % "caffeine" % "2.6.2",
-  "org.scalatest" %% "scalatest" % "2.2.1" % "test",
-  "org.apache.curator" % "curator-test" % "2.10.0" % "test",
+  "org.scalatest" %% "scalatest" % "3.0.5" % "test",
+  "org.apache.curator" % "curator-test" % "2.12.0" % "test",
   "org.mockito" % "mockito-core" % "1.10.19" % "test",
   "com.yammer.metrics" % "metrics-core" % "2.2.0" force(),
   "com.unboundid" % "unboundid-ldapsdk" % "4.0.9"
@@ -114,7 +114,6 @@ packageSummary := "A tool for managing Apache Kafka"
 packageDescription := "A tool for managing Apache Kafka"
 
 /* End Debian Settings */
-
 
 /* RPM Settings - to create, run as:
    $ sbt rpm:packageBin

@@ -122,9 +122,9 @@ object LogConfig extends TopicConfigs {
    * Check that property names are valid
    */
   def validateNames(props: Properties) {
-    import scala.collection.JavaConversions._
-    for (name <- props.keys)
-      require(LogConfig.ConfigNames.contains(name), "Unknown configuration \"%s\".".format(name))
+    import scala.collection.JavaConverters._
+    for (name <- props.keys.asScala)
+      require(LogConfig.ConfigNames.asJava.contains(name), "Unknown configuration \"%s\".".format(name))
   }
 
   /**

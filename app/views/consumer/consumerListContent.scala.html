@@ -6,7 +6,7 @@
 @import kafka.manager.model.ActorModel.ConsumerIdentity
 @import kafka.manager.model.ClusterContext
 @(cluster: String, consumers: IndexedSeq[((String, ConsumerType), Option[ConsumerIdentity])],
-        clusterContext: ClusterContext)(implicit messages: play.api.i18n.Messages)
+        clusterContext: ClusterContext)(implicit messages: play.api.i18n.Messages, request:RequestHeader)
 
 @getConsumedTopicSummary(state: kafka.manager.model.ActorModel.ConsumedTopicState) = {
     @state.percentageCovered match {

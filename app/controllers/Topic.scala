@@ -21,19 +21,18 @@ import play.api.data.Form
 import play.api.data.Forms._
 import play.api.data.validation.Constraints._
 import play.api.data.validation.{Constraint, Invalid, Valid}
-import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.i18n.I18nSupport
 import play.api.mvc._
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import scalaz.-\/
 
 /**
  * @author hiral
  */
-class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManagerContext)
-            (implicit af: ApplicationFeatures, menus: Menus) extends Controller with I18nSupport {
-  import play.api.libs.concurrent.Execution.Implicits.defaultContext
+class Topic (val cc: ControllerComponents, val kafkaManagerContext: KafkaManagerContext)
+            (implicit af: ApplicationFeatures, menus: Menus, ec:ExecutionContext) extends AbstractController(cc) with I18nSupport {
 
   private[this] val kafkaManager = kafkaManagerContext.getKafkaManager
 
@@ -174,13 +173,13 @@ class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManager
     }
   }
 
-  def topics(c: String) = Action.async {
+  def topics(c: String) = Action.async { implicit request:RequestHeader =>
     kafkaManager.getTopicListExtended(c).map { errorOrTopicList =>
       Ok(views.html.topic.topicList(c,errorOrTopicList)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }
   }
 
-  def topic(c: String, t: String, force: Boolean) = Action.async {
+  def topic(c: String, t: String, force: Boolean) = Action.async { implicit request:RequestHeader =>
     val futureErrorOrTopicIdentity = kafkaManager.getTopicIdentity(c,t)
     val futureErrorOrConsumerList = kafkaManager.getConsumersForTopic(c,t)
 
@@ -193,7 +192,7 @@ class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManager
     }
   }
 
-  def createTopic(clusterName: String) = Action.async { implicit request =>
+  def createTopic(clusterName: String) = Action.async { implicit request:RequestHeader =>
     featureGate(KMTopicManagerFeature) {
       createTopicForm(clusterName).map { errorOrForm =>
         Ok(views.html.topic.createTopic(clusterName, errorOrForm)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
@@ -201,7 +200,7 @@ class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManager
     }
   }
 
-  def handleCreateTopic(clusterName: String) = Action.async { implicit request =>
+  def handleCreateTopic(clusterName: String) = Action.async { implicit request:Request[AnyContent] =>
     featureGate(KMTopicManagerFeature) {
       defaultCreateForm.bindFromRequest.fold(
         formWithErrors => {
@@ -239,7 +238,7 @@ class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManager
     }
   }
 
-  def confirmDeleteTopic(clusterName: String, topic: String) = Action.async {
+  def confirmDeleteTopic(clusterName: String, topic: String) = Action.async { implicit request:RequestHeader =>
     val futureErrorOrTopicIdentity = kafkaManager.getTopicIdentity(clusterName, topic)
     val futureErrorOrConsumerList = kafkaManager.getConsumersForTopic(clusterName, topic)
 
@@ -248,7 +247,7 @@ class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManager
     }
   }
 
-  def handleDeleteTopic(clusterName: String, topic: String) = Action.async { implicit request =>
+  def handleDeleteTopic(clusterName: String, topic: String) = Action.async { implicit request:Request[AnyContent] =>
     featureGate(KMTopicManagerFeature) {
       defaultDeleteForm.bindFromRequest.fold(
         formWithErrors => Future.successful(
@@ -277,7 +276,7 @@ class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManager
     }
   }
 
-  def addPartitions(clusterName: String, topic: String) = Action.async { implicit request =>
+  def addPartitions(clusterName: String, topic: String) = Action.async { implicit request:RequestHeader =>
     featureGate(KMTopicManagerFeature) {
       val errorOrFormFuture = kafkaManager.getTopicIdentity(clusterName, topic).flatMap { errorOrTopicIdentity =>
         errorOrTopicIdentity.fold(e => Future.successful(-\/(e)), { topicIdentity =>
@@ -295,7 +294,7 @@ class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManager
     }
   }
 
-  def addPartitionsToMultipleTopics(clusterName: String) = Action.async { implicit request =>
+  def addPartitionsToMultipleTopics(clusterName: String) = Action.async { implicit request:RequestHeader =>
     featureGate(KMTopicManagerFeature) {
       val errorOrFormFuture = kafkaManager.getTopicListExtended(clusterName).flatMap { errorOrTle =>
         errorOrTle.fold(e => Future.successful(-\/(e)), { topicListExtended =>
@@ -318,7 +317,7 @@ class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManager
     }
   }
 
-  def handleAddPartitions(clusterName: String, topic: String) = Action.async { implicit request =>
+  def handleAddPartitions(clusterName: String, topic: String) = Action.async { implicit request:Request[AnyContent] =>
     featureGate(KMTopicManagerFeature) {
       defaultAddPartitionsForm.bindFromRequest.fold(
         formWithErrors => {
@@ -354,7 +353,7 @@ class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManager
     }
   }
 
-  def handleAddPartitionsToMultipleTopics(clusterName: String) = Action.async { implicit request =>
+  def handleAddPartitionsToMultipleTopics(clusterName: String) = Action.async { implicit request:Request[AnyContent] =>
     featureGate(KMTopicManagerFeature) {
       defaultAddMultipleTopicsPartitionsForm.bindFromRequest.fold(
         formWithErrors => {
@@ -427,7 +426,7 @@ class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManager
     }
   }
 
-  def updateConfig(clusterName: String, topic: String) = Action.async { implicit request =>
+  def updateConfig(clusterName: String, topic: String) = Action.async { implicit request:RequestHeader =>
     featureGate(KMTopicManagerFeature) {
       val errorOrFormFuture = kafkaManager.getTopicIdentity(clusterName, topic).flatMap { errorOrTopicIdentity =>
         errorOrTopicIdentity.fold(e => Future.successful(-\/(e)), { topicIdentity =>
@@ -440,7 +439,7 @@ class Topic (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManager
     }
   }
 
-  def handleUpdateConfig(clusterName: String, topic: String) = Action.async { implicit request =>
+  def handleUpdateConfig(clusterName: String, topic: String) = Action.async { implicit request:Request[AnyContent] =>
     featureGate(KMTopicManagerFeature) {
       defaultUpdateConfigForm.bindFromRequest.fold(
         formWithErrors => {
