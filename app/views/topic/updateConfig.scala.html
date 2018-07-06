@@ -7,7 +7,6 @@
 )(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
 
 @import helper._
-@import b4.vertical.fieldConstructor
 @import controllers.routes
 
 @theMenu = {
@@ -16,7 +15,7 @@
 }
         
 @renderForm(updateTopicConfigForm: Form[models.form.UpdateTopicConfig]) = {
-    @b4.form(routes.Topic.handleUpdateConfig(cluster, topic)) {
+    @b4.vertical.form(routes.Topic.handleUpdateConfig(cluster, topic)) { implicit fc =>
         <table class="table">
             <thead>
             <tr><th>Update Config</th></tr>
@@ -35,7 +34,7 @@
             </tbody>
         </table>
         @b4.submit('class -> "submit-button btn btn-primary"){ Update Config }
-        <a href="@routes.Topic.topic(cluster,topic)" class="cancel-button btn btn-default" role="button">Cancel</a>
+        <a href="@routes.Topic.topic(cluster,topic)" class="cancel-button btn btn-secondary" role="button">Cancel</a>
     }
 }
 
@@ -44,9 +43,9 @@
     menu = theMenu,
     breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View",cluster,topic,"Update Config"))) {
     <div class="col-md-6 un-pad-me">
-        <div class="panel panel-default">
-            <div class="panel-heading"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>Update Config</h3></div>
-            <div class="panel-body">
+        <div class="card">
+            <div class="card-header"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="octicon octicon-arrow-left" aria-hidden="true"></span></button>Update Config</h3></div>
+            <div class="card-body">
                 @errorOrForm.fold( views.html.errors.onApiError(_), t => renderForm(t._1))
             </div>
         </div>

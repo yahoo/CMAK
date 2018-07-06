@@ -8,7 +8,6 @@ errorOrForm: kafka.manager.ApiError \/ (Form[models.form.UpdateLogkafkaConfig], 
 )(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
 
 @import helper._
-@import b4.vertical.fieldConstructor
 @import controllers.routes
 
 @theMenu = {
@@ -17,7 +16,7 @@ errorOrForm: kafka.manager.ApiError \/ (Form[models.form.UpdateLogkafkaConfig], 
 }
         
 @renderForm(updateLogkafkaConfigForm: Form[models.form.UpdateLogkafkaConfig]) = {
-    @b4.form(routes.Logkafka.handleUpdateConfig(cluster, logkafka_id, log_path)) {
+    @b4.vertical.form(routes.Logkafka.handleUpdateConfig(cluster, logkafka_id, log_path)) { implicit fc =>
         <table class="table">
             <thead>
             <tr><th>Update Config</th></tr>
@@ -36,7 +35,7 @@ errorOrForm: kafka.manager.ApiError \/ (Form[models.form.UpdateLogkafkaConfig], 
             </tbody>
         </table>
         @b4.submit('class -> "submit-button btn btn-primary"){ Update Config }
-        <a href="@routes.Logkafka.logkafka(cluster,logkafka_id,log_path)" class="cancel-button btn btn-default" role="button">Cancel</a>
+        <a href="@routes.Logkafka.logkafka(cluster,logkafka_id,log_path)" class="cancel-button btn btn-secondary" role="button">Cancel</a>
     }
 }
 
@@ -45,9 +44,9 @@ errorOrForm: kafka.manager.ApiError \/ (Form[models.form.UpdateLogkafkaConfig], 
     menu = theMenu,
     breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndClusterAndLogkafka("Logkafka View",cluster,logkafka_id,log_path,"Update Config"))) {
     <div class="col-md-6 un-pad-me">
-        <div class="panel panel-default">
-            <div class="panel-heading"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>Update Config</h3></div>
-            <div class="panel-body">
+        <div class="card">
+            <div class="card-header"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="octicon octicon-arrow-left" aria-hidden="true"></span></button>Update Config</h3></div>
+            <div class="card-body">
                 @errorOrForm.fold( views.html.errors.onApiError(_), t => renderForm(t._1))
             </div>
         </div>

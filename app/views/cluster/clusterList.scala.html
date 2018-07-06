@@ -4,8 +4,6 @@
 *@
 @(clusters: IndexedSeq[kafka.manager.model.ClusterConfig])(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, request:RequestHeader)
 
-@import b4.vertical.fieldConstructor
-
             <table class="table">
                 <thead>
                 <tr><th>Active</th><th>Operations</th><th>Version</th></tr>
@@ -21,34 +19,34 @@
                         }
                     </td>
                     <td>
-                        <div class="btn-group-horizontal" role="group" aria-label="...">
+                        <div class="form-group" role="group" aria-label="Cluster Operations">
                         @features.app(features.KMClusterManagerFeature) {
                             @if(cluster.enabled) {
-                                <a href="@routes.Cluster.updateCluster(cluster.name).relative" class="btn btn-default ops-button" role="button">Modify</a>
-                                @b4.form(routes.Cluster.handleUpdateCluster(cluster.name).copy(url=routes.Cluster.handleUpdateCluster(cluster.name).relative)) {
+                                <a href="@routes.Cluster.updateCluster(cluster.name).relative" class="btn btn-outline-primary" role="button">Modify</a>
+                                @b4.vertical.form(routes.Cluster.handleUpdateCluster(cluster.name).copy(url=routes.Cluster.handleUpdateCluster(cluster.name).relative)) { implicit fc =>
                                 <input type="hidden" name="name" value="@cluster.name">
                                 <input type="hidden" name="kafkaVersion" value="@cluster.version.toString">
                                 <input type="hidden" name="zkHosts" value="@cluster.curatorConfig.zkConnect">
                                 <input type="hidden" name="securityProtocol" value="@cluster.securityProtocol.stringId">
                                 <input type="hidden" name="operation" value="Disable">
-                                @b4.submit('class -> "btn btn-warning ops-button"){ Disable }
+                                @b4.submit('class -> "btn btn-outline-warning"){ Disable }
                                 }
                             } else {
-                                @b4.form(routes.Cluster.handleUpdateCluster(cluster.name)) {
+                                @b4.vertical.form(routes.Cluster.handleUpdateCluster(cluster.name)) { implicit fc =>
                                 <input type="hidden" name="name" value="@cluster.name">
                                 <input type="hidden" name="kafkaVersion" value="@cluster.version.toString">
                                 <input type="hidden" name="zkHosts" value="@cluster.curatorConfig.zkConnect">
                                 <input type="hidden" name="securityProtocol" value="@cluster.securityProtocol.stringId">
                                 <input type="hidden" name="operation" value="Enable">
-                                @b4.submit('class -> "btn btn-success ops-button"){ Enable }
+                                @b4.submit('class -> "btn btn-outline-success"){ Enable }
                                 }
-                                @b4.form(routes.Cluster.handleUpdateCluster(cluster.name)) {
+                                @b4.vertical.form(routes.Cluster.handleUpdateCluster(cluster.name)) { implicit fc =>
                                 <input type="hidden" name="name" value="@cluster.name">
                                 <input type="hidden" name="kafkaVersion" value="@cluster.version.toString">
                                 <input type="hidden" name="zkHosts" value="@cluster.curatorConfig.zkConnect">
                                 <input type="hidden" name="securityProtocol" value="@cluster.securityProtocol.stringId">
                                 <input type="hidden" name="operation" value="Delete">
-                                @b4.submit('class -> "btn btn-danger ops-button"){ Delete }
+                                @b4.submit('class -> "btn btn-outline-danger"){ Delete }
                                 }
                             }
                         }

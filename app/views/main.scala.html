@@ -8,17 +8,18 @@
 <html>
 <head>
     <title>@title</title>
-    <link rel="shortcut icon" type="image/png" href="@routes.Assets.versioned("images/favicon.png")">
+    <link rel="shortcut icon" type="image/png" href="@routes.Assets.at("images/favicon.png")">
     <link rel='stylesheet' href='@routes.Assets.at("lib/bootstrap/css/bootstrap.min.css").relative'>
     <script>
     @{
     //@Html(org.webjars.RequireJS.getSetupJavaScript(routes.WebJarAssets.at("").url))
 }
     </script>
-    <link rel="stylesheet" media="screen" href="@routes.Assets.versioned("stylesheets/index.min.css")">
-    <link rel="stylesheet" media="screen" href="@routes.Assets.versioned("dataTables/stylesheets/dataTables.bootstrap.css")">
-    <link rel="stylesheet" media="screen" href="@routes.Assets.versioned("chartist/stylesheets/chartist.min.css")">
-    <script src="@routes.Assets.versioned("chartist/javascripts/chartist.min.js")"></script>
+    <link rel="stylesheet" media="screen" href="@routes.Assets.at("stylesheets/index.min.css")">
+    <link rel="stylesheet" media="screen" href="@routes.Assets.at("dataTables/stylesheets/dataTables.bootstrap4.css")">
+    <link rel="stylesheet" media="screen" href="@routes.Assets.at("chartist/stylesheets/chartist.min.css")">
+    <link rel="stylesheet" media="screen" href="@routes.Assets.at("lib/octicons/build/font/octicons.min.css")">
+    <script src="@routes.Assets.at("chartist/javascripts/chartist.min.js")"></script>
 </head>
 <body role="document">
 
@@ -30,9 +31,9 @@
 </div>
 
 <script src="@routes.Assets.at("lib/jquery/jquery.js")"></script>
-<script src="@routes.Assets.at("lib/bootstrap/js/bootstrap.min.js"))"></script>
-<script src="@routes.Assets.versioned("dataTables/javascripts/jquery.dataTables.min.js")"></script>
-<script src="@routes.Assets.versioned("dataTables/javascripts/dataTables.bootstrap.js")"></script>
+<script src="@routes.Assets.at("lib/bootstrap/js/bootstrap.min.js")"></script>
+<script src="@routes.Assets.at("dataTables/javascripts/jquery.dataTables.min.js")"></script>
+<script src="@routes.Assets.at("dataTables/javascripts/dataTables.bootstrap4.js")"></script>
 
 <script>
     function goBack() {

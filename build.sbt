@@ -7,7 +7,7 @@ name := """kafka-manager"""
 /* For packaging purposes, -SNAPSHOT MUST contain a digit */
 version := "2.0.0.0"
 
-scalaVersion := "2.12.6"
+scalaVersion := "2.12.8"
 
 scalacOptions ++= Seq("-Xlint:-missing-interpolator","-Xfatal-warnings","-deprecation","-feature","-language:implicitConversions","-language:postfixOps","-Xmax-classfile-name","240")
 
@@ -22,12 +22,13 @@ libraryDependencies ++= Seq(
   "com.typesafe.akka" %% "akka-actor" % "2.5.13",
   "com.typesafe.akka" %% "akka-slf4j" % "2.5.13",
   "com.google.code.findbugs" % "jsr305" % "3.0.2",
-  "org.webjars" %% "webjars-play" % "2.6.2",
-  "org.webjars" % "bootstrap" % "4.1.1",
-  "org.webjars" % "jquery" % "3.3.1-1",
+  "org.webjars" %% "webjars-play" % "2.6.3",
+  "org.webjars" % "bootstrap" % "4.3.1",
+  "org.webjars" % "jquery" % "3.3.1-2",
   "org.webjars" % "backbonejs" % "1.3.3",
-  "org.webjars" % "underscorejs" % "1.8.3",
+  "org.webjars" % "underscorejs" % "1.9.0",
   "org.webjars" % "dustjs-linkedin" % "2.7.2",
+  "org.webjars" % "octicons" % "4.3.0",
   "org.apache.curator" % "curator-framework" % "2.12.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
   "org.apache.curator" % "curator-recipes" % "2.12.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
   "org.json4s" %% "json4s-jackson" % "3.6.3",
@@ -38,8 +39,11 @@ libraryDependencies ++= Seq(
   "org.apache.kafka" %% "kafka" % "1.1.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
   "org.apache.kafka" % "kafka-streams" % "1.1.0",
   "com.beachape" %% "enumeratum" % "1.5.13",
+  "org.abstractj.kalium" % "kalium" % "0.8.0",
   "com.github.ben-manes.caffeine" % "caffeine" % "2.6.2",
+  "com.typesafe.play" %% "play-logback" % "2.6.15",
   "org.scalatest" %% "scalatest" % "3.0.5" % "test",
+  "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2" % "test",
   "org.apache.curator" % "curator-test" % "2.12.0" % "test",
   "org.mockito" % "mockito-core" % "1.10.19" % "test",
   "com.yammer.metrics" % "metrics-core" % "2.2.0" force(),

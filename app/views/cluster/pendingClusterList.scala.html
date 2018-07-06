@@ -4,10 +4,10 @@
 *@
 @(clusters: IndexedSeq[kafka.manager.model.ClusterConfig])(implicit messages: play.api.i18n.Messages, request:RequestHeader)
 
-@import b4.vertical.fieldConstructor
+@implicitFieldConstructor = @{ b4.vertical.fieldConstructor() }
 
 @if(clusters.nonEmpty) {
-            <div class="panel-body"><br></div>
+            <br>
             <table class="table">
                 <thead>
                 <tr><th>Pending</th><th>Status</th><th>Version</th></tr>

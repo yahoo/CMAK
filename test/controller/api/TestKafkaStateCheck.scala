@@ -5,7 +5,7 @@
 
 package controller.api
 
-import com.typesafe.config.{Config, ConfigFactory}
+import com.typesafe.config.ConfigFactory
 import controllers.KafkaManagerContext
 import controllers.api.KafkaStateCheck
 import features.ApplicationFeatures
@@ -13,21 +13,22 @@ import kafka.manager.KafkaManager
 import kafka.manager.utils.{CuratorAwareTest, KafkaServerInTest}
 import kafka.test.SeededBroker
 import models.navigation.Menus
-import org.scalatest.mock.MockitoSugar
-import play.api.i18n.MessagesApi
-import play.api.{Configuration, Play}
+import org.scalatest.Matchers._
+import org.scalatest.mockito.MockitoSugar
+import play.api.Configuration
 import play.api.inject.ApplicationLifecycle
 import play.api.libs.json.{JsDefined, Json}
+import play.api.mvc.ControllerComponents
 import play.api.test.Helpers._
-import play.api.test.{FakeApplication, FakeRequest}
 import play.mvc.Http.Status.{BAD_REQUEST, OK}
-import org.scalatest.Matchers._
+import org.scalatestplus.play.guice.GuiceOneAppPerSuite
+import play.api.test.FakeRequest
 
-import scala.concurrent.Await
+import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration._
 import scala.util.Try
 
-class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with MockitoSugar {
+class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with MockitoSugar with GuiceOneAppPerSuite {
   private[this] val broker = new SeededBroker("controller-api-test", 4)
   override val kafkaServerZkPath = broker.getZookeeperConnectionString
   private[this] val duration = FiniteDuration(10, SECONDS)
@@ -56,8 +57,9 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
     val kmc = new KafkaManagerContext(mock[ApplicationLifecycle], conf)
     implicit val af = ApplicationFeatures.getApplicationFeatures(config)
     implicit val menus = new Menus
+    implicit val executionContext: ExecutionContext = fakeApplication().actorSystem.dispatcher
     kafkaManagerContext = Option(kmc)
-    val ksc = new KafkaStateCheck(mock[MessagesApi], kmc)
+    val ksc = new KafkaStateCheck(mock[ControllerComponents], kmc)
     kafkaStateCheck = Option(ksc)
     createCluster()
     createTopic()

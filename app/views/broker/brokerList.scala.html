@@ -28,21 +28,25 @@
     menu = theMenu,
     breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Brokers",cluster))) {
     <div class="col-md-7 un-pad-me">
-        <div class="panel panel-default">
-            <div class="panel-heading">
+        <div class="card">
+            <div class="card-header">
                 <h3>
                     <button type="button" class="btn btn-link" onclick="goBack()">
-                        <span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span>
+                        <span class="octicon octicon-arrow-left" aria-hidden="true"></span>
                     </button>Brokers
                 </h3>
             </div>
+            <div class="card-body">
             @errorOrBrokers.fold( views.html.errors.onApiError(_), views.html.broker.brokerListContent(cluster,_) )
+            </div>
         </div>
     </div>
     <div class="col-md-5 un-pad-me">
-        <div class="panel panel-default">
-            <div class="panel-heading"><h3>Combined Metrics</h3></div>
+        <div class="card">
+            <div class="card-header"><h3>Combined Metrics</h3></div>
+            <div class="card-body">
             @errorOrBrokers.fold( views.html.errors.onApiError(_), bl => renderBrokerMetrics(bl))
+            </div>
         </div>
     </div>
 

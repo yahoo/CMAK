@@ -7,18 +7,19 @@
 @import models.navigation.BreadCrumbs._
 
 @renderLink(name: String, link: String) = {
-<li><a href="@link">@name</a></li>
+<li class="breadcrumb-item"><a href="@link">@name</a></li>
 }
 
 @renderText(name: String) = {
-<li>@name</li>
+<li class="breadcrumb-item">@name</li>
 }
 
 @renderActive(name: String) = {
-<li class="active">@name</li>
+<li class="breadcrumb-item active" aria-current="page">@name</li>
 }
 
 
+<nav aria-label="breadcrumb">
 <ol class="breadcrumb">
     @crumbs.map {
         case BCLink(name, link) =>  { @renderLink(name,link) }
@@ -26,4 +27,4 @@
         case BCActive(name) => { @renderActive(name) }
     }
 </ol>
-
+</nav>

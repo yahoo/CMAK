@@ -5,6 +5,7 @@
 package kafka.manager
 
 import java.util.Properties
+import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.pattern._
@@ -55,7 +56,7 @@ class TestKafkaManagerActor extends CuratorAwareTest with BaseTest {
 
   override protected def afterAll(): Unit = {
     kafkaManagerActor.foreach( _ ! KMShutdown)
-    system.shutdown()
+    Try(Await.ready(system.terminate(), Duration(5, TimeUnit.SECONDS)))
     Try(broker.shutdown())
     super.afterAll()
   }

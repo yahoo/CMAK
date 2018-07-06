@@ -5,6 +5,7 @@
 package kafka.manager
 
 import java.util.Properties
+import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, ActorSystem, Kill, Props}
 import akka.pattern._
@@ -61,7 +62,7 @@ class TestKafkaStateActor extends KafkaServerInTest with BaseTest {
 
   override protected def afterAll(): Unit = {
     kafkaStateActor.foreach( _ ! Kill )
-    system.shutdown()
+    Try(Await.ready(system.terminate(), Duration(5, TimeUnit.SECONDS)))
     Try(broker.shutdown())
     super.afterAll()
   }

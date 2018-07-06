@@ -117,11 +117,20 @@ You should increase the above for large # of consumers with consumer polling ena
 
 Kafka managed consumer offset is now consumed by KafkaManagedOffsetCache from the "__consumer_offsets" topic.  Note, this has not been tested with large number of offsets being tracked.  There is a single thread per cluster consuming this topic so it may not be able to keep up on large # of offsets being pushed to the topic.
 
-Authenticating a User with LDAP:
+Warning, you need to have SSL configured with Kafka Manager to ensure your credentials aren't passed unencrypted.
+Authenticating a User with LDAP is possible by passing the user credentials with the Authorization header.
+LDAP authentication is done on first visit, if successful, a cookie is set.
+On next request, the cookie value is compared with credentials from Authorization header.
+LDAP support is through the basic authentication filter.
 
 1. Configure basic authentication
 - basicAuthentication.enabled=true
 - basicAuthentication.realm=< basic authentication realm>
+
+Encryption parameters :
+- basicAuthentication.salt="<hex-string>"
+- basicAuthentication.iv="<hex-string>"
+- basicAuthentication.secret="my-secret-string"
 
 2. Configure LDAP/LDAPS authentication
 

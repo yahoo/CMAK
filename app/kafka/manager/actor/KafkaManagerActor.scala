@@ -146,10 +146,13 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
       Future {
         try {
           log.debug(s"Acquiring kafka manager mutex...")
-          mutex.acquire(kafkaManagerConfig.mutexTimeoutMillis,TimeUnit.MILLISECONDS)
-          KMCommandResult(Try {
-            fn
-          })
+          if(mutex.acquire(kafkaManagerConfig.mutexTimeoutMillis,TimeUnit.MILLISECONDS)) {
+            KMCommandResult(Try {
+              fn
+            })
+          } else {
+            throw new RuntimeException("Failed to acquire lock for kafka manager command")
+          }
         } finally {
           if(mutex.isAcquiredInThisProcess) {
             log.debug(s"Releasing kafka manger mutex...")

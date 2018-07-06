@@ -3,7 +3,6 @@
 * See accompanying LICENSE file.
 *@
 @import scalaz.{\/}
-@import b4.vertical.fieldConstructor
 @(cluster: String,
   topic: String,
   errorOrForm: kafka.manager.ApiError \/ (Form[models.form.GenerateAssignment], kafka.manager.model.ClusterContext),
@@ -17,18 +16,18 @@
 
 @renderForm(confirmForm: Form[models.form.GenerateAssignment]) = {
     <h4>Choose brokers to reassign topic @topic to:</h4>
-    @b4.form(routes.ReassignPartitions.handleGenerateAssignment(cluster,topic)) {
+    @b4.vertical.form(routes.ReassignPartitions.handleGenerateAssignment(cluster,topic)) { implicit fc =>
         <table class="table">
             <thead>
-            <tr><th>Brokers</th></tr>
+            <tr><th scope="col">Brokers</th></tr>
             </thead>
             <tbody>
             <tr>
                 <td>
-                <button type="button" class="btn btn-default" onClick="checkBoxSelect('brokers',true);">
+                <button type="button" class="btn btn-outline-secondary" onClick="checkBoxSelect('brokers',true);">
                     <b>Select All</b>
                 </button>
-                <button type="button" class="btn btn-default" onClick="checkBoxSelect('brokers',false);">
+                <button type="button" class="btn btn-outline-secondary" onClick="checkBoxSelect('brokers',false);">
                     <b>Select None</b>
                 </button>
                 @helper.repeat(confirmForm("brokers"), min = 1) { brokerSelectForm =>
@@ -40,8 +39,8 @@
             </tr>
             </tbody>
         </table>
-        @b4.submit('class -> "btn btn-primary btn-block"){ Generate Partition Assignments }
-        <a href="@routes.Topic.topic(cluster,topic)" class="cancel-button btn btn-default" role="button">Cancel</a>
+        <a href="@routes.Topic.topic(cluster,topic)" class="cancel-button btn btn-secondary" role="button">Cancel</a>
+        @b4.submit('class -> "btn btn-primary"){ Generate Partition Assignments }
     }
 }
         
@@ -65,16 +64,16 @@
   menu = theMenu,
   breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndCluster("Topic View",cluster,topic))) {
 <div class="col-md-6 un-pad-me">
-    <div class="panel panel-default">
-        <div class="panel-heading"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>Confirm Assignment</h3></div>
-        <div class="panel-body">
+    <div class="card">
+        <div class="card-header"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="octicon octicon-arrow-left" aria-hidden="true"></span></button>Confirm Assignment</h3></div>
+        <div class="card-body">
             @errorOrForm.fold( views.html.errors.onApiError(_), t => renderForm(t._1))
         </div>
     </div>
 </div>
 <div class="col-md-6 un-pad-me">
-    <div class="panel panel-default">
-        <div class="panel-body">
+    <div class="card">
+        <div class="card--body">
             @errorOrCurrentAssignments.fold( views.html.errors.onApiError(_), t => renderAssignments(t))
         </div>
     </div>
