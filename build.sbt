@@ -5,7 +5,7 @@
 name := """kafka-manager"""
 
 /* For packaging purposes, -SNAPSHOT MUST contain a digit */
-version := "1.3.3.17"
+version := "1.3.3.18"
 
 scalaVersion := "2.11.8"
 
