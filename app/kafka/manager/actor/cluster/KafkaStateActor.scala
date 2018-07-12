@@ -1466,8 +1466,16 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
                 }
 
                 val tpList = broker2TopicPartitionMap(broker)
-                val port: Int = broker.endpoints(PLAINTEXT)
-                val consumerProperties = kaConfig.consumerProperties.getOrElse(getDefaultConsumerProperties(s"${broker.host}:$port"))
+                val consumerProperties = kaConfig.consumerProperties.getOrElse(getDefaultConsumerProperties())
+                val securityProtocol = {
+                  if (consumerProperties.contains(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG)) {
+                    consumerProperties.getProperty(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG)
+                  } else {
+                    PLAINTEXT
+                  }
+                }
+                val port: Int = broker.endpoints(securityProtocol)
+                consumerProperties.put(BOOTSTRAP_SERVERS_CONFIG, s"${broker.host}:$port")
                 var kafkaConsumer: Option[KafkaConsumer[Any, Any]] = None
                 try {
                   kafkaConsumer = Option(new KafkaConsumer(consumerProperties))
@@ -1515,9 +1523,8 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
       this.shutdown = true
     }
 
-    def getDefaultConsumerProperties(bootstrapServers: String): Properties = {
+    def getDefaultConsumerProperties(): Properties = {
       val properties = new Properties()
-      properties.put(BOOTSTRAP_SERVERS_CONFIG, bootstrapServers)
       properties.put(GROUP_ID_CONFIG, getClass.getCanonicalName)
       properties.put(KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArrayDeserializer")
       properties.put(VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArrayDeserializer")
