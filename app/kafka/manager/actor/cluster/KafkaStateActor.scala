@@ -54,7 +54,20 @@ import kafka.manager.utils._
 
 import scala.collection.JavaConverters._
 
-case class KafkaAdminClientActorConfig(clusterContext: ClusterContext, longRunningPoolConfig: LongRunningPoolConfig, kafkaStateActorPath: ActorPath, consumerProperties: Option[Properties])
+case class KafkaAdminClientActorConfig(clusterContext: ClusterContext, longRunningPoolConfig: LongRunningPoolConfig, kafkaStateActorPath: ActorPath, consumerProperties: Option[Properties]) {
+  validate()
+
+  def validate(): Unit = {
+    // Fail if required properties are missing
+    consumerProperties.foreach(p => {
+      require(p.contains(BOOTSTRAP_SERVERS_CONFIG), s"$BOOTSTRAP_SERVERS_CONFIG is missing from consumer properties")
+      require(p.contains(KEY_DESERIALIZER_CLASS_CONFIG), s"$KEY_DESERIALIZER_CLASS_CONFIG is missing from consumer properties")
+      require(p.contains(VALUE_DESERIALIZER_CLASS_CONFIG), s"$VALUE_DESERIALIZER_CLASS_CONFIG is missing from consumer properties")
+      require(p.contains(GROUP_ID_CONFIG), s"$GROUP_ID_CONFIG is missing from consumer properties")
+    })
+  }
+
+}
 case class KafkaAdminClientActor(config: KafkaAdminClientActorConfig) extends BaseClusterQueryActor with LongRunningPoolActor {
 
   private[this] var adminClientOption : Option[AdminClient] = None
