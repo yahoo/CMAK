@@ -46,6 +46,7 @@ import scala.util.{Failure, Success, Try}
 import org.apache.kafka.clients.consumer.ConsumerConfig._
 import org.apache.kafka.clients.consumer.internals.ConsumerProtocol
 import org.apache.kafka.common.protocol.Errors
+import org.apache.kafka.clients.CommonClientConfigs.SECURITY_PROTOCOL_CONFIG
 
 /**
   * @author hiral
@@ -1454,15 +1455,11 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
 
                 val tpList = broker2TopicPartitionMap(broker)
                 val consumerProperties = kaConfig.consumerProperties.getOrElse(getDefaultConsumerProperties())
-                val securityProtocol = {
-                  if (consumerProperties.contains(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG)) {
-                    consumerProperties.getProperty(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG)
-                  } else {
-                    PLAINTEXT
-                  }
-                }
+                // Use secure endpoint if available
+                val securityProtocol = broker.endpoints.keys.filter(s => s.secure).headOption.getOrElse(PLAINTEXT)
                 val port: Int = broker.endpoints(securityProtocol)
                 consumerProperties.put(BOOTSTRAP_SERVERS_CONFIG, s"${broker.host}:$port")
+                consumerProperties.put(SECURITY_PROTOCOL_CONFIG, securityProtocol.stringId)
                 var kafkaConsumer: Option[KafkaConsumer[Any, Any]] = None
                 try {
                   kafkaConsumer = Option(new KafkaConsumer(consumerProperties))
