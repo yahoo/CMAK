@@ -103,8 +103,8 @@ case class KafkaAdminClientActor(config: KafkaAdminClientActorConfig) extends Ba
     props.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, brokerListStr)
     props.put(SaslConfigs.SASL_MECHANISM, config.clusterContext.config.saslMechanism.stringId)
     if(!config.clusterContext.config.jaasConfig.isEmpty){
-      props.put(SaslConfigs.SASL_JAAS_CONFIG,config.clusterContext.config.jaasConfig.get);
-      log.info(s"SASL JAAS config=${config.clusterContext.config.jaasConfig}");
+      props.put(SaslConfigs.SASL_JAAS_CONFIG, config.clusterContext.config.jaasConfig.get)
+      log.info(s"SASL JAAS config=${config.clusterContext.config.jaasConfig}")
     }
     log.info(s"Creating admin client with security protocol=${config.clusterContext.config.securityProtocol.stringId} , mechanism=${config.clusterContext.config.saslMechanism.stringId}, broker list : $brokerListStr")
     AdminClient.create(props)
@@ -156,7 +156,7 @@ case class KafkaAdminClientActor(config: KafkaAdminClientActorConfig) extends Ba
       case bl: BrokerList =>
         if(bl.list.nonEmpty) {
           Try {
-            adminClientOption = Option(createAdminClient(bl))
+            adminClientOption = Option((bl))
           }.logError(s"Failed to create admin client with brokerlist : $bl")
         }
       case any: Any => log.warning("kac : processActorResponse : Received unknown message: {}", any.toString)
@@ -265,7 +265,7 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
     props.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, clusterContext.config.securityProtocol.stringId)
     props.put(SaslConfigs.SASL_MECHANISM, clusterContext.config.saslMechanism.stringId)
     if(!clusterContext.config.jaasConfig.isEmpty){
-      props.put(SaslConfigs.SASL_JAAS_CONFIG, clusterContext.config.jaasConfig.get);
+      props.put(SaslConfigs.SASL_JAAS_CONFIG, clusterContext.config.jaasConfig.get)
     }
     Try {
       info("Constructing new kafka consumer client using these properties: ")
@@ -1469,6 +1469,11 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
                 val port: Int = broker.endpoints(securityProtocol)
                 consumerProperties.put(BOOTSTRAP_SERVERS_CONFIG, s"${broker.host}:$port")
                 consumerProperties.put(SECURITY_PROTOCOL_CONFIG, securityProtocol.stringId)
+                // Use secure endpoint if available
+                if(!kaConfig.clusterContext.config.jaasConfig.isEmpty){
+                  consumerProperties.put(SaslConfigs.SASL_MECHANISM, kaConfig.clusterContext.config.saslMechanism.stringId)
+                  consumerProperties.put(SaslConfigs.SASL_JAAS_CONFIG, kaConfig.clusterContext.config.jaasConfig.get);
+                }
                 var kafkaConsumer: Option[KafkaConsumer[Any, Any]] = None
                 try {
                   kafkaConsumer = Option(new KafkaConsumer(consumerProperties))
@@ -1521,11 +1526,6 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
       properties.put(GROUP_ID_CONFIG, getClass.getCanonicalName)
       properties.put(KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArrayDeserializer")
       properties.put(VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArrayDeserializer")
-      properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG,kaConfig.clusterContext.config.securityProtocol.stringId)
-      properties.put(SaslConfigs.SASL_MECHANISM,kaConfig.clusterContext.config.saslMechanism.stringId)
-      if(!kaConfig.clusterContext.config.jaasConfig.isEmpty){
-        properties.put(SaslConfigs.SASL_JAAS_CONFIG,kaConfig.clusterContext.config.jaasConfig.get);
-      }
       properties
     }
   }
