@@ -45,6 +45,7 @@ import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
 import org.apache.kafka.clients.consumer.ConsumerConfig._
 import org.apache.kafka.clients.consumer.internals.ConsumerProtocol
+import org.apache.kafka.common.config.SaslConfigs
 import org.apache.kafka.common.protocol.Errors
 import org.apache.kafka.clients.CommonClientConfigs.SECURITY_PROTOCOL_CONFIG
 
@@ -100,7 +101,12 @@ case class KafkaAdminClientActor(config: KafkaAdminClientActorConfig) extends Ba
     }
     props.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, config.clusterContext.config.securityProtocol.stringId)
     props.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, brokerListStr)
-    log.info(s"Creating admin client with security protocol=${config.clusterContext.config.securityProtocol.stringId} , broker list : $brokerListStr")
+    props.put(SaslConfigs.SASL_MECHANISM, config.clusterContext.config.saslMechanism.stringId)
+    if(!config.clusterContext.config.jaasConfig.isEmpty){
+      props.put(SaslConfigs.SASL_JAAS_CONFIG,config.clusterContext.config.jaasConfig.get);
+      log.info(s"SASL JAAS config=${config.clusterContext.config.jaasConfig}");
+    }
+    log.info(s"Creating admin client with security protocol=${config.clusterContext.config.securityProtocol.stringId} , mechanism=${config.clusterContext.config.saslMechanism.stringId}, broker list : $brokerListStr")
     AdminClient.create(props)
   }
 
@@ -257,6 +263,10 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
       cp => props.putAll(cp)
     }
     props.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, clusterContext.config.securityProtocol.stringId)
+    props.put(SaslConfigs.SASL_MECHANISM, clusterContext.config.saslMechanism.stringId)
+    if(!clusterContext.config.jaasConfig.isEmpty){
+      props.put(SaslConfigs.SASL_JAAS_CONFIG, clusterContext.config.jaasConfig.get);
+    }
     Try {
       info("Constructing new kafka consumer client using these properties: ")
       props.asScala.foreach {
@@ -1511,6 +1521,11 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
       properties.put(GROUP_ID_CONFIG, getClass.getCanonicalName)
       properties.put(KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArrayDeserializer")
       properties.put(VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArrayDeserializer")
+      properties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG,kaConfig.clusterContext.config.securityProtocol.stringId)
+      properties.put(SaslConfigs.SASL_MECHANISM,kaConfig.clusterContext.config.saslMechanism.stringId)
+      if(!kaConfig.clusterContext.config.jaasConfig.isEmpty){
+        properties.put(SaslConfigs.SASL_JAAS_CONFIG,kaConfig.clusterContext.config.jaasConfig.get);
+      }
       properties
     }
   }

@@ -56,6 +56,8 @@
         @b3.number(form("tuning.kafkaManagedOffsetGroupCacheSize"), '_label -> "kafkaManagedOffsetGroupCacheSize")
         @b3.number(form("tuning.kafkaManagedOffsetGroupExpireDays"), '_label -> "kafkaManagedOffsetGroupExpireDays")
         @b3.select( form("securityProtocol"), options = kafka.manager.model.SecurityProtocol.formSelectList, '_label -> "Security Protocol" )
+        @b3.select( form("saslMechanism"), options = kafka.manager.model.SASLmechanism.formSelectList, '_label -> "SASL mechanism" )
+        @b3.text(form("jaasConfig"), '_label -> "SASL JAAS Config")
         @b3.submit('class -> "submit-button btn btn-primary"){ Save }
         <a href="@routes.Application.index()" class="cancel-button btn btn-default" role="button">Cancel</a>
     </fieldset>

@@ -167,6 +167,8 @@ object ClusterConfig {
             , displaySizeEnabled: Boolean = false
             , tuning: Option[ClusterTuning]
             , securityProtocol: String
+            , saslMechanism: String
+            , jaasConfig: Option[String]
            ) : ClusterConfig = {
     val kafkaVersion = KafkaVersion(version)
     //validate cluster name
@@ -190,15 +192,17 @@ object ClusterConfig {
       , displaySizeEnabled
       , tuning
       , SecurityProtocol(securityProtocol)
+      , SASLmechanism(saslMechanism)
+      , jaasConfig
     )
   }
 
   def customUnapply(cc: ClusterConfig) : Option[(
-    String, String, String, Int, Boolean, Option[String], Option[String], Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, Option[ClusterTuning], String)] = {
+    String, String, String, Int, Boolean, Option[String], Option[String], Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, Option[ClusterTuning], String, String, Option[String])] = {
     Some((
       cc.name, cc.version.toString, cc.curatorConfig.zkConnect, cc.curatorConfig.zkMaxRetry,
       cc.jmxEnabled, cc.jmxUser, cc.jmxPass, cc.jmxSsl, cc.pollConsumers, cc.filterConsumers,
-      cc.logkafkaEnabled, cc.activeOffsetCacheEnabled, cc.displaySizeEnabled, cc.tuning, cc.securityProtocol.stringId
+      cc.logkafkaEnabled, cc.activeOffsetCacheEnabled, cc.displaySizeEnabled, cc.tuning, cc.securityProtocol.stringId, cc.saslMechanism.stringId, cc.jaasConfig
       )
     )
   }
@@ -242,6 +246,8 @@ object ClusterConfig {
       :: ("displaySizeEnabled" -> toJSON(config.displaySizeEnabled))
       :: ("tuning" -> toJSON(config.tuning))
       :: ("securityProtocol" -> toJSON(config.securityProtocol.stringId))
+      :: ("saslMechanism" -> toJSON(config.saslMechanism.stringId))
+      :: ("jaasConfig" -> toJSON(config.jaasConfig))
       :: Nil)
     compact(render(json)).getBytes(StandardCharsets.UTF_8)
   }
@@ -267,6 +273,9 @@ object ClusterConfig {
           val clusterTuning = fieldExtended[Option[ClusterTuning]]("tuning")(json)
           val securityProtocolString = fieldExtended[String]("securityProtocol")(json)
           val securityProtocol = securityProtocolString.map(SecurityProtocol.apply).getOrElse(PLAINTEXT)
+          val saslMechanismString = fieldExtended[String]("saslMechanism")(json)
+          val saslMechanism = saslMechanismString.map(SASLmechanism.apply).getOrElse(PLAIN)
+          val jaasConfig = fieldExtended[Option[String]]("jaasConfig")(json)
 
           ClusterConfig.apply(
             name,
@@ -282,7 +291,9 @@ object ClusterConfig {
             activeOffsetCacheEnabled.getOrElse(false),
             displaySizeEnabled.getOrElse(false),
             clusterTuning.getOrElse(None),
-            securityProtocol
+            securityProtocol,
+            saslMechanism,
+            jaasConfig.getOrElse(None)
           )
       }
 
@@ -413,6 +424,8 @@ case class ClusterConfig (name: String
                           , displaySizeEnabled: Boolean
                           , tuning: Option[ClusterTuning]
                           , securityProtocol: SecurityProtocol
+                          , saslMechanism: SASLmechanism
+                          , jaasConfig: Option[String]
                          )
 
 sealed trait SecurityProtocol {
@@ -445,4 +458,34 @@ object SecurityProtocol {
 
   val formSelectList : IndexedSeq[(String,String)] = typesMap.toIndexedSeq.map(t => (t._1,t._2.stringId))
   def apply(s: String) : SecurityProtocol = typesMap(s.toUpperCase)
+}
+
+sealed trait SASLmechanism {
+  def stringId: String
+}
+case object PLAIN extends SASLmechanism {
+  val stringId = "PLAIN"
+}
+
+case object GSSAPI extends SASLmechanism {
+  val stringId = "GSSAPI"
+}
+
+case object SCRAM256 extends SASLmechanism {
+  val stringId = "SCRAM-SHA-256"
+}
+case object SCRAM512 extends SASLmechanism {
+  val stringId = "SCRAM-SHA-512"
+}
+
+object SASLmechanism {
+  private[this] val typesMap: Map[String, SASLmechanism] = Map(
+   PLAIN.stringId -> PLAIN
+    , GSSAPI.stringId -> GSSAPI
+    , SCRAM256.stringId -> SCRAM256
+    , SCRAM512.stringId -> SCRAM512
+  )
+
+  val formSelectList : IndexedSeq[(String,String)] = typesMap.toIndexedSeq.map(t => (t._1,t._2.stringId))
+  def apply(s: String) : SASLmechanism = typesMap(s.toUpperCase)
 }
