@@ -156,7 +156,7 @@ case class KafkaAdminClientActor(config: KafkaAdminClientActorConfig) extends Ba
       case bl: BrokerList =>
         if(bl.list.nonEmpty) {
           Try {
-            adminClientOption = Option((bl))
+            adminClientOption = Option(createAdminClient(bl))
           }.logError(s"Failed to create admin client with brokerlist : $bl")
         }
       case any: Any => log.warning("kac : processActorResponse : Received unknown message: {}", any.toString)
