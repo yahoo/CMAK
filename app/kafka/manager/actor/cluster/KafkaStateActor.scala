@@ -1455,8 +1455,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
 
                 val tpList = broker2TopicPartitionMap(broker)
                 val consumerProperties = kaConfig.consumerProperties.getOrElse(getDefaultConsumerProperties())
-                // Use secure endpoint if available
-                val securityProtocol = broker.endpoints.keys.filter(s => s.secure).headOption.getOrElse(PLAINTEXT)
+                val securityProtocol = Option(kaConfig.clusterContext.config.securityProtocol).getOrElse(PLAINTEXT)
                 val port: Int = broker.endpoints(securityProtocol)
                 consumerProperties.put(BOOTSTRAP_SERVERS_CONFIG, s"${broker.host}:$port")
                 consumerProperties.put(SECURITY_PROTOCOL_CONFIG, securityProtocol.stringId)
