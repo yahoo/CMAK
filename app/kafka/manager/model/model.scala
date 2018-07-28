@@ -167,7 +167,7 @@ object ClusterConfig {
             , displaySizeEnabled: Boolean = false
             , tuning: Option[ClusterTuning]
             , securityProtocol: String
-            , saslMechanism: String
+            , saslMechanism: Option[String]
             , jaasConfig: Option[String]
            ) : ClusterConfig = {
     val kafkaVersion = KafkaVersion(version)
@@ -192,17 +192,17 @@ object ClusterConfig {
       , displaySizeEnabled
       , tuning
       , SecurityProtocol(securityProtocol)
-      , SASLmechanism(saslMechanism)
+      , saslMechanism.flatMap(SASLmechanism.from)
       , jaasConfig
     )
   }
 
   def customUnapply(cc: ClusterConfig) : Option[(
-    String, String, String, Int, Boolean, Option[String], Option[String], Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, Option[ClusterTuning], String, String, Option[String])] = {
+    String, String, String, Int, Boolean, Option[String], Option[String], Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, Option[ClusterTuning], String, Option[String], Option[String])] = {
     Some((
       cc.name, cc.version.toString, cc.curatorConfig.zkConnect, cc.curatorConfig.zkMaxRetry,
       cc.jmxEnabled, cc.jmxUser, cc.jmxPass, cc.jmxSsl, cc.pollConsumers, cc.filterConsumers,
-      cc.logkafkaEnabled, cc.activeOffsetCacheEnabled, cc.displaySizeEnabled, cc.tuning, cc.securityProtocol.stringId, cc.saslMechanism.stringId, cc.jaasConfig
+      cc.logkafkaEnabled, cc.activeOffsetCacheEnabled, cc.displaySizeEnabled, cc.tuning, cc.securityProtocol.stringId, cc.saslMechanism.map(_.stringId), cc.jaasConfig
       )
     )
   }
@@ -246,7 +246,7 @@ object ClusterConfig {
       :: ("displaySizeEnabled" -> toJSON(config.displaySizeEnabled))
       :: ("tuning" -> toJSON(config.tuning))
       :: ("securityProtocol" -> toJSON(config.securityProtocol.stringId))
-      :: ("saslMechanism" -> toJSON(config.saslMechanism.stringId))
+      :: ("saslMechanism" -> toJSON(config.saslMechanism.map(_.stringId)))
       :: ("jaasConfig" -> toJSON(config.jaasConfig))
       :: Nil)
     compact(render(json)).getBytes(StandardCharsets.UTF_8)
@@ -273,8 +273,8 @@ object ClusterConfig {
           val clusterTuning = fieldExtended[Option[ClusterTuning]]("tuning")(json)
           val securityProtocolString = fieldExtended[String]("securityProtocol")(json)
           val securityProtocol = securityProtocolString.map(SecurityProtocol.apply).getOrElse(PLAINTEXT)
-          val saslMechanismString = fieldExtended[String]("saslMechanism")(json)
-          val saslMechanism = saslMechanismString.map(SASLmechanism.apply).getOrElse(PLAIN)
+          val saslMechanismString = fieldExtended[Option[String]]("saslMechanism")(json)
+          val saslMechanism = saslMechanismString.map(_.flatMap(SASLmechanism.from))
           val jaasConfig = fieldExtended[Option[String]]("jaasConfig")(json)
 
           ClusterConfig.apply(
@@ -292,7 +292,7 @@ object ClusterConfig {
             displaySizeEnabled.getOrElse(false),
             clusterTuning.getOrElse(None),
             securityProtocol,
-            saslMechanism,
+            saslMechanism.getOrElse(None),
             jaasConfig.getOrElse(None)
           )
       }
@@ -424,7 +424,7 @@ case class ClusterConfig (name: String
                           , displaySizeEnabled: Boolean
                           , tuning: Option[ClusterTuning]
                           , securityProtocol: SecurityProtocol
-                          , saslMechanism: SASLmechanism
+                          , saslMechanism: Option[SASLmechanism]
                           , jaasConfig: Option[String]
                          )
 
@@ -463,29 +463,33 @@ object SecurityProtocol {
 sealed trait SASLmechanism {
   def stringId: String
 }
-case object PLAIN extends SASLmechanism {
+case object SASL_MECHANISM_PLAIN extends SASLmechanism {
   val stringId = "PLAIN"
 }
 
-case object GSSAPI extends SASLmechanism {
+case object SASL_MECHANISM_GSSAPI extends SASLmechanism {
   val stringId = "GSSAPI"
 }
 
-case object SCRAM256 extends SASLmechanism {
+case object SASL_MECHANISM_SCRAM256 extends SASLmechanism {
   val stringId = "SCRAM-SHA-256"
 }
-case object SCRAM512 extends SASLmechanism {
+case object SASL_MECHANISM_SCRAM512 extends SASLmechanism {
   val stringId = "SCRAM-SHA-512"
 }
 
 object SASLmechanism {
   private[this] val typesMap: Map[String, SASLmechanism] = Map(
-   PLAIN.stringId -> PLAIN
-    , GSSAPI.stringId -> GSSAPI
-    , SCRAM256.stringId -> SCRAM256
-    , SCRAM512.stringId -> SCRAM512
+   SASL_MECHANISM_PLAIN.stringId -> SASL_MECHANISM_PLAIN
+    , SASL_MECHANISM_GSSAPI.stringId -> SASL_MECHANISM_GSSAPI
+    , SASL_MECHANISM_SCRAM256.stringId -> SASL_MECHANISM_SCRAM256
+    , SASL_MECHANISM_SCRAM512.stringId -> SASL_MECHANISM_SCRAM512
   )
 
-  val formSelectList : IndexedSeq[(String,String)] = typesMap.toIndexedSeq.map(t => (t._1,t._2.stringId))
-  def apply(s: String) : SASLmechanism = typesMap(s.toUpperCase)
+  val formSelectList : IndexedSeq[(String,String)] = IndexedSeq(("DEFAULT", "DEFAULT")) ++ typesMap.toIndexedSeq.map(t => (t._1,t._2.stringId))
+  private def apply(s: String) : SASLmechanism = typesMap(s.toUpperCase)
+  def from(s: String) : Option[SASLmechanism] = s.toUpperCase match {
+    case "DEFAULT" => None
+    case other => Option(apply(other))
+  }
 }

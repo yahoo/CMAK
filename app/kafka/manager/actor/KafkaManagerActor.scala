@@ -484,6 +484,7 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
         && newConfig.jmxEnabled == currentConfig.jmxEnabled
         && newConfig.jmxUser == currentConfig.jmxUser
         && newConfig.jmxPass == currentConfig.jmxPass
+        && newConfig.jmxSsl == currentConfig.jmxSsl
         && newConfig.logkafkaEnabled == currentConfig.logkafkaEnabled
         && newConfig.pollConsumers == currentConfig.pollConsumers
         && newConfig.filterConsumers == currentConfig.filterConsumers
@@ -491,6 +492,8 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
         && newConfig.displaySizeEnabled == currentConfig.displaySizeEnabled
         && newConfig.tuning == currentConfig.tuning
         && newConfig.securityProtocol == currentConfig.securityProtocol
+        && newConfig.saslMechanism == currentConfig.saslMechanism
+        && newConfig.jaasConfig == currentConfig.jaasConfig
       ) {
         //nothing changed
         false

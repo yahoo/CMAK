@@ -75,9 +75,9 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
       case Success(_) => Valid
     }
   }
-  val validateSASLmechanism: Constraint[String] = Constraint("validate SASL mechanism") { string =>
+  val validateSASLmechanism: Constraint[Option[String]] = Constraint("validate SASL mechanism") { stringOption =>
     Try {
-      SASLmechanism(string)
+      stringOption.foreach(SASLmechanism.from)
     } match {
       case Failure(t) => Invalid(t.getMessage)
       case Success(_) => Valid
@@ -122,7 +122,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
         )(ClusterTuning.apply)(ClusterTuning.unapply)
       )
       , "securityProtocol" -> nonEmptyText.verifying(validateSecurityProtocol)
-      , "saslMechanism" -> nonEmptyText.verifying(validateSASLmechanism)
+      , "saslMechanism" -> optional(text).verifying(validateSASLmechanism)
       , "jaasConfig" -> optional(text)
     )(ClusterConfig.apply)(ClusterConfig.customUnapply)
   )
@@ -166,7 +166,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
         )(ClusterTuning.apply)(ClusterTuning.unapply)
       )
       , "securityProtocol" -> nonEmptyText.verifying(validateSecurityProtocol)
-      , "saslMechanism" -> nonEmptyText.verifying(validateSASLmechanism)
+      , "saslMechanism" -> optional(text).verifying(validateSASLmechanism)
       , "jaasConfig" -> optional(text)
     )(ClusterOperation.apply)(ClusterOperation.customUnapply)
   )
@@ -188,7 +188,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
       ,false
       ,Option(defaultTuning)
       ,PLAINTEXT
-      ,PLAIN
+      ,None
       ,None
     )
   }
@@ -238,7 +238,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
             cc.displaySizeEnabled,
             cc.tuning,
             cc.securityProtocol.stringId,
-            cc.saslMechanism.stringId,
+            cc.saslMechanism.map(_.stringId),
             cc.jaasConfig
           ))
         }))
@@ -263,7 +263,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
             clusterConfig.filterConsumers,
             clusterConfig.tuning,
             clusterConfig.securityProtocol.stringId,
-            clusterConfig.saslMechanism.stringId,
+            clusterConfig.saslMechanism.map(_.stringId),
             clusterConfig.jaasConfig,
             clusterConfig.logkafkaEnabled,
             clusterConfig.activeOffsetCacheEnabled,
@@ -334,7 +334,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
               clusterOperation.clusterConfig.filterConsumers,
               clusterOperation.clusterConfig.tuning,
               clusterOperation.clusterConfig.securityProtocol.stringId,
-              clusterOperation.clusterConfig.saslMechanism.stringId,
+              clusterOperation.clusterConfig.saslMechanism.map(_.stringId),
               clusterOperation.clusterConfig.jaasConfig,
               clusterOperation.clusterConfig.logkafkaEnabled,
               clusterOperation.clusterConfig.activeOffsetCacheEnabled,
