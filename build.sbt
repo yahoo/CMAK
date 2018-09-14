@@ -9,7 +9,7 @@ import com.typesafe.sbt.packager.rpm.RpmPlugin.autoImport._
 name := """kafka-manager"""
 
 /* For packaging purposes, -SNAPSHOT MUST contain a digit */
-version := "1.1.1"
+version := "1.3.0"
 
 scalaVersion := "2.11.8"
 
@@ -39,8 +39,8 @@ libraryDependencies ++= Seq(
   "org.slf4j" % "log4j-over-slf4j" % "1.7.12",
   "com.adrianhurt" %% "play-bootstrap3" % "0.4.5-P24",
   "org.clapper" %% "grizzled-slf4j" % "1.0.2",
-  "org.apache.kafka" %% "kafka" % "0.10.0.1" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
-//*  "ci.arenadata.io/artifactory/adsm-centos7-x64" %% "kafka" % "0.10.0.1" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
+  "org.apache.kafka" %% "kafka" % "1.1.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
+  "org.apache.kafka" % "kafka-streams" % "1.1.0",
   "com.beachape" %% "enumeratum" % "1.4.4",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "org.apache.curator" % "curator-test" % "2.10.0" % "test",
@@ -70,6 +70,12 @@ coverageExcludedPackages := "<empty>;controllers.*;views.*;models.*"
  * Allow packaging as part of the build
  */
 enablePlugins(SbtNativePackager)
+enablePlugins(SystemdPlugin)
+
+/*
+ * Enable systemd as systemloader
+ */
+
 enablePlugins(SystemdPlugin)
 
 /* Debian Settings - to create, run as:
