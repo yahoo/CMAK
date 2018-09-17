@@ -101,16 +101,32 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
 
   private[this] val adminUtils = new AdminUtils(cmConfig.clusterConfig.version)
 
-  private[this] val ksConfig = KafkaStateActorConfig(
-    sharedClusterCurator
-    , cmConfig.pinnedDispatcherName
-    , clusterContext
-    , LongRunningPoolConfig(clusterConfig.tuning.get.offsetCacheThreadPoolSize.get, clusterConfig.tuning.get.offsetCacheThreadPoolQueueSize.get)
-    , LongRunningPoolConfig(clusterConfig.tuning.get.kafkaAdminClientThreadPoolSize.get, clusterConfig.tuning.get.kafkaAdminClientThreadPoolQueueSize.get)
-    , clusterConfig.tuning.get.partitionOffsetCacheTimeoutSecs.get
-    , cmConfig.simpleConsumerSocketTimeoutMillis
-    , cmConfig.consumerProperties
-  )
+  private[this] val ksConfig = {
+    val kafkaManagedOffsetCacheConfigOption : Option[KafkaManagedOffsetCacheConfig] = for {
+      tuning <- cmConfig.clusterConfig.tuning
+      groupMemberMetadataCheckMillis = tuning.kafkaManagedOffsetMetadataCheckMillis
+      groupTopicPartitionOffsetExpireDays =  tuning.kafkaManagedOffsetGroupExpireDays
+      groupTopicPartitionOffsetMaxSize = tuning.kafkaManagedOffsetGroupCacheSize
+    } yield {
+      KafkaManagedOffsetCacheConfig(
+        groupMemberMetadataCheckMillis = groupMemberMetadataCheckMillis.getOrElse(KafkaManagedOffsetCacheConfig.defaultGroupMemberMetadataCheckMillis)
+        , groupTopicPartitionOffsetExpireDays = groupTopicPartitionOffsetExpireDays.getOrElse(KafkaManagedOffsetCacheConfig.defaultGroupTopicPartitionOffsetExpireDays)
+        , groupTopicPartitionOffsetMaxSize = groupTopicPartitionOffsetMaxSize.getOrElse(KafkaManagedOffsetCacheConfig.defaultGroupTopicPartitionOffsetMaxSize)
+      )
+    }
+    KafkaStateActorConfig(
+      sharedClusterCurator
+      , cmConfig.pinnedDispatcherName
+      , clusterContext
+      , LongRunningPoolConfig(clusterConfig.tuning.get.offsetCacheThreadPoolSize.get, clusterConfig.tuning.get.offsetCacheThreadPoolQueueSize.get)
+      , LongRunningPoolConfig(clusterConfig.tuning.get.kafkaAdminClientThreadPoolSize.get, clusterConfig.tuning.get.kafkaAdminClientThreadPoolQueueSize.get)
+      , clusterConfig.tuning.get.partitionOffsetCacheTimeoutSecs.get
+      , cmConfig.simpleConsumerSocketTimeoutMillis
+      , cmConfig.consumerProperties
+      , kafkaManagedOffsetCacheConfig = kafkaManagedOffsetCacheConfigOption.getOrElse(KafkaManagedOffsetCacheConfig()
+      )
+    )
+  }
   private[this] val ksProps = Props(classOf[KafkaStateActor],ksConfig)
   private[this] val kafkaStateActor : ActorPath = context.actorOf(ksProps.withDispatcher(cmConfig.pinnedDispatcherName),"kafka-state").path
 

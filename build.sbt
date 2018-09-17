@@ -42,6 +42,7 @@ libraryDependencies ++= Seq(
   "org.apache.kafka" %% "kafka" % "1.1.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
   "org.apache.kafka" % "kafka-streams" % "1.1.0",
   "com.beachape" %% "enumeratum" % "1.4.4",
+  "com.github.ben-manes.caffeine" % "caffeine" % "2.6.2",
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "org.apache.curator" % "curator-test" % "2.10.0" % "test",
   "org.mockito" % "mockito-core" % "1.10.19" % "test",
