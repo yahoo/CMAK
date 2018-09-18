@@ -55,6 +55,10 @@ libraryDependencies ++= Seq(
   "org.eclipse.sisu" % "org.eclipse.sisu.plexus" % "0.3.0"
 )
 
+val workaround = {
+  sys.props += "packaging.type" -> "jar"
+  ()
+}
 routesGenerator := InjectedRoutesGenerator
 
 LessKeys.compress in Assets := true
