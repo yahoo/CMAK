@@ -10,7 +10,7 @@
     "Kafka Manager",
     views.html.navigation.defaultMenu(views.html.navigation.menuNav("Cluster","List",menus.indexMenu)),
     views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withView("Clusters"))) {
-<div class="col-md-6 un-pad-me">
+<div class="col-lg-12">
     <div class="panel panel-default">
         <div class="panel-heading"><h3>Clusters</h3></div>
         @errorOrClusters.fold(views.html.errors.onApiError(_), cl => {

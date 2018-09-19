@@ -4,7 +4,7 @@
 *@
 @(menuTitle: String, menuItem: String, menuList: IndexedSeq[models.navigation.Menu])
 
-        <div class="navbar-collapse collapse">
+        <div class="navbar-collapse navbar-right">
             <ul class="nav navbar-nav">
                 @menuList.map { m =>
                     @if(m.items.isEmpty) {

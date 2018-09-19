@@ -1,0 +1,22 @@
+[Unit]
+Description=${{descr}}
+Requires=${{start_facilities}}
+
+[Service]
+Type=forking
+WorkingDirectory=${{chdir}}
+#EnvironmentFile=${{env_config}}
+EnvironmentFile=/etc/kafka-manager/kafka-manager-env
+ExecStart=${{chdir}}/bin/${{exec}} start
+ExecStop=${{chdir}}/bin/${{exec}} stop
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=${{retryTimeout}}
+User=${{daemon_user}}
+ExecStartPre=/bin/mkdir -p /run/${{app_name}}
+ExecStartPre=/bin/chown ${{daemon_user}}:${{daemon_group}} /run/${{app_name}}
+ExecStartPre=/bin/chmod 755 /run/${{app_name}}
+PermissionsStartOnly=true
+
+[Install]
+WantedBy=multi-user.target

@@ -4,7 +4,7 @@
 *@
 @(navHtml : Html = Html(""))
 <nav class="navbar navbar-default" role="navigation">
-    <div class="container">
+    <div class="container-fluid">
         <div class="navbar-header">
             <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target=".navbar-collapse">
                 <span class="sr-only">Toggle navigation</span>
@@ -12,8 +12,11 @@
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
             </button>
-            <img src="@routes.Assets.versioned("images/favicon.png")">
-            <a class="navbar-brand un-float-me" href="@routes.Application.index()">Kafka Manager</a>
+            <!--<img src="@routes.Assets.versioned("images/favicon.png")">-->
+            <a class="navbar-brand" href="@routes.Application.index()">
+		<!--<img src="@routes.Assets.versioned("images/favicon.png")">-->
+		<img src="@routes.Assets.versioned("images/logo.png")">    
+		<span>Kafka Manager</span></a>
         </div>
         @navHtml
     </div>

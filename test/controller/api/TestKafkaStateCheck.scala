@@ -76,7 +76,7 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
 
   private[this] def createCluster() = {
     val future = kafkaManagerContext.get.getKafkaManager.addCluster(
-      testClusterName,"1.1.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(kafkaManagerContext.get.getKafkaManager.defaultTuning), securityProtocol="PLAINTEXT", saslMechanism = None, jaasConfig = None
+      testClusterName,"2.0.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(kafkaManagerContext.get.getKafkaManager.defaultTuning), securityProtocol="PLAINTEXT", saslMechanism = None, jaasConfig = None
     )
     val result = Await.result(future,duration)
     result.toEither.left.foreach(apiError => sys.error(apiError.msg))

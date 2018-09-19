@@ -2,10 +2,14 @@
  * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
  * See accompanying LICENSE file.
  */
+
+import com.typesafe.sbt.packager.rpm.RpmPlugin.autoImport._
+//import com.typesafe.sbt.packager.archetypes.ServerLoader for sbt-native-packager version 1.0.5
+
 name := """kafka-manager"""
 
 /* For packaging purposes, -SNAPSHOT MUST contain a digit */
-version := "1.3.3.21"
+version := "1.3.0"
 
 scalaVersion := "2.11.8"
 
@@ -42,9 +46,19 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "org.apache.curator" % "curator-test" % "2.10.0" % "test",
   "org.mockito" % "mockito-core" % "1.10.19" % "test",
-  "com.yammer.metrics" % "metrics-core" % "2.2.0" force()
+  "com.yammer.metrics" % "metrics-core" % "2.2.0" force(),
+  "ch.qos.logback" % "logback-core" % "1.1.3",
+  "com.fasterxml.jackson.core" % "jackson-core" % "2.8.9",
+  "com.fasterxml.jackson.core" % "jackson-databind" % "2.8.9",
+  "com.fasterxml.jackson.core" % "jackson-annotations" % "2.8.9",
+  "net.java.dev.jna" % "jna" % "3.4.0",
+  "org.eclipse.sisu" % "org.eclipse.sisu.plexus" % "0.3.0"
 )
 
+val workaround = {
+  sys.props += "packaging.type" -> "jar"
+  ()
+}
 routesGenerator := InjectedRoutesGenerator
 
 LessKeys.compress in Assets := true
@@ -61,17 +75,13 @@ coverageExcludedPackages := "<empty>;controllers.*;views.*;models.*"
  * Allow packaging as part of the build
  */
 enablePlugins(SbtNativePackager)
+enablePlugins(SystemdPlugin)
+
 /*
  * Enable systemd as systemloader
  */
 
 enablePlugins(SystemdPlugin)
-
-/*
- * Start service as user root
- */
-
-daemonUser in Linux := "root"
 
 /* Debian Settings - to create, run as:
    $ sbt debian:packageBin
@@ -80,9 +90,9 @@ daemonUser in Linux := "root"
    http://www.scala-sbt.org/sbt-native-packager/formats/debian.html
 */
 
-maintainer := "Yahoo <yahoo@example.com>"
-packageSummary := "A tool for managing Apache Kafka"
-packageDescription := "A tool for managing Apache Kafka"
+maintainer := "Arenadata <ke@arenadata.io>"
+packageSummary := "A tool for managing Arenadata Streaming"
+packageDescription := "A tool for managing Arenadata Streaming"
 
 /* End Debian Settings */
 
@@ -95,9 +105,17 @@ packageDescription := "A tool for managing Apache Kafka"
 */
 
 rpmRelease := "1"
-rpmVendor := "yahoo"
-rpmUrl := Some("https://github.com/yahoo/kafka-manager")
+rpmVendor := "Arenadata"
+rpmUrl := Some("https://github.com/arenadata/adsm")
 rpmLicense := Some("Apache")
 rpmGroup := Some("kafka-manager")
+defaultLinuxInstallLocation := "/usr/lib"
+// serverLoading in Rpm := ServerLoader.Systemd  for sbt-native-packager version 1.0.5
+//**rpmPrefix := Some("/usr/lib")
+
+maintainerScripts in Rpm := maintainerScriptsAppend((maintainerScripts in Rpm).value)(
+  RpmConstants.Post -> s"mkdir /home/${(daemonUser in Linux).value}; chown ${(daemonUser in Linux).value}:${(daemonUser in Linux).value} /home/${(daemonUser in Linux).value}"
+)
+
 
 /* End RPM Settings */
