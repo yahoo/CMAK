@@ -9,10 +9,10 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 import com.typesafe.config.{Config, ConfigFactory}
 import kafka.manager.features.KMDeleteTopicFeature
-import kafka.manager.model.{Kafka_0_8_1_1, ActorModel}
+import kafka.manager.model._
 import kafka.manager.utils.CuratorAwareTest
-import kafka.manager.model.ActorModel.{KafkaManagedConsumer, ZKManagedConsumer, TopicList}
-import kafka.test.{NewKafkaManagedConsumer, SimpleProducer, HighLevelConsumer, SeededBroker}
+import kafka.manager.model.ActorModel.{KafkaManagedConsumer, TopicList, ZKManagedConsumer}
+import kafka.test.{HighLevelConsumer, NewKafkaManagedConsumer, SeededBroker, SimpleProducer}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -97,7 +97,7 @@ class TestKafkaManager extends CuratorAwareTest with BaseTest {
     simpleProducerThread.foreach(_.start())
     Thread.sleep(1000)
 
-    //val future = kafkaManager.addCluster("dev","1.1.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(kafkaManager.defaultTuning), securityProtocol="PLAINTEXT")
+    //val future = kafkaManager.addCluster("dev","1.1.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(kafkaManager.defaultTuning), securityProtocol = "PLAINTEXT", saslMechanism = "PLAIN", jaasConfig = None)
     //val result = Await.result(future,duration)
     //assert(result.isRight === true)
     //Thread.sleep(2000)
@@ -125,7 +125,7 @@ class TestKafkaManager extends CuratorAwareTest with BaseTest {
   }
 
   test("add cluster") {
-    val future = kafkaManager.addCluster("dev","1.1.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(kafkaManager.defaultTuning), securityProtocol="PLAINTEXT")
+    val future = kafkaManager.addCluster("dev","2.0.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(kafkaManager.defaultTuning), securityProtocol="PLAINTEXT", saslMechanism = None, jaasConfig = None)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
     Thread.sleep(2000)
@@ -376,7 +376,7 @@ class TestKafkaManager extends CuratorAwareTest with BaseTest {
   }
 
   test("update cluster zkhost") {
-    val future = kafkaManager.updateCluster("dev","1.1.0",testServer.getConnectString, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxSsl = false, jmxPass = None, tuning = Option(defaultTuning), securityProtocol="PLAINTEXT")
+    val future = kafkaManager.updateCluster("dev","2.0.0",testServer.getConnectString, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxSsl = false, jmxPass = None, tuning = Option(defaultTuning), securityProtocol = "PLAINTEXT", saslMechanism = None, jaasConfig = None)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
 
@@ -411,7 +411,7 @@ class TestKafkaManager extends CuratorAwareTest with BaseTest {
   }
 
   test("update cluster version") {
-    val future = kafkaManager.updateCluster("dev","0.8.1.1",testServer.getConnectString, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning), securityProtocol="PLAINTEXT")
+    val future = kafkaManager.updateCluster("dev","0.8.1.1",testServer.getConnectString, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning), securityProtocol = "PLAINTEXT", saslMechanism = None, jaasConfig = None)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
     Thread.sleep(2000)
@@ -424,7 +424,7 @@ class TestKafkaManager extends CuratorAwareTest with BaseTest {
     Thread.sleep(2000)
   }
 
-  test("delete topic not supported prior to 1.1.0") {
+  test("delete topic not supported prior to 2.0.0") {
     val future = kafkaManager.deleteTopic("dev",createTopicNameA)
     val result = Await.result(future,duration)
     assert(result.isLeft === true, result)
@@ -433,7 +433,7 @@ class TestKafkaManager extends CuratorAwareTest with BaseTest {
   }
 
   test("update cluster logkafka enabled and activeOffsetCache enabled") {
-    val future = kafkaManager.updateCluster("dev","1.1.0",testServer.getConnectString, jmxEnabled = false, pollConsumers = true, filterConsumers = true, logkafkaEnabled = true, activeOffsetCacheEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning), securityProtocol="PLAINTEXT")
+    val future = kafkaManager.updateCluster("dev","2.0.0",testServer.getConnectString, jmxEnabled = false, pollConsumers = true, filterConsumers = true, logkafkaEnabled = true, activeOffsetCacheEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning), securityProtocol = "PLAINTEXT", saslMechanism = None, jaasConfig = None)
     val result = Await.result(future,duration)
     assert(result.isRight === true)
     
@@ -444,6 +444,34 @@ class TestKafkaManager extends CuratorAwareTest with BaseTest {
     assert(result2.isRight === true)
     assert((result2.toOption.get.active.find(c => c.name == "dev").get.logkafkaEnabled === true) &&
       (result2.toOption.get.active.find(c => c.name == "dev").get.activeOffsetCacheEnabled === true))
+    Thread.sleep(2000)
+  }
+
+  test("update cluster security protocol and sasl mechanism") {
+    val future = kafkaManager.updateCluster("dev","1.1.0",testServer.getConnectString, jmxEnabled = false, pollConsumers = true, filterConsumers = true, logkafkaEnabled = true, activeOffsetCacheEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning), securityProtocol = "SASL_PLAINTEXT", saslMechanism = Option("PLAIN"), jaasConfig = Option("blah"))
+    val result = Await.result(future,duration)
+    assert(result.isRight === true)
+
+    Thread.sleep(2000)
+
+    val future2 = kafkaManager.getClusterList
+    val result2 = Await.result(future2,duration)
+    assert(result2.isRight === true)
+    assert((result2.toOption.get.active.find(c => c.name == "dev").get.securityProtocol === SASL_PLAINTEXT) &&
+      (result2.toOption.get.active.find(c => c.name == "dev").get.saslMechanism === Option(SASL_MECHANISM_PLAIN)))
+    Thread.sleep(2000)
+
+    val future3 = kafkaManager.updateCluster("dev","1.1.0",testServer.getConnectString, jmxEnabled = false, pollConsumers = true, filterConsumers = true, logkafkaEnabled = true, activeOffsetCacheEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning), securityProtocol = "PLAINTEXT", saslMechanism = None, jaasConfig = None)
+    val result3 = Await.result(future3,duration)
+    assert(result3.isRight === true)
+
+    Thread.sleep(2000)
+
+    val future4 = kafkaManager.getClusterList
+    val result4 = Await.result(future4,duration)
+    assert(result4.isRight === true)
+    assert((result4.toOption.get.active.find(c => c.name == "dev").get.securityProtocol === PLAINTEXT) &&
+      (result4.toOption.get.active.find(c => c.name == "dev").get.saslMechanism === None))
     Thread.sleep(2000)
   }
 
