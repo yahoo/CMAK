@@ -181,25 +181,25 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
 
   def cluster(c: String) = Action.async {
     kafkaManager.getClusterView(c).map { errorOrClusterView =>
-      Ok(views.html.cluster.clusterView(c,errorOrClusterView))
+      Ok(views.html.cluster.clusterView(c,errorOrClusterView)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }
   }
 
   def brokers(c: String) = Action.async {
     kafkaManager.getBrokerList(c).map { errorOrBrokerList =>
-      Ok(views.html.broker.brokerList(c,errorOrBrokerList))
+      Ok(views.html.broker.brokerList(c,errorOrBrokerList)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }
   }
 
   def broker(c: String, b: Int) = Action.async {
     kafkaManager.getBrokerView(c,b).map { errorOrBrokerView =>
-      Ok(views.html.broker.brokerView(c,b,errorOrBrokerView))
+      Ok(views.html.broker.brokerView(c,b,errorOrBrokerView)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }
   }
 
   def addCluster = Action.async { implicit request =>
     featureGate(KMClusterManagerFeature) {
-      Future.successful(Ok(views.html.cluster.addCluster(clusterConfigForm.fill(defaultClusterConfig))))
+      Future.successful(Ok(views.html.cluster.addCluster(clusterConfigForm.fill(defaultClusterConfig))).withHeaders("X-Frame-Options" -> "SAMEORIGIN"))
     }
   }
 
@@ -225,7 +225,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
             cc.tuning,
             cc.securityProtocol.stringId
           ))
-        }))
+        })).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
       }
     }
 
@@ -258,7 +258,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
               "Add Cluster",
               FollowLink("Go to cluster view.",routes.Cluster.cluster(clusterConfig.name).toString()),
               FollowLink("Try again.",routes.Cluster.addCluster().toString())
-            ))
+            )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
           }
         }
       )
@@ -279,7 +279,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
                 "Enable Cluster",
                 FollowLink("Go to cluster list.", routes.Application.index().toString()),
                 FollowLink("Back to cluster list.", routes.Application.index().toString())
-              ))
+              )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
             }
           case Disable =>
             kafkaManager.disableCluster(c).map { errorOrSuccess =>
@@ -290,7 +290,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
                 "Disable Cluster",
                 FollowLink("Back to cluster list.", routes.Application.index().toString()),
                 FollowLink("Back to cluster list.", routes.Application.index().toString())
-              ))
+              )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
             }
           case Delete =>
             kafkaManager.deleteCluster(c).map { errorOrSuccess =>
@@ -301,7 +301,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
                 "Delete Cluster",
                 FollowLink("Back to cluster list.", routes.Application.index().toString()),
                 FollowLink("Back to cluster list.", routes.Application.index().toString())
-              ))
+              )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
             }
           case Update =>
             kafkaManager.updateCluster(
@@ -327,7 +327,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
                 "Update Cluster",
                 FollowLink("Go to cluster view.", routes.Cluster.cluster(clusterOperation.clusterConfig.name).toString()),
                 FollowLink("Try again.", routes.Cluster.updateCluster(c).toString())
-              ))
+              )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
             }
           case Unknown(opString) =>
             Future.successful(Ok(views.html.common.resultOfCommand(
@@ -337,7 +337,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
               "Unknown Cluster Operation",
               FollowLink("Back to cluster list.", routes.Application.index().toString()),
               FollowLink("Back to cluster list.", routes.Application.index().toString())
-            )))
+            )).withHeaders("X-Frame-Options" -> "SAMEORIGIN"))
         }
       )
     }
