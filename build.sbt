@@ -85,6 +85,15 @@ dockerfile in docker := {
   }
 }
 
+imageNames in docker := Seq(
+  ImageName(
+    s"${name.value}:${version.value}"
+  )
+)
+
+buildOptions in docker := BuildOptions(
+  pullBaseImage = BuildOptions.Pull.Always
+)
 
 /*
  * Start service as user root
