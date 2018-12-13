@@ -285,7 +285,6 @@ class GroupMetadata(val groupId: String
 
   def hasOffsets = offsets.nonEmpty || pendingOffsetCommits.nonEmpty || pendingTransactionalOffsetCommits.nonEmpty
 
-
   override def toString: String = {
     "GroupMetadata(" +
       s"groupId=$groupId, " +
@@ -295,7 +294,6 @@ class GroupMetadata(val groupId: String
   }
 
 }
-
 
 /**
   * Messages stored for the group topic has versions for both the key and value fields. Key
