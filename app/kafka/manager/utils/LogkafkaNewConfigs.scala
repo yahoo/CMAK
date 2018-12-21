@@ -34,7 +34,8 @@ object LogkafkaNewConfigs {
     Kafka_0_11_0_2 -> logkafka82.LogConfig,
     Kafka_1_0_0 -> logkafka82.LogConfig,
     Kafka_1_0_1 -> logkafka82.LogConfig,
-    Kafka_1_1_0 -> logkafka82.LogConfig
+    Kafka_1_1_0 -> logkafka82.LogConfig,
+    Kafka_2_0_0 -> logkafka82.LogConfig
     )
 
   def configNames(version: KafkaVersion) : Set[String] = {
