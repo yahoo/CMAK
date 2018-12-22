@@ -417,24 +417,30 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
     val offsetCacheThreadPoolQueueSize = config.tuning.flatMap(_.offsetCacheThreadPoolQueueSize) orElse kmConfig.defaultTuning.offsetCacheThreadPoolQueueSize
     val kafkaAdminClientThreadPoolSize = config.tuning.flatMap(_.kafkaAdminClientThreadPoolSize) orElse kmConfig.defaultTuning.kafkaAdminClientThreadPoolSize
     val kafkaAdminClientThreadPoolQueueSize = config.tuning.flatMap(_.kafkaAdminClientThreadPoolQueueSize) orElse kmConfig.defaultTuning.kafkaAdminClientThreadPoolQueueSize
+    val kafkaManagedOffsetMetadataCheckMillis = config.tuning.flatMap(_.kafkaManagedOffsetMetadataCheckMillis) orElse kmConfig.defaultTuning.kafkaManagedOffsetMetadataCheckMillis
+    val kafkaManagedOffsetGroupCacheSize = config.tuning.flatMap(_.kafkaManagedOffsetGroupCacheSize) orElse kmConfig.defaultTuning.kafkaManagedOffsetGroupCacheSize
+    val kafkaManagedOffsetGroupExpireDays = config.tuning.flatMap(_.kafkaManagedOffsetGroupExpireDays) orElse kmConfig.defaultTuning.kafkaManagedOffsetGroupExpireDays
 
     val tuning = Option(
       ClusterTuning(
-      brokerViewUpdatePeriodSeconds = brokerViewUpdatePeriodSeconds
-      , clusterManagerThreadPoolSize = clusterManagerThreadPoolSize
-      , clusterManagerThreadPoolQueueSize = clusterManagerThreadPoolQueueSize
-      , kafkaCommandThreadPoolSize = kafkaCommandThreadPoolSize
-      , kafkaCommandThreadPoolQueueSize = kafkaCommandThreadPoolQueueSize
-      , logkafkaCommandThreadPoolSize = logkafkaCommandThreadPoolSize
-      , logkafkaCommandThreadPoolQueueSize = logkafkaCommandThreadPoolQueueSize
-      , logkafkaUpdatePeriodSeconds = logkafkaUpdatePeriodSeconds
-      , partitionOffsetCacheTimeoutSecs = partitionOffsetCacheTimeoutSecs
-      , brokerViewThreadPoolSize = brokerViewThreadPoolSize
-      , brokerViewThreadPoolQueueSize = brokerViewThreadPoolQueueSize
-      , offsetCacheThreadPoolSize = offsetCacheThreadPoolSize
-      , offsetCacheThreadPoolQueueSize = offsetCacheThreadPoolQueueSize
-      , kafkaAdminClientThreadPoolSize = kafkaAdminClientThreadPoolSize
-      , kafkaAdminClientThreadPoolQueueSize = kafkaAdminClientThreadPoolQueueSize
+        brokerViewUpdatePeriodSeconds = brokerViewUpdatePeriodSeconds
+        , clusterManagerThreadPoolSize = clusterManagerThreadPoolSize
+        , clusterManagerThreadPoolQueueSize = clusterManagerThreadPoolQueueSize
+        , kafkaCommandThreadPoolSize = kafkaCommandThreadPoolSize
+        , kafkaCommandThreadPoolQueueSize = kafkaCommandThreadPoolQueueSize
+        , logkafkaCommandThreadPoolSize = logkafkaCommandThreadPoolSize
+        , logkafkaCommandThreadPoolQueueSize = logkafkaCommandThreadPoolQueueSize
+        , logkafkaUpdatePeriodSeconds = logkafkaUpdatePeriodSeconds
+        , partitionOffsetCacheTimeoutSecs = partitionOffsetCacheTimeoutSecs
+        , brokerViewThreadPoolSize = brokerViewThreadPoolSize
+        , brokerViewThreadPoolQueueSize = brokerViewThreadPoolQueueSize
+        , offsetCacheThreadPoolSize = offsetCacheThreadPoolSize
+        , offsetCacheThreadPoolQueueSize = offsetCacheThreadPoolQueueSize
+        , kafkaAdminClientThreadPoolSize = kafkaAdminClientThreadPoolSize
+        , kafkaAdminClientThreadPoolQueueSize = kafkaAdminClientThreadPoolQueueSize
+        , kafkaManagedOffsetMetadataCheckMillis = kafkaManagedOffsetMetadataCheckMillis
+        , kafkaManagedOffsetGroupCacheSize = kafkaManagedOffsetGroupCacheSize
+        , kafkaManagedOffsetGroupExpireDays = kafkaManagedOffsetGroupExpireDays
       )
     )
     config.copy(
@@ -478,6 +484,7 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
         && newConfig.jmxEnabled == currentConfig.jmxEnabled
         && newConfig.jmxUser == currentConfig.jmxUser
         && newConfig.jmxPass == currentConfig.jmxPass
+        && newConfig.jmxSsl == currentConfig.jmxSsl
         && newConfig.logkafkaEnabled == currentConfig.logkafkaEnabled
         && newConfig.pollConsumers == currentConfig.pollConsumers
         && newConfig.filterConsumers == currentConfig.filterConsumers
@@ -485,6 +492,8 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
         && newConfig.displaySizeEnabled == currentConfig.displaySizeEnabled
         && newConfig.tuning == currentConfig.tuning
         && newConfig.securityProtocol == currentConfig.securityProtocol
+        && newConfig.saslMechanism == currentConfig.saslMechanism
+        && newConfig.jaasConfig == currentConfig.jaasConfig
       ) {
         //nothing changed
         false

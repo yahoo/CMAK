@@ -39,6 +39,8 @@ class KafkaTestBroker(zookeeper: CuratorFramework, zookeeperConnectionString: St
     p.setProperty("port", "" + port)
     p.setProperty("log.dirs", getLogDir)
     p.setProperty("log.retention.hours", "1")
+    p.setProperty("offsets.topic.replication.factor", "1")
+    p.setProperty("delete.topic.enable", "true")
     new KafkaConfig(p)
   }
 
