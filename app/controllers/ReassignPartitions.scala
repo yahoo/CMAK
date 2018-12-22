@@ -103,7 +103,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
 
   def reassignPartitions(c: String) = Action.async {
     kafkaManager.getReassignPartitions(c).map { errorOrStatus =>
-      Ok(views.html.reassignPartitions(c,errorOrStatus))
+      Ok(views.html.reassignPartitions(c,errorOrStatus)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }
   }
 
@@ -112,13 +112,13 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
       kafkaManager.getTopicList(c).flatMap { errorOrSuccess =>
         withClusterContext(c)(
           err => Future.successful(
-            Ok(views.html.errors.onApiError(err, Option(FollowLink("Try Again", routes.ReassignPartitions.runMultipleAssignments(c).toString()))))
+            Ok(views.html.errors.onApiError(err, Option(FollowLink("Try Again", routes.ReassignPartitions.runMultipleAssignments(c).toString())))).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
           ),
           cc => Future.successful(
             Ok(views.html.topic.runMultipleAssignments(
               c, errorOrSuccess.map(l => 
                 (reassignMultipleTopicsForm.fill(RunMultipleAssignments(l.list.map(TopicSelect.from))), cc))
-            ))
+            )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
           )
         )
       }
@@ -130,7 +130,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
       kafkaManager.getBrokerList(c).flatMap { errorOrSuccess =>
         withClusterContext(c)(
           err => Future.successful(
-            Ok(views.html.errors.onApiError(err, Option(FollowLink("Try Again", routes.ReassignPartitions.confirmAssignment(c, t).toString()))))
+            Ok(views.html.errors.onApiError(err, Option(FollowLink("Try Again", routes.ReassignPartitions.confirmAssignment(c, t).toString())))).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
           ),
           cc =>
             kafkaManager.getGeneratedAssignments(c, t).map { errorOrAssignments =>
@@ -139,7 +139,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
                   (generateAssignmentsForm.fill(GenerateAssignment(l.list.map(BrokerSelect.from))), cc)
                 ),
                 errorOrAssignments
-              ))
+              )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
             }
         )
       }
@@ -151,12 +151,12 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
       kafkaManager.getTopicList(c).flatMap { errOrTL =>
         withClusterContext(c)(
           err => Future.successful(
-            Ok(views.html.errors.onApiError(err, Option(FollowLink("Try Again", routes.ReassignPartitions.confirmMultipleAssignments(c).toString()))))
+            Ok(views.html.errors.onApiError(err, Option(FollowLink("Try Again", routes.ReassignPartitions.confirmMultipleAssignments(c).toString())))).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
           ),
           cc =>
             errOrTL.fold(
             { err: ApiError =>
-              Future.successful(Ok(views.html.topic.confirmMultipleAssignments(c, -\/(err))))
+              Future.successful(Ok(views.html.topic.confirmMultipleAssignments(c, -\/(err))).withHeaders("X-Frame-Options" -> "SAMEORIGIN"))
             }, { tL: TopicList =>
               kafkaManager.getBrokerList(c).map { errorOrSuccess =>
                 Ok(views.html.topic.confirmMultipleAssignments(
@@ -164,7 +164,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
                     (generateMultipleAssignmentsForm.fill(GenerateMultipleAssignments(tL.list.map(TopicSelect.from), l.list.map(BrokerSelect.from))),
                      cc)
                   )
-                ))
+                )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
               }
             }
             )
@@ -184,7 +184,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
       
       withClusterFeatures(c)( err => {
         Future.successful(Ok(views.html.errors.onApiError(err,
-          Option(FollowLink("Try Again", routes.ReassignPartitions.manualAssignments(c, t).toString())))))
+          Option(FollowLink("Try Again", routes.ReassignPartitions.manualAssignments(c, t).toString())))).withHeaders("X-Frame-Options" -> "SAMEORIGIN"))
       }, implicit clusterFeatures => {
         val futureTopicIdentity = kafkaManager.getTopicIdentity(c, t)
         val futureBrokersViews = kafkaManager.getBrokersView(c)
@@ -212,18 +212,18 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
             Ok(views.html.topic.manualAssignments(
               //c, t, manualReassignmentForm.fill(List(flattenTopicIdentity(ti))), bl, bv, manualReassignmentForm.errors
               c, t, List(flattenTopicIdentity(ti)), bl, bv, manualReassignmentForm.errors
-            ))
+            )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
           }
           errorOrResult.fold(err => {
             Ok(views.html.errors.onApiError(err,
-              Option(FollowLink("Try Again", routes.ReassignPartitions.manualAssignments(c, t).toString()))))
+              Option(FollowLink("Try Again", routes.ReassignPartitions.manualAssignments(c, t).toString())))).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
           }, identity[Result])
         }
 
         futureResult.recover {
           case err =>
             Ok(views.html.errors.onApiError(ApiError(s"Unknown error : ${err.getMessage}"),
-              Option(FollowLink("Try Again", routes.ReassignPartitions.manualAssignments(c, t).toString()))))
+              Option(FollowLink("Try Again", routes.ReassignPartitions.manualAssignments(c, t).toString())))).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
         }
 
         /*
@@ -274,7 +274,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
       def responseScreen(title: String, errorOrResult: \/[IndexedSeq[ApiError], Unit]): Future[Result] = {
         withClusterFeatures(c)( err => {
           Future.successful(Ok(views.html.errors.onApiError(err,
-            Option(FollowLink("Try Again", routes.ReassignPartitions.manualAssignments(c, t).toString())))))
+            Option(FollowLink("Try Again", routes.ReassignPartitions.manualAssignments(c, t).toString())))).withHeaders("X-Frame-Options" -> "SAMEORIGIN"))
         }, implicit clusterFeatures => {
           Future.successful(Ok(views.html.common.resultsOfCommand(
             views.html.navigation.clusterMenu(c, title, "", menus.clusterMenus(c)),
@@ -283,7 +283,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
             title,
             FollowLink("Go to topic view.", routes.Topic.topic(c, t).toString()),
             FollowLink("Try again.", routes.Topic.topics(c).toString())
-          )))
+          )).withHeaders("X-Frame-Options" -> "SAMEORIGIN"))
         })
       }
 
@@ -314,13 +314,13 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
     featureGate(KMReassignPartitionsFeature) {
       withClusterContext(c)(
         err => Future.successful(
-          Ok(views.html.errors.onApiError(err, Option(FollowLink("Try Again", routes.Topic.topic(c, t).toString()))))
+          Ok(views.html.errors.onApiError(err, Option(FollowLink("Try Again", routes.Topic.topic(c, t).toString())))).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
         ),
         cc =>
           generateAssignmentsForm.bindFromRequest.fold(
             errors => {
               kafkaManager.getGeneratedAssignments(c, t).map { errorOrAssignments =>
-                Ok(views.html.topic.confirmAssignment(c, t, \/-((errors, cc)), errorOrAssignments))
+                Ok(views.html.topic.confirmAssignment(c, t, \/-((errors, cc)), errorOrAssignments)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
               }
             },
             assignment => {
@@ -333,7 +333,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
                   s"Generate Partition Assignments - $t",
                   FollowLink("Go to topic view.", routes.Topic.topic(c, t).toString()),
                   FollowLink("Try again.", routes.Topic.topic(c, t).toString())
-                ))
+                )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
 
               }
             }
@@ -346,11 +346,11 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
     featureGate(KMReassignPartitionsFeature) {
       withClusterContext(c)(
         err => Future.successful(
-          Ok(views.html.errors.onApiError(err, Option(FollowLink("Try Again", routes.Topic.topics(c).toString()))))
+          Ok(views.html.errors.onApiError(err, Option(FollowLink("Try Again", routes.Topic.topics(c).toString())))).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
         ),
         cc =>
           generateMultipleAssignmentsForm.bindFromRequest.fold(
-            errors => Future.successful(Ok(views.html.topic.confirmMultipleAssignments(c, \/-((errors, cc))))),
+            errors => Future.successful(Ok(views.html.topic.confirmMultipleAssignments(c, \/-((errors, cc)))).withHeaders("X-Frame-Options" -> "SAMEORIGIN")),
             assignment => {
               kafkaManager.generatePartitionAssignments(c, assignment.topics.filter(_.selected).map(_.name).toSet, assignment.brokers.filter(_.selected).map(_.id).toSet).map { errorOrSuccess =>
                 implicit val clusterFeatures = cc.clusterFeatures
@@ -361,7 +361,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
                   s"Generate Partition Assignments",
                   FollowLink("Go to topic list.", routes.Topic.topics(c).toString()),
                   FollowLink("Try again.", routes.Topic.topics(c).toString())
-                ))
+                )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
 
               }
             }
@@ -374,11 +374,11 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
     featureGate(KMReassignPartitionsFeature) {
       withClusterContext(c)(
         err => Future.successful(
-          Ok(views.html.errors.onApiError(err, Option(FollowLink("Try Again", routes.Topic.topics(c).toString()))))
+          Ok(views.html.errors.onApiError(err, Option(FollowLink("Try Again", routes.Topic.topics(c).toString())))).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
         ),
         cc =>
           reassignMultipleTopicsForm.bindFromRequest.fold(
-            errors => Future.successful(Ok(views.html.topic.runMultipleAssignments(c, \/-((errors, cc))))),
+            errors => Future.successful(Ok(views.html.topic.runMultipleAssignments(c, \/-((errors, cc)))).withHeaders("X-Frame-Options" -> "SAMEORIGIN")),
             assignment => {
               kafkaManager
                 .runReassignPartitions(c, assignment.topics.filter(_.selected).map(_.name).toSet)
@@ -393,7 +393,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
                     FollowLink("Go to reassign partitions.", routes.ReassignPartitions.reassignPartitions(c).toString()),
                     FollowLink("Try again.", routes.Topic.topics(c).toString())
                   )
-                )
+                ).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
               }
             }
           )
@@ -405,7 +405,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
     featureGate(KMReassignPartitionsFeature) {
       withClusterContext(c)(
         err => Future.successful(
-          Ok(views.html.errors.onApiError(err, Option(FollowLink("Try Force Running", routes.Topic.topic(c, t, force = err.recoverByForceOperation).toString()))))
+          Ok(views.html.errors.onApiError(err, Option(FollowLink("Try Force Running", routes.Topic.topic(c, t, force = err.recoverByForceOperation).toString())))).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
         ),
         cc =>
           reassignPartitionsForm.bindFromRequest.fold(
@@ -421,7 +421,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
                     s"Run Reassign Partitions - $t",
                     FollowLink("Go to reassign partitions.", routes.ReassignPartitions.reassignPartitions(c).toString()),
                     FollowLink("Try again.", routes.Topic.topic(c, t).toString())
-                  ))
+                  )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
                 }
               case Some(ForceRunAssignment) =>
                 implicit val clusterFeatures = cc.clusterFeatures
@@ -433,7 +433,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
                     s"Run Reassign Partitions - $t",
                     FollowLink("Go to reassign partitions.", routes.ReassignPartitions.reassignPartitions(c).toString()),
                     FollowLink("Try again.", routes.Topic.topic(c, t).toString())
-                  ))
+                  )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
                 }
               case unknown =>
                 implicit val clusterFeatures = cc.clusterFeatures
@@ -444,7 +444,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
                   "Unknown Reassign Partitions Operation",
                   FollowLink("Back to reassign partitions.", routes.ReassignPartitions.reassignPartitions(c).toString()),
                   FollowLink("Back to reassign partitions.", routes.ReassignPartitions.reassignPartitions(c).toString())
-                )))
+                )).withHeaders("X-Frame-Options" -> "SAMEORIGIN"))
             }
           )
       )
