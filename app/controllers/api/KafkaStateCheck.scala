@@ -145,7 +145,16 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     kafkaManager.getConsumerListExtended(cluster).map { errorOrConsumersSummary =>
       errorOrConsumersSummary.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
-        consumersSummary => Ok(Serialization.writePretty("consumers" -> consumersSummary.list.map{case ((consumer, consumerType), consumerIdentity) => Map("name" -> consumer, "type" -> consumerType.toString, "topics" -> consumerIdentity.map(_.topicMap.keys))})).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
+        consumersSummary =>
+          Ok(Serialization.writePretty("consumers" ->
+            consumersSummary.list.map {
+              case ((consumer, consumerType), consumerIdentity) =>
+                Map("name" -> consumer,
+                  "type" -> consumerType.toString,
+                  "topics" -> consumerIdentity.map(_.topicMap.keys),
+                  "lags" -> consumerIdentity.map(_.topicMap.mapValues(_.totalLag))
+                )
+            })).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
         )
     }
   }
