@@ -5,7 +5,7 @@
 
 package models.navigation
 
-import features.{KMTopicManagerFeature, KMClusterManagerFeature, ApplicationFeatures}
+import features.{KMTopicManagerFeature, KMClusterManagerFeature, KMPreferredReplicaElectionFeature, KMReassignPartitionsFeature, ApplicationFeatures}
 import kafka.manager.features.{KMLogKafkaFeature, ClusterFeatures}
 
 /**
@@ -45,11 +45,15 @@ class Menus(implicit applicationFeatures: ApplicationFeatures) {
   }
   
   private[this] def preferredReplicaElectionMenu(cluster: String) : Option[Menu] = {
-    Option("Preferred Replica Election".clusterMenu(cluster))
+    if (applicationFeatures.features(KMPreferredReplicaElectionFeature)) {
+      Option("Preferred Replica Election".clusterMenu(cluster))
+    } else None
   }
   
   private[this] def reassignPartitionsMenu(cluster: String) : Option[Menu] = {
-    Option("Reassign Partitions".clusterMenu(cluster))
+    if (applicationFeatures.features(KMReassignPartitionsFeature)) {
+      Option("Reassign Partitions".clusterMenu(cluster))
+    } else None
   }
 
   private[this] def consumersMenu(cluster: String) : Option[Menu] = {
