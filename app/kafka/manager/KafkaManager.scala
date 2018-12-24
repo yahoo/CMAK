@@ -6,24 +6,25 @@
 package kafka.manager
 
 import java.util.Properties
-import java.util.concurrent.{LinkedBlockingQueue, TimeUnit, ThreadPoolExecutor}
+import java.util.concurrent.{LinkedBlockingQueue, ThreadPoolExecutor, TimeUnit}
 
 import akka.actor.{ActorPath, ActorSystem, Props}
 import akka.util.Timeout
-import com.typesafe.config.{ConfigFactory, Config}
+import com.typesafe.config.{Config, ConfigFactory}
 import grizzled.slf4j.Logging
-import kafka.manager.actor.{KafkaManagerActorConfig, KafkaManagerActor}
+import kafka.manager.actor.{KafkaManagerActor, KafkaManagerActorConfig}
 import kafka.manager.base.LongRunningPoolConfig
 import kafka.manager.model._
 import ActorModel._
+import kafka.manager.actor.cluster.KafkaManagedOffsetCacheConfig
 import kafka.manager.utils.UtilException
 import kafka.manager.utils.zero81.ReassignPartitionErrors.ReplicationOutOfSync
-import kafka.manager.utils.zero81.{ReassignPartitionErrors, ForceReassignmentCommand, ForceOnReplicationOutOfSync}
+import kafka.manager.utils.zero81.{ForceOnReplicationOutOfSync, ForceReassignmentCommand, ReassignPartitionErrors}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
-import scala.util.{Success, Failure, Try}
+import scala.util.{Failure, Success, Try}
 
 /**
  * @author hiral
@@ -80,6 +81,9 @@ object KafkaManager {
   val OffsetCacheMaxQueueSize = "kafka-manager.offset-cache-max-queue-size"
   val KafkaAdminClientThreadPoolSize = "kafka-manager.kafka-admin-client-thread-pool-size"
   val KafkaAdminClientMaxQueueSize = "kafka-manager.kafka-admin-client-max-queue-size"
+  val KafkaManagedOffsetMetadataCheckMillis = "kafka-manager.kafka-managed-offset-metadata-check-millis"
+  val KafkaManagedOffsetGroupCacheSize = "kafka-manager.kafka-managed-offset-group-cache-size"
+  val KafkaManagedOffsetGroupExpireDays = "kafka-manager.kafka-managed-offset-group-expire-days"
 
   val DefaultConfig: Config = {
     val defaults: Map[String, _ <: AnyRef] = Map(
@@ -102,7 +106,10 @@ object KafkaManager {
       OffsetCacheThreadPoolSize -> Runtime.getRuntime.availableProcessors().toString,
       OffsetCacheMaxQueueSize -> "1000",
       KafkaAdminClientThreadPoolSize -> Runtime.getRuntime.availableProcessors().toString,
-      KafkaAdminClientMaxQueueSize -> "1000"
+      KafkaAdminClientMaxQueueSize -> "1000",
+      KafkaManagedOffsetMetadataCheckMillis -> KafkaManagedOffsetCacheConfig.defaultGroupMemberMetadataCheckMillis.toString,
+      KafkaManagedOffsetGroupCacheSize -> KafkaManagedOffsetCacheConfig.defaultGroupTopicPartitionOffsetMaxSize.toString,
+      KafkaManagedOffsetGroupExpireDays -> KafkaManagedOffsetCacheConfig.defaultGroupTopicPartitionOffsetExpireDays.toString
     )
     import scala.collection.JavaConverters._
     ConfigFactory.parseMap(defaults.asJava)
@@ -132,6 +139,9 @@ class KafkaManager(akkaConfig: Config) extends Logging {
     , offsetCacheThreadPoolQueueSize = Option(configWithDefaults.getInt(OffsetCacheMaxQueueSize))
     , kafkaAdminClientThreadPoolSize = Option(configWithDefaults.getInt(KafkaAdminClientThreadPoolSize))
     , kafkaAdminClientThreadPoolQueueSize = Option(configWithDefaults.getInt(KafkaAdminClientMaxQueueSize))
+    , kafkaManagedOffsetMetadataCheckMillis = Option(configWithDefaults.getInt(KafkaManagedOffsetMetadataCheckMillis))
+    , kafkaManagedOffsetGroupCacheSize = Option(configWithDefaults.getInt(KafkaManagedOffsetGroupCacheSize))
+    , kafkaManagedOffsetGroupExpireDays = Option(configWithDefaults.getInt(KafkaManagedOffsetGroupExpireDays))
   )
   private[this] val kafkaManagerConfig = {
     val curatorConfig = CuratorConfig(configWithDefaults.getString(ZkHosts))
@@ -253,6 +263,8 @@ class KafkaManager(akkaConfig: Config) extends Logging {
                  filterConsumers: Boolean,
                  tuning: Option[ClusterTuning],
                  securityProtocol: String,
+                 saslMechanism: Option[String],
+                 jaasConfig: Option[String],
                  logkafkaEnabled: Boolean = false,
                  activeOffsetCacheEnabled: Boolean = false,
                  displaySizeEnabled: Boolean = false): Future[ApiError \/ Unit] =
@@ -263,6 +275,8 @@ class KafkaManager(akkaConfig: Config) extends Logging {
       zkHosts,
       tuning = tuning,
       securityProtocol = securityProtocol,
+      saslMechanism = saslMechanism,
+      jaasConfig = jaasConfig,
       jmxEnabled = jmxEnabled,
       jmxUser = jmxUser,
       jmxPass = jmxPass,
@@ -288,6 +302,8 @@ class KafkaManager(akkaConfig: Config) extends Logging {
                     filterConsumers: Boolean,
                     tuning: Option[ClusterTuning],
                     securityProtocol: String,
+                    saslMechanism: Option[String],
+                    jaasConfig: Option[String],
                     logkafkaEnabled: Boolean = false,
                     activeOffsetCacheEnabled: Boolean = false,
                     displaySizeEnabled: Boolean = false): Future[ApiError \/ Unit] =
@@ -298,6 +314,8 @@ class KafkaManager(akkaConfig: Config) extends Logging {
       zkHosts,
       tuning = tuning,
       securityProtocol = securityProtocol,
+      saslMechanism = saslMechanism,
+      jaasConfig = jaasConfig,
       jmxEnabled = jmxEnabled,
       jmxUser = jmxUser,
       jmxPass = jmxPass,

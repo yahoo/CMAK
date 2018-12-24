@@ -72,6 +72,22 @@ case object Kafka_1_0_0 extends KafkaVersion {
   override def toString = "1.0.0"
 }
 
+case object Kafka_1_0_1 extends KafkaVersion {
+  override def toString = "1.0.1"
+}
+
+case object Kafka_1_1_0 extends KafkaVersion {
+  override def toString = "1.1.0"
+}
+
+case object Kafka_1_1_1 extends KafkaVersion {
+  override def toString = "1.1.1"
+}
+
+case object Kafka_2_0_0 extends KafkaVersion {
+  override def toString = "2.0.0"
+}
+
 object KafkaVersion {
   val supportedVersions: Map[String,KafkaVersion] = Map(
     "0.8.1.1" -> Kafka_0_8_1_1,
@@ -89,7 +105,11 @@ object KafkaVersion {
     "0.10.2.1" -> Kafka_0_10_2_1,
     "0.11.0.0" -> Kafka_0_11_0_0,
     "0.11.0.2" -> Kafka_0_11_0_2,
-    "1.0.0" -> Kafka_1_0_0
+    "1.0.0" -> Kafka_1_0_0,
+    "1.0.1" -> Kafka_1_0_1,
+    "1.1.0" -> Kafka_1_1_0,
+    "1.1.1" -> Kafka_1_1_1,
+    "2.0.0" -> Kafka_2_0_0
   )
 
   val formSelectList : IndexedSeq[(String,String)] = supportedVersions.toIndexedSeq.filterNot(_._1.contains("beta")).map(t => (t._1,t._2.toString)).sortWith((a, b) => sortVersion(a._1, b._1))
@@ -157,6 +177,8 @@ object ClusterConfig {
             , displaySizeEnabled: Boolean = false
             , tuning: Option[ClusterTuning]
             , securityProtocol: String
+            , saslMechanism: Option[String]
+            , jaasConfig: Option[String]
            ) : ClusterConfig = {
     val kafkaVersion = KafkaVersion(version)
     //validate cluster name
@@ -180,15 +202,17 @@ object ClusterConfig {
       , displaySizeEnabled
       , tuning
       , SecurityProtocol(securityProtocol)
+      , saslMechanism.flatMap(SASLmechanism.from)
+      , jaasConfig
     )
   }
 
   def customUnapply(cc: ClusterConfig) : Option[(
-    String, String, String, Int, Boolean, Option[String], Option[String], Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, Option[ClusterTuning], String)] = {
+    String, String, String, Int, Boolean, Option[String], Option[String], Boolean, Boolean, Boolean, Boolean, Boolean, Boolean, Option[ClusterTuning], String, Option[String], Option[String])] = {
     Some((
       cc.name, cc.version.toString, cc.curatorConfig.zkConnect, cc.curatorConfig.zkMaxRetry,
       cc.jmxEnabled, cc.jmxUser, cc.jmxPass, cc.jmxSsl, cc.pollConsumers, cc.filterConsumers,
-      cc.logkafkaEnabled, cc.activeOffsetCacheEnabled, cc.displaySizeEnabled, cc.tuning, cc.securityProtocol.stringId
+      cc.logkafkaEnabled, cc.activeOffsetCacheEnabled, cc.displaySizeEnabled, cc.tuning, cc.securityProtocol.stringId, cc.saslMechanism.map(_.stringId), cc.jaasConfig
       )
     )
   }
@@ -232,6 +256,8 @@ object ClusterConfig {
       :: ("displaySizeEnabled" -> toJSON(config.displaySizeEnabled))
       :: ("tuning" -> toJSON(config.tuning))
       :: ("securityProtocol" -> toJSON(config.securityProtocol.stringId))
+      :: ("saslMechanism" -> toJSON(config.saslMechanism.map(_.stringId)))
+      :: ("jaasConfig" -> toJSON(config.jaasConfig))
       :: Nil)
     compact(render(json)).getBytes(StandardCharsets.UTF_8)
   }
@@ -257,6 +283,9 @@ object ClusterConfig {
           val clusterTuning = fieldExtended[Option[ClusterTuning]]("tuning")(json)
           val securityProtocolString = fieldExtended[String]("securityProtocol")(json)
           val securityProtocol = securityProtocolString.map(SecurityProtocol.apply).getOrElse(PLAINTEXT)
+          val saslMechanismString = fieldExtended[Option[String]]("saslMechanism")(json)
+          val saslMechanism = saslMechanismString.map(_.flatMap(SASLmechanism.from))
+          val jaasConfig = fieldExtended[Option[String]]("jaasConfig")(json)
 
           ClusterConfig.apply(
             name,
@@ -272,7 +301,9 @@ object ClusterConfig {
             activeOffsetCacheEnabled.getOrElse(false),
             displaySizeEnabled.getOrElse(false),
             clusterTuning.getOrElse(None),
-            securityProtocol
+            securityProtocol,
+            saslMechanism.getOrElse(None),
+            jaasConfig.getOrElse(None)
           )
       }
 
@@ -303,6 +334,9 @@ case class ClusterTuning(brokerViewUpdatePeriodSeconds: Option[Int]
                          , offsetCacheThreadPoolQueueSize: Option[Int]
                          , kafkaAdminClientThreadPoolSize: Option[Int]
                          , kafkaAdminClientThreadPoolQueueSize: Option[Int]
+                         , kafkaManagedOffsetMetadataCheckMillis: Option[Int]
+                         , kafkaManagedOffsetGroupCacheSize: Option[Int]
+                         , kafkaManagedOffsetGroupExpireDays: Option[Int]
                         )
 object ClusterTuning {
   import org.json4s._
@@ -330,6 +364,9 @@ object ClusterTuning {
         :: ("offsetCacheThreadPoolQueueSize" -> toJSON(tuning.offsetCacheThreadPoolQueueSize))
         :: ("kafkaAdminClientThreadPoolSize" -> toJSON(tuning.kafkaAdminClientThreadPoolSize))
         :: ("kafkaAdminClientThreadPoolQueueSize" -> toJSON(tuning.kafkaAdminClientThreadPoolQueueSize))
+        :: ("kafkaManagedOffsetMetadataCheckMillis" -> toJSON(tuning.kafkaManagedOffsetMetadataCheckMillis))
+        :: ("kafkaManagedOffsetGroupCacheSize" -> toJSON(tuning.kafkaManagedOffsetGroupCacheSize))
+        :: ("kafkaManagedOffsetGroupExpireDays" -> toJSON(tuning.kafkaManagedOffsetGroupExpireDays))
         :: Nil)
   }
 
@@ -351,6 +388,9 @@ object ClusterTuning {
         offsetCacheThreadPoolQueueSize <- fieldExtended[Option[Int]]("offsetCacheThreadPoolQueueSize")(json)
         kafkaAdminClientThreadPoolSize <- fieldExtended[Option[Int]]("kafkaAdminClientThreadPoolSize")(json)
         kafkaAdminClientThreadPoolQueueSize <- fieldExtended[Option[Int]]("kafkaAdminClientThreadPoolQueueSize")(json)
+        kafkaManagedOffsetMetadataCheckMillis <- fieldExtended[Option[Int]]("kafkaManagedOffsetMetadataCheckMillis")(json)
+        kafkaManagedOffsetGroupCacheSize <- fieldExtended[Option[Int]]("kafkaManagedOffsetGroupCacheSize")(json)
+        kafkaManagedOffsetGroupExpireDays <- fieldExtended[Option[Int]]("kafkaManagedOffsetGroupExpireDays")(json)
       } yield {
         ClusterTuning(
           brokerViewUpdatePeriodSeconds = brokerViewUpdatePeriodSeconds
@@ -368,6 +408,9 @@ object ClusterTuning {
           , offsetCacheThreadPoolQueueSize = offsetCacheThreadPoolQueueSize
           , kafkaAdminClientThreadPoolSize = kafkaAdminClientThreadPoolSize
           , kafkaAdminClientThreadPoolQueueSize = kafkaAdminClientThreadPoolQueueSize
+          , kafkaManagedOffsetMetadataCheckMillis = kafkaManagedOffsetMetadataCheckMillis
+          , kafkaManagedOffsetGroupCacheSize = kafkaManagedOffsetGroupCacheSize
+          , kafkaManagedOffsetGroupExpireDays = kafkaManagedOffsetGroupExpireDays
         )
       }
     }
@@ -391,6 +434,8 @@ case class ClusterConfig (name: String
                           , displaySizeEnabled: Boolean
                           , tuning: Option[ClusterTuning]
                           , securityProtocol: SecurityProtocol
+                          , saslMechanism: Option[SASLmechanism]
+                          , jaasConfig: Option[String]
                          )
 
 sealed trait SecurityProtocol {
@@ -423,4 +468,38 @@ object SecurityProtocol {
 
   val formSelectList : IndexedSeq[(String,String)] = typesMap.toIndexedSeq.map(t => (t._1,t._2.stringId))
   def apply(s: String) : SecurityProtocol = typesMap(s.toUpperCase)
+}
+
+sealed trait SASLmechanism {
+  def stringId: String
+}
+case object SASL_MECHANISM_PLAIN extends SASLmechanism {
+  val stringId = "PLAIN"
+}
+
+case object SASL_MECHANISM_GSSAPI extends SASLmechanism {
+  val stringId = "GSSAPI"
+}
+
+case object SASL_MECHANISM_SCRAM256 extends SASLmechanism {
+  val stringId = "SCRAM-SHA-256"
+}
+case object SASL_MECHANISM_SCRAM512 extends SASLmechanism {
+  val stringId = "SCRAM-SHA-512"
+}
+
+object SASLmechanism {
+  private[this] val typesMap: Map[String, SASLmechanism] = Map(
+   SASL_MECHANISM_PLAIN.stringId -> SASL_MECHANISM_PLAIN
+    , SASL_MECHANISM_GSSAPI.stringId -> SASL_MECHANISM_GSSAPI
+    , SASL_MECHANISM_SCRAM256.stringId -> SASL_MECHANISM_SCRAM256
+    , SASL_MECHANISM_SCRAM512.stringId -> SASL_MECHANISM_SCRAM512
+  )
+
+  val formSelectList : IndexedSeq[(String,String)] = IndexedSeq(("DEFAULT", "DEFAULT")) ++ typesMap.toIndexedSeq.map(t => (t._1,t._2.stringId))
+  private def apply(s: String) : SASLmechanism = typesMap(s.toUpperCase)
+  def from(s: String) : Option[SASLmechanism] = s.toUpperCase match {
+    case "DEFAULT" => None
+    case other => Option(apply(other))
+  }
 }

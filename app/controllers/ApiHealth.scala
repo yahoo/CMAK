@@ -6,7 +6,7 @@ import play.api.mvc._
 class ApiHealth(val messagesApi: MessagesApi) extends Controller with I18nSupport {
 
   def ping = Action {
-    Ok("healthy")
+    Ok("healthy").withHeaders("X-Frame-Options" -> "SAMEORIGIN")
   }
 
 }

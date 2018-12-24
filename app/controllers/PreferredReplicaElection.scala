@@ -44,7 +44,7 @@ class PreferredReplicaElection (val messagesApi: MessagesApi, val kafkaManagerCo
 
   def preferredReplicaElection(c: String) = Action.async {
     kafkaManager.getPreferredLeaderElection(c).map { errorOrStatus =>
-      Ok(views.html.preferredReplicaElection(c,errorOrStatus,preferredReplicaElectionForm))
+      Ok(views.html.preferredReplicaElection(c,errorOrStatus,preferredReplicaElectionForm)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }
   }
 
@@ -70,7 +70,7 @@ class PreferredReplicaElection (val messagesApi: MessagesApi, val kafkaManagerCo
                 "Run Election",
                 FollowLink("Go to preferred replica election.", routes.PreferredReplicaElection.preferredReplicaElection(c).toString()),
                 FollowLink("Try again.", routes.PreferredReplicaElection.preferredReplicaElection(c).toString())
-              ))
+              )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
             }
           case UnknownPREO(opString) =>
             Future.successful(Ok(views.html.common.resultOfCommand(
@@ -80,7 +80,7 @@ class PreferredReplicaElection (val messagesApi: MessagesApi, val kafkaManagerCo
               "Unknown Preferred Replica Election Operation",
               FollowLink("Back to preferred replica election.", routes.PreferredReplicaElection.preferredReplicaElection(c).toString()),
               FollowLink("Back to preferred replica election.", routes.PreferredReplicaElection.preferredReplicaElection(c).toString())
-            )))
+            )).withHeaders("X-Frame-Options" -> "SAMEORIGIN"))
         }
       )
     }
