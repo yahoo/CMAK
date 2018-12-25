@@ -8,6 +8,7 @@ package loader
 import controllers.KafkaManagerContext
 import features.ApplicationFeatures
 import models.navigation.Menus
+import net.kaliber.basicAuthentication.BasicAuthenticationFilter
 import play.api.ApplicationLoader
 import play.api.ApplicationLoader.Context
 import play.api.BuiltInComponentsFromContext
@@ -45,6 +46,8 @@ class ApplicationComponents(context: Context) extends BuiltInComponentsFromConte
 
   override lazy val httpFilters = Seq(BasicAuthenticationFilter(context.initialConfiguration))
 
+
+  override lazy val httpFilters = Seq(BasicAuthenticationFilter(context.initialConfiguration))
 
   override val router: Router = new Routes(
     httpErrorHandler, 
