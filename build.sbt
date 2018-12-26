@@ -42,7 +42,8 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.2.1" % "test",
   "org.apache.curator" % "curator-test" % "2.10.0" % "test",
   "org.mockito" % "mockito-core" % "1.10.19" % "test",
-  "com.yammer.metrics" % "metrics-core" % "2.2.0" force()
+  "com.yammer.metrics" % "metrics-core" % "2.2.0" force(),
+  "com.unboundid" % "unboundid-ldapsdk" % "4.0.9"
 )
 
 routesGenerator := InjectedRoutesGenerator
