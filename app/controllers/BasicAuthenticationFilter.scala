@@ -21,8 +21,9 @@ import play.api.mvc.Results.Unauthorized
 import scala.collection.JavaConverters._
 import scala.concurrent.Future
 import scala.util.{Success, Try}
+import grizzled.slf4j.Logging
 
-class BasicAuthenticationFilter(configurationFactory: => BasicAuthenticationFilterConfiguration) extends Filter {
+class BasicAuthenticationFilter(configurationFactory: => BasicAuthenticationFilterConfiguration) extends Filter with Logging {
 
   def apply(next: RequestHeader => Future[Result])(requestHeader: RequestHeader): Future[Result] =
     if (configuration.enabled && isNotExcluded(requestHeader))
@@ -62,14 +63,19 @@ class BasicAuthenticationFilter(configurationFactory: => BasicAuthenticationFilt
   private def isAuthorized(requestHeader: RequestHeader, authenticator: BasicAuthenticationFilterLdapAuthenticator, credentials: (String, String)) = {
     val (username, password) = credentials
     val expectedCookie = cookieValue(username, Set(password))
-    lazy val authorizedByCookie =
+    val authorizedByCookie =
       requestHeader.cookies.get(COOKIE_NAME).exists(_.value == expectedCookie)
 
     authorizedByCookie || {
       val connection = ldapConnectionPool.getConnection
       try {
         findUserDN(authenticator.searchBaseDN, authenticator.searchFilter, username, connection) match {
-          case None => false
+          case None => {
+            logger.debug(s"Can't find user DN for username: $username. " +
+              s"Base DN: ${authenticator.searchBaseDN}. " +
+              s"Filter: ${renderSearchFilter(authenticator.searchFilter, username)}")
+            false
+          }
           case Some(userDN) => Try(connection.bind(userDN, password)).isSuccess
         }
       } finally {
@@ -79,12 +85,16 @@ class BasicAuthenticationFilter(configurationFactory: => BasicAuthenticationFilt
   }
 
   private def findUserDN(baseDN: String, filterTemplate: String, username: String, connection: LDAPConnection) = {
-    val filter = filterTemplate.replaceAll("\\$capturedLogin\\$", username)
+    val filter = renderSearchFilter(filterTemplate, username)
     val searchRequest = new SearchRequest(baseDN, SearchScope.SUB, filter)
     Try(connection.search(searchRequest)) match {
       case Success(sr) if sr.getEntryCount > 0 => Some(sr.getSearchEntries.get(0).getDN)
       case _ => None
     }
+  }
+
+  private def renderSearchFilter(filterTemplate: String, username: String) = {
+    filterTemplate.replaceAll("\\$capturedLogin\\$", username)
   }
 
   private def addCookie(authenticator: BasicAuthenticationFilterInternalAuthenticator, result: Future[Result]) =
