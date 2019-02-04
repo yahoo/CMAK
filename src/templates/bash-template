@@ -365,7 +365,7 @@ startService() {
 
    printf "Starting Kafka Manager"
 
-   rm -f $PID_FILE
+   rm -f $PID_DIR/*
    run "$@" >> $LOG_FILE & echo $! > $PID_FILE
 
    getPID
@@ -384,7 +384,7 @@ stopService() {
    isServiceRunning $PID
    if [ $? -eq 0 ]; then
      printf "Kafka Manager is not running.\n"
-     rm -f $PID_FILE
+     rm -f $PID_DIR/*
      return 0
    fi
 
@@ -395,7 +395,7 @@ stopService() {
      printf "failed. \n"
      exit 1
    else
-     rm -f $PID_FILE
+     rm -f $PID_DIR/*
      printf "succeeded.\n"
      return 0
    fi
