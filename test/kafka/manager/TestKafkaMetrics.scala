@@ -6,7 +6,7 @@
 package kafka.manager
 
 import kafka.manager.jmx.KafkaMetrics
-import kafka.manager.model.{Kafka_1_1_0, Kafka_1_0_0, Kafka_0_11_0_2, Kafka_0_10_2_1, Kafka_0_10_1_1, Kafka_0_10_0_1, Kafka_0_9_0_1, Kafka_0_8_2_1, Kafka_0_8_1_1}
+import kafka.manager.model.{Kafka_1_1_1, Kafka_1_1_0, Kafka_1_0_0, Kafka_0_11_0_2, Kafka_0_10_2_1, Kafka_0_10_1_1, Kafka_0_10_0_1, Kafka_0_9_0_1, Kafka_0_8_2_1, Kafka_0_8_1_1}
 import org.scalatest.FunSuite
 
 /**
@@ -49,6 +49,10 @@ class TestKafkaMetrics extends FunSuite {
     val on = KafkaMetrics.getObjectName(Kafka_1_1_0,"MessagesInPerSec",None)
     assert(on.getCanonicalName === """kafka.server:name=MessagesInPerSec,type=BrokerTopicMetrics""")
   }
+  test("generate broker metric name correctly for kafka 1.1.1") {
+    val on = KafkaMetrics.getObjectName(Kafka_1_1_1,"MessagesInPerSec",None)
+    assert(on.getCanonicalName === """kafka.server:name=MessagesInPerSec,type=BrokerTopicMetrics""")
+  }
   test("generate topic metric name correctly for kafka 0.8.1.1") {
     val on = KafkaMetrics.getObjectName(Kafka_0_8_1_1,"MessagesInPerSec",Some("topic"))
     assert(on.getCanonicalName === """"kafka.server":name="topic-MessagesInPerSec",type="BrokerTopicMetrics"""")
@@ -83,6 +87,10 @@ class TestKafkaMetrics extends FunSuite {
   }
   test("generate topic metric name correctly for kafka 1.1.0") {
     val on = KafkaMetrics.getObjectName(Kafka_1_1_0,"MessagesInPerSec",Some("topic"))
+    assert(on.getCanonicalName === """kafka.server:name=MessagesInPerSec,topic=topic,type=BrokerTopicMetrics""")
+  }
+  test("generate topic metric name correctly for kafka 1.1.1") {
+    val on = KafkaMetrics.getObjectName(Kafka_1_1_1,"MessagesInPerSec",Some("topic"))
     assert(on.getCanonicalName === """kafka.server:name=MessagesInPerSec,topic=topic,type=BrokerTopicMetrics""")
   }
 }

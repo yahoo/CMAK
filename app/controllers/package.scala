@@ -23,7 +23,7 @@ package object controllers {
     if(features.features(af)) {
       fn
     } else {
-      Future.successful(Ok(views.html.errors.onApiError(ApiError(s"Feature disabled $af"))))
+      Future.successful(Ok(views.html.errors.onApiError(ApiError(s"Feature disabled $af"))).withHeaders("X-Frame-Options" -> "SAMEORIGIN"))
     }
   }
   
@@ -32,18 +32,18 @@ package object controllers {
     km.getClusterContext(clusterName).flatMap { clusterContextOrError =>
       clusterContextOrError.fold( 
         error => {
-          Future.successful(Ok(views.html.errors.onApiError(error, None)))
+          Future.successful(Ok(views.html.errors.onApiError(error, None)).withHeaders("X-Frame-Options" -> "SAMEORIGIN"))
         }, 
         clusterContext => {
           if(clusterContext.clusterFeatures.features(cf)) {
             fn(clusterContext)
           } else {
-            Future.successful(Ok(views.html.errors.onApiError(ApiError(s"Unsupported feature : $cf"), None)))
+            Future.successful(Ok(views.html.errors.onApiError(ApiError(s"Unsupported feature : $cf"), None)).withHeaders("X-Frame-Options" -> "SAMEORIGIN"))
           }
         })
     }.recover {
       case t =>
-        Ok(views.html.errors.onApiError(ApiError(t.getMessage), None))
+        Ok(views.html.errors.onApiError(ApiError(t.getMessage), None)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }
   }
   

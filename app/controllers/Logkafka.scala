@@ -90,6 +90,8 @@ class Logkafka (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaMana
     LogkafkaNewConfigs.configMaps(Kafka_1_0_2).map{case(k,v) => LKConfig(k,Some(v))}.toList)
   val kafka_1_1_0_Default = CreateLogkafka("","",
     LogkafkaNewConfigs.configMaps(Kafka_1_1_0).map{case(k,v) => LKConfig(k,Some(v))}.toList)
+  val kafka_1_1_1_Default = CreateLogkafka("","",
+    LogkafkaNewConfigs.configMaps(Kafka_1_1_1).map{case(k,v) => LKConfig(k,Some(v))}.toList)
   val kafka_2_0_0_Default = CreateLogkafka("","",
     LogkafkaNewConfigs.configMaps(Kafka_2_0_0).map{case(k,v) => LKConfig(k,Some(v))}.toList)
 
@@ -148,6 +150,7 @@ class Logkafka (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaMana
           case Kafka_1_0_1 => (defaultCreateForm.fill(kafka_1_0_1_Default), clusterContext)
           case Kafka_1_0_2 => (defaultCreateForm.fill(kafka_1_0_2_Default), clusterContext)
           case Kafka_1_1_0 => (defaultCreateForm.fill(kafka_1_1_0_Default), clusterContext)
+          case Kafka_1_1_1 => (defaultCreateForm.fill(kafka_1_1_1_Default), clusterContext)
           case Kafka_2_0_0 => (defaultCreateForm.fill(kafka_2_0_0_Default), clusterContext)
         }
       }
@@ -157,7 +160,7 @@ class Logkafka (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaMana
   def logkafkas(c: String) = Action.async {
     clusterFeatureGate(c, KMLogKafkaFeature) { clusterContext =>
       kafkaManager.getLogkafkaListExtended(c).map { errorOrLogkafkaList =>
-        Ok(views.html.logkafka.logkafkaList(c, errorOrLogkafkaList.map( lkle => (lkle, clusterContext))))
+        Ok(views.html.logkafka.logkafkaList(c, errorOrLogkafkaList.map( lkle => (lkle, clusterContext)))).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
       }
     }
   }
@@ -165,7 +168,7 @@ class Logkafka (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaMana
   def logkafka(c: String, h: String, l:String) = Action.async {
     clusterFeatureGate(c, KMLogKafkaFeature) { clusterContext =>
       kafkaManager.getLogkafkaIdentity(c, h).map { errorOrLogkafkaIdentity =>
-        Ok(views.html.logkafka.logkafkaView(c, h, l, errorOrLogkafkaIdentity.map( lki => (lki, clusterContext))))
+        Ok(views.html.logkafka.logkafkaView(c, h, l, errorOrLogkafkaIdentity.map( lki => (lki, clusterContext)))).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
       }
     }
   }
@@ -173,7 +176,7 @@ class Logkafka (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaMana
   def createLogkafka(clusterName: String) = Action.async { implicit request =>
     clusterFeatureGate(clusterName, KMLogKafkaFeature) { clusterContext =>
       createLogkafkaForm(clusterName).map { errorOrForm =>
-        Ok(views.html.logkafka.createLogkafka(clusterName, errorOrForm))
+        Ok(views.html.logkafka.createLogkafka(clusterName, errorOrForm)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
       }
     }
   }
@@ -196,7 +199,7 @@ class Logkafka (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaMana
               "Create Logkafka",
               FollowLink("Go to logkafka id view.", routes.Logkafka.logkafka(clusterName, cl.logkafka_id, cl.log_path).toString()),
               FollowLink("Try again.", routes.Logkafka.createLogkafka(clusterName).toString())
-            ))
+            )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
           }
         }
       )
@@ -222,7 +225,7 @@ class Logkafka (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaMana
               "Delete Logkafka",
               FollowLink("Go to logkafka list.", routes.Logkafka.logkafkas(clusterName).toString()),
               FollowLink("Try again.", routes.Logkafka.logkafka(clusterName, logkafka_id, log_path).toString())
-            ))
+            )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
           }
         }
       )
@@ -249,6 +252,7 @@ class Logkafka (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaMana
       case Kafka_1_0_1 => LogkafkaNewConfigs.configNames(Kafka_1_0_1).map(n => (n,LKConfig(n,None))).toMap
       case Kafka_1_0_2 => LogkafkaNewConfigs.configNames(Kafka_1_0_2).map(n => (n,LKConfig(n,None))).toMap
       case Kafka_1_1_0 => LogkafkaNewConfigs.configNames(Kafka_1_1_0).map(n => (n,LKConfig(n,None))).toMap
+      case Kafka_1_1_1 => LogkafkaNewConfigs.configNames(Kafka_1_1_1).map(n => (n,LKConfig(n,None))).toMap
       case Kafka_2_0_0 => LogkafkaNewConfigs.configNames(Kafka_2_0_0).map(n => (n,LKConfig(n,None))).toMap
     }
     val identityOption = li.identityMap.get(log_path)
@@ -272,7 +276,7 @@ class Logkafka (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaMana
           _.map(lki => (updateConfigForm(clusterContext, log_path, lki), clusterContext))
       )
       errorOrFormFuture.map { errorOrForm =>
-        Ok(views.html.logkafka.updateConfig(clusterName, logkafka_id, log_path, errorOrForm))
+        Ok(views.html.logkafka.updateConfig(clusterName, logkafka_id, log_path, errorOrForm)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
       }
     }
   }
@@ -293,7 +297,7 @@ class Logkafka (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaMana
               "Update Config",
               FollowLink("Go to logkafka view.", routes.Logkafka.logkafka(clusterName, updateLogkafkaConfig.logkafka_id, updateLogkafkaConfig.log_path).toString()),
               FollowLink("Try again.", routes.Logkafka.updateConfig(clusterName, logkafka_id, log_path).toString())
-            ))
+            )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
           }
         }
       )
@@ -313,7 +317,7 @@ class Logkafka (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaMana
           "Enable Config",
           FollowLink("Go to logkafka view.", routes.Logkafka.logkafka(clusterName, logkafka_id, log_path).toString()),
           FollowLink("Try again.", routes.Logkafka.updateConfig(clusterName, logkafka_id, log_path).toString())
-        ))
+        )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
       }
     }
   }
@@ -331,7 +335,7 @@ class Logkafka (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaMana
           "Disable Config",
           FollowLink("Go to logkafka view.", routes.Logkafka.logkafka(clusterName, logkafka_id, log_path).toString()),
           FollowLink("Try again.", routes.Logkafka.updateConfig(clusterName, logkafka_id, log_path).toString())
-        ))
+        )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
       }
     }
   }

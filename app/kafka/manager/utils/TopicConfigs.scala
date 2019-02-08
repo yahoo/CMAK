@@ -36,6 +36,7 @@ object TopicConfigs {
     Kafka_1_0_1 -> zero90.LogConfig,
     Kafka_1_0_2 -> zero90.LogConfig,
     Kafka_1_1_0 -> zero90.LogConfig,
+    Kafka_1_1_1 -> zero90.LogConfig,
     Kafka_2_0_0 -> zero90.LogConfig
     )
 
