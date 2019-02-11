@@ -158,9 +158,9 @@ class Logkafka (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaMana
           case Kafka_1_1_0 => (defaultCreateForm.fill(kafka_1_1_0_Default), clusterContext)
           case Kafka_1_1_1 => (defaultCreateForm.fill(kafka_1_1_1_Default), clusterContext)
           case Kafka_2_0_0 => (defaultCreateForm.fill(kafka_2_0_0_Default), clusterContext)
-          case Kafka_2_0_0 => (defaultCreateForm.fill(kafka_2_0_1_Default), clusterContext)
-          case Kafka_2_0_0 => (defaultCreateForm.fill(kafka_2_1_0_Default), clusterContext)
-          case Kafka_2_0_0 => (defaultCreateForm.fill(kafka_2_1_1_Default), clusterContext)
+          case Kafka_2_0_1 => (defaultCreateForm.fill(kafka_2_0_1_Default), clusterContext)
+          case Kafka_2_1_0 => (defaultCreateForm.fill(kafka_2_1_0_Default), clusterContext)
+          case Kafka_2_1_1 => (defaultCreateForm.fill(kafka_2_1_1_Default), clusterContext)
         }
       }
     }
