@@ -43,7 +43,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     kafkaManager.getBrokerList(c).map { errorOrBrokerList =>
       errorOrBrokerList.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
-        brokerList => Ok(Json.obj("brokers" -> brokerList.list.map(bi => bi.id).sorted))
+        brokerList => Ok(Json.obj("brokers" -> brokerList.list.map(bi => bi.id).sorted)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
       )
     }
   }
@@ -51,7 +51,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     kafkaManager.getBrokerList(c).map { errorOrBrokerList =>
       errorOrBrokerList.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
-        brokerList => Ok(Json.obj("brokers" -> brokerList.list))
+        brokerList => Ok(Json.obj("brokers" -> brokerList.list)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
       )
     }
   }
@@ -60,7 +60,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     kafkaManager.getTopicList(c).map { errorOrTopicList =>
       errorOrTopicList.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
-        topicList => Ok(Json.obj("topics" -> topicList.list.sorted))
+        topicList => Ok(Json.obj("topics" -> topicList.list.sorted)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
       )
     }
   }
@@ -70,7 +70,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     kafkaManager.getTopicListExtended(c).map { errorOrTopicListExtended =>
       errorOrTopicListExtended.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
-        topicListExtended => Ok(Serialization.writePretty("topicIdentities" -> topicListExtended.list.flatMap(_._2).map(toJSON(_))))
+        topicListExtended => Ok(Serialization.writePretty("topicIdentities" -> topicListExtended.list.flatMap(_._2).map(toJSON(_)))).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
       )
     }
   }
@@ -80,7 +80,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     kafkaManager.getClusterList.map { errorOrClusterList =>
       errorOrClusterList.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
-        clusterList => Ok(Serialization.writePretty("clusters" -> errorOrClusterList.toOption))
+        clusterList => Ok(Serialization.writePretty("clusters" -> errorOrClusterList.toOption)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
       )
     }
   }
@@ -89,7 +89,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     kafkaManager.getTopicIdentity(c, t).map { errorOrTopicIdentity =>
       errorOrTopicIdentity.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
-        topicIdentity => Ok(Json.obj("topic" -> t, "underReplicatedPartitions" -> topicIdentity.partitionsIdentity.filter(_._2.isUnderReplicated).map{case (num, pi) => pi.partNum}))
+        topicIdentity => Ok(Json.obj("topic" -> t, "underReplicatedPartitions" -> topicIdentity.partitionsIdentity.filter(_._2.isUnderReplicated).map{case (num, pi) => pi.partNum})).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
       )
     }
   }
@@ -98,7 +98,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     kafkaManager.getTopicIdentity(c, t).map { errorOrTopicIdentity =>
       errorOrTopicIdentity.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
-        topicIdentity => Ok(Json.obj("topic" -> t, "unavailablePartitions" -> topicIdentity.partitionsIdentity.filter(_._2.isr.isEmpty).map { case (num, pi) => pi.partNum })))
+        topicIdentity => Ok(Json.obj("topic" -> t, "unavailablePartitions" -> topicIdentity.partitionsIdentity.filter(_._2.isr.isEmpty).map { case (num, pi) => pi.partNum })).withHeaders("X-Frame-Options" -> "SAMEORIGIN"))
     }
   }
 
@@ -107,7 +107,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
       errorOrTopicSummary.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
         topicSummary => {
-          Ok(topicSummary)
+          Ok(topicSummary).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
         })
     }
   }
@@ -116,7 +116,12 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     kafkaManager.getConsumedTopicState(cluster, consumer, topic, consumerType).map { errorOrTopicSummary =>
       errorOrTopicSummary.map(
         topicSummary => {
-          Json.obj("totalLag" -> topicSummary.totalLag, "percentageCovered" -> topicSummary.percentageCovered, "partitionOffsets" -> topicSummary.partitionOffsets.map {case (pnum, offset) => offset}, "partitionLatestOffsets" -> topicSummary.partitionLatestOffsets.map {case (pnum, latestOffset) => latestOffset}, "owners" -> topicSummary.partitionOwners.map {case (pnum, owner) => owner}   )
+          def sortByPartition[T](f: Map[Int, T]) : Seq[(Int, T)] = {
+            f.toSeq.sortBy { case (pnum, offset) => pnum }
+          };
+
+          Json.obj("totalLag" -> topicSummary.totalLag, "percentageCovered" -> topicSummary.percentageCovered, "partitionOffsets" -> sortByPartition(topicSummary.partitionOffsets).map {case (pnum, offset) => offset}, "partitionLatestOffsets" -> sortByPartition(topicSummary.partitionLatestOffsets).map {case (pnum, latestOffset) => latestOffset}, "owners" -> sortByPartition(topicSummary.partitionOwners).map {case (pnum, owner) => owner}
+          )
         })
     }
   }
@@ -127,7 +132,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
         error =>
           Future.successful(BadRequest(Json.obj("msg" -> error.msg))),
         consumedTopicSummary => getGroupSummary(cluster, consumer, consumedTopicSummary.topicMap.keys, consumerType).map { topics =>
-          Ok(JsObject(topics))
+          Ok(JsObject(topics)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
         })
     }
   }
@@ -145,7 +150,16 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     kafkaManager.getConsumerListExtended(cluster).map { errorOrConsumersSummary =>
       errorOrConsumersSummary.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
-        consumersSummary => Ok(Serialization.writePretty("consumers" -> consumersSummary.list.map{case ((consumer, consumerType), consumerIdentity) => Map("name" -> consumer, "type" -> consumerType.toString, "topics" -> consumerIdentity.map(_.topicMap.keys))}))
+        consumersSummary =>
+          Ok(Serialization.writePretty("consumers" ->
+            consumersSummary.list.map {
+              case ((consumer, consumerType), consumerIdentity) =>
+                Map("name" -> consumer,
+                  "type" -> consumerType.toString,
+                  "topics" -> consumerIdentity.map(_.topicMap.keys),
+                  "lags" -> consumerIdentity.map(_.topicMap.mapValues(_.totalLag))
+                )
+            })).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
         )
     }
   }

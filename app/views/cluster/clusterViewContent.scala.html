@@ -2,15 +2,18 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@(cluster: String, clusterView: kafka.manager.model.ActorModel.CMView)(implicit messages: play.api.i18n.Messages)
+@(cluster: String, clusterView: kafka.manager.model.ActorModel.CMView
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages)
 
 <div class="panel panel-default">
     <div class="panel-heading"><h3>Cluster Information</h3></div>
     <table class="table">
         <tbody>
+        @features.app(features.KMClusterManagerFeature) {
         <tr>
             <td><b>Zookeepers</b></td><td>@clusterView.clusterContext.config.curatorConfig.zkConnect.replace(","," ")</td>
         </tr>
+        }
         <tr>
             <td><b>Version</b></td><td>@clusterView.clusterContext.config.version.toString</td>
         </tr>
