@@ -74,7 +74,7 @@ dockerfile in docker := {
   val zipFile: File = dist.value
 
   new Dockerfile {
-    from("openjdk:8-jre")
+    from("openjdk:8-jre-slim")
     add(zipFile, file("/opt/kafka-manager.zip"))
     workDir("/opt")
     run("unzip", "kafka-manager.zip")
