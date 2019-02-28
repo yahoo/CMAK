@@ -1209,7 +1209,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
 
   private[this] def getTopicConfigString(topic: String) : Option[(Int,String)] = {
     val data: mutable.Buffer[ChildData] = topicsConfigPathCache.getCurrentData.asScala
-    val result: Option[ChildData] = data.find(p => p.getPath.endsWith(topic))
+    val result: Option[ChildData] = data.find(p => p.getPath.endsWith("/" + topic))
     result.map(cd => (cd.getStat.getVersion,asString(cd.getData)))
   }
 
