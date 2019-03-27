@@ -129,8 +129,8 @@ LDAP support is through the basic authentication filter.
 - basicAuthentication.realm=< basic authentication realm>
 
 2. Encryption parameters (optional, otherwise randomly generated on startup) :
-- basicAuthentication.salt="<hex-string>"
-- basicAuthentication.iv="<hex-string>"
+- basicAuthentication.salt="some-hex-string-representing-byte-array"
+- basicAuthentication.iv="some-hex-string-representing-byte-array"
 - basicAuthentication.secret="my-secret-string"
 
 3. Configure LDAP/LDAPS authentication
