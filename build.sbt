@@ -39,7 +39,6 @@ libraryDependencies ++= Seq(
   "org.apache.kafka" %% "kafka" % "1.1.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
   "org.apache.kafka" % "kafka-streams" % "1.1.0",
   "com.beachape" %% "enumeratum" % "1.5.13",
-  "org.abstractj.kalium" % "kalium" % "0.8.0",
   "com.github.ben-manes.caffeine" % "caffeine" % "2.6.2",
   "com.typesafe.play" %% "play-logback" % "2.6.15",
   "org.scalatest" %% "scalatest" % "3.0.5" % "test",
