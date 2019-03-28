@@ -21,7 +21,7 @@ import org.scalatest.mockito.MockitoSugar
 import play.api.libs.json.{JsDefined, Json}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import play.api.{ApplicationLoader, Environment, Mode}
+import play.api.{Application, ApplicationLoader, Environment, Mode}
 import play.mvc.Http.Status.{BAD_REQUEST, OK}
 
 import scala.concurrent.duration._
@@ -37,6 +37,7 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
   private[this] val testTopicName = "kafka-sc-test-topic"
   private[this] var kafkaManagerContext: Option[KafkaManagerContext] = None
   private[this] var kafkaStateCheck: Option[KafkaStateCheck] = None
+  private[this] var application: Option[Application] = None
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
@@ -48,10 +49,11 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
       KafkaManager.ConsumerPropertiesFile -> "conf/consumer.properties"
     )
     val loader = new KafkaManagerLoaderForTests
-    val app = loader.load(ApplicationLoader.createContext(
+    application = Option(loader.load(ApplicationLoader.createContext(
       Environment(new File("app"), Thread.currentThread().getContextClassLoader, Mode.Test)
       , configMap
-    ))
+    )))
+
     val kmc = loader.kafkaManagerContext
     implicit val af = loader.applicationFeatures
     implicit val menus = loader.menus
@@ -68,8 +70,8 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
   override protected def afterAll(): Unit = {
     disableCluster()
     deleteCluster()
+    Try(application.foreach(app => Await.result(app.stop(), Duration.apply("5s"))))
     kafkaManagerContext.foreach(_.getKafkaManager.shutdown())
-    //Play.stop(app)
     Try(broker.shutdown())
     super.afterAll()
   }
