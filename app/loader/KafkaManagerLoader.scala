@@ -8,9 +8,8 @@ package loader
 import controllers.{AssetsComponents, BasicAuthenticationFilter, KafkaManagerContext}
 import features.ApplicationFeatures
 import models.navigation.Menus
-import play.api.ApplicationLoader
+import play.api.{ApplicationLoader, BuiltInComponentsFromContext, LoggerConfigurator}
 import play.api.ApplicationLoader.Context
-import play.api.BuiltInComponentsFromContext
 import play.api.i18n.I18nComponents
 import play.api.routing.Router
 import router.Routes
@@ -21,24 +20,27 @@ import router.Routes
  */
 class KafkaManagerLoader extends ApplicationLoader {
   def load(context: Context) = {
+    LoggerConfigurator(context.environment.classLoader).foreach {
+      _.configure(context.environment, context.initialConfiguration, Map.empty)
+    }
     new ApplicationComponents(context).application
   }
 }
 
 class ApplicationComponents(context: Context) extends BuiltInComponentsFromContext(context) with I18nComponents with AssetsComponents {
-  private[this] implicit val applicationFeatures = ApplicationFeatures.getApplicationFeatures(context.initialConfiguration.underlying)
-  private[this] implicit val menus = new Menus
-  private[this] implicit val ec = controllerComponents.executionContext
-  private[this] val kafkaManagerContext = new KafkaManagerContext(applicationLifecycle, context.initialConfiguration)
-  private[this] lazy val applicationC = new controllers.Application(controllerComponents, kafkaManagerContext)
+  implicit val applicationFeatures = ApplicationFeatures.getApplicationFeatures(context.initialConfiguration.underlying)
+  implicit val menus = new Menus
+  implicit val ec = controllerComponents.executionContext
+  val kafkaManagerContext = new KafkaManagerContext(applicationLifecycle, context.initialConfiguration)
+  private[this] val applicationC = new controllers.Application(controllerComponents, kafkaManagerContext)
   private[this] lazy val clusterC = new controllers.Cluster(controllerComponents, kafkaManagerContext)
   private[this] lazy val topicC = new controllers.Topic(controllerComponents, kafkaManagerContext)
   private[this] lazy val logKafkaC = new controllers.Logkafka(controllerComponents, kafkaManagerContext)
   private[this] lazy val consumerC = new controllers.Consumer(controllerComponents, kafkaManagerContext)
   private[this] lazy val preferredReplicaElectionC= new controllers.PreferredReplicaElection(controllerComponents, kafkaManagerContext)
   private[this] lazy val reassignPartitionsC = new controllers.ReassignPartitions(controllerComponents, kafkaManagerContext)
-  private[this] lazy val kafkaStateCheckC = new controllers.api.KafkaStateCheck(controllerComponents, kafkaManagerContext)
-  private[this] lazy val apiHealthC = new controllers.ApiHealth(controllerComponents)
+  lazy val kafkaStateCheckC = new controllers.api.KafkaStateCheck(controllerComponents, kafkaManagerContext)
+  lazy val apiHealthC = new controllers.ApiHealth(controllerComponents)
 
   override lazy val httpFilters = Seq(BasicAuthenticationFilter(context.initialConfiguration))
 

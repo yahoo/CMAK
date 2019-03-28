@@ -1,34 +1,34 @@
 /**
- * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
- * See accompanying LICENSE file.
- */
+  * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+  * See accompanying LICENSE file.
+  */
 
 package controller.api
 
-import com.typesafe.config.ConfigFactory
+import java.io.File
+import java.util.Properties
+
+import akka.actor.ActorSystem
+import com.typesafe.config.{Config, ConfigFactory}
 import controllers.KafkaManagerContext
 import controllers.api.KafkaStateCheck
-import features.ApplicationFeatures
 import kafka.manager.KafkaManager
 import kafka.manager.utils.{CuratorAwareTest, KafkaServerInTest}
 import kafka.test.SeededBroker
-import models.navigation.Menus
+import loader.KafkaManagerLoaderForTests
 import org.scalatest.Matchers._
 import org.scalatest.mockito.MockitoSugar
-import play.api.Configuration
-import play.api.inject.ApplicationLifecycle
 import play.api.libs.json.{JsDefined, Json}
-import play.api.mvc.ControllerComponents
-import play.api.test.Helpers._
-import play.mvc.Http.Status.{BAD_REQUEST, OK}
-import org.scalatestplus.play.guice.GuiceOneAppPerSuite
 import play.api.test.FakeRequest
+import play.api.test.Helpers._
+import play.api.{ApplicationLoader, Environment, Mode}
+import play.mvc.Http.Status.{BAD_REQUEST, OK}
 
-import scala.concurrent.{Await, ExecutionContext}
 import scala.concurrent.duration._
+import scala.concurrent.{Await, ExecutionContext}
 import scala.util.Try
 
-class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with MockitoSugar with GuiceOneAppPerSuite {
+class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with MockitoSugar {
   private[this] val broker = new SeededBroker("controller-api-test", 4)
   override val kafkaServerZkPath = broker.getZookeeperConnectionString
   private[this] val duration = FiniteDuration(10, SECONDS)
@@ -40,26 +40,24 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    //lazy val app : FakeApplication = {
-    //  FakeApplication(additionalConfiguration = Map("kafka-manager.zkhosts" -> kafkaServerZkPath))
-    //}
-    //Play.start(app)
-    import scala.collection.JavaConverters._
-    val config = ConfigFactory.parseMap(
-      Map(
-        "pinned-dispatcher.type" -> "PinnedDispatcher",
-        "pinned-dispatcher.executor" -> "thread-pool-executor",
-        "kafka-manager.zkhosts" -> kafkaServerZkPath,
-        KafkaManager.ConsumerPropertiesFile -> "conf/consumer.properties"
-      ).asJava
+
+    val configMap: Map[String, AnyRef] = Map(
+      "pinned-dispatcher.type" -> "PinnedDispatcher",
+      "pinned-dispatcher.executor" -> "thread-pool-executor",
+      "kafka-manager.zkhosts" -> kafkaServerZkPath,
+      KafkaManager.ConsumerPropertiesFile -> "conf/consumer.properties"
     )
-    val conf = new Configuration(config)
-    val kmc = new KafkaManagerContext(mock[ApplicationLifecycle], conf)
-    implicit val af = ApplicationFeatures.getApplicationFeatures(config)
-    implicit val menus = new Menus
-    implicit val executionContext: ExecutionContext = fakeApplication().actorSystem.dispatcher
+    val loader = new KafkaManagerLoaderForTests
+    val app = loader.load(ApplicationLoader.createContext(
+      Environment(new File("app"), Thread.currentThread().getContextClassLoader, Mode.Test)
+      , configMap
+    ))
+    val kmc = loader.kafkaManagerContext
+    implicit val af = loader.applicationFeatures
+    implicit val menus = loader.menus
+    implicit val executionContext: ExecutionContext = loader.executionContext
     kafkaManagerContext = Option(kmc)
-    val ksc = new KafkaStateCheck(mock[ControllerComponents], kmc)
+    val ksc = loader.kafkaStateCheck
     kafkaStateCheck = Option(ksc)
     createCluster()
     createTopic()
@@ -78,9 +76,9 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
 
   private[this] def createCluster() = {
     val future = kafkaManagerContext.get.getKafkaManager.addCluster(
-      testClusterName,"2.2.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(kafkaManagerContext.get.getKafkaManager.defaultTuning), securityProtocol="PLAINTEXT", saslMechanism = None, jaasConfig = None
+      testClusterName, "2.2.0", kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(kafkaManagerContext.get.getKafkaManager.defaultTuning), securityProtocol = "PLAINTEXT", saslMechanism = None, jaasConfig = None
     )
-    val result = Await.result(future,duration)
+    val result = Await.result(future, duration)
     result.toEither.left.foreach(apiError => sys.error(apiError.msg))
     Thread.sleep(3000)
   }
@@ -101,6 +99,7 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
     Await.result(future, duration)
     Thread.sleep(3000)
   }
+
   private[this] def deleteCluster() = {
     val future = kafkaManagerContext.get.getKafkaManager.deleteCluster(testClusterName)
     Await.result(future, duration)
@@ -161,7 +160,7 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
     (json \ "partitionLatestOffsets").asOpt[Seq[Long]] should not be empty
     (json \ "owners").asOpt[Seq[String]] should not be empty
   }
-  
+
   test("get unavailable topic summary") {
     val future = kafkaStateCheck.get.topicSummaryAction("non-existent", "null", "weird", "KF").apply(FakeRequest())
     assert(status(future) === BAD_REQUEST)
@@ -195,5 +194,5 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
     val json = Json.parse(contentAsJson(future).toString())
     (json \ "consumers").asOpt[Seq[Map[String, String]]] should not be empty
   }
- 
+
 }
