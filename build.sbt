@@ -13,6 +13,7 @@ scalacOptions ++= Seq("-Xlint:-missing-interpolator","-Xfatal-warnings","-deprec
 
 // From https://www.playframework.com/documentation/2.3.x/ProductionDist
 assemblyMergeStrategy in assembly := {
+  case "play/reference-overrides.conf" => MergeStrategy.first
   case "logger.xml" => MergeStrategy.first
   case "play/core/server/ServerWithStop.class" => MergeStrategy.first
   case other => (assemblyMergeStrategy in assembly).value(other)
