@@ -14,6 +14,7 @@ import kafka.manager.actor.cluster.{ClusterManagerActor, ClusterManagerActorConf
 import kafka.manager.base.{LongRunningPoolConfig, BaseZkPath, CuratorAwareActor, BaseQueryCommandActor}
 import kafka.manager.model.{ClusterTuning, ClusterConfig, CuratorConfig}
 import kafka.manager.model.ActorModel.CMShutdown
+import kafka.manager.utils.ZkUtils
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.cache.{PathChildrenCache, PathChildrenCacheEvent, PathChildrenCacheListener}
@@ -228,6 +229,9 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
 
       case KMGetAllClusters =>
         sender ! KMClusterList(clusterConfigMap.values.toIndexedSeq, pendingClusterConfigMap.values.toIndexedSeq)
+
+      case KSGetScheduleLeaderElection =>
+        sender ! ZkUtils.readDataMaybeNull(curator, ZkUtils.SchedulePreferredLeaderElectionPath)._1.getOrElse("{}")
 
       case KMGetClusterConfig(name) =>
         sender ! KMClusterConfigResult(Try {

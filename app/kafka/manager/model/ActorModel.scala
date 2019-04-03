@@ -89,6 +89,7 @@ object ActorModel {
   case class CMUpdateTopicConfig(topic: String, config: Properties, readVersion: Int) extends CommandRequest
   case class CMDeleteTopic(topic: String) extends CommandRequest
   case class CMRunPreferredLeaderElection(topics: Set[String]) extends CommandRequest
+  case class CMSchedulePreferredLeaderElection(schedule: Map[String, Int]) extends CommandRequest
   case class CMRunReassignPartition(topics: Set[String], forceSet: Set[ForceReassignmentCommand]) extends CommandRequest
   case class CMGeneratePartitionAssignments(topics: Set[String], brokers: Set[Int], replicationFactor: Option[Int] = None) extends CommandRequest
   case class CMManualPartitionAssignments(assignments: List[(String, List[(Int, List[Int])])]) extends CommandRequest
@@ -169,6 +170,7 @@ object ActorModel {
   case object KSGetTopicsLastUpdateMillis extends KSRequest
   case object KSGetPreferredLeaderElection extends KSRequest
   case object KSGetReassignPartition extends KSRequest
+  case object KSGetScheduleLeaderElection extends KSRequest
   case class KSEndPreferredLeaderElection(millis: Long) extends CommandRequest
   case class KSUpdatePreferredLeaderElection(millis: Long, json: String) extends CommandRequest
   case class KSEndReassignPartition(millis: Long) extends CommandRequest

@@ -7,6 +7,7 @@ package kafka.manager
 import java.util.Properties
 import java.util.concurrent.atomic.AtomicBoolean
 
+import akka.actor.Cancellable
 import com.typesafe.config.{Config, ConfigFactory}
 import kafka.manager.features.KMDeleteTopicFeature
 import kafka.manager.model._
@@ -252,6 +253,31 @@ class TestKafkaManager extends CuratorAwareTest with BaseTest {
     val result = Await.result(future,duration)
     assert(result.isRight === true)
     println(result.toOption.get)
+  }
+
+  test("schedule preferred leader election") {
+    val topicList = getTopicList()
+    kafkaManager.schedulePreferredLeaderElection("dev",topicList.list.toSet, 1)
+    assert(
+      kafkaManager.pleCancellable.contains("dev"),
+      "Scheduler not being persisted against the cluster name in KafkaManager instance. Is the task even getting scheduled?"
+    )
+    assert(
+      kafkaManager.pleCancellable("dev")._1.isInstanceOf[Option[Cancellable]],
+      "Some(system.scheduler.schedule) instance not being stored in KafkaManager instance. This is required for cancelling."
+    )
+  }
+
+  test("cancel scheduled preferred leader election") {
+    // For cancelling it is necessary for the task to be scheduled
+    if(!(kafkaManager.pleCancellable.contains("dev") && kafkaManager.pleCancellable("dev")._1.isInstanceOf[Option[Cancellable]])){
+      kafkaManager.schedulePreferredLeaderElection("dev",getTopicList().list.toSet, 1)
+    }
+    kafkaManager.cancelPreferredLeaderElection("dev")
+    assert(
+      !kafkaManager.pleCancellable.contains("dev"),
+      "Scheduler cluster name is not being removed from KafkaManager instance. Is the task even getting cancelled?"
+    )
   }
 
   test("generate partition assignments") {

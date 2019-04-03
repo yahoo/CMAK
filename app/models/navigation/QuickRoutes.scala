@@ -27,6 +27,7 @@ object QuickRoutes {
     "List" -> controllers.routes.Topic.topics,
     "Create" -> controllers.routes.Topic.createTopic,
     "Preferred Replica Election" -> controllers.routes.PreferredReplicaElection.preferredReplicaElection,
+    "Schedule Leader Election" -> controllers.routes.PreferredReplicaElection.scheduleRunElection,
     "Reassign Partitions" -> controllers.routes.ReassignPartitions.reassignPartitions,
     "Logkafkas" -> controllers.routes.Logkafka.logkafkas,
     "List Logkafka" -> controllers.routes.Logkafka.logkafkas,

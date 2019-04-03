@@ -17,8 +17,9 @@ import kafka.manager.base._
 import kafka.manager.base.cluster.BaseClusterQueryCommandActor
 import kafka.manager.features.{ClusterFeatures, KMJMXMetricsFeature, KMLogKafkaFeature}
 import kafka.manager.logkafka._
-import kafka.manager.model.{ClusterContext, ClusterConfig, CuratorConfig}
+import kafka.manager.model.{ClusterConfig, ClusterContext, CuratorConfig}
 import kafka.manager.utils.AdminUtils
+import kafka.manager.utils.zero81.SchedulePreferredLeaderElectionCommand
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.recipes.cache.PathChildrenCache
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
@@ -352,6 +353,13 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
       }
     }
   }
+
+  private def writeScheduleLeaderElectionToZk(schedule: Map[String, Int]) = {
+    implicit val ec = longRunningExecutionContext
+
+    log.info("Updating schedule for preferred leader election")
+    SchedulePreferredLeaderElectionCommand.writeScheduleLeaderElectionData(curator, schedule)
+  }
   
   implicit private def toTryClusterContext(t: Try[Unit]) : Try[ClusterContext] = {
     t.map(_ => clusterContext)
@@ -520,6 +528,10 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
             CMCommandResult(kcResponse.result)
           }
         } pipeTo sender()
+
+      case CMSchedulePreferredLeaderElection(schedule) =>
+        implicit val ec = longRunningExecutionContext
+        writeScheduleLeaderElectionToZk(schedule)
 
       case CMRunReassignPartition(topics, forceSet) =>
         implicit val ec = longRunningExecutionContext

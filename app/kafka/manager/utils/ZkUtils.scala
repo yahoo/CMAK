@@ -42,6 +42,7 @@ object ZkUtils {
   val DeleteTopicsPath = "/admin/delete_topics"
   val PreferredReplicaLeaderElectionPath = "/admin/preferred_replica_election"
   val AdminPath = "/admin"
+  val SchedulePreferredLeaderElectionPath = AdminPath + "/schedule_leader_election"
 
   def getTopicPath(topic: String): String = {
     BrokerTopicsPath + "/" + topic
