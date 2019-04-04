@@ -8,6 +8,7 @@ package kafka.manager.actor.cluster
 import java.io.Closeable
 import java.net.InetAddress
 import java.nio.ByteBuffer
+import java.time.Duration
 import java.util.Properties
 import java.util.concurrent.{ConcurrentLinkedDeque, TimeUnit}
 
@@ -16,8 +17,6 @@ import akka.pattern._
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine, RemovalCause, RemovalListener}
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import grizzled.slf4j.Logging
-import kafka.admin.AdminClient
-import kafka.api.PartitionOffsetRequestInfo
 import kafka.common.{OffsetAndMetadata, TopicAndPartition}
 import kafka.manager._
 import kafka.manager.base.cluster.{BaseClusterQueryActor, BaseClusterQueryCommandActor}
@@ -33,7 +32,7 @@ import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.cache._
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.{Consumer, ConsumerRecords, KafkaConsumer}
-import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.{ConsumerGroupState, TopicPartition}
 import org.apache.kafka.common.requests.DescribeGroupsResponse
 import org.joda.time.{DateTime, DateTimeZone}
 
@@ -47,6 +46,9 @@ import org.apache.kafka.clients.consumer.internals.ConsumerProtocol
 import org.apache.kafka.common.config.SaslConfigs
 import org.apache.kafka.common.protocol.Errors
 import org.apache.kafka.clients.CommonClientConfigs.SECURITY_PROTOCOL_CONFIG
+import org.apache.kafka.clients.admin.{AdminClient, ConsumerGroupDescription, DescribeConsumerGroupsOptions}
+import org.apache.kafka.common.KafkaFuture.BiConsumer
+import org.apache.kafka.common.utils.Time
 
 /**
   * @author hiral
@@ -55,6 +57,7 @@ import kafka.manager.utils._
 
 import scala.collection.JavaConverters._
 
+case class PartitionOffsetRequestInfo(time: Long, maxNumOffsets: Int)
 case class KafkaAdminClientActorConfig(clusterContext: ClusterContext, longRunningPoolConfig: LongRunningPoolConfig, kafkaStateActorPath: ActorPath, consumerProperties: Option[Properties])
 case class KafkaAdminClientActor(config: KafkaAdminClientActorConfig) extends BaseClusterQueryActor with LongRunningPoolActor {
 
@@ -124,27 +127,24 @@ case class KafkaAdminClientActor(config: KafkaAdminClientActorConfig) extends Ba
       request match {
         case KAGetGroupSummary(groupList: Seq[String], enqueue: java.util.Queue[(String, List[MemberMetadata])]) =>
           Future {
-            groupList.foreach {
-              group =>
-                try {
-                  adminClientOption.foreach {
-                    client =>
-                      val groupMetadata = client.describeConsumerGroupHandler(client.findCoordinator(group, 1000), group)
-                      if (groupMetadata != null) {
-                        if(isValidConsumerGroupResponse(groupMetadata)) {
-                          enqueue.offer((group, groupMetadata.members().asScala.map(m => MemberMetadata.from(group, groupMetadata, m)).toList))
-                        } else {
-                          log.error(s"Invalid group metadata group=$group metadata.error=${groupMetadata.error} metadata.state=${groupMetadata.state()} metadata.protocolType=${groupMetadata.protocolType()}")
-                        }
-                      }
+            try {
+              adminClientOption.foreach {
+                client =>
+                  val options = new DescribeConsumerGroupsOptions
+                  options.timeoutMs(1000)
+                  client.describeConsumerGroups(groupList.asJava, options).all().whenComplete {
+                    (mapGroupDescription, error) => mapGroupDescription.asScala.foreach {
+                      case (group, desc) =>
+                        enqueue.offer(group -> desc.members().asScala.map(m => MemberMetadata.from(group, desc, m)).toList)
+                    }
                   }
-                } catch {
-                  case e: Exception =>
-                    log.error(e, s"Failed to get group summary with admin client : $group")
-                    log.error(e, s"Forcing new admin client initialization...")
-                    Try { adminClientOption.foreach(_.close()) }
-                    adminClientOption = None
-                }
+              }
+            } catch {
+              case e: Exception =>
+                log.error(e, s"Failed to get group summary with admin client : $groupList")
+                log.error(e, s"Forcing new admin client initialization...")
+                Try { adminClientOption.foreach(_.close()) }
+                adminClientOption = None
             }
           }
         case any: Any => log.warning("kac : processQueryRequest : Received unknown message: {}", any.toString)
@@ -340,7 +340,7 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
                   error("Failed to backfill group metadata", e)
               }
 
-              val records: ConsumerRecords[Array[Byte], Array[Byte]] = consumer.poll(100)
+              val records: ConsumerRecords[Array[Byte], Array[Byte]] = consumer.poll(Duration.ofMillis(100))
               val iterator = records.iterator()
               while (iterator.hasNext) {
                 val record = iterator.next()
@@ -374,7 +374,7 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
                     }
                     topicSet += topic
                   case GroupMetadataKey(version, key) =>
-                    val value: GroupMetadata = readGroupMessageValue(key, ByteBuffer.wrap(record.value()))
+                    val value: GroupMetadata = readGroupMessageValue(key, ByteBuffer.wrap(record.value()), Time.SYSTEM)
                     value.allMemberMetadata.foreach {
                       mm =>
                         mm.assignment.foreach {

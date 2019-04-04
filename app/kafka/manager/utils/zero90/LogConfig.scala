@@ -18,11 +18,13 @@
 package kafka.manager.utils.zero90
 
 import java.util.Properties
+
 import kafka.manager.utils.TopicConfigs
 import org.apache.kafka.common.utils.Utils
 import org.apache.kafka.common.config.{AbstractConfig, ConfigDef}
 import kafka.message.BrokerCompressionCodec
-import kafka.message.Message
+import org.apache.kafka.common.protocol.Message
+import org.apache.kafka.common.record.LegacyRecord
 
 object Defaults {
   val SegmentSize = kafka.server.Defaults.LogSegmentBytes
@@ -133,7 +135,7 @@ object LogConfig extends TopicConfigs {
     import ConfigDef.Importance._
 
     new ConfigDef()
-      .define(SegmentBytesProp, INT, Defaults.SegmentSize, atLeast(Message.MinMessageOverhead), MEDIUM, SegmentSizeDoc)
+      .define(SegmentBytesProp, INT, Defaults.SegmentSize, atLeast(LegacyRecord.RECORD_OVERHEAD_V0), MEDIUM, SegmentSizeDoc)
       .define(SegmentMsProp, LONG, Defaults.SegmentMs, atLeast(0), MEDIUM, SegmentMsDoc)
       .define(SegmentJitterMsProp, LONG, Defaults.SegmentJitterMs, atLeast(0), MEDIUM, SegmentJitterMsDoc)
       .define(SegmentIndexBytesProp, INT, Defaults.MaxIndexSize, atLeast(0), MEDIUM, MaxIndexSizeDoc)
