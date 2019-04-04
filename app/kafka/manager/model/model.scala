@@ -456,6 +456,10 @@ case object SASL_PLAINTEXT extends SecurityProtocol {
   val stringId = "SASL_PLAINTEXT"
   val secure = true
 }
+case object PLAINTEXTSASL extends SecurityProtocol {
+  val stringId = "PLAINTEXTSASL"
+  val secure = true
+}
 case object SASL_SSL extends SecurityProtocol {
   val stringId = "SASL_SSL"
   val secure = true
@@ -471,6 +475,7 @@ case object PLAINTEXT extends SecurityProtocol {
 object SecurityProtocol {
   private[this] val typesMap: Map[String, SecurityProtocol] = Map(
     SASL_PLAINTEXT.stringId -> SASL_PLAINTEXT
+    , PLAINTEXTSASL.stringId -> SASL_PLAINTEXT
     , SASL_SSL.stringId -> SASL_SSL
     , SSL.stringId -> SSL
     , PLAINTEXT.stringId -> PLAINTEXT
