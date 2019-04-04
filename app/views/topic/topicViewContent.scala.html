@@ -15,68 +15,68 @@
 
 @getUnderReplicatedLevel(percentage: Int) = {
     @percentage match {
-        case i if i > 50 => {danger}
-        case i if i > 0 => {warning}
+        case i if i > 50 => {table-danger}
+        case i if i > 0 => {table-warning}
         case i => {}
     }
 }
 
 @getPreferredReplicasLevel(percentage: Int) = {
     @percentage match {
-        case i if i > 50 && i<=75 => {warning}
-        case i if i <=  50 => {danger}
+        case i if i > 50 && i<=75 => {table-warning}
+        case i if i <=  50 => {table-danger}
         case i => {}
     }
 }
 
 @getBrokersSkewedLevel(percentage: Int) = {
     @percentage match {
-        case i if i > 0 && i <= 33 => {warning}
-        case i if i >= 34 => {danger}
+        case i if i > 0 && i <= 33 => {table-warning}
+        case i if i >= 34 => {table-danger}
         case i => {}
     }
 }
 
 @getBrokersLeaderSkewedLevel(percentage: Int) = {
     @percentage match {
-        case i if i > 0 && i <= 33 => {warning}
-        case i if i >= 34 => {danger}
+        case i if i > 0 && i <= 33 => {table-warning}
+        case i if i >= 34 => {table-danger}
         case i => {}
     }
 }
 
 @getBrokersSpreadLevel(percentage: Int) = {
     @percentage match {
-        case i if i > 50 && i<=75 => {warning}
-        case i if i <=  50 => {danger}
+        case i if i > 50 && i<=75 => {table-warning}
+        case i if i <=  50 => {table-danger}
         case i => {}
     }
 }
 
 @getPartitionLeaderLevel(leader: Int) = {
     @leader match {
-        case i if i < 0 => {danger}
+        case i if i < 0 => {table-danger}
         case i => {}
     }
 }
 
 @getIsUnderReplicatedLevel(underReplicated: Boolean) = {
     @underReplicated match {
-        case true => {warning}
+        case true => {table-warning}
         case false => {}
     }
 }
 
 @getIsPreferredLeaderLevel(preferredReplica: Boolean) = {
     @preferredReplica match {
-        case false => {warning}
+        case false => {table-warning}
         case true => {}
     }
 }
 
 @getBrokerIsSkewedLevel(isSkewed: Boolean) = {
     @isSkewed match {
-        case true => {warning}
+        case true => {table-warning}
         case false => {}
     }
 }

@@ -9,7 +9,7 @@
 
 @getFilesizeStatus(filesize: Int) = {
     @filesize match {
-        case i if i < 0 => {warning}
+        case i if i < 0 => {table-warning}
         case i => {}
     }
 }
@@ -32,7 +32,7 @@
             @for( (log_path, im) <- li.identityMap) {
                 @{row_num = row_num + 1}
                 <tr>
-                <td class=@getLogkafkaStatus(li.active, "", "danger")>
+                <td class=@getLogkafkaStatus(li.active, "", "table-danger")>
                     <a href="@routes.Logkafka.logkafka(cluster, logkafka_id, log_path)">@row_num</a>
                 </td>
 
@@ -45,9 +45,9 @@
                 @im._2.map { c =>
                     @c.get("realpath").map { d =>
                         <td>@d</td>
-                    }.getOrElse{<td class = "danger"> no corresponding file </td>}
+                    }.getOrElse{<td class = "table-danger"> no corresponding file </td>}
                 }.getOrElse{
-                    <td class = @getLogkafkaStatus(li.active, "warning", "danger")> 
+                    <td class = @getLogkafkaStatus(li.active, "table-warning", "table-danger")>
                         @getLogkafkaStatus(li.active,"scanning for new file", "logkafka is inactive") 
                     </td>
                 }

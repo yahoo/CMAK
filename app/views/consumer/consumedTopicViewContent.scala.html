@@ -10,14 +10,14 @@
 @implicitFieldConstructor = @{ b4.vertical.fieldConstructor() }
 @getTopicCoverage(percentage: Int) = {
     @percentage match {
-        case i if i <=  99 => {danger}
+        case i if i <=  99 => {table-danger}
         case i => {}
     }
 }
 
 @ifPartitionNotOwned(owner: Option[String]) = {
     @owner match {
-    case None => {warning}
+    case None => {table-warning}
     case Some(a) => {}
     }
 }
