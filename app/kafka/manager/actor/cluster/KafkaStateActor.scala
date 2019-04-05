@@ -1503,7 +1503,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
                   }))
                 } catch {
                   case e: Exception =>
-                    log.error(s"consumerProperties:$consumerProperties", e)
+                    log.error(e, s"consumerProperties:$consumerProperties")
                     throw e
                 } finally {
                   kafkaConsumer.foreach(_.close())
