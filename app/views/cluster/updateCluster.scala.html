@@ -34,7 +34,7 @@
         @b4.text(form("jmxUser"), '_label -> "JMX Auth Username")
         @b4.text(form("jmxPass"), '_label -> "JMX Auth Password")
         @b4.checkbox(form("jmxSsl"), '_text -> "JMX with SSL")
-        @b4.checkbox(form("pollConsumers"), '_text -> "Poll consumer information (Not recommended for large # of consumers)")
+        @b4.checkbox(form("pollConsumers"), '_text -> "Poll consumer information (Not recommended for large # of consumers if ZK is used for offsets tracking on older Kafka versions)")
         @b4.checkbox(form("filterConsumers"), '_text -> "Filter out inactive consumers")
         @b4.checkbox(form("logkafkaEnabled"), '_text -> "Enable Logkafka")
         @b4.checkbox(form("activeOffsetCacheEnabled"), '_text -> "Enable Active OffsetCache (Not recommended for large # of consumers)")
