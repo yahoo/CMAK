@@ -23,7 +23,6 @@ import kafka.manager.utils.TopicConfigs
 import org.apache.kafka.common.utils.Utils
 import org.apache.kafka.common.config.{AbstractConfig, ConfigDef}
 import kafka.message.BrokerCompressionCodec
-import org.apache.kafka.common.protocol.Message
 import org.apache.kafka.common.record.LegacyRecord
 
 object Defaults {
@@ -163,9 +162,9 @@ object LogConfig extends TopicConfigs {
 
   def apply(): LogConfig = LogConfig(new Properties())
 
-  val configNames : Set[String] = {
+  val configNames : Seq[String] = {
     import scala.collection.JavaConverters._
-    configDef.names().asScala.toSet
+    configDef.names.asScala.toSeq.sorted
   }
 
 
@@ -197,4 +196,13 @@ object LogConfig extends TopicConfigs {
     configDef.parse(props)
   }
 
+  def configNamesAndDoc: Seq[(String, String)] = {
+    Option(configDef).fold {
+      configNames.map(n => n -> "")
+    } {
+      configDef =>
+        val keyMap = configDef.configKeys()
+        configNames.map(n => n -> Option(keyMap.get(n)).map(_.documentation).flatMap(Option.apply).getOrElse(""))
+    }
+  }
 }

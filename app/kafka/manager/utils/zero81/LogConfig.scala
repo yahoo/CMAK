@@ -74,7 +74,7 @@ object LogConfig extends TopicConfigs {
   val MinCleanableDirtyRatioProp = "min.cleanable.dirty.ratio"
   val CleanupPolicyProp = "cleanup.policy"
 
-  val ConfigNames = Set(SegmentBytesProp,
+  val ConfigNames = Seq(SegmentBytesProp,
     SegmentMsProp,
     SegmentIndexBytesProp,
     FlushMessagesProp,
@@ -133,5 +133,9 @@ object LogConfig extends TopicConfigs {
   def validate(props: Properties) {
     validateNames(props)
     LogConfig.fromProps(LogConfig().toProps, props) // check that we can parse the values
+  }
+
+  def configNamesAndDoc: Seq[(String, String)] = {
+    configNames.map(n => n -> "")
   }
 }

@@ -15,7 +15,7 @@
 }
         
 @renderForm(createTopicForm: Form[models.form.CreateTopic]) = {
-<div class="card-body">
+<div class="container">
     @b4.vertical.form(routes.Topic.handleCreateTopic(cluster)) { implicit fc =>
     <table class="table">
         <tbody>
@@ -27,10 +27,12 @@
                 @b4.submit('class -> "submit-button btn btn-primary"){ Create }
                 <a href="@routes.Topic.topics(cluster)" class="cancel-button btn btn-secondary" role="button">Cancel</a>
             </td>
+        </tr>
+        <tr>
             <td>
                 @helper.repeat(createTopicForm("configs"), min = 1) { configsForm =>
                     @b4.hidden(configsForm("name").name, configsForm("name").value.getOrElse(""))
-                    @b4.text(configsForm("value"), '_label -> configsForm("name").value.getOrElse(""))
+                    @b4.text(configsForm("value"), '_label -> configsForm("name").value.getOrElse(""), '_help -> configsForm("help").value.getOrElse(""))
                 }
             </td>
         </tr>
