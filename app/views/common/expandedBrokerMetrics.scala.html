@@ -1,4 +1,4 @@
-@(brokerMetrics: Option[kafka.manager.model.ActorModel.BrokerMetrics])(implicit messages: play.api.i18n.Messages)
+@(brokerMetrics: Option[kafka.manager.model.ActorModel.BrokerMetrics])(implicit messages: play.api.i18n.Messages, request:RequestHeader)
 <table class="table">
     <tr>
         <th>Rate</th>

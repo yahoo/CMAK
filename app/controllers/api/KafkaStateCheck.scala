@@ -10,22 +10,19 @@ import features.ApplicationFeatures
 import kafka.manager.model.ActorModel.BrokerIdentity
 import kafka.manager.model.SecurityProtocol
 import models.navigation.Menus
-import play.api.i18n.{I18nSupport, MessagesApi}
-import play.api.libs.json._
-import play.api.mvc._
-
-import scala.concurrent.Future
 import org.json4s.jackson.Serialization
 import org.json4s.scalaz.JsonScalaz.toJSON
+import play.api.i18n.I18nSupport
+import play.api.mvc._
+
+import scala.concurrent.{ExecutionContext, Future}
 
 /**
  * @author jisookim0513
  */
 
-class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManagerContext)
-                      (implicit af: ApplicationFeatures, menus: Menus) extends Controller with I18nSupport {
-
-  import play.api.libs.concurrent.Execution.Implicits.defaultContext
+class KafkaStateCheck (val cc: ControllerComponents, val kafkaManagerContext: KafkaManagerContext)
+                      (implicit af: ApplicationFeatures, menus: Menus, ec:ExecutionContext) extends AbstractController(cc) with I18nSupport {
 
   private[this] val kafkaManager = kafkaManagerContext.getKafkaManager
 
@@ -39,7 +36,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
 
   implicit val brokerIdentityWrites = Json.writes[BrokerIdentity]
 
-  def brokers(c: String) = Action.async { implicit request =>
+  def brokers(c: String) = Action.async { implicit request:RequestHeader =>
     kafkaManager.getBrokerList(c).map { errorOrBrokerList =>
       errorOrBrokerList.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
@@ -47,7 +44,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
       )
     }
   }
-  def brokersExtended(c: String) = Action.async { implicit request =>
+  def brokersExtended(c: String) = Action.async { implicit request:RequestHeader =>
     kafkaManager.getBrokerList(c).map { errorOrBrokerList =>
       errorOrBrokerList.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
@@ -56,7 +53,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     }
   }
 
-  def topics(c: String) = Action.async { implicit request =>
+  def topics(c: String) = Action.async { implicit request:RequestHeader =>
     kafkaManager.getTopicList(c).map { errorOrTopicList =>
       errorOrTopicList.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
@@ -65,7 +62,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     }
   }
 
-  def topicIdentities(c: String) = Action.async { implicit request =>
+  def topicIdentities(c: String) = Action.async { implicit request:RequestHeader =>
     implicit val formats = org.json4s.DefaultFormats
     kafkaManager.getTopicListExtended(c).map { errorOrTopicListExtended =>
       errorOrTopicListExtended.fold(
@@ -75,7 +72,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     }
   }
 
-  def clusters = Action.async { implicit request =>
+  def clusters = Action.async { implicit request:RequestHeader =>
     implicit val formats = org.json4s.DefaultFormats
     kafkaManager.getClusterList.map { errorOrClusterList =>
       errorOrClusterList.fold(
@@ -85,7 +82,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     }
   }
 
-  def underReplicatedPartitions(c: String, t: String) = Action.async { implicit request =>
+  def underReplicatedPartitions(c: String, t: String) = Action.async { implicit request:RequestHeader =>
     kafkaManager.getTopicIdentity(c, t).map { errorOrTopicIdentity =>
       errorOrTopicIdentity.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
@@ -94,7 +91,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     }
   }
 
-  def unavailablePartitions(c: String, t: String) = Action.async { implicit request =>
+  def unavailablePartitions(c: String, t: String) = Action.async { implicit request:RequestHeader =>
     kafkaManager.getTopicIdentity(c, t).map { errorOrTopicIdentity =>
       errorOrTopicIdentity.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
@@ -102,7 +99,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     }
   }
 
-  def topicSummaryAction(cluster: String, consumer: String, topic: String, consumerType: String) = Action.async { implicit request =>
+  def topicSummaryAction(cluster: String, consumer: String, topic: String, consumerType: String) = Action.async { implicit request:RequestHeader =>
     getTopicSummary(cluster, consumer, topic, consumerType).map { errorOrTopicSummary =>
       errorOrTopicSummary.fold(
         error => BadRequest(Json.obj("msg" -> error.msg)),
@@ -126,7 +123,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     }
   }
 
-  def groupSummaryAction(cluster: String, consumer: String, consumerType: String) = Action.async { implicit request =>
+  def groupSummaryAction(cluster: String, consumer: String, consumerType: String) = Action.async { implicit request:RequestHeader =>
     kafkaManager.getConsumerIdentity(cluster, consumer, consumerType).flatMap { errorOrConsumedTopicSummary =>
       errorOrConsumedTopicSummary.fold(
         error =>
@@ -145,7 +142,7 @@ class KafkaStateCheck (val messagesApi: MessagesApi, val kafkaManagerContext: Ka
     Future.sequence(cosumdTopicSummary).map(_.toMap)
   }
   
-  def consumersSummaryAction(cluster: String) = Action.async { implicit request =>
+  def consumersSummaryAction(cluster: String) = Action.async { implicit request:RequestHeader =>
     implicit val formats = org.json4s.DefaultFormats
     kafkaManager.getConsumerListExtended(cluster).map { errorOrConsumersSummary =>
       errorOrConsumersSummary.fold(

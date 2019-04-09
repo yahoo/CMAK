@@ -2,22 +2,20 @@
  * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
  * See accompanying LICENSE file.
  */
-import features.{ApplicationFeatures, ApplicationFeature}
+import features.{ApplicationFeature, ApplicationFeatures}
+import kafka.manager.features.{ClusterFeature, ClusterFeatures}
 import kafka.manager.model.ClusterContext
-import kafka.manager.{KafkaManager, ApiError}
-import kafka.manager.features.{ClusterFeatures, ClusterFeature}
-import play.api.mvc._
+import kafka.manager.{ApiError, KafkaManager}
 import play.api.mvc.Results._
+import play.api.mvc._
 
-import scala.concurrent.Future
-import scalaz.{\/-, -\/, \/}
+import scala.concurrent.{ExecutionContext, Future}
+import scalaz.{-\/, \/-}
 
 /**
  * Created by hiral on 8/23/15.
  */
 package object controllers {
-
-  import play.api.libs.concurrent.Execution.Implicits.defaultContext
 
   def featureGate(af: ApplicationFeature)(fn: => Future[Result])(implicit features: ApplicationFeatures) : Future[Result] = {
     if(features.features(af)) {
@@ -28,7 +26,7 @@ package object controllers {
   }
   
   def clusterFeatureGate(clusterName: String, cf: ClusterFeature)(fn: ClusterContext => Future[Result])
-           (implicit km: KafkaManager) : Future[Result] = {
+           (implicit km: KafkaManager, ec:ExecutionContext) : Future[Result] = {
     km.getClusterContext(clusterName).flatMap { clusterContextOrError =>
       clusterContextOrError.fold( 
         error => {
@@ -48,7 +46,7 @@ package object controllers {
   }
   
   def withClusterFeatures(clusterName: String)(err: ApiError => Future[Result], fn: ClusterFeatures => Future[Result])
-                         (implicit km: KafkaManager) : Future[Result] = {
+                         (implicit km: KafkaManager, ec: ExecutionContext) : Future[Result] = {
     km.getClusterContext(clusterName).flatMap { clusterContextOrError =>
       clusterContextOrError.map(_.clusterFeatures) match {
         case -\/(error) => err(error)
@@ -58,7 +56,7 @@ package object controllers {
   }
 
   def withClusterContext(clusterName: String)(err: ApiError => Future[Result], fn: ClusterContext => Future[Result])
-                         (implicit km: KafkaManager) : Future[Result] = {
+                         (implicit km: KafkaManager, ec: ExecutionContext) : Future[Result] = {
     km.getClusterContext(clusterName).flatMap { clusterContextOrError =>
       clusterContextOrError match {
         case -\/(error) => err(error)

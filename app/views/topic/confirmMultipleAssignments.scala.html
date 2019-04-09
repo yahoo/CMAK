@@ -3,18 +3,17 @@
 * See accompanying LICENSE file.
 *@
 @import scalaz.{\/}
-@import b3.vertical.fieldConstructor
 @(cluster: String,
   errorOrForm: kafka.manager.ApiError \/ (Form[models.form.GenerateMultipleAssignments], kafka.manager.model.ClusterContext)
-)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
 
 @theMenu = {
     @views.html.navigation.clusterMenu(cluster,"Topic","Confirm Assignments",menus.clusterMenus(cluster)(
         errorOrForm.toOption.map(_._2.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
 }
 
-@checkboxWithLink(field: play.api.data.Field, topic: String) = {
-    @b3.inputFormGroup(field, withFeedback = false, withLabelFor = false, b3.Args.withDefault(Seq(), 'disabled -> false)) { fieldInfo =>
+@checkboxWithLink(field: play.api.data.Field, topic: String)(implicit fc: b4.B4FieldConstructor, msgsProv: MessagesProvider) = {
+    @b4.inputFormGroup(field, withLabelFor = false, views.html.bs.Args.withDefault(Seq(), 'disabled -> false)) { fieldInfo =>
     <div class="checkbox">
         <label for="@fieldInfo.id">
             <input type="checkbox" id="@fieldInfo.id" name="@fieldInfo.name" value="true" @if(fieldInfo.value == Some("true")){checked} @toHtmlArgs(fieldInfo.innerArgsMap)>
@@ -26,43 +25,43 @@
 
 @renderForm(confirmForm: Form[models.form.GenerateMultipleAssignments]) = {
     <h4>Choose topics and brokers for reassignments:</h4>
-    @b3.form(routes.ReassignPartitions.handleGenerateMultipleAssignments(cluster)) {
+    @b4.vertical.form(routes.ReassignPartitions.handleGenerateMultipleAssignments(cluster)) { implicit fc =>
         <table class="table">
             <thead>
-            <tr><th>Topics</th><th>Brokers</th></tr>
+            <tr><th scope="col">Topics</th><th scope="col">Brokers</th></tr>
             </thead>
             <tbody>
             <tr>
                 <td>
-                    <button type="button" class="btn btn-default" onClick="checkBoxSelect('topics',true);">
+                    <button type="button" class="btn btn-outline-secondary" onClick="checkBoxSelect('topics',true);">
                         <b>Select All</b>
                     </button>
-                    <button type="button" class="btn btn-default" onClick="checkBoxSelect('topics',false);">
+                    <button type="button" class="btn btn-outline-secondary" onClick="checkBoxSelect('topics',false);">
                         <b>Select None</b>
                     </button>
                     @helper.repeat(confirmForm("topics"), min = 1) { topicSelectForm =>
-                        @b3.hidden(topicSelectForm("name").name,topicSelectForm("name").value.getOrElse(""))
+                        @b4.hidden(topicSelectForm("name").name,topicSelectForm("name").value.getOrElse(""))
                         @checkboxWithLink(topicSelectForm("selected"),topicSelectForm("name").value.getOrElse(""))
                     }
                 </td>
                 <td>
-                    <button type="button" class="btn btn-default" onClick="checkBoxSelect('brokers',true);">
+                    <button type="button" class="btn btn-outline-secondary" onClick="checkBoxSelect('brokers',true);">
                         <b>Select All</b>
                     </button>
-                    <button type="button" class="btn btn-default" onClick="checkBoxSelect('brokers',false);">
+                    <button type="button" class="btn btn-outline-secondary" onClick="checkBoxSelect('brokers',false);">
                         <b>Select None</b>
                     </button>
                     @helper.repeat(confirmForm("brokers"), min = 1) { brokerSelectForm =>
-                        @b3.hidden(brokerSelectForm("id").name,brokerSelectForm("id").value.getOrElse(-1))
-                        @b3.hidden(brokerSelectForm("host").name,brokerSelectForm("host").value.getOrElse(""))
-                        @b3.checkbox(brokerSelectForm("selected"), '_text -> s"${brokerSelectForm("id").value.getOrElse(-1)} - ${brokerSelectForm("host").value.getOrElse("")}")
+                        @b4.hidden(brokerSelectForm("id").name,brokerSelectForm("id").value.getOrElse(-1))
+                        @b4.hidden(brokerSelectForm("host").name,brokerSelectForm("host").value.getOrElse(""))
+                        @b4.checkbox(brokerSelectForm("selected"), '_text -> s"${brokerSelectForm("id").value.getOrElse(-1)} - ${brokerSelectForm("host").value.getOrElse("")}")
                     }
                 </td>
             </tr>
             </tbody>
         </table>
-        @b3.submit('class -> "btn btn-primary btn-block"){ Generate Partition Assignments }
-        <a href="@routes.Topic.topics(cluster)" class="cancel-button btn btn-default" role="button">Cancel</a>
+        <a href="@routes.Topic.topics(cluster)" class="cancel-button btn btn-secondary" role="button">Cancel</a>
+        @b4.submit('class -> "btn btn-primary"){ Generate Partition Assignments }
     }
 }
 
@@ -71,9 +70,9 @@
   menu = theMenu,
   breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Topics",cluster))) {
 <div class="col-md-12 un-pad-me">
-    <div class="panel panel-default">
-        <div class="panel-heading"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>Confirm Assignments</h3></div>
-        <div class="panel-body">
+    <div class="card">
+        <div class="card-header"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="octicon octicon-arrow-left" aria-hidden="true"></span></button>Confirm Assignments</h3></div>
+        <div class="card-body">
             @errorOrForm.fold( views.html.errors.onApiError(_), t => renderForm(t._1))
         </div>
     </div>

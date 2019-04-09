@@ -1,143 +1,171 @@
 package controllers
 
 
+import java.nio.charset.StandardCharsets
+import java.security.SecureRandom
+
 import com.typesafe.config.ConfigValueType
 import java.util.UUID
 
 import com.unboundid.ldap.sdk._
 import javax.net.ssl.SSLSocketFactory
+import akka.stream.Materializer
 import org.apache.commons.codec.binary.Base64
 import play.api.Configuration
-import play.api.http.HeaderNames.AUTHORIZATION
-import play.api.http.HeaderNames.WWW_AUTHENTICATE
-import play.api.libs.Crypto
-import play.api.libs.concurrent.Execution.Implicits.defaultContext
-import play.api.mvc.Cookie
-import play.api.mvc.Filter
-import play.api.mvc.RequestHeader
-import play.api.mvc.Result
+import play.api.http.HeaderNames.{AUTHORIZATION, WWW_AUTHENTICATE}
 import play.api.mvc.Results.Unauthorized
+import play.api.mvc.{Cookie, Filter, RequestHeader, Result}
 
 import scala.collection.JavaConverters._
-import scala.concurrent.Future
 import scala.util.{Success, Try}
 import grizzled.slf4j.Logging
+import javax.crypto.Mac
+import play.api.libs.Codecs
 
-class BasicAuthenticationFilter(configurationFactory: => BasicAuthenticationFilterConfiguration) extends Filter with Logging {
+import scala.concurrent.{ExecutionContext, Future}
+
+class BasicAuthenticationFilter(configuration: BasicAuthenticationFilterConfiguration, authenticator: Authenticator)(implicit val mat: Materializer, ec: ExecutionContext) extends Filter {
 
   def apply(next: RequestHeader => Future[Result])(requestHeader: RequestHeader): Future[Result] =
-    if (configuration.enabled && isNotExcluded(requestHeader))
-      configuration.authenticator match {
-        case authenticator: BasicAuthenticationFilterInternalAuthenticator =>
-          checkInternalAuthentication(requestHeader, authenticator, next)
-        case authenticator: BasicAuthenticationFilterLdapAuthenticator =>
-          checkLdapAuthentication(requestHeader, authenticator, next)
-      }
+    if (configuration.enabled && isNotExcluded(requestHeader)) {
+      authenticator.checkAuthentication(requestHeader, next)
+    }
     else next(requestHeader)
 
   private def isNotExcluded(requestHeader: RequestHeader): Boolean =
-    !configuration.excluded.exists( requestHeader.path matches _ )
+    !configuration.excluded.exists(requestHeader.path matches _)
 
-  private def checkInternalAuthentication(requestHeader: RequestHeader, authenticator: BasicAuthenticationFilterInternalAuthenticator, next: RequestHeader => Future[Result]): Future[Result] =
-    if (isAuthorized(requestHeader, authenticator)) addCookie(authenticator, next(requestHeader))
-    else unauthorizedResult
+}
 
-  private def checkLdapAuthentication(requestHeader: RequestHeader, authenticator: BasicAuthenticationFilterLdapAuthenticator, next: RequestHeader => Future[Result]): Future[Result] = {
-    val credentials = credentialsFromHeader(requestHeader)
-    if (credentials.isDefined && isAuthorized(requestHeader, authenticator, credentials.get)) addCookie(credentials.get, next(requestHeader))
+trait Authenticator {
+
+  import javax.crypto.Cipher
+  import javax.crypto.SecretKeyFactory
+  import javax.crypto.spec.PBEKeySpec
+  import javax.crypto.spec.SecretKeySpec
+  import javax.crypto.spec.IvParameterSpec
+
+  private lazy val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+  private lazy val spec = new PBEKeySpec(secret, salt, 65536, 256)
+  private lazy val secretKey = new SecretKeySpec(factory.generateSecret(spec).getEncoded, "AES")
+  private lazy val cipher: Cipher = {
+    val c = Cipher.getInstance("AES/CBC/PKCS5Padding")
+    c.init(Cipher.ENCRYPT_MODE, secretKey, new IvParameterSpec(iv))
+    c
+  }
+
+  private lazy val mac: Mac = {
+    val m = Mac.getInstance("HmacSHA256")
+    m.init(new SecretKeySpec(factory.generateSecret(spec).getEncoded, "HmacSHA256"))
+    m
+  }
+
+  def salt: Array[Byte]
+
+  def iv: Array[Byte]
+
+  def secret: Array[Char]
+
+  def encrypt(content: Array[Byte]): Array[Byte] = {
+    cipher.doFinal(content)
+  }
+
+  def decrypt(content: Array[Byte], iv: Array[Byte]): Array[Byte] = {
+    cipher.init(Cipher.DECRYPT_MODE, secretKey, new IvParameterSpec(iv))
+    cipher.doFinal(content)
+  }
+
+  def sign(content: String) : String = {
+    Codecs.toHexString(mac.doFinal(content.getBytes(StandardCharsets.UTF_8)))
+  }
+
+  def checkAuthentication(requestHeader: RequestHeader, next: RequestHeader => Future[Result]): Future[Result]
+}
+
+object BasicAuthenticator {
+  private lazy val COOKIE_NAME = "play-basic-authentication"
+}
+
+case class BasicAuthenticator(config: BasicAuthenticationConfig)(implicit val mat: Materializer, ec: ExecutionContext) extends Authenticator {
+
+  import BasicAuthenticator._
+
+  private lazy val realm = basic(s"""realm="${config.realm}"""")
+  private lazy val unauthorizedResult = Future successful Unauthorized.withHeaders(WWW_AUTHENTICATE -> realm)
+
+  def salt: Array[Byte] = config.salt
+
+  def iv: Array[Byte] = config.iv
+
+  def secret: Array[Char] = config.secret
+
+  def checkAuthentication(requestHeader: RequestHeader, next: RequestHeader => Future[Result]): Future[Result] = {
+    if (isAuthorized(requestHeader)) addCookie(next(requestHeader))
     else unauthorizedResult
   }
 
-  private def isAuthorized(requestHeader: RequestHeader, authenticator: BasicAuthenticationFilterInternalAuthenticator) = {
-    val expectedHeader = expectedHeaderValues(authenticator)
-    lazy val authorizedByHeader =
-      requestHeader.headers.get(AUTHORIZATION).exists(expectedHeader)
+  private def addCookie(result: Future[Result]) =
+    result.map(_.withCookies(cookie))
 
-    val expectedCookie = cookieValue(authenticator)
-    lazy val authorizedByCookie =
-      requestHeader.cookies.get(COOKIE_NAME).exists(_.value == expectedCookie)
+  private def isAuthorized(requestHeader: RequestHeader) = {
+    val expectedHeader = expectedHeaderValues(config)
+    val authorizedByHeader = requestHeader.headers.get(AUTHORIZATION).exists(expectedHeader)
+
+    val expectedCookie = cookieValue
+    val authorizedByCookie = requestHeader.cookies.get(COOKIE_NAME).exists(_.value == expectedCookie)
 
     authorizedByHeader || authorizedByCookie
   }
 
-  private def isAuthorized(requestHeader: RequestHeader, authenticator: BasicAuthenticationFilterLdapAuthenticator, credentials: (String, String)) = {
-    val (username, password) = credentials
-    val expectedCookie = cookieValue(username, Set(password))
-    val authorizedByCookie =
-      requestHeader.cookies.get(COOKIE_NAME).exists(_.value == expectedCookie)
+  private def cookie = Cookie(COOKIE_NAME, cookieValue, maxAge = Option(3600))
 
-    authorizedByCookie || {
-      val connection = ldapConnectionPool.getConnection
-      try {
-        findUserDN(authenticator.searchBaseDN, authenticator.searchFilter, username, connection) match {
-          case None => {
-            logger.debug(s"Can't find user DN for username: $username. " +
-              s"Base DN: ${authenticator.searchBaseDN}. " +
-              s"Filter: ${renderSearchFilter(authenticator.searchFilter, username)}")
-            false
-          }
-          case Some(userDN) => Try(connection.bind(userDN, password)).isSuccess
-        }
-      } finally {
-        connection.close()
-      }
-    }
-  }
-
-  private def findUserDN(baseDN: String, filterTemplate: String, username: String, connection: LDAPConnection) = {
-    val filter = renderSearchFilter(filterTemplate, username)
-    val searchRequest = new SearchRequest(baseDN, SearchScope.SUB, filter)
-    Try(connection.search(searchRequest)) match {
-      case Success(sr) if sr.getEntryCount > 0 => Some(sr.getSearchEntries.get(0).getDN)
-      case _ => None
-    }
-  }
-
-  private def renderSearchFilter(filterTemplate: String, username: String) = {
-    filterTemplate.replaceAll("\\$capturedLogin\\$", username)
-  }
-
-  private def addCookie(authenticator: BasicAuthenticationFilterInternalAuthenticator, result: Future[Result]) =
-    result.map(_.withCookies(cookie(authenticator)))
-
-  private def addCookie(credentials: (String, String), result: Future[Result]) = {
-    val (username, password) = credentials
-    result.map(_.withCookies(cookie(username, password)))
-  }
-
-  private lazy val configuration = configurationFactory
-
-  private lazy val unauthorizedResult =
-    Future successful Unauthorized.withHeaders(WWW_AUTHENTICATE -> realm)
-
-  private lazy val COOKIE_NAME = "play-basic-authentication-filter"
-
-  private lazy val ldapConnectionPool: LDAPConnectionPool = {
-    val authenticator = configuration.authenticator.asInstanceOf[BasicAuthenticationFilterLdapAuthenticator]
-    val (address, port) = (authenticator.address, authenticator.port)
-    val connection = if (authenticator.sslEnabled) {
-      new LDAPConnection(SSLSocketFactory.getDefault, address, port, authenticator.username, authenticator.password)
-    } else {
-      new LDAPConnection(address, port, authenticator.username, authenticator.password)
-    }
-    new LDAPConnectionPool(connection, authenticator.connectionPoolSize)
-  }
-
-  private def cookie(configuration: BasicAuthenticationFilterInternalAuthenticator) = Cookie(COOKIE_NAME, cookieValue(configuration))
-  private def cookie(username: String, password: String) = Cookie(COOKIE_NAME, cookieValue(username, Set(password)))
-
-  private def cookieValue(configuration: BasicAuthenticationFilterInternalAuthenticator): String =
-    cookieValue(configuration.username, configuration.passwords)
+  private lazy val cookieValue: String =
+    cookieValue(config.username, config.passwords)
 
   private def cookieValue(username: String, passwords: Set[String]): String =
-    Crypto.sign(username + passwords.mkString(","))
+    new String(Base64.encodeBase64((username + passwords.mkString(",")).getBytes(StandardCharsets.UTF_8)))
 
-  private def expectedHeaderValues(configuration: BasicAuthenticationFilterInternalAuthenticator) =
+  private def expectedHeaderValues(configuration: BasicAuthenticationConfig) =
     configuration.passwords.map { password =>
       val combined = configuration.username + ":" + password
       val credentials = Base64.encodeBase64String(combined.getBytes)
       basic(credentials)
     }
+
+  private def basic(content: String) = s"Basic $content"
+}
+
+object LDAPAuthenticator {
+  private lazy val COOKIE_NAME = "play-basic-ldap-authentication"
+}
+
+case class LDAPAuthenticator(config: LDAPAuthenticationConfig)(implicit val mat: Materializer, ec: ExecutionContext) extends Authenticator with Logging {
+
+  import LDAPAuthenticator._
+
+  private lazy val realm = basic(s"""realm="${config.realm}"""")
+  private lazy val unauthorizedResult = Future successful Unauthorized.withHeaders(WWW_AUTHENTICATE -> realm)
+  private lazy val ldapConnectionPool: LDAPConnectionPool = {
+    val (address, port) = (config.address, config.port)
+    val connection = if (config.sslEnabled) {
+      new LDAPConnection(SSLSocketFactory.getDefault, address, port, config.username, config.password)
+    } else {
+      new LDAPConnection(address, port, config.username, config.password)
+    }
+    new LDAPConnectionPool(connection, config.connectionPoolSize)
+  }
+
+  def salt: Array[Byte] = config.salt
+
+  def iv: Array[Byte] = config.iv
+
+  def secret: Array[Char] = config.secret
+
+  def checkAuthentication(requestHeader: RequestHeader, next: RequestHeader => Future[Result]): Future[Result] = {
+    val credentials = credentialsFromHeader(requestHeader)
+    if (credentials.isDefined && isAuthorized(requestHeader, credentials.get)) addCookie(credentials.get, next(requestHeader))
+    else unauthorizedResult
+  }
 
   private def credentialsFromHeader(requestHeader: RequestHeader): Option[(String, String)] = {
     requestHeader.headers.get(AUTHORIZATION).flatMap(authorization => {
@@ -154,55 +182,125 @@ class BasicAuthenticationFilter(configurationFactory: => BasicAuthenticationFilt
     })
   }
 
-  private lazy val realm = basic(s"""realm=\"${configuration.realm}"""")
+  private def isAuthorized(requestHeader: RequestHeader, credentials: (String, String)) = {
+    val (username, password) = credentials
+    val expectedCookie = cookieValue(username, Set(password))
+    val authorizedByCookie =
+      requestHeader.cookies.get(COOKIE_NAME).exists(_.value == expectedCookie)
+
+    authorizedByCookie || {
+      val connection = ldapConnectionPool.getConnection
+      try {
+        findUserDN(config.searchBaseDN, config.searchFilter, username, connection) match {
+          case None =>
+            logger.debug(s"Can't find user DN for username: $username. " +
+              s"Base DN: ${config.searchBaseDN}. " +
+              s"Filter: ${renderSearchFilter(config.searchFilter, username)}")
+            false
+          case Some(userDN) => Try(connection.bind(userDN, password)).isSuccess
+        }
+      } finally {
+        connection.close()
+      }
+    }
+  }
+
+
+  private def findUserDN(baseDN: String, filterTemplate: String, username: String, connection: LDAPConnection) = {
+    val filter = renderSearchFilter(filterTemplate, username)
+    val searchRequest = new SearchRequest(baseDN, SearchScope.SUB, filter)
+    Try(connection.search(searchRequest)) match {
+      case Success(sr) if sr.getEntryCount > 0 => Some(sr.getSearchEntries.get(0).getDN)
+      case _ => None
+    }
+  }
+
+  private def renderSearchFilter(filterTemplate: String, username: String) = {
+    filterTemplate.replaceAll("\\$capturedLogin\\$", username)
+  }
+
+  private def addCookie(credentials: (String, String), result: Future[Result]) = {
+    val (username, password) = credentials
+    result.map(_.withCookies(cookie(username, password)))
+  }
+
+  private def cookieValue(username: String, passwords: Set[String]): String =
+    sign(username + passwords.mkString(","))
 
   private def basic(content: String) = s"Basic $content"
+
+  private def cookie(username: String, password: String) = Cookie(COOKIE_NAME, cookieValue(username, Set(password)), maxAge = Option(3600))
 }
 
-object BasicAuthenticationFilter {
-  def apply() = new BasicAuthenticationFilter(
-    BasicAuthenticationFilterConfiguration.parse(
-      play.api.Play.current.configuration
-    )
-  )
+sealed trait AuthenticationConfig {
+  def salt: Array[Byte]
 
-  def apply(configuration: => Configuration) = new BasicAuthenticationFilter(
-    BasicAuthenticationFilterConfiguration parse configuration
-  )
+  def iv: Array[Byte]
+
+  def secret: Array[Char]
 }
 
-case class BasicAuthenticationFilterConfiguration(realm: String,
-                                                  enabled: Boolean,
-                                                  authenticator: BasicAuthenticationFilterAuthenticator,
+case class BasicAuthenticationConfig(salt: Array[Byte]
+                                     , iv: Array[Byte]
+                                     , secret: Array[Char]
+                                     , realm: String
+                                     , username: String
+                                     , passwords: Set[String]) extends AuthenticationConfig
+
+case class LDAPAuthenticationConfig(salt: Array[Byte]
+                                    , iv: Array[Byte]
+                                    , secret: Array[Char]
+                                    , realm: String
+                                    , address: String
+                                    , port: Int
+                                    , username: String
+                                    , password: String
+                                    , searchBaseDN: String
+                                    , searchFilter: String
+                                    , connectionPoolSize: Int
+                                    , sslEnabled: Boolean) extends AuthenticationConfig
+
+sealed trait AuthType[T <: AuthenticationConfig] {
+  def getConfig(config: AuthenticationConfig): T
+}
+
+case object BasicAuth extends AuthType[BasicAuthenticationConfig] {
+  def getConfig(config: AuthenticationConfig): BasicAuthenticationConfig = {
+    require(config.isInstanceOf[BasicAuthenticationConfig], s"Unexpected config type : ${config.getClass.getSimpleName}")
+    config.asInstanceOf[BasicAuthenticationConfig]
+  }
+}
+
+case object LDAPAuth extends AuthType[LDAPAuthenticationConfig] {
+  def getConfig(config: AuthenticationConfig): LDAPAuthenticationConfig = {
+    require(config.isInstanceOf[LDAPAuthenticationConfig], s"Unexpected config type : ${config.getClass.getSimpleName}")
+    config.asInstanceOf[LDAPAuthenticationConfig]
+  }
+}
+
+case class BasicAuthenticationFilterConfiguration(enabled: Boolean,
+                                                  authType: AuthType[_ <: AuthenticationConfig],
+                                                  authenticationConfig: AuthenticationConfig,
                                                   excluded: Set[String])
-
-sealed trait BasicAuthenticationFilterAuthenticator
-
-case class BasicAuthenticationFilterInternalAuthenticator(username: String,
-                                                          passwords: Set[String]) extends BasicAuthenticationFilterAuthenticator
-
-case class BasicAuthenticationFilterLdapAuthenticator(address: String,
-                                                      port: Int,
-                                                      username: String,
-                                                      password: String,
-                                                      searchBaseDN: String,
-                                                      searchFilter: String,
-                                                      connectionPoolSize: Int,
-                                                      sslEnabled: Boolean) extends BasicAuthenticationFilterAuthenticator
-
 
 object BasicAuthenticationFilterConfiguration {
 
+  private val SALT_LEN = 20
   private val defaultRealm = "Application"
+
   private def credentialsMissingRealm(realm: String) =
     s"$realm: The username or password could not be found in the configuration."
 
-  def parse(configuration: Configuration) = {
+  def parse(configuration: Configuration): BasicAuthenticationFilterConfiguration = {
 
     val root = "basicAuthentication."
-    def boolean(key: String) = configuration.getBoolean(root + key)
-    def string(key: String) = configuration.getString(root + key)
-    def int(key: String) = configuration.getInt(root + key)
+
+    def boolean(key: String) = configuration.getOptional[Boolean](root + key)
+
+    def string(key: String) = configuration.getOptional[String](root + key)
+
+    def int(key: String) = configuration.getOptional[Int](root + key)
+
     def seq(key: String) =
       Option(configuration.underlying getValue (root + key)).map { value =>
         value.valueType match {
@@ -212,10 +310,14 @@ object BasicAuthenticationFilterConfiguration {
         }
       }
 
+    val sr = new SecureRandom()
+    val salt: Array[Byte] = string("salt").map(Codecs.hexStringToByte).getOrElse(sr.generateSeed(SALT_LEN))
+    val iv: Array[Byte] = string("iv").map(Codecs.hexStringToByte).getOrElse(sr.generateSeed(SALT_LEN))
+    val secret: Array[Char] = string("secret").map(_.toCharArray).getOrElse(UUID.randomUUID().toString.toCharArray)
     val enabled = boolean("enabled").getOrElse(false)
     val ldapEnabled = boolean("ldap.enabled").getOrElse(false)
 
-    val excluded = configuration.getStringSeq(root + "excluded")
+    val excluded = configuration.getOptional[Seq[String]](root + "excluded")
       .getOrElse(Seq.empty)
       .toSet
 
@@ -238,9 +340,10 @@ object BasicAuthenticationFilterConfiguration {
       val sslEnabled = boolean("ldap.ssl").getOrElse(false)
 
       BasicAuthenticationFilterConfiguration(
-        string("realm").getOrElse(defaultRealm),
         enabled,
-        BasicAuthenticationFilterLdapAuthenticator(
+        LDAPAuth,
+        LDAPAuthenticationConfig(salt, iv, secret,
+          string("realm").getOrElse(defaultRealm),
           server, port, username, password, searchDN, searchFilter, connectionPoolSize, sslEnabled
         ),
         excluded
@@ -253,6 +356,7 @@ object BasicAuthenticationFilterConfiguration {
 
       val (username, passwords) = {
         def uuid = UUID.randomUUID.toString
+
         credentials.getOrElse((uuid, Set(uuid)))
       }
 
@@ -263,12 +367,25 @@ object BasicAuthenticationFilterConfiguration {
       }
 
       BasicAuthenticationFilterConfiguration(
-        realm(credentials.isDefined),
         enabled,
-        BasicAuthenticationFilterInternalAuthenticator(username, passwords),
+        BasicAuth,
+        BasicAuthenticationConfig(salt, iv, secret, realm(credentials.isDefined), username, passwords),
         excluded
       )
     }
 
+  }
+}
+
+object BasicAuthenticationFilter {
+  def apply(configuration: => Configuration)(implicit mat: Materializer, ec: ExecutionContext): Filter = {
+    val filterConfig = BasicAuthenticationFilterConfiguration.parse(configuration)
+    val authenticator = filterConfig.authType match {
+      case BasicAuth =>
+        new BasicAuthenticator(BasicAuth.getConfig(filterConfig.authenticationConfig))
+      case LDAPAuth =>
+        new LDAPAuthenticator(LDAPAuth.getConfig(filterConfig.authenticationConfig))
+    }
+    new BasicAuthenticationFilter(filterConfig, authenticator)
   }
 }

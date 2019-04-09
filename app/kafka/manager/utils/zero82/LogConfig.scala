@@ -18,6 +18,7 @@
 package kafka.manager.utils.zero82
 
 import java.util.Properties
+
 import kafka.manager.utils.TopicConfigs
 
 /**
@@ -131,7 +132,7 @@ object LogConfig extends TopicConfigs {
   val UncleanLeaderElectionEnableProp = "unclean.leader.election.enable"
   val MinInSyncReplicasProp = "min.insync.replicas"
 
-  val ConfigNames = Set(SegmentBytesProp,
+  val ConfigNames = Seq(SegmentBytesProp,
                         SegmentMsProp,
                         SegmentJitterMsProp,
                         SegmentIndexBytesProp,
@@ -215,4 +216,7 @@ object LogConfig extends TopicConfigs {
     }
   }
 
+  def configNamesAndDoc: Seq[(String, String)] = {
+    configNames.map(n => n -> "")
+  }
 }

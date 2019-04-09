@@ -2,30 +2,31 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@import b3.vertical.fieldConstructor
 @import kafka.manager.utils.LongFormatted
 @(cluster:String, consumer: String, topic: String, state: kafka.manager.model.ActorModel.ConsumedTopicState
-)(implicit messages: play.api.i18n.Messages)
+)(implicit messages: play.api.i18n.Messages, request:RequestHeader)
 
 
+@implicitFieldConstructor = @{ b4.vertical.fieldConstructor() }
 @getTopicCoverage(percentage: Int) = {
     @percentage match {
-        case i if i <=  99 => {danger}
+        case i if i <=  99 => {table-danger}
         case i => {}
     }
 }
 
 @ifPartitionNotOwned(owner: Option[String]) = {
     @owner match {
-    case None => {warning}
+    case None => {table-warning}
     case Some(a) => {}
     }
 }
 
 <div class="row">
     <div class="col-md-6">
-        <div class="panel panel-default">
-            <div class="panel-heading"><h4>Topic Summary</h4></div>
+        <div class="card">
+            <div class="card-header"><h4>Topic Summary</h4></div>
+            <div class="card-body">
             <table class="table">
                 <tbody>
                 <tr>
@@ -38,13 +39,15 @@
                 </tr>
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 </div>
 <div class="row">
     <div class="col-md-12">
-        <div class="panel panel-default">
-            <div class="panel-heading"><h4><a href="@routes.Topic.topic(cluster,topic)">@topic</a></h4></div>
+        <div class="card">
+            <div class="card-header"><h4><a href="@routes.Topic.topic(cluster,topic)">@topic</a></h4></div>
+            <div class="card-body">
             <table class="table">
                 <thead>
                 <tr><th>Partition</th><th>LogSize</th><th>Consumer Offset</th><th>Lag</th><th>Consumer Instance Owner</th></tr>
@@ -61,6 +64,7 @@
                 }
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 </div>

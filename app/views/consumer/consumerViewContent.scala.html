@@ -2,20 +2,21 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@import b3.vertical.fieldConstructor
-@(cluster:String, consumer: String, consumerIdentity: kafka.manager.model.ActorModel.ConsumerIdentity)(implicit messages: play.api.i18n.Messages)
+@(cluster:String, consumer: String, consumerIdentity: kafka.manager.model.ActorModel.ConsumerIdentity)(implicit messages: play.api.i18n.Messages, request:RequestHeader)
 
+@implicitFieldConstructor = @{ b4.vertical.fieldConstructor() }
 @getTopicCoverage(percentage: Int) = {
     @percentage match {
-        case i if i <=  99 => {danger}
+        case i if i <=  99 => {table-danger}
         case i => {}
     }
 }
 
 <div class="row">
     <div class="col-md-12">
-        <div class="panel panel-default">
-            <div class="panel-heading"><h4>Consumed Topic Information</h4></div>
+        <div class="card">
+            <div class="card-header"><h4>Consumed Topic Information</h4></div>
+            <div class="card-body">
             <table class="table">
                 <thead>
                 <tr><th>Topic</th><th>Partitions Covered %</th><th>Total Lag</th></tr>
@@ -32,6 +33,7 @@
                 }
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 </div>

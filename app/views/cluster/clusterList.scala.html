@@ -2,9 +2,7 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@(clusters: IndexedSeq[kafka.manager.model.ClusterConfig])(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages)
-
-@import b3.vertical.fieldConstructor
+@(clusters: IndexedSeq[kafka.manager.model.ClusterConfig])(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, request:RequestHeader)
 
             <table class="table">
                 <thead>
@@ -15,40 +13,40 @@
                 <tr>
                     <td>
                         @if(cluster.enabled) {
-                            <a href="@routes.Cluster.cluster(cluster.name)">@cluster.name</a>
+                            <a href="@routes.Cluster.cluster(cluster.name).relative">@cluster.name</a>
                         } else {
                             @cluster.name
                         }
                     </td>
                     <td>
-                        <div class="btn-group-horizontal" role="group" aria-label="...">
+                        <div class="form-group" role="group" aria-label="Cluster Operations">
                         @features.app(features.KMClusterManagerFeature) {
                             @if(cluster.enabled) {
-                                <a href="@routes.Cluster.updateCluster(cluster.name)" class="btn btn-default ops-button" role="button">Modify</a>
-                                @b3.form(routes.Cluster.handleUpdateCluster(cluster.name)) {
+                                <a href="@routes.Cluster.updateCluster(cluster.name).relative" class="btn btn-outline-primary" role="button">Modify</a>
+                                @b4.vertical.form(routes.Cluster.handleUpdateCluster(cluster.name).copy(url=routes.Cluster.handleUpdateCluster(cluster.name).relative)) { implicit fc =>
                                 <input type="hidden" name="name" value="@cluster.name">
                                 <input type="hidden" name="kafkaVersion" value="@cluster.version.toString">
                                 <input type="hidden" name="zkHosts" value="@cluster.curatorConfig.zkConnect">
                                 <input type="hidden" name="securityProtocol" value="@cluster.securityProtocol.stringId">
                                 <input type="hidden" name="operation" value="Disable">
-                                @b3.submit('class -> "btn btn-warning ops-button"){ Disable }
+                                @b4.submit('class -> "btn btn-outline-warning"){ Disable }
                                 }
                             } else {
-                                @b3.form(routes.Cluster.handleUpdateCluster(cluster.name)) {
+                                @b4.vertical.form(routes.Cluster.handleUpdateCluster(cluster.name)) { implicit fc =>
                                 <input type="hidden" name="name" value="@cluster.name">
                                 <input type="hidden" name="kafkaVersion" value="@cluster.version.toString">
                                 <input type="hidden" name="zkHosts" value="@cluster.curatorConfig.zkConnect">
                                 <input type="hidden" name="securityProtocol" value="@cluster.securityProtocol.stringId">
                                 <input type="hidden" name="operation" value="Enable">
-                                @b3.submit('class -> "btn btn-success ops-button"){ Enable }
+                                @b4.submit('class -> "btn btn-outline-success"){ Enable }
                                 }
-                                @b3.form(routes.Cluster.handleUpdateCluster(cluster.name)) {
+                                @b4.vertical.form(routes.Cluster.handleUpdateCluster(cluster.name)) { implicit fc =>
                                 <input type="hidden" name="name" value="@cluster.name">
                                 <input type="hidden" name="kafkaVersion" value="@cluster.version.toString">
                                 <input type="hidden" name="zkHosts" value="@cluster.curatorConfig.zkConnect">
                                 <input type="hidden" name="securityProtocol" value="@cluster.securityProtocol.stringId">
                                 <input type="hidden" name="operation" value="Delete">
-                                @b3.submit('class -> "btn btn-danger ops-button"){ Delete }
+                                @b4.submit('class -> "btn btn-outline-danger"){ Delete }
                                 }
                             }
                         }

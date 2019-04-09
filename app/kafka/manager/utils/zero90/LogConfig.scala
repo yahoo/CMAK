@@ -18,11 +18,12 @@
 package kafka.manager.utils.zero90
 
 import java.util.Properties
+
 import kafka.manager.utils.TopicConfigs
 import org.apache.kafka.common.utils.Utils
 import org.apache.kafka.common.config.{AbstractConfig, ConfigDef}
 import kafka.message.BrokerCompressionCodec
-import kafka.message.Message
+import org.apache.kafka.common.record.LegacyRecord
 
 object Defaults {
   val SegmentSize = kafka.server.Defaults.LogSegmentBytes
@@ -133,7 +134,7 @@ object LogConfig extends TopicConfigs {
     import ConfigDef.Importance._
 
     new ConfigDef()
-      .define(SegmentBytesProp, INT, Defaults.SegmentSize, atLeast(Message.MinMessageOverhead), MEDIUM, SegmentSizeDoc)
+      .define(SegmentBytesProp, INT, Defaults.SegmentSize, atLeast(LegacyRecord.RECORD_OVERHEAD_V0), MEDIUM, SegmentSizeDoc)
       .define(SegmentMsProp, LONG, Defaults.SegmentMs, atLeast(0), MEDIUM, SegmentMsDoc)
       .define(SegmentJitterMsProp, LONG, Defaults.SegmentJitterMs, atLeast(0), MEDIUM, SegmentJitterMsDoc)
       .define(SegmentIndexBytesProp, INT, Defaults.MaxIndexSize, atLeast(0), MEDIUM, MaxIndexSizeDoc)
@@ -161,9 +162,9 @@ object LogConfig extends TopicConfigs {
 
   def apply(): LogConfig = LogConfig(new Properties())
 
-  val configNames : Set[String] = {
+  val configNames : Seq[String] = {
     import scala.collection.JavaConverters._
-    configDef.names().asScala.toSet
+    configDef.names.asScala.toSeq.sorted
   }
 
 
@@ -181,9 +182,9 @@ object LogConfig extends TopicConfigs {
     * Check that property names are valid
     */
   def validateNames(props: Properties) {
-    import scala.collection.JavaConversions._
+    import scala.collection.JavaConverters._
     val names = configDef.names()
-    for(name <- props.keys)
+    for(name <- props.keys.asScala)
       require(names.contains(name), "Unknown configuration \"%s\".".format(name))
   }
 
@@ -195,4 +196,13 @@ object LogConfig extends TopicConfigs {
     configDef.parse(props)
   }
 
+  def configNamesAndDoc: Seq[(String, String)] = {
+    Option(configDef).fold {
+      configNames.map(n => n -> "")
+    } {
+      configDef =>
+        val keyMap = configDef.configKeys()
+        configNames.map(n => n -> Option(keyMap.get(n)).map(_.documentation).flatMap(Option.apply).getOrElse(""))
+    }
+  }
 }

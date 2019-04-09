@@ -5,29 +5,27 @@
 
 package controllers
 
-import features.{KMReassignPartitionsFeature, ApplicationFeatures}
-import kafka.manager.model.ActorModel
-import ActorModel._
+import features.{ApplicationFeatures, KMReassignPartitionsFeature}
 import kafka.manager.ApiError
-import models.form.ReassignPartitionOperation.{ForceRunAssignment, UnknownRPO, RunAssignment}
-import models.navigation.Menus
-import models.{navigation, FollowLink}
+import kafka.manager.model.ActorModel._
+import models.FollowLink
+import models.form.ReassignPartitionOperation.{ForceRunAssignment, RunAssignment, UnknownRPO}
 import models.form._
+import models.navigation.Menus
 import play.api.data.Form
 import play.api.data.Forms._
-import play.api.data.validation.{Valid, Invalid, Constraint}
-import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.data.validation.{Constraint, Invalid, Valid}
+import play.api.i18n.I18nSupport
 import play.api.mvc._
 
-import scala.concurrent.Future
-import scalaz.{\/, \/-, -\/}
+import scala.concurrent.{ExecutionContext, Future}
+import scalaz.{-\/, \/, \/-}
 
 /**
  * @author hiral
  */
-class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManagerContext)
-                         (implicit af: ApplicationFeatures, menus: Menus)  extends Controller with I18nSupport {
-  import play.api.libs.concurrent.Execution.Implicits.defaultContext
+class ReassignPartitions (val cc: ControllerComponents, val kafkaManagerContext: KafkaManagerContext)
+                         (implicit af: ApplicationFeatures, menus: Menus, ec:ExecutionContext)  extends AbstractController(cc) with I18nSupport {
 
   private[this] implicit val kafkaManager = kafkaManagerContext.getKafkaManager
 
@@ -101,13 +99,13 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
     )(GenerateMultipleAssignments.apply)(GenerateMultipleAssignments.unapply)
   )
 
-  def reassignPartitions(c: String) = Action.async {
+  def reassignPartitions(c: String) = Action.async { implicit request:RequestHeader =>
     kafkaManager.getReassignPartitions(c).map { errorOrStatus =>
       Ok(views.html.reassignPartitions(c,errorOrStatus)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }
   }
 
-  def runMultipleAssignments(c: String) = Action.async {
+  def runMultipleAssignments(c: String) = Action.async { implicit request:RequestHeader =>
     featureGate(KMReassignPartitionsFeature) {
       kafkaManager.getTopicList(c).flatMap { errorOrSuccess =>
         withClusterContext(c)(
@@ -125,7 +123,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
     }
   }
 
-  def confirmAssignment(c: String, t: String) = Action.async {
+  def confirmAssignment(c: String, t: String) = Action.async { implicit request:RequestHeader =>
     featureGate(KMReassignPartitionsFeature) {
       kafkaManager.getBrokerList(c).flatMap { errorOrSuccess =>
         withClusterContext(c)(
@@ -146,7 +144,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
     }
   }
 
-  def confirmMultipleAssignments(c: String) = Action.async {
+  def confirmMultipleAssignments(c: String) = Action.async { implicit request:RequestHeader =>
     featureGate(KMReassignPartitionsFeature) {
       kafkaManager.getTopicList(c).flatMap { errOrTL =>
         withClusterContext(c)(
@@ -179,7 +177,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
     })
   }
 
-  def manualAssignments(c: String, t: String): Action[AnyContent] = Action.async {
+  def manualAssignments(c: String, t: String): Action[AnyContent] = Action.async { implicit request:RequestHeader =>
     featureGate(KMReassignPartitionsFeature) {
       
       withClusterFeatures(c)( err => {
@@ -260,7 +258,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
     }
   }
 
-  def handleManualAssignment(c: String, t: String) = Action.async { implicit request =>
+  def handleManualAssignment(c: String, t: String) = Action.async { implicit request:Request[AnyContent] =>
     featureGate(KMReassignPartitionsFeature) {
       def validateAssignment(assignment: List[(String, List[(Int, List[Int])])]) = {
         (for {
@@ -310,7 +308,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
     }
   }
 
-  def handleGenerateAssignment(c: String, t: String) = Action.async { implicit request =>
+  def handleGenerateAssignment(c: String, t: String) = Action.async { implicit request:Request[AnyContent] =>
     featureGate(KMReassignPartitionsFeature) {
       withClusterContext(c)(
         err => Future.successful(
@@ -342,7 +340,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
     }
   }
 
-  def handleGenerateMultipleAssignments(c: String) = Action.async { implicit request =>
+  def handleGenerateMultipleAssignments(c: String) = Action.async { implicit request:Request[AnyContent] =>
     featureGate(KMReassignPartitionsFeature) {
       withClusterContext(c)(
         err => Future.successful(
@@ -370,7 +368,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
     }
   }
   
-  def handleRunMultipleAssignments(c: String) = Action.async { implicit request =>
+  def handleRunMultipleAssignments(c: String) = Action.async { implicit request:Request[AnyContent] =>
     featureGate(KMReassignPartitionsFeature) {
       withClusterContext(c)(
         err => Future.successful(
@@ -401,7 +399,7 @@ class ReassignPartitions (val messagesApi: MessagesApi, val kafkaManagerContext:
     }
   }
 
-  def handleOperation(c: String, t: String) = Action.async { implicit request =>
+  def handleOperation(c: String, t: String) = Action.async { implicit request:Request[AnyContent] =>
     featureGate(KMReassignPartitionsFeature) {
       withClusterContext(c)(
         err => Future.successful(

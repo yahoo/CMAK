@@ -7,20 +7,20 @@ package controllers
 
 import features.ApplicationFeatures
 import models.navigation.Menus
-import play.api.i18n.{MessagesApi, I18nSupport}
+import play.api.i18n.I18nSupport
 import play.api.mvc._
+
+import scala.concurrent.ExecutionContext
 
 /**
  * @author hiral
  */
-class Application (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManagerContext)
-                  (implicit af: ApplicationFeatures, menus: Menus) extends Controller with I18nSupport {
-
-  import play.api.libs.concurrent.Execution.Implicits.defaultContext
+class Application(val cc: ControllerComponents, kafkaManagerContext: KafkaManagerContext)
+                 (implicit af: ApplicationFeatures, menus: Menus, ec:ExecutionContext) extends AbstractController(cc) with I18nSupport {
 
   private[this] val kafkaManager = kafkaManagerContext.getKafkaManager
 
-  def index = Action.async {
+  def index = Action.async { implicit request: RequestHeader =>
     kafkaManager.getClusterList.map { errorOrClusterList =>
       Ok(views.html.index(errorOrClusterList)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }

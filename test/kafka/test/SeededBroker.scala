@@ -4,6 +4,7 @@
  */
 package kafka.test
 
+import java.time.Duration
 import java.util.{Properties, UUID}
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -242,7 +243,7 @@ case class NewKafkaManagedConsumer(topic: String,
   def read(write: (String)=>Unit) = {
     import collection.JavaConverters._
     while (true) {
-      val records : ConsumerRecords[String, String] = consumer.poll(pollMillis)
+      val records : ConsumerRecords[String, String] = consumer.poll(Duration.ofMillis(pollMillis))
       for(record <- records.asScala) {
         write(record.value())
       }

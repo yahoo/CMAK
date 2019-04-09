@@ -3,10 +3,10 @@
 * See accompanying LICENSE file.
 *@
 @import scalaz.{\/}
-@import b3.vertical.fieldConstructor
 @(cluster:String, errorOrStatus: kafka.manager.ApiError \/ Option[kafka.manager.model.ActorModel.ReassignPartitions]
-)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
 
+@implicitFieldConstructor = @{ b4.vertical.fieldConstructor() }
 @theMenu = {
 @views.html.navigation.clusterMenu(cluster,"Reassign Partitions","",menus.clusterMenus(cluster)(
     errorOrStatus.toOption.flatten.map(_.clusterContext.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
@@ -21,8 +21,9 @@
 </div>
 } { repar =>
 <div class="row">
-    <div class="panel panel-default">
-        <div class="panel-heading">Status</div>
+    <div class="card">
+        <div class="card-header"><h4>Status</h4></div>
+        <div class="card-body">
         <table class="table">
             <tbody>
             <tr>
@@ -34,11 +35,13 @@
             </tr>
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 <div class="row">
-    <div class="panel panel-default">
-        <div class="panel-heading">Request Data</div>
+    <div class="card">
+        <div class="card-header"><h4>Request Data</h4></div>
+        <div class="card-body">
         <table class="table">
             <thead>
             <tr><th>Topic</th><th>Partition</th><th>Replica Assignment</th></tr>
@@ -53,6 +56,7 @@
             }
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 }
@@ -63,8 +67,8 @@
     menu = theMenu,
     breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Reassign Partitions",cluster))) {
 <div class="col-md-6 un-pad-me">
-    <div class="panel panel-default">
-        <div class="panel-heading"><h3>Reassign Partitions</h3></div>
+    <div class="card">
+        <div class="card-header"><h3>Reassign Partitions</h3></div>
         <div class="col-md-12">
             @errorOrStatus.fold[Html](views.html.errors.onApiError(_), renderView(cluster, _))
         </div>
