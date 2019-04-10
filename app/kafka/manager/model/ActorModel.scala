@@ -90,7 +90,7 @@ object ActorModel {
   case class CMDeleteTopic(topic: String) extends CommandRequest
   case class CMRunPreferredLeaderElection(topics: Set[String]) extends CommandRequest
   case class CMRunReassignPartition(topics: Set[String], forceSet: Set[ForceReassignmentCommand]) extends CommandRequest
-  case class CMGeneratePartitionAssignments(topics: Set[String], brokers: Set[Int]) extends CommandRequest
+  case class CMGeneratePartitionAssignments(topics: Set[String], brokers: Set[Int], replicationFactor: Option[Int] = None) extends CommandRequest
   case class CMManualPartitionAssignments(assignments: List[(String, List[(Int, List[Int])])]) extends CommandRequest
 
   //these are used by Logkafka

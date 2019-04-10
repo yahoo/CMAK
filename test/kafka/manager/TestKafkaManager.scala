@@ -262,6 +262,22 @@ class TestKafkaManager extends CuratorAwareTest with BaseTest {
     Thread.sleep(2000)
   }
 
+  test("generate partition assignments with replication factor") {
+    val topicList = getTopicList()
+    val future = kafkaManager.generatePartitionAssignments("dev", topicList.list.toSet, Set(0), Some(1))
+    val result = Await.result(future, duration)
+    assert(result.isRight === true)
+    Thread.sleep(2000)
+  }
+
+  test("fail to generate partition assignments with replication factor larger than available brokers") {
+    val topicList = getTopicList()
+    val future = kafkaManager.generatePartitionAssignments("dev", topicList.list.toSet, Set(0), Some(2))
+    val result = Await.result(future, duration)
+    assert(result.isLeft === true)
+    Thread.sleep(2000)
+  }
+
   test("run reassign partitions") {
     val topicList = getTopicList()
     val future = kafkaManager.runReassignPartitions("dev",topicList.list.toSet)

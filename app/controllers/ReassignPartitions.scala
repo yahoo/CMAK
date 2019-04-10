@@ -77,7 +77,8 @@ class ReassignPartitions (val cc: ControllerComponents, val kafkaManagerContext:
           "host" -> nonEmptyText,
           "selected" -> boolean
         )(BrokerSelect.apply)(BrokerSelect.unapply)
-      }
+      },
+      "replicationFactor" -> optional(number(min = 1))
     )(GenerateAssignment.apply)(GenerateAssignment.unapply)
   )
 
@@ -322,7 +323,7 @@ class ReassignPartitions (val cc: ControllerComponents, val kafkaManagerContext:
               }
             },
             assignment => {
-              kafkaManager.generatePartitionAssignments(c, Set(t), assignment.brokers.filter(_.selected).map(_.id).toSet).map { errorOrSuccess =>
+              kafkaManager.generatePartitionAssignments(c, Set(t), assignment.brokers.filter(_.selected).map(_.id).toSet, assignment.replicationFactor).map { errorOrSuccess =>
                 implicit val clusterFeatures = cc.clusterFeatures
                 Ok(views.html.common.resultsOfCommand(
                   views.html.navigation.clusterMenu(c, "Reassign Partitions", "", menus.clusterMenus(c)),
@@ -332,7 +333,6 @@ class ReassignPartitions (val cc: ControllerComponents, val kafkaManagerContext:
                   FollowLink("Go to topic view.", routes.Topic.topic(c, t).toString()),
                   FollowLink("Try again.", routes.Topic.topic(c, t).toString())
                 )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
-
               }
             }
           )
@@ -418,7 +418,7 @@ class ReassignPartitions (val cc: ControllerComponents, val kafkaManagerContext:
                     errorOrSuccess,
                     s"Run Reassign Partitions - $t",
                     FollowLink("Go to reassign partitions.", routes.ReassignPartitions.reassignPartitions(c).toString()),
-                    FollowLink("Try again.", routes.Topic.topic(c, t).toString())
+                    FollowLink("Try force running!", routes.Topic.topic(c, t, force = true).toString())
                   )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
                 }
               case Some(ForceRunAssignment) =>

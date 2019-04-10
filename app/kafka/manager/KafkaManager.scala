@@ -385,13 +385,14 @@ class KafkaManager(akkaConfig: Config) extends Logging {
   def generatePartitionAssignments(
                                     clusterName: String,
                                     topics: Set[String],
-                                    brokers: Set[Int]
+                                    brokers: Set[Int],
+                                    replicationFactor: Option[Int] = None
                                     ): Future[IndexedSeq[ApiError] \/ Unit] =
   {
     val results = tryWithKafkaManagerActor(
       KMClusterCommandRequest(
         clusterName,
-        CMGeneratePartitionAssignments(topics, brokers)
+        CMGeneratePartitionAssignments(topics, brokers, replicationFactor)
       )
     ) { result: CMCommandResults =>
       val errors = result.result.collect { case Failure(t) => ApiError(t.getMessage)}

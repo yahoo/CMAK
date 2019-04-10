@@ -460,7 +460,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           }
         } pipeTo sender()
 
-      case CMGeneratePartitionAssignments(topics, brokers) =>
+      case CMGeneratePartitionAssignments(topics, brokers, replicationFactor) =>
         implicit val ec = longRunningExecutionContext
         val topicCheckFutureBefore = checkTopicsUnderAssignment(topics)
 
@@ -478,7 +478,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
             tis.map(ti => (ti.topic, adminUtils.assignReplicasToBrokers(
               brokers,
               ti.partitions,
-              ti.replicationFactor)))
+              replicationFactor.getOrElse(ti.replicationFactor))))
           }
         }
 
