@@ -4,7 +4,7 @@
 *@
 @import scalaz.{\/}
 @(cluster:String, brokerId: Int, errorOrBrokerView: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.BVView
-)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
 
 @theMenu = {
     @views.html.navigation.clusterMenu(cluster,"Brokers","",menus.clusterMenus(cluster)(
@@ -29,11 +29,13 @@
     breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndCluster("Broker View",cluster,brokerId.toString)),
     scripts=brokerScripts) {
 <div class="col-md-12 un-pad-me">
-    <div class="panel panel-default">
-        <div class="panel-heading">
-            <h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>Broker Id @brokerId</h3>
-        </div>
+    <div class="card">
+        <div class="card-header">
+            <h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="octicon octicon-arrow-left" aria-hidden="true"></span></button>Broker Id @brokerId</h3>
+       </div>
+        <div class="card-body">
     @errorOrBrokerView.fold[Html](views.html.errors.onApiError(_), views.html.broker.brokerViewContent(cluster, brokerId, _))
+       </div>
     </div>
 </div>
 }

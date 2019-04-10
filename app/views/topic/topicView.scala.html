@@ -10,7 +10,7 @@
 , errorOrTopicIdentity: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.TopicIdentity
 , optConsumerList: Option[Iterable[(String, ConsumerType)]]
 , reassignPartitionOperation: ReassignPartitionOperation
-)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
 
 @theMenu = {
     @views.html.navigation.clusterMenu(cluster,"Topic","",menus.clusterMenus(cluster)(
@@ -22,11 +22,12 @@
     menu = theMenu,
     breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndCluster("Topic View",cluster,topic))) {
 <div class="col-md-12 un-pad-me">
-    <div class="panel panel-default">
-        <div class="panel-heading">
-            <h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>@topic</h3>
-        </div>
+    <div class="card">
+        <div class="card-header">
+            <h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="octicon octicon-arrow-left" aria-hidden="true"></span></button>@topic</h3></div>
+        <div class="card-body">
         @errorOrTopicIdentity.fold(views.html.errors.onApiError(_),views.html.topic.topicViewContent(cluster,topic,_,optConsumerList.getOrElse(Iterable.empty[(String, ConsumerType)]), reassignPartitionOperation))
+        </div>
     </div>
 </div>
 }

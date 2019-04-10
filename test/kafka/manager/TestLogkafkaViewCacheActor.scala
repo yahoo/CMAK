@@ -5,6 +5,7 @@
 package kafka.manager
 
 import java.util.Properties
+import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, ActorSystem, Kill, Props}
 import akka.pattern._
@@ -13,8 +14,8 @@ import com.typesafe.config.{Config, ConfigFactory}
 import kafka.manager.actor.cluster.KafkaStateActor
 import kafka.manager.base.LongRunningPoolConfig
 import kafka.manager.features.ClusterFeatures
-import kafka.manager.logkafka.{LogkafkaViewCacheActorConfig, LogkafkaViewCacheActor}
-import kafka.manager.model.{ClusterContext, ClusterConfig, ActorModel}
+import kafka.manager.logkafka.{LogkafkaViewCacheActor, LogkafkaViewCacheActorConfig}
+import kafka.manager.model.{ActorModel, ClusterConfig, ClusterContext}
 import kafka.manager.utils.KafkaServerInTest
 import ActorModel._
 import kafka.test.SeededBroker
@@ -62,7 +63,7 @@ class TestLogkafkaViewCacheActor extends KafkaServerInTest with BaseTest {
   override protected def afterAll(): Unit = {
     logkafkaViewCacheActor.foreach( _ ! Kill )
     logkafkaStateActor.foreach( _ ! Kill )
-    system.shutdown()
+    Try(Await.ready(system.terminate(), Duration(5, TimeUnit.SECONDS)))
     Try(broker.shutdown())
     super.afterAll()
   }

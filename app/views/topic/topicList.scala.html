@@ -4,7 +4,7 @@
 *@
 @import scalaz.{\/}
 @(cluster:String, errorOrTopics: kafka.manager.ApiError \/ kafka.manager.TopicListExtended
-)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
 
 @theMenu = {
     @views.html.navigation.clusterMenu(cluster,"Topic","List",menus.clusterMenus(cluster)(
@@ -44,8 +44,10 @@
     scripts=topicScripts) {
     <div class="col-md-12">
         @features.app(features.KMTopicManagerFeature) {
-        <div class="panel panel-default">
-            <div class="panel-heading"><h4>Operations</h4></div>
+        <div class="card">
+            <div class="card-header"><h4>Operations</h4></div>
+            <div class="card-body">
+            <div class="col-md-6">
             <table class="table">
                 <tr>
                     @features.app(features.KMReassignPartitionsFeature) {
@@ -62,12 +64,14 @@
                 </tr>
                 </tbody>
             </table>
+            </div>
+            </div>
         </div>
         }
     </div>
     <div class="col-md-12">
-        <div class="panel panel-default">
-            <div class="panel-heading"><h3>Topics</h3></div>
+        <div class="card">
+            <div class="card-body"><h3>Topics</h3>
             @errorOrTopics.fold( 
                 views.html.errors.onApiError(_),
                 tl => views.html.topic.topicListContent(
@@ -75,6 +79,7 @@
                         tl.underReassignments,
                         tl.list.headOption.map(opt => opt._2.map(ti => ti.clusterContext.config.pollConsumers).getOrElse(false)).getOrElse(false),
                         tl.list.headOption.map(opt => opt._2.map(ti => ti.clusterContext.config.displaySizeEnabled).getOrElse(false)).getOrElse(false)))
+            </div>
         </div>
     </div>
 }

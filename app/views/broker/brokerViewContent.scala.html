@@ -2,22 +2,23 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@(cluster: String, brokerId: Int, brokerView :kafka.manager.model.ActorModel.BVView)(implicit messages: play.api.i18n.Messages)
+@(cluster: String, brokerId: Int, brokerView :kafka.manager.model.ActorModel.BVView)(implicit messages: play.api.i18n.Messages, request:RequestHeader)
 
 @renderBrokerMetrics = {
     @if(brokerView.clusterContext.clusterFeatures.features(kafka.manager.features.KMJMXMetricsFeature)) {
         @views.html.common.brokerMetrics(brokerView.metrics)
     } else {
         <div class="alert alert-info" role="alert">
-            Please enable JMX polling <a href="@routes.Cluster.updateCluster(cluster)" class="alert-link">here</a>.
+            Please enable JMX polling <a href="@routes.Cluster.updateCluster(cluster).relative" class="alert-link">here</a>.
         </div>
     }
 }
 
         <div class="row">
             <div class="col-md-7">
-                <div class="panel panel-default">
-                    <div class="panel-heading"><h4>Summary</h4></div>
+                <div class="card">
+                    <div class="card-header"><h4>Summary</h4></div>
+                    <div class="card-body">
                     <table class="table">
                         <tbody>
                         <tr><td># of Topics</td><td>@brokerView.numTopics</td></tr>
@@ -30,19 +31,23 @@
                         }
                         </tbody>
                     </table>
+                    </div>
                 </div>
             </div>
             <div class="col-md-5">
-                <div class="panel panel-default">
-                    <div class="panel-heading"><h4>Metrics</h4></div>
+                <div class="card">
+                    <div class="card-header"><h4>Metrics</h4></div>
+                    <div class="card-body">
                     @renderBrokerMetrics
+                    </div>
                 </div>
             </div>
         </div>
         <div class="row">
             <div class="col-md-12">
-                <div class="panel panel-default">
-                    <div class="panel-heading"><h4>Messages count</h4></div>
+                <div class="card">
+                    <div class="card-header"><h4>Messages count</h4></div>
+                    <div class="card-body">
                     <div class="ct-chart"></div>
                     <script>
                         var options = {
@@ -61,11 +66,13 @@
                         };
                         new Chartist.Line('.ct-chart', data, options);
                     </script>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="panel panel-default">
-            <div class="panel-heading"><h4>Per Topic Detail</h4></div>
+        <div class="card">
+            <div class="card-header"><h4>Per Topic Detail</h4></div>
+            <div class="card-body">
             <table class="table" id="broker-table" style="table-layout: fixed; width: 100%">
                 <thead>
                 <tr>
@@ -92,5 +99,6 @@
                 }
                 </tbody>
             </table>
+            </div>
         </div>
 

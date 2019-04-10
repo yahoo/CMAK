@@ -117,6 +117,46 @@ You should increase the above for large # of consumers with consumer polling ena
 
 Kafka managed consumer offset is now consumed by KafkaManagedOffsetCache from the "__consumer_offsets" topic.  Note, this has not been tested with large number of offsets being tracked.  There is a single thread per cluster consuming this topic so it may not be able to keep up on large # of offsets being pushed to the topic.
 
+### Authenticating a User with LDAP
+Warning, you need to have SSL configured with Kafka Manager to ensure your credentials aren't passed unencrypted.
+Authenticating a User with LDAP is possible by passing the user credentials with the Authorization header.
+LDAP authentication is done on first visit, if successful, a cookie is set.
+On next request, the cookie value is compared with credentials from Authorization header.
+LDAP support is through the basic authentication filter.
+
+1. Configure basic authentication
+- basicAuthentication.enabled=true
+- basicAuthentication.realm=< basic authentication realm>
+
+2. Encryption parameters (optional, otherwise randomly generated on startup) :
+- basicAuthentication.salt="some-hex-string-representing-byte-array"
+- basicAuthentication.iv="some-hex-string-representing-byte-array"
+- basicAuthentication.secret="my-secret-string"
+
+3. Configure LDAP/LDAPS authentication
+- basicAuthentication.ldap.enabled=< Boolean flag to enable/disable ldap authentication >
+- basicAuthentication.ldap.server=< fqdn of LDAP server>
+- basicAuthentication.ldap.port=< port of LDAP server>
+- basicAuthentication.ldap.username=< LDAP search username>
+- basicAuthentication.ldap.password=< LDAP search password>
+- basicAuthentication.ldap.search-base-dn=< LDAP search base>
+- basicAuthentication.ldap.search-filter=< LDAP search filter>
+- basicAuthentication.ldap.connection-pool-size=< number of connection to LDAP server>
+- basicAuthentication.ldap.ssl=< Boolean flag to enable/disable LDAPS>
+
+#### Example (Online LDAP Test Server):
+
+- basicAuthentication.ldap.enabled=true
+- basicAuthentication.ldap.server="ldap.forumsys.com"
+- basicAuthentication.ldap.port=389
+- basicAuthentication.ldap.username="cn=read-only-admin,dc=example,dc=com"
+- basicAuthentication.ldap.password="password"
+- basicAuthentication.ldap.search-base-dn="dc=example,dc=com"
+- basicAuthentication.ldap.search-filter="(uid=$capturedLogin$)"
+- basicAuthentication.ldap.connection-pool-size=10
+- basicAuthentication.ldap.ssl=false
+
+
 Deployment
 ----------
 

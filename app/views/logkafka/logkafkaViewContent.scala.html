@@ -2,14 +2,14 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@import b3.vertical.fieldConstructor
 @(cluster:String, logkafka_id: String, log_path: String, logkafkaIdentity: kafka.manager.model.ActorModel.LogkafkaIdentity
-)(implicit messages: play.api.i18n.Messages)
+)(implicit messages: play.api.i18n.Messages, request:RequestHeader)
 
-<div class="row">
+<div class="card-body row">
     <div class="col-md-8">
-        <div class="panel panel-default">
-            <div class="panel-heading"><h4>Logkafka Summary</h4></div>
+        <div class="card">
+            <div class="card-header"><h4>Logkafka Summary</h4></div>
+            <div class="card-body">
             <table class="table">
                 <tbody>
                 <tr>
@@ -42,20 +42,22 @@
                 }
               }
             }
+            </div>
         </div>
     </div>
     <div class="col-md-4">
-        <div class="panel panel-default">
-            <div class="panel-heading"><h4>Operations</h4></div>
+        <div class="card">
+            <div class="card-header"><h4>Operations</h4></div>
+            <div class="card-body">
             <table class="table">
                 <tbody>
                 <tr>
                     <td>
-                        @b3.form(routes.Logkafka.handleDeleteLogkafka(cluster, logkafka_id, log_path)) {
+                        @b4.vertical.form(routes.Logkafka.handleDeleteLogkafka(cluster, logkafka_id, log_path)) { implicit fc =>
                         <fieldset>
-                            @b3.hidden("logkafka_id", logkafka_id)
-                            @b3.hidden("log_path", log_path)
-                            @b3.submit('class -> "submit-button btn btn-primary"){ Delete Logkafka }
+                            @b4.hidden("logkafka_id", logkafka_id)
+                            @b4.hidden("log_path", log_path)
+                            @b4.submit('class -> "submit-button btn btn-primary"){ Delete Logkafka }
                         </fieldset>
                         }
                     </td>
@@ -67,6 +69,7 @@
                 </tr>
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 </div>

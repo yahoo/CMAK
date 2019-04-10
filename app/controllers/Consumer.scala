@@ -7,32 +7,32 @@ package controllers
 
 import features.ApplicationFeatures
 import models.navigation.Menus
-import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.i18n.I18nSupport
 import play.api.mvc._
+
+import scala.concurrent.ExecutionContext
 
 /**
  * @author cvcal
  */
-class Consumer (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManagerContext)
-               (implicit af: ApplicationFeatures, menus: Menus) extends Controller with I18nSupport {
-
-  import play.api.libs.concurrent.Execution.Implicits.defaultContext
+class Consumer (val cc: ControllerComponents, val kafkaManagerContext: KafkaManagerContext)
+               (implicit af: ApplicationFeatures, menus: Menus, ec: ExecutionContext) extends AbstractController(cc) with I18nSupport {
 
   private[this] val kafkaManager = kafkaManagerContext.getKafkaManager
 
-  def consumers(cluster: String) = Action.async {
+  def consumers(cluster: String) = Action.async { implicit request: RequestHeader =>
     kafkaManager.getConsumerListExtended(cluster).map { errorOrConsumerList =>
       Ok(views.html.consumer.consumerList(cluster, errorOrConsumerList)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }
   }
 
-  def consumer(cluster: String, consumerGroup: String, consumerType: String) = Action.async {
+  def consumer(cluster: String, consumerGroup: String, consumerType: String) = Action.async { implicit request: RequestHeader =>
     kafkaManager.getConsumerIdentity(cluster,consumerGroup, consumerType).map { errorOrConsumerIdentity =>
       Ok(views.html.consumer.consumerView(cluster,consumerGroup,errorOrConsumerIdentity)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }
   }
 
-  def consumerAndTopic(cluster: String, consumerGroup: String, topic: String, consumerType: String) = Action.async {
+  def consumerAndTopic(cluster: String, consumerGroup: String, topic: String, consumerType: String) = Action.async { implicit request: RequestHeader =>
     kafkaManager.getConsumedTopicState(cluster,consumerGroup,topic, consumerType).map { errorOrConsumedTopicState =>
       Ok(views.html.consumer.consumedTopicView(cluster,consumerGroup,consumerType,topic,errorOrConsumedTopicState)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }

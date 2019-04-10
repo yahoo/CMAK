@@ -8,24 +8,23 @@ package controllers
 import features.{ApplicationFeatures, KMPreferredReplicaElectionFeature}
 import kafka.manager.ApiError
 import kafka.manager.features.ClusterFeatures
+import models.FollowLink
+import models.form.{PreferredReplicaElectionOperation, RunElection, UnknownPREO}
 import models.navigation.Menus
-import models.{navigation, FollowLink}
-import models.form.{UnknownPREO, RunElection, PreferredReplicaElectionOperation}
 import play.api.data.Form
 import play.api.data.Forms._
-import play.api.data.validation.{Valid, Invalid, Constraint}
-import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.data.validation.{Constraint, Invalid, Valid}
+import play.api.i18n.I18nSupport
 import play.api.mvc._
 
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 import scalaz.-\/
 
 /**
  * @author hiral
  */
-class PreferredReplicaElection (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManagerContext)
-                               (implicit af: ApplicationFeatures, menus: Menus) extends Controller with I18nSupport {
-  import play.api.libs.concurrent.Execution.Implicits.defaultContext
+class PreferredReplicaElection (val cc: ControllerComponents, val kafkaManagerContext: KafkaManagerContext)
+                               (implicit af: ApplicationFeatures, menus: Menus, ec:ExecutionContext) extends AbstractController(cc) with I18nSupport {
 
   private[this] val kafkaManager = kafkaManagerContext.getKafkaManager
   private[this] implicit val cf: ClusterFeatures = ClusterFeatures.default
@@ -42,14 +41,14 @@ class PreferredReplicaElection (val messagesApi: MessagesApi, val kafkaManagerCo
     )(PreferredReplicaElectionOperation.apply)(PreferredReplicaElectionOperation.unapply)
   )
 
-  def preferredReplicaElection(c: String) = Action.async {
+  def preferredReplicaElection(c: String) = Action.async { implicit request: RequestHeader =>
     kafkaManager.getPreferredLeaderElection(c).map { errorOrStatus =>
       Ok(views.html.preferredReplicaElection(c,errorOrStatus,preferredReplicaElectionForm)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }
   }
 
 
-  def handleRunElection(c: String) = Action.async { implicit request =>
+  def handleRunElection(c: String) = Action.async { implicit request: Request[AnyContent] =>
     featureGate(KMPreferredReplicaElectionFeature) {
       preferredReplicaElectionForm.bindFromRequest.fold(
         formWithErrors => Future.successful(BadRequest(views.html.preferredReplicaElection(c, -\/(ApiError("Unknown operation!")), formWithErrors))),

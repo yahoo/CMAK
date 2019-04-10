@@ -8,6 +8,7 @@ package kafka.manager.actor.cluster
 import java.io.Closeable
 import java.net.InetAddress
 import java.nio.ByteBuffer
+import java.time.Duration
 import java.util.Properties
 import java.util.concurrent.{ConcurrentLinkedDeque, TimeUnit}
 
@@ -16,8 +17,6 @@ import akka.pattern._
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine, RemovalCause, RemovalListener}
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import grizzled.slf4j.Logging
-import kafka.admin.AdminClient
-import kafka.api.PartitionOffsetRequestInfo
 import kafka.common.{OffsetAndMetadata, TopicAndPartition}
 import kafka.manager._
 import kafka.manager.base.cluster.{BaseClusterQueryActor, BaseClusterQueryCommandActor}
@@ -33,11 +32,10 @@ import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.cache._
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.{Consumer, ConsumerRecords, KafkaConsumer}
-import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.{ConsumerGroupState, TopicPartition}
 import org.apache.kafka.common.requests.DescribeGroupsResponse
 import org.joda.time.{DateTime, DateTimeZone}
 
-import scala.collection.JavaConversions.{mapAsScalaMap, _}
 import scala.collection.concurrent.TrieMap
 import scala.collection.immutable.Map
 import scala.collection.mutable
@@ -48,6 +46,9 @@ import org.apache.kafka.clients.consumer.internals.ConsumerProtocol
 import org.apache.kafka.common.config.SaslConfigs
 import org.apache.kafka.common.protocol.Errors
 import org.apache.kafka.clients.CommonClientConfigs.SECURITY_PROTOCOL_CONFIG
+import org.apache.kafka.clients.admin.{AdminClient, ConsumerGroupDescription, DescribeConsumerGroupsOptions}
+import org.apache.kafka.common.KafkaFuture.BiConsumer
+import org.apache.kafka.common.utils.Time
 
 /**
   * @author hiral
@@ -56,6 +57,7 @@ import kafka.manager.utils._
 
 import scala.collection.JavaConverters._
 
+case class PartitionOffsetRequestInfo(time: Long, maxNumOffsets: Int)
 case class KafkaAdminClientActorConfig(clusterContext: ClusterContext, longRunningPoolConfig: LongRunningPoolConfig, kafkaStateActorPath: ActorPath, consumerProperties: Option[Properties])
 case class KafkaAdminClientActor(config: KafkaAdminClientActorConfig) extends BaseClusterQueryActor with LongRunningPoolActor {
 
@@ -125,27 +127,24 @@ case class KafkaAdminClientActor(config: KafkaAdminClientActorConfig) extends Ba
       request match {
         case KAGetGroupSummary(groupList: Seq[String], enqueue: java.util.Queue[(String, List[MemberMetadata])]) =>
           Future {
-            groupList.foreach {
-              group =>
-                try {
-                  adminClientOption.foreach {
-                    client =>
-                      val groupMetadata = client.describeConsumerGroupHandler(client.findCoordinator(group, 1000), group)
-                      if (groupMetadata != null) {
-                        if(isValidConsumerGroupResponse(groupMetadata)) {
-                          enqueue.offer((group, groupMetadata.members().asScala.map(m => MemberMetadata.from(group, groupMetadata, m)).toList))
-                        } else {
-                          log.error(s"Invalid group metadata group=$group metadata.error=${groupMetadata.error} metadata.state=${groupMetadata.state()} metadata.protocolType=${groupMetadata.protocolType()}")
-                        }
-                      }
+            try {
+              adminClientOption.foreach {
+                client =>
+                  val options = new DescribeConsumerGroupsOptions
+                  options.timeoutMs(1000)
+                  client.describeConsumerGroups(groupList.asJava, options).all().whenComplete {
+                    (mapGroupDescription, error) => mapGroupDescription.asScala.foreach {
+                      case (group, desc) =>
+                        enqueue.offer(group -> desc.members().asScala.map(m => MemberMetadata.from(group, desc, m)).toList)
+                    }
                   }
-                } catch {
-                  case e: Exception =>
-                    log.error(e, s"Failed to get group summary with admin client : $group")
-                    log.error(e, s"Forcing new admin client initialization...")
-                    Try { adminClientOption.foreach(_.close()) }
-                    adminClientOption = None
-                }
+              }
+            } catch {
+              case e: Exception =>
+                log.error(e, s"Failed to get group summary with admin client : $groupList")
+                log.error(e, s"Forcing new admin client initialization...")
+                Try { adminClientOption.foreach(_.close()) }
+                adminClientOption = None
             }
           }
         case any: Any => log.warning("kac : processQueryRequest : Received unknown message: {}", any.toString)
@@ -177,7 +176,7 @@ class KafkaAdminClient(context: => ActorContext, adminClientActorPath: ActorPath
 
 
 object KafkaManagedOffsetCache {
-  val supportedVersions: Set[KafkaVersion] = Set(Kafka_0_8_2_0, Kafka_0_8_2_1, Kafka_0_8_2_2, Kafka_0_9_0_0, Kafka_0_9_0_1, Kafka_0_10_0_0, Kafka_0_10_0_1, Kafka_0_10_1_0, Kafka_0_10_1_1, Kafka_0_10_2_0, Kafka_0_10_2_1, Kafka_0_11_0_0, Kafka_0_11_0_2, Kafka_1_0_0, Kafka_1_0_1, Kafka_1_1_0, Kafka_1_1_1, Kafka_2_0_0)
+  val supportedVersions: Set[KafkaVersion] = Set(Kafka_0_8_2_0, Kafka_0_8_2_1, Kafka_0_8_2_2, Kafka_0_9_0_0, Kafka_0_9_0_1, Kafka_0_10_0_0, Kafka_0_10_0_1, Kafka_0_10_1_0, Kafka_0_10_1_1, Kafka_0_10_2_0, Kafka_0_10_2_1, Kafka_0_11_0_0, Kafka_0_11_0_2, Kafka_1_0_0, Kafka_1_0_1, Kafka_1_1_0, Kafka_1_1_1, Kafka_2_0_0, Kafka_2_1_0, Kafka_2_1_1, Kafka_2_2_0)
   val ConsumerOffsetTopic = "__consumer_offsets"
 
   def isSupported(version: KafkaVersion) : Boolean = {
@@ -341,7 +340,7 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
                   error("Failed to backfill group metadata", e)
               }
 
-              val records: ConsumerRecords[Array[Byte], Array[Byte]] = consumer.poll(100)
+              val records: ConsumerRecords[Array[Byte], Array[Byte]] = consumer.poll(Duration.ofMillis(100))
               val iterator = records.iterator()
               while (iterator.hasNext) {
                 val record = iterator.next()
@@ -375,7 +374,7 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
                     }
                     topicSet += topic
                   case GroupMetadataKey(version, key) =>
-                    val value: GroupMetadata = readGroupMessageValue(key, ByteBuffer.wrap(record.value()))
+                    val value: GroupMetadata = readGroupMessageValue(key, ByteBuffer.wrap(record.value()), Time.SYSTEM)
                     value.allMemberMetadata.foreach {
                       mm =>
                         mm.assignment.foreach {
@@ -530,8 +529,8 @@ trait OffsetCache extends Logging {
       }
     }
 
-    futureMap onFailure {
-      case t => error(s"[topic=$topic] An error has occurred while getting topic offsets", t)
+    futureMap.failed.foreach {
+      t => error(s"[topic=$topic] An error has occurred while getting topic offsets", t)
     }
     futureMap
   }
@@ -1209,7 +1208,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
 
   private[this] def getTopicConfigString(topic: String) : Option[(Int,String)] = {
     val data: mutable.Buffer[ChildData] = topicsConfigPathCache.getCurrentData.asScala
-    val result: Option[ChildData] = data.find(p => p.getPath.endsWith(topic))
+    val result: Option[ChildData] = data.find(p => p.getPath.endsWith("/" + topic))
     result.map(cd => (cd.getStat.getVersion,asString(cd.getData)))
   }
 
@@ -1489,7 +1488,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
                 try {
                   kafkaConsumer = Option(new KafkaConsumer(consumerProperties))
                   val request = tpList.map(f => new TopicPartition(f._1.topic, f._1.partition))
-                  var tpOffsetMapOption = kafkaConsumer.map(_.endOffsets(request))
+                  var tpOffsetMapOption = kafkaConsumer.map(_.endOffsets(request.asJavaCollection).asScala)
 
                   var topicOffsetMap: Map[Int, Long] = null
                   tpOffsetMapOption.foreach(tpOffsetMap => tpOffsetMap.keys.foreach(tp => {
@@ -1504,7 +1503,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
                   }))
                 } catch {
                   case e: Exception =>
-                    log.error(s"consumerProperties:$consumerProperties", e)
+                    log.error(e, s"consumerProperties:$consumerProperties")
                     throw e
                 } finally {
                   kafkaConsumer.foreach(_.close())

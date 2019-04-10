@@ -2,17 +2,16 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@(addClusterForm: Form[kafka.manager.model.ClusterConfig])(implicit messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+@(addClusterForm: Form[kafka.manager.model.ClusterConfig])(implicit messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
 
-@import b3.vertical.fieldConstructor
 @import controllers.routes
 
 @theMenu = {
     @views.html.navigation.defaultMenu(views.html.navigation.menuNav("Cluster","Add Cluster",menus.indexMenu))
 }
 
-@checkboxWithLink(field: play.api.data.Field) = {
-@b3.inputFormGroup(field, withFeedback = false, withLabelFor = false, b3.Args.withDefault(Seq(), 'disabled -> false)) { fieldInfo =>
+@checkboxWithLink(field: play.api.data.Field)(implicit fc: b4.B4FieldConstructor, msgsProv: MessagesProvider) = {
+@b4.inputFormGroup(field, withLabelFor = false, views.html.bs.Args.withDefault(Seq(), 'disabled -> false)) { fieldInfo =>
 <div class="checkbox">
     <label for="@fieldInfo.id">
         <input type="checkbox" id="@fieldInfo.id" name="@fieldInfo.name" value="true" @if(fieldInfo.value == Some("true")){checked} @toHtmlArgs(fieldInfo.innerArgsMap)>
@@ -23,52 +22,52 @@
 }
 
 @drawForm(form : Form[kafka.manager.model.ClusterConfig]) = {
-    @b3.form(routes.Cluster.handleAddCluster) {
+    @b4.vertical.form(routes.Cluster.handleAddCluster.copy(url = routes.Cluster.handleAddCluster.relative)) { implicit fc =>
     <fieldset>
-        @b3.text(form("name"), '_label -> "Cluster Name", 'placeholder -> "", 'autofocus -> true )
-        @b3.text(form("zkHosts"), '_label -> "Cluster Zookeeper Hosts", 'placeholder -> "zk1:2181,zk2:2181,zk3:2181/NAMESPACE")
-        @b3.select( form("kafkaVersion"), options = kafka.manager.model.KafkaVersion.formSelectList, '_label -> "Kafka Version" )
-        @b3.checkbox(form("jmxEnabled"), '_text -> "Enable JMX Polling (Set JMX_PORT env variable before starting kafka server)")
-        @b3.text(form("jmxUser"), '_label -> "JMX Auth Username")
-        @b3.text(form("jmxPass"), '_label -> "JMX Auth Password")
-        @b3.checkbox(form("jmxSsl"), '_text -> "JMX with SSL")
-        @b3.checkbox(form("logkafkaEnabled"), '_text -> "Enable Logkafka")
-        @b3.checkbox(form("pollConsumers"), '_text -> "Poll consumer information (Not recommended for large # of consumers)")
-        @b3.checkbox(form("filterConsumers"), '_text -> "Filter out inactive consumers")
-        @b3.checkbox(form("activeOffsetCacheEnabled"), '_text -> "Enable Active OffsetCache (Not recommended for large # of consumers)")
+        @b4.text(form("name"), '_label -> "Cluster Name", 'placeholder -> "", 'autofocus -> true )
+        @b4.text(form("zkHosts"), '_label -> "Cluster Zookeeper Hosts", 'placeholder -> "zk1:2181,zk2:2181,zk3:2181/NAMESPACE")
+        @b4.select( form("kafkaVersion"), options = kafka.manager.model.KafkaVersion.formSelectList, '_label -> "Kafka Version" )
+        @b4.checkbox(form("jmxEnabled"), '_text -> "Enable JMX Polling (Set JMX_PORT env variable before starting kafka server)")
+        @b4.text(form("jmxUser"), '_label -> "JMX Auth Username")
+        @b4.text(form("jmxPass"), '_label -> "JMX Auth Password")
+        @b4.checkbox(form("jmxSsl"), '_text -> "JMX with SSL")
+        @b4.checkbox(form("logkafkaEnabled"), '_text -> "Enable Logkafka")
+        @b4.checkbox(form("pollConsumers"), '_text -> "Poll consumer information (Not recommended for large # of consumers if ZK is used for offsets tracking on older Kafka versions)")
+        @b4.checkbox(form("filterConsumers"), '_text -> "Filter out inactive consumers")
+        @b4.checkbox(form("activeOffsetCacheEnabled"), '_text -> "Enable Active OffsetCache (Not recommended for large # of consumers)")
         @checkboxWithLink(form("displaySizeEnabled"))
-        @b3.number(form("tuning.brokerViewUpdatePeriodSeconds"), '_label -> "brokerViewUpdatePeriodSeconds")
-        @b3.number(form("tuning.clusterManagerThreadPoolSize"), '_label -> "clusterManagerThreadPoolSize")
-        @b3.number(form("tuning.clusterManagerThreadPoolQueueSize"), '_label -> "clusterManagerThreadPoolQueueSize")
-        @b3.number(form("tuning.kafkaCommandThreadPoolSize"), '_label -> "kafkaCommandThreadPoolSize")
-        @b3.number(form("tuning.kafkaCommandThreadPoolQueueSize"), '_label -> "kafkaCommandThreadPoolQueueSize")
-        @b3.number(form("tuning.logkafkaCommandThreadPoolSize"), '_label -> "logkafkaCommandThreadPoolSize")
-        @b3.number(form("tuning.logkafkaCommandThreadPoolQueueSize"), '_label -> "logkafkaCommandThreadPoolQueueSize")
-        @b3.number(form("tuning.logkafkaUpdatePeriodSeconds"), '_label -> "logkafkaUpdatePeriodSeconds")
-        @b3.number(form("tuning.partitionOffsetCacheTimeoutSecs"), '_label -> "partitionOffsetCacheTimeoutSecs")
-        @b3.number(form("tuning.brokerViewThreadPoolSize"), '_label -> "brokerViewThreadPoolSize")
-        @b3.number(form("tuning.brokerViewThreadPoolQueueSize"), '_label -> "brokerViewThreadPoolQueueSize")
-        @b3.number(form("tuning.offsetCacheThreadPoolSize"), '_label -> "offsetCacheThreadPoolSize")
-        @b3.number(form("tuning.offsetCacheThreadPoolQueueSize"), '_label -> "offsetCacheThreadPoolQueueSize")
-        @b3.number(form("tuning.kafkaAdminClientThreadPoolSize"), '_label -> "kafkaAdminClientThreadPoolSize")
-        @b3.number(form("tuning.kafkaAdminClientThreadPoolQueueSize"), '_label -> "kafkaAdminClientThreadPoolQueueSize")
-        @b3.number(form("tuning.kafkaManagedOffsetMetadataCheckMillis"), '_label -> "kafkaManagedOffsetMetadataCheckMillis")
-        @b3.number(form("tuning.kafkaManagedOffsetGroupCacheSize"), '_label -> "kafkaManagedOffsetGroupCacheSize")
-        @b3.number(form("tuning.kafkaManagedOffsetGroupExpireDays"), '_label -> "kafkaManagedOffsetGroupExpireDays")
-        @b3.select( form("securityProtocol"), options = kafka.manager.model.SecurityProtocol.formSelectList, '_label -> "Security Protocol" )
-        @b3.select( form("saslMechanism"), options = kafka.manager.model.SASLmechanism.formSelectList, '_label -> "SASL Mechanism (only applies to SASL based security)" )
-        @b3.text(form("jaasConfig"), '_label -> "SASL JAAS Config (only applies to SASL based security)")
-        @b3.submit('class -> "submit-button btn btn-primary"){ Save }
-        <a href="@routes.Application.index()" class="cancel-button btn btn-default" role="button">Cancel</a>
+        @b4.number(form("tuning.brokerViewUpdatePeriodSeconds"), '_label -> "brokerViewUpdatePeriodSeconds")
+        @b4.number(form("tuning.clusterManagerThreadPoolSize"), '_label -> "clusterManagerThreadPoolSize")
+        @b4.number(form("tuning.clusterManagerThreadPoolQueueSize"), '_label -> "clusterManagerThreadPoolQueueSize")
+        @b4.number(form("tuning.kafkaCommandThreadPoolSize"), '_label -> "kafkaCommandThreadPoolSize")
+        @b4.number(form("tuning.kafkaCommandThreadPoolQueueSize"), '_label -> "kafkaCommandThreadPoolQueueSize")
+        @b4.number(form("tuning.logkafkaCommandThreadPoolSize"), '_label -> "logkafkaCommandThreadPoolSize")
+        @b4.number(form("tuning.logkafkaCommandThreadPoolQueueSize"), '_label -> "logkafkaCommandThreadPoolQueueSize")
+        @b4.number(form("tuning.logkafkaUpdatePeriodSeconds"), '_label -> "logkafkaUpdatePeriodSeconds")
+        @b4.number(form("tuning.partitionOffsetCacheTimeoutSecs"), '_label -> "partitionOffsetCacheTimeoutSecs")
+        @b4.number(form("tuning.brokerViewThreadPoolSize"), '_label -> "brokerViewThreadPoolSize")
+        @b4.number(form("tuning.brokerViewThreadPoolQueueSize"), '_label -> "brokerViewThreadPoolQueueSize")
+        @b4.number(form("tuning.offsetCacheThreadPoolSize"), '_label -> "offsetCacheThreadPoolSize")
+        @b4.number(form("tuning.offsetCacheThreadPoolQueueSize"), '_label -> "offsetCacheThreadPoolQueueSize")
+        @b4.number(form("tuning.kafkaAdminClientThreadPoolSize"), '_label -> "kafkaAdminClientThreadPoolSize")
+        @b4.number(form("tuning.kafkaAdminClientThreadPoolQueueSize"), '_label -> "kafkaAdminClientThreadPoolQueueSize")
+        @b4.number(form("tuning.kafkaManagedOffsetMetadataCheckMillis"), '_label -> "kafkaManagedOffsetMetadataCheckMillis")
+        @b4.number(form("tuning.kafkaManagedOffsetGroupCacheSize"), '_label -> "kafkaManagedOffsetGroupCacheSize")
+        @b4.number(form("tuning.kafkaManagedOffsetGroupExpireDays"), '_label -> "kafkaManagedOffsetGroupExpireDays")
+        @b4.select(form("securityProtocol"), options = kafka.manager.model.SecurityProtocol.formSelectList, '_label -> "Security Protocol" )
+        @b4.select(form("saslMechanism"), options = kafka.manager.model.SASLmechanism.formSelectList, '_label -> "SASL Mechanism (only applies to SASL based security)" )
+        @b4.text(form("jaasConfig"), '_label -> "SASL JAAS Config (only applies to SASL based security)")
+        @b4.submit('class -> "submit-button btn btn-primary"){ Save }
+        <a href="@routes.Application.index()" class="cancel-button btn btn-secondary" role="button">Cancel</a>
     </fieldset>
     }
 }
 
 @main("Add Cluster", menu = theMenu, breadcrumbs = views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withView("Add Cluster"))) {
     <div class="col-md-6 un-pad-me">
-        <div class="panel panel-default">
-            <div class="panel-heading"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>Add Cluster</h3></div>
-            <div class="panel-body">
+        <div class="card">
+            <div class="card-header"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="octicon octicon-arrow-left" aria-hidden="true"></span></button>Add Cluster</h3></div>
+            <div class="card-body">
                 @drawForm(addClusterForm)
             </div>
         </div>

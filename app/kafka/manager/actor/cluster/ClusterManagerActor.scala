@@ -622,8 +622,11 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
 
   private[this] def modify[T](fn: => T): T = {
     try {
-      mutex.acquire(cmConfig.mutexTimeoutMillis,TimeUnit.MILLISECONDS)
-      fn
+      if(mutex.acquire(cmConfig.mutexTimeoutMillis,TimeUnit.MILLISECONDS)) {
+        fn
+      } else {
+        throw new RuntimeException("Failed to acquire mutex for cluster manager command")
+      }
     } finally {
       if(mutex.isAcquiredInThisProcess) {
         mutex.release()

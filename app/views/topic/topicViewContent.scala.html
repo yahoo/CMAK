@@ -2,82 +2,81 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@import b3.vertical.fieldConstructor
 @import kafka.manager.model.ActorModel.ConsumerType
 @import models.form.ReassignPartitionOperation
-@import models.form.ReassignPartitionOperation._
+@import models.form.ReassignPartitionOperation.ForceRunAssignment
 @import kafka.manager.utils.LongFormatted
 @(cluster:String
 , topic: String
 , topicIdentity: kafka.manager.model.ActorModel.TopicIdentity
 , consumerList: Iterable[(String, ConsumerType)]
 , reassignPartitionOperation: ReassignPartitionOperation
-)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, request:RequestHeader)
 
 @getUnderReplicatedLevel(percentage: Int) = {
     @percentage match {
-        case i if i > 50 => {danger}
-        case i if i > 0 => {warning}
+        case i if i > 50 => {table-danger}
+        case i if i > 0 => {table-warning}
         case i => {}
     }
 }
 
 @getPreferredReplicasLevel(percentage: Int) = {
     @percentage match {
-        case i if i > 50 && i<=75 => {warning}
-        case i if i <=  50 => {danger}
+        case i if i > 50 && i<=75 => {table-warning}
+        case i if i <=  50 => {table-danger}
         case i => {}
     }
 }
 
 @getBrokersSkewedLevel(percentage: Int) = {
     @percentage match {
-        case i if i > 0 && i <= 33 => {warning}
-        case i if i >= 34 => {danger}
+        case i if i > 0 && i <= 33 => {table-warning}
+        case i if i >= 34 => {table-danger}
         case i => {}
     }
 }
 
 @getBrokersLeaderSkewedLevel(percentage: Int) = {
     @percentage match {
-        case i if i > 0 && i <= 33 => {warning}
-        case i if i >= 34 => {danger}
+        case i if i > 0 && i <= 33 => {table-warning}
+        case i if i >= 34 => {table-danger}
         case i => {}
     }
 }
 
 @getBrokersSpreadLevel(percentage: Int) = {
     @percentage match {
-        case i if i > 50 && i<=75 => {warning}
-        case i if i <=  50 => {danger}
+        case i if i > 50 && i<=75 => {table-warning}
+        case i if i <=  50 => {table-danger}
         case i => {}
     }
 }
 
 @getPartitionLeaderLevel(leader: Int) = {
     @leader match {
-        case i if i < 0 => {danger}
+        case i if i < 0 => {table-danger}
         case i => {}
     }
 }
 
 @getIsUnderReplicatedLevel(underReplicated: Boolean) = {
     @underReplicated match {
-        case true => {warning}
+        case true => {table-warning}
         case false => {}
     }
 }
 
 @getIsPreferredLeaderLevel(preferredReplica: Boolean) = {
     @preferredReplica match {
-        case false => {warning}
+        case false => {table-warning}
         case true => {}
     }
 }
 
 @getBrokerIsSkewedLevel(isSkewed: Boolean) = {
     @isSkewed match {
-        case true => {warning}
+        case true => {table-warning}
         case false => {}
     }
 }
@@ -114,8 +113,9 @@
 
 <div class="row">
     <div class="col-md-5">
-        <div class="panel panel-default">
-            <div class="panel-heading"><h4>Topic Summary</h4></div>
+        <div class="card">
+            <div class="card-header"><h4>Topic Summary</h4></div>
+            <div class="card-body">
             <table class="table">
                 <tbody>
                 <tr>
@@ -138,7 +138,7 @@
                     <td>@topicIdentity.topicBrokers</td>
                 </tr>
                 <tr>
-                    <td><span title="Percentage of replicas leader being preferred (first in the list of replicas)">Preferred Replicas %</td>
+                    <td><span title="Percentage of replicas leader being preferred (first in the list of replicas)">Preferred Replicas %</span></td>
                     <td class="@getPreferredReplicasLevel(topicIdentity.preferredReplicasPercentage)">
                         @topicIdentity.preferredReplicasPercentage
                     </td>
@@ -190,16 +190,20 @@
                 </tbody>
             </table>
             }
+            </div>
         </div>
-        <div class="panel panel-default">
-            <div class="panel-heading"><h4>Metrics</h4></div>
+        <div class="card">
+            <div class="card-header"><h4>Metrics</h4></div>
+            <div class="card-body">
             @renderTopicMetrics
+            </div>
         </div>
     </div>
     <div class="col-md-7">
         @features.app(features.KMTopicManagerFeature) {
-        <div class="panel panel-default">
-            <div class="panel-heading"><h4>Operations</h4></div>
+        <div class="card">
+            <div class="card-header"><h4>Operations</h4></div>
+            <div class="card-body">
             <table class="table">
                 <tbody>
                 <tr>
@@ -210,20 +214,20 @@
                     }
                     @features.app(features.KMReassignPartitionsFeature) {
                     <td>
-                        @b3.form(routes.ReassignPartitions.handleOperation(cluster,topic)) {
+                        @b4.vertical.form(routes.ReassignPartitions.handleOperation(cluster,topic)) { implicit fc =>
                             @reassignPartitionOperation match {
                                 case ForceRunAssignment => {
                                     <fieldset>
                                         <input type="hidden" name="operation" value="force">
                                         <input type="hidden" name="brokers" value="@Seq()">
-                                        @b3.submit('class -> "btn btn-primary btn-block"){ Force Reassign Partitions }
+                                        @b4.submit('class -> "btn btn-primary btn-block"){ Force Reassign Partitions }
                                     </fieldset>
                                 }
                                 case _ => {
                                     <fieldset>
                                         <input type="hidden" name="operation" value="run">
                                         <input type="hidden" name="brokers" value="@Seq()">
-                                        @b3.submit('class -> "btn btn-primary btn-block"){ Reassign Partitions }
+                                        @b4.submit('class -> "btn btn-primary btn-block"){ Reassign Partitions }
                                     </fieldset>
                                 }
                             }
@@ -249,10 +253,12 @@
                 </tr>
                 </tbody>
             </table>
+            </div>
         </div>
         }
-        <div class="panel panel-default">
-            <div class="panel-heading"><h4>Partitions by Broker</h4></div>
+        <div class="card">
+            <div class="card-header"><h4>Partitions by Broker</h4></div>
+            <div class="card-body">
             <table class="table" style="table-layout: fixed; width: 100%">
                 <thead>
                 <tr><th>Broker</th><th># of Partitions</th><th># as Leader</th><th>Partitions</th><th><span title="Broker has more partitions than the average">Skewed?</span></th><th><span title="Broker has more partitions as leaders than the average">Leader Skewed?</span></th></tr>
@@ -274,36 +280,40 @@
                 }
                 </tbody>
             </table>
+            </div>
         </div>
-        <div class="panel panel-default">
-            <div class="panel-heading"><h4>Consumers consuming from this topic</h4></div>
+        <div class="card">
+            <div class="card-header"><h4>Consumers consuming from this topic</h4></div>
+            <div class="card-body">
             @renderConsumerList
+            </div>
         </div>
     </div>
 </div>
 <div class="row">
     <div class="col-md-12">
-        <div class="panel panel-default">
-            <div class="panel-heading"><h4>Partition Information</h4></div>
+        <div class="card">
+            <div class="card-header"><h4>Partition Information</h4></div>
+            <div class="card-body">
             <table class="table">
                 <thead>
                 <tr>
-                    <th>Partition</th>
-                    <th>Latest Offset</th>
-                    <th>Leader</th>
-                    <th>Replicas</th>
-                    <th>In Sync Replicas</th>
-                    <th>Preferred Leader?</th>
-                    <th>Under Replicated?</th>
+                    <th scope="col">Partition</th>
+                    <th scope="col">Latest Offset</th>
+                    <th scope="col">Leader</th>
+                    <th scope="col">Replicas</th>
+                    <th scope="col">In Sync Replicas</th>
+                    <th scope="col">Preferred Leader?</th>
+                    <th scope="col">Under Replicated?</th>
                     @if(topicIdentity.clusterContext.config.jmxEnabled && topicIdentity.clusterContext.config.displaySizeEnabled){
-                    <th>Leader Size</th>
+                    <th scope="col">Leader Size</th>
                     }
                 </tr>
                 </thead>
                 <tbody>
                 @for((_,tpi) <- topicIdentity.partitionsIdentity.toIndexedSeq.sortBy(_._2.partNum)) {
                 <tr>
-                    <td>@tpi.partNum</td>
+                    <th scope="row">@tpi.partNum</th>
                     <td>@tpi.latestOffset.map(_.formattedAsDecimal).getOrElse(" ")</td>
                     <td class="@getPartitionLeaderLevel(tpi.leader)">
                         <a href="@routes.Cluster.broker(cluster,tpi.leader)">@tpi.leader</a>
@@ -323,6 +333,7 @@
                 }
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 </div>

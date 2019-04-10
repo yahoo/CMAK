@@ -8,7 +8,7 @@
   errorOrSuccess: kafka.manager.ApiError \/ Any,
   actionTitle: String,
   successLink: models.FollowLink,
-  errorLink: models.FollowLink)(implicit messages: play.api.i18n.Messages)
+  errorLink: models.FollowLink)(implicit messages: play.api.i18n.Messages, request:RequestHeader)
 
 @link(followLink: FollowLink) = {
     <div class="alert alert-success" role="alert">Done!</div>
@@ -20,9 +20,11 @@
 @main(actionTitle, menu = theMenu, breadcrumbs = views.html.navigation.breadCrumbs(crumbs)) {
 
     <div class="col-md-6 un-pad-me">
-        <div class="panel panel-default">
-            <div class="panel-heading"><h3>@actionTitle</h3></div>
+        <div class="card">
+            <div class="card-header"><h3>@actionTitle</h3></div>
+            <div class="card-body">
             @errorOrSuccess.fold( a => views.html.errors.onApiError(a, Some(errorLink)) , b => link(successLink))
+            </div>
         </div>
     </div>
 

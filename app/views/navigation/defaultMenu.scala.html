@@ -2,19 +2,15 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@(navHtml : Html = Html(""))
-<nav class="navbar navbar-default" role="navigation">
-    <div class="container">
-        <div class="navbar-header">
-            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target=".navbar-collapse">
-                <span class="sr-only">Toggle navigation</span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-            </button>
-            <img src="@routes.Assets.versioned("images/favicon.png")">
-            <a class="navbar-brand un-float-me" href="@routes.Application.index()">Kafka Manager</a>
-        </div>
+@(navHtml: Html = Html(""))
+<header class="navbar navbar-expand navbar-light">
+    <nav class="navbar navbar-expand-lg">
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarText" aria-controls="navbarText" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <img src="@routes.Assets.at("images/favicon.png")">
+        <a class="navbar-brand un-float-me" href="@routes.Application.index()">
+            Kafka Manager</a>
         @navHtml
-    </div>
-</nav>
+    </nav>
+</header>
