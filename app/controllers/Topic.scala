@@ -45,28 +45,28 @@ class Topic (val cc: ControllerComponents, val kafkaManagerContext: KafkaManager
     }
   }
 
-  val kafka_0_8_1_1_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_8_1_1).map{ case (n, h) => TConfig(n,None,h)}.toList)
-  val kafka_0_8_2_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_8_2_0).map{ case (n, h) => TConfig(n,None,h)}.toList)
-  val kafka_0_8_2_1_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_8_2_1).map{ case (n, h) => TConfig(n,None,h)}.toList)
-  val kafka_0_8_2_2_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_8_2_2).map{ case (n, h) => TConfig(n,None,h)}.toList)
-  val kafka_0_9_0_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_9_0_0).map{ case (n, h) => TConfig(n,None,h)}.toList)
-  val kafka_0_9_0_1_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_9_0_1).map{ case (n, h) => TConfig(n,None,h)}.toList)
-  val kafka_0_10_0_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_10_0_0).map{ case (n, h) => TConfig(n,None,h)}.toList)
-  val kafka_0_10_0_1_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_10_0_1).map{ case (n, h) => TConfig(n,None,h)}.toList)
-  val kafka_0_10_1_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_10_1_0).map{ case (n, h) => TConfig(n,None,h)}.toList)
-  val kafka_0_10_1_1_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_10_1_1).map{ case (n, h) => TConfig(n,None,h)}.toList)
-  val kafka_0_10_2_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_10_2_0).map{ case (n, h) => TConfig(n,None,h)}.toList)
-  val kafka_0_10_2_1_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_10_2_1).map{ case (n, h) => TConfig(n,None,h)}.toList)
-  val kafka_0_11_0_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_11_0_0).map{ case (n, h) => TConfig(n,None,h)}.toList)
-  val kafka_0_11_0_2_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_11_0_2).map{ case (n, h) => TConfig(n,None,h)}.toList)
-  val kafka_1_0_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_1_0_0).map{ case (n, h) => TConfig(n,None,h)}.toList)
-  val kafka_1_0_1_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_1_0_1).map{ case (n, h) => TConfig(n,None,h)}.toList)
-  val kafka_1_1_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_1_1_0).map{ case (n, h) => TConfig(n,None,h)}.toList)
-  val kafka_1_1_1_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_1_1_1).map{ case (n, h) => TConfig(n,None,h)}.toList)
-  val kafka_2_0_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_2_0_0).map{ case (n, h) => TConfig(n,None,h)}.toList)
-  val kafka_2_1_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_2_1_0).map{ case (n, h) => TConfig(n,None,h)}.toList)
-  val kafka_2_1_1_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_2_1_1).map{ case (n, h) => TConfig(n,None,h)}.toList)
-  val kafka_2_2_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_2_2_0).map{ case (n, h) => TConfig(n,None,h)}.toList)
+  val kafka_0_8_1_1_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_8_1_1).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
+  val kafka_0_8_2_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_8_2_0).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
+  val kafka_0_8_2_1_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_8_2_1).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
+  val kafka_0_8_2_2_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_8_2_2).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
+  val kafka_0_9_0_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_9_0_0).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
+  val kafka_0_9_0_1_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_9_0_1).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
+  val kafka_0_10_0_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_10_0_0).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
+  val kafka_0_10_0_1_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_10_0_1).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
+  val kafka_0_10_1_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_10_1_0).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
+  val kafka_0_10_1_1_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_10_1_1).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
+  val kafka_0_10_2_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_10_2_0).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
+  val kafka_0_10_2_1_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_10_2_1).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
+  val kafka_0_11_0_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_11_0_0).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
+  val kafka_0_11_0_2_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_0_11_0_2).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
+  val kafka_1_0_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_1_0_0).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
+  val kafka_1_0_1_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_1_0_1).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
+  val kafka_1_1_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_1_1_0).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
+  val kafka_1_1_1_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_1_1_1).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
+  val kafka_2_0_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_2_0_0).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
+  val kafka_2_1_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_2_1_0).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
+  val kafka_2_1_1_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_2_1_1).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
+  val kafka_2_2_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_2_2_0).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
 
   val defaultCreateForm = Form(
     mapping(
@@ -77,7 +77,7 @@ class Topic (val cc: ControllerComponents, val kafkaManagerContext: KafkaManager
         mapping(
           "name" -> nonEmptyText,
           "value" -> optional(text),
-          "help" -> text,
+          "help" -> optional(text),
         )(TConfig.apply)(TConfig.unapply)
       )
     )(CreateTopic.apply)(CreateTopic.unapply)
@@ -136,7 +136,7 @@ class Topic (val cc: ControllerComponents, val kafkaManagerContext: KafkaManager
         mapping(
           "name" -> nonEmptyText,
           "value" -> optional(text),
-          "help" -> text,
+          "help" -> optional(text),
         )(TConfig.apply)(TConfig.unapply)
       ),
       "readVersion" -> number(min = 0)
@@ -397,28 +397,28 @@ class Topic (val cc: ControllerComponents, val kafkaManagerContext: KafkaManager
     kafkaManager.getClusterConfig(clusterName).map { errorOrConfig =>
       errorOrConfig.map { clusterConfig =>
         val defaultConfigs = clusterConfig.version match {
-          case Kafka_0_8_1_1 => TopicConfigs.configNamesAndDoc(Kafka_0_8_1_1).map { case (n, h) => (n,TConfig(n,None, h)) }
-          case Kafka_0_8_2_0 => TopicConfigs.configNamesAndDoc(Kafka_0_8_2_0).map { case (n, h) => (n,TConfig(n,None, h)) }
-          case Kafka_0_8_2_1 => TopicConfigs.configNamesAndDoc(Kafka_0_8_2_1).map { case (n, h) => (n,TConfig(n,None, h)) }
-          case Kafka_0_8_2_2 => TopicConfigs.configNamesAndDoc(Kafka_0_8_2_2).map { case (n, h) => (n,TConfig(n,None, h)) }
-          case Kafka_0_9_0_0 => TopicConfigs.configNamesAndDoc(Kafka_0_9_0_0).map { case (n, h) => (n,TConfig(n,None, h)) }
-          case Kafka_0_9_0_1 => TopicConfigs.configNamesAndDoc(Kafka_0_9_0_1).map { case (n, h) => (n,TConfig(n,None, h)) }
-          case Kafka_0_10_0_0 => TopicConfigs.configNamesAndDoc(Kafka_0_10_0_0).map { case (n, h) => (n,TConfig(n,None, h)) }
-          case Kafka_0_10_0_1 => TopicConfigs.configNamesAndDoc(Kafka_0_10_0_1).map { case (n, h) => (n,TConfig(n,None, h)) }
-          case Kafka_0_10_1_0 => TopicConfigs.configNamesAndDoc(Kafka_0_10_1_0).map { case (n, h) => (n,TConfig(n,None, h)) }
-          case Kafka_0_10_1_1 => TopicConfigs.configNamesAndDoc(Kafka_0_10_1_1).map { case (n, h) => (n,TConfig(n,None, h)) }
-          case Kafka_0_10_2_0 => TopicConfigs.configNamesAndDoc(Kafka_0_10_2_0).map { case (n, h) => (n,TConfig(n,None, h)) }
-          case Kafka_0_10_2_1 => TopicConfigs.configNamesAndDoc(Kafka_0_10_2_1).map { case (n, h) => (n,TConfig(n,None, h)) }
-          case Kafka_0_11_0_0 => TopicConfigs.configNamesAndDoc(Kafka_0_11_0_0).map { case (n, h) => (n,TConfig(n,None, h)) }
-          case Kafka_0_11_0_2 => TopicConfigs.configNamesAndDoc(Kafka_0_11_0_2).map { case (n, h) => (n,TConfig(n,None, h)) }
-          case Kafka_1_0_0 => TopicConfigs.configNamesAndDoc(Kafka_1_0_0).map { case (n, h) => (n,TConfig(n,None, h)) }
-          case Kafka_1_0_1 => TopicConfigs.configNamesAndDoc(Kafka_1_0_0).map { case (n, h) => (n,TConfig(n,None, h)) }
-          case Kafka_1_1_0 => TopicConfigs.configNamesAndDoc(Kafka_1_1_0).map { case (n, h) => (n,TConfig(n,None, h)) }
-          case Kafka_1_1_1 => TopicConfigs.configNamesAndDoc(Kafka_1_1_1).map { case (n, h) => (n,TConfig(n,None, h)) }
-          case Kafka_2_0_0 => TopicConfigs.configNamesAndDoc(Kafka_2_0_0).map { case (n, h) => (n,TConfig(n,None, h)) }
-          case Kafka_2_1_0 => TopicConfigs.configNamesAndDoc(Kafka_2_1_0).map { case (n, h) => (n,TConfig(n,None, h)) }
-          case Kafka_2_1_1 => TopicConfigs.configNamesAndDoc(Kafka_2_1_1).map { case (n, h) => (n,TConfig(n,None, h)) }
-          case Kafka_2_2_0 => TopicConfigs.configNamesAndDoc(Kafka_2_2_0).map { case (n, h) => (n,TConfig(n,None, h)) }
+          case Kafka_0_8_1_1 => TopicConfigs.configNamesAndDoc(Kafka_0_8_1_1).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
+          case Kafka_0_8_2_0 => TopicConfigs.configNamesAndDoc(Kafka_0_8_2_0).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
+          case Kafka_0_8_2_1 => TopicConfigs.configNamesAndDoc(Kafka_0_8_2_1).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
+          case Kafka_0_8_2_2 => TopicConfigs.configNamesAndDoc(Kafka_0_8_2_2).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
+          case Kafka_0_9_0_0 => TopicConfigs.configNamesAndDoc(Kafka_0_9_0_0).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
+          case Kafka_0_9_0_1 => TopicConfigs.configNamesAndDoc(Kafka_0_9_0_1).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
+          case Kafka_0_10_0_0 => TopicConfigs.configNamesAndDoc(Kafka_0_10_0_0).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
+          case Kafka_0_10_0_1 => TopicConfigs.configNamesAndDoc(Kafka_0_10_0_1).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
+          case Kafka_0_10_1_0 => TopicConfigs.configNamesAndDoc(Kafka_0_10_1_0).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
+          case Kafka_0_10_1_1 => TopicConfigs.configNamesAndDoc(Kafka_0_10_1_1).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
+          case Kafka_0_10_2_0 => TopicConfigs.configNamesAndDoc(Kafka_0_10_2_0).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
+          case Kafka_0_10_2_1 => TopicConfigs.configNamesAndDoc(Kafka_0_10_2_1).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
+          case Kafka_0_11_0_0 => TopicConfigs.configNamesAndDoc(Kafka_0_11_0_0).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
+          case Kafka_0_11_0_2 => TopicConfigs.configNamesAndDoc(Kafka_0_11_0_2).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
+          case Kafka_1_0_0 => TopicConfigs.configNamesAndDoc(Kafka_1_0_0).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
+          case Kafka_1_0_1 => TopicConfigs.configNamesAndDoc(Kafka_1_0_0).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
+          case Kafka_1_1_0 => TopicConfigs.configNamesAndDoc(Kafka_1_1_0).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
+          case Kafka_1_1_1 => TopicConfigs.configNamesAndDoc(Kafka_1_1_1).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
+          case Kafka_2_0_0 => TopicConfigs.configNamesAndDoc(Kafka_2_0_0).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
+          case Kafka_2_1_0 => TopicConfigs.configNamesAndDoc(Kafka_2_1_0).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
+          case Kafka_2_1_1 => TopicConfigs.configNamesAndDoc(Kafka_2_1_1).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
+          case Kafka_2_2_0 => TopicConfigs.configNamesAndDoc(Kafka_2_2_0).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
         }
         val updatedConfigMap = ti.config.toMap
         val updatedConfigList = defaultConfigs.map {
