@@ -27,6 +27,7 @@
                         @b4.hidden(updateTopicConfigForm("readVersion").name,updateTopicConfigForm("readVersion").value.getOrElse(-1))
                         @helper.repeat(updateTopicConfigForm("configs"), min = 1) { configsForm =>
                             @b4.hidden(configsForm("name").name, configsForm("name").value.getOrElse(""))
+                            @b4.hidden(configsForm("help").name, configsForm("help").value.getOrElse(""))
                             @b4.text(configsForm("value"), '_label -> configsForm("name").value.getOrElse(""), '_help -> configsForm("help").value.getOrElse(""))
                         }
                     </td>
