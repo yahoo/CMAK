@@ -132,14 +132,11 @@ class PreferredReplicaElection (val cc: ControllerComponents, val kafkaManagerCo
   }
 
   def cancelScheduleRunElection(c: String) = Action.async { implicit request =>
-    var status_string: String = ""
-    if(kafkaManager.pleCancellable.contains(c)){
+    val status_string: String = if(kafkaManager.pleCancellable.contains(c)){
       kafkaManager.cancelPreferredLeaderElection(c)
-      status_string = "Scheduler stopped"
+      "Scheduler stopped"
     }
-    else {
-      status_string = "Scheduler already not running"
-    }
+    else "Scheduler already not running"
     kafkaManager.getTopicList(c).map { errorOrStatus =>
       Ok(views.html.scheduleLeaderElection(c,errorOrStatus,status_string, 0)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }
