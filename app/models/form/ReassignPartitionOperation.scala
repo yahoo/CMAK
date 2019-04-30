@@ -40,6 +40,6 @@ object TopicSelect {
 
 case class ReadVersion(topic: String, version: Int)
 
-case class GenerateAssignment(brokers: Seq[BrokerSelect])
+case class GenerateAssignment(brokers: Seq[BrokerSelect], replicationFactor: Option[Int] = None)
 case class GenerateMultipleAssignments(topics: Seq[TopicSelect], brokers: Seq[BrokerSelect])
 case class RunMultipleAssignments(topics: Seq[TopicSelect])

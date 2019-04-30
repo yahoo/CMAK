@@ -7,7 +7,7 @@
   logkafka_id: String,
   log_path: String,
   errorOrLogkafkaIdentity: kafka.manager.ApiError \/ (kafka.manager.model.ActorModel.LogkafkaIdentity, kafka.manager.model.ClusterContext)
-)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
 
 @theMenu = {
     @views.html.navigation.clusterMenu(cluster,"Logkafka","",menus.clusterMenus(cluster)(
@@ -19,10 +19,9 @@
     menu = theMenu,
     breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndCluster("Logkafka View",cluster,logkafka_id))) {
 <div class="col-md-12 un-pad-me">
-    <div class="panel panel-default">
-        <div class="panel-heading">
-            <h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>@logkafka_id<br/>@log_path</h3>
-        </div>
+    <div class="card">
+        <div class="card-header">
+            <h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="octicon octicon-arrow-left" aria-hidden="true"></span></button>@logkafka_id<br/>@log_path</h3></div>
         @errorOrLogkafkaIdentity.fold(views.html.errors.onApiError(_), t => views.html.logkafka.logkafkaViewContent(cluster,logkafka_id,log_path,t._1))
     </div>
 </div>

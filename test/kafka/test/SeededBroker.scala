@@ -4,21 +4,28 @@
  */
 package kafka.test
 
-import java.util.{UUID, Properties}
+import java.time.Duration
+import java.util.{Properties, UUID}
 import java.util.concurrent.atomic.AtomicInteger
 
 import grizzled.slf4j.Logging
 import kafka.consumer._
-import kafka.manager.model.Kafka_0_8_2_0
+import kafka.manager.model.{Kafka_0_8_2_0, Kafka_1_1_0}
 import kafka.manager.utils.AdminUtils
-import kafka.message.{NoCompressionCodec, DefaultCompressionCodec}
+import kafka.message.{DefaultCompressionCodec, NoCompressionCodec}
 import kafka.serializer.DefaultDecoder
 import org.apache.curator.framework.imps.CuratorFrameworkState
-import org.apache.curator.framework.{CuratorFrameworkFactory, CuratorFramework}
+import org.apache.curator.framework.{CuratorFramework, CuratorFrameworkFactory}
 import org.apache.curator.retry.ExponentialBackoffRetry
 import org.apache.curator.test.TestingServer
 import org.apache.kafka.clients.consumer.{ConsumerRecords, KafkaConsumer}
-import org.apache.kafka.clients.producer.{ProducerConfig, KafkaProducer, ProducerRecord}
+import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
+import org.apache.kafka.streams.kstream.{ForeachAction, KStream, Printed}
+import org.apache.kafka.streams.{KafkaStreams, StreamsBuilder}
+import org.apache.kafka.clients.consumer.ConsumerConfig._
+import org.apache.kafka.clients.CommonClientConfigs
+import org.apache.kafka.common.serialization.{ByteArrayDeserializer, Serdes}
+import org.apache.kafka.streams.StreamsConfig
 
 import scala.util.Try
 
@@ -35,12 +42,19 @@ class SeededBroker(seedTopic: String, partitions: Int) {
   zookeeper.start()
   private[this] val broker = new KafkaTestBroker(zookeeper,zookeeperConnectionString)
   
-  private[this] val adminUtils = new AdminUtils(Kafka_0_8_2_0)
+  private[this] val adminUtils = new AdminUtils(Kafka_1_1_0)
 
   //seed with table
   {
     adminUtils.createTopic(zookeeper, Set(0),seedTopic,partitions,1)
   }
+
+  private[this] val commonConsumerConfig = new Properties()
+  commonConsumerConfig.put(BOOTSTRAP_SERVERS_CONFIG, getBrokerConnectionString)
+  commonConsumerConfig.put(REQUEST_TIMEOUT_MS_CONFIG, "11000")
+  commonConsumerConfig.put(SESSION_TIMEOUT_MS_CONFIG, "10000")
+  commonConsumerConfig.put(RECEIVE_BUFFER_CONFIG, s"${64 * 1024}")
+  commonConsumerConfig.put(CLIENT_ID_CONFIG, "test-consumer")
 
   private def getTestingServer : TestingServer = {
     var count = 0
@@ -71,12 +85,12 @@ class SeededBroker(seedTopic: String, partitions: Int) {
     Try(testingServer.close())
   }
   
-  def getSimpleConsumer : SimpleConsumer = {
-    new SimpleConsumer("localhost", broker.getPort, 10000, 64 * 1024, "test-consumer")
+  def getKafkaConsumer = {
+    new KafkaConsumer(commonConsumerConfig)
   }
   
   def getHighLevelConsumer : HighLevelConsumer = {
-    new HighLevelConsumer(seedTopic, "test-hl-consumer", getZookeeperConnectionString)
+    new HighLevelConsumer(seedTopic, "test-hl-consumer", commonConsumerConfig)
   }
 
   def getNewConsumer : NewKafkaManagedConsumer = {
@@ -100,46 +114,54 @@ object SeededBroker {
   *
   * @param topic
  * @param groupId
- * @param zookeeperConnect
+ * @param commonConsumerConfig
  * @param readFromStartOfStream
  */
 case class HighLevelConsumer(topic: String,
                     groupId: String,
-                    zookeeperConnect: String,
+                    commonConsumerConfig: Properties,
                     readFromStartOfStream: Boolean = true) extends Logging {
 
-  val props = new Properties()
-  props.put("group.id", groupId)
-  props.put("zookeeper.connect", zookeeperConnect)
-  props.put("zookeeper.sync.time.ms", "200")
-  props.put("auto.commit.interval.ms", "1000")
-  props.put("auto.offset.reset", if(readFromStartOfStream) "smallest" else "largest")
+  commonConsumerConfig.put(StreamsConfig.APPLICATION_ID_CONFIG, groupId)
+  commonConsumerConfig.put(StreamsConfig.CLIENT_ID_CONFIG, groupId)
+  commonConsumerConfig.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.ByteArray().getClass.getName)
+  commonConsumerConfig.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.ByteArray().getClass.getName)
+  commonConsumerConfig.put(StreamsConfig.COMMIT_INTERVAL_MS_CONFIG, "100" )
+  commonConsumerConfig.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, "0")
 
-  val config = new ConsumerConfig(props)
-  val connector = Consumer.create(config)
+  info("setup:start topic=%s for bk=%s and groupId=%s".format(topic,commonConsumerConfig.getProperty(BOOTSTRAP_SERVERS_CONFIG),groupId))
+  val streamsBuilder = new StreamsBuilder
+  val kstream : KStream[Array[Byte], Array[Byte]] = streamsBuilder.stream(topic)
 
-  val filterSpec = new Whitelist(topic)
+  val kafkaStreams = new KafkaStreams(streamsBuilder.build(), commonConsumerConfig)
+  kafkaStreams.setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler {
+    override def uncaughtException(t: Thread, e: Throwable): Unit = {
+      error("Failed to initialize KafkStreams", e)
+    }
+  })
 
-  info("setup:start topic=%s for zk=%s and groupId=%s".format(topic,zookeeperConnect,groupId))
-  val stream : KafkaStream[Array[Byte], Array[Byte]] = connector.createMessageStreamsByFilter[Array[Byte], Array[Byte]](filterSpec, 1, new DefaultDecoder(), new DefaultDecoder()).head
-  info("setup:complete topic=%s for zk=%s and groupId=%s".format(topic,zookeeperConnect,groupId))
+  kafkaStreams.start()
+  info("setup:complete topic=%s for bk=%s and groupId=%s".format(topic,commonConsumerConfig.getProperty(BOOTSTRAP_SERVERS_CONFIG),groupId))
+
 
   def read(write: (Array[Byte])=>Unit) = {
     info("reading on stream now")
-    for(messageAndTopic <- stream) {
-      try {
-        info("writing from stream")
-        write(messageAndTopic.message)
-        info("written to stream")
-      } catch {
-        case e: Throwable =>
+    kstream.foreach(new ForeachAction[Array[Byte], Array[Byte]] {
+      def apply(k:Array[Byte], v:Array[Byte]): Unit = {
+        try {
+          info("writing from stream")
+          write(v)
+          info("written to stream")
+        } catch {
+          case e: Throwable =>
             error("Error processing message, skipping this message: ", e)
+        }
       }
-    }
+    })
   }
 
   def close() {
-    connector.shutdown()
+    kafkaStreams.close()
   }
 }
 
@@ -214,8 +236,6 @@ case class NewKafkaManagedConsumer(topic: String,
 
   val consumer = new KafkaConsumer[String, String](props)
 
-  val filterSpec = new Whitelist(topic)
-
   info("setup:start topic=%s for broker=%s and groupId=%s".format(topic,brokerConnect,groupId))
   consumer.subscribe(java.util.Arrays.asList(topic))
   info("setup:complete topic=%s for zk=%s and groupId=%s".format(topic,brokerConnect,groupId))
@@ -223,7 +243,7 @@ case class NewKafkaManagedConsumer(topic: String,
   def read(write: (String)=>Unit) = {
     import collection.JavaConverters._
     while (true) {
-      val records : ConsumerRecords[String, String] = consumer.poll(pollMillis)
+      val records : ConsumerRecords[String, String] = consumer.poll(Duration.ofMillis(pollMillis))
       for(record <- records.asScala) {
         write(record.value())
       }

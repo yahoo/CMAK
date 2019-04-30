@@ -4,27 +4,30 @@
 *@
 @(menuTitle: String, menuItem: String, menuList: IndexedSeq[models.navigation.Menu])
 
+@import scala.Int; var i = 0;
+
         <div class="navbar-collapse collapse">
-            <ul class="nav navbar-nav">
+            <ul class="navbar-nav mr-auto">
                 @menuList.map { m =>
+                    @{i = i + 1}
                     @if(m.items.isEmpty) {
                         @if(m.title == menuTitle) {
-                            <li class="active"><a href="@m.route.map(_.toString).getOrElse("#")">@m.title</a></li>
+                            <li class="nav-item active"><a class="nav-link" href="@m.route.map(_.toString).getOrElse("#")">@m.title</a></li>
                         } else {
-                            <li><a href="@m.route.map(_.toString).getOrElse("#")">@m.title</a></li>
+                            <li class="nav-item"><a class="nav-link"  href="@m.route.map(_.toString).getOrElse("#")">@m.title</a></li>
                         }
                     } else {
-                        <li class="dropdown">
-                            <a href="#" class="dropdown-toggle" data-toggle="dropdown">@m.title<span class="caret"></span></a>
-                            <ul class="dropdown-menu" role="menu">
+                        <li class="nav-item dropdown">
+                            <a href="#" class="nav-link dropdown-toggle" href="#" id="@i" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" >@m.title<span class="caret"></span></a>
+                            <div class="dropdown-menu" aria-labelledby="@i">
                             @m.items.map { case (item,route) =>
                                 @if(m.title == menuTitle && item == menuItem) {
-                                    <li class="active"><a href="@route.toString">@item</a></li>
+                                    <a class="dropdown-item active" href="@route.toString">@item</a>
                                 } else {
-                                    <li><a href="@route.toString">@item</a></li>
+                                    <a class="dropdown-item" href="@route.toString">@item</a>
                                 }
                             }
-                            </ul>
+                            </div>
                         </li>
                     }
                 }

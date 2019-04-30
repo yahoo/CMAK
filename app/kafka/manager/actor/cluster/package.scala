@@ -6,7 +6,8 @@
 package kafka.manager.actor
 
 import grizzled.slf4j.Logging
-import kafka.manager.features.{ClusterFeatures, ClusterFeature}
+import kafka.manager.features.{ClusterFeature, ClusterFeatures}
+import org.apache.kafka.common.KafkaFuture.BiConsumer
 
 import scala.util.{Failure, Try}
 
@@ -22,6 +23,14 @@ package object cluster {
         case _ => //do nothing
       }
       t
+    }
+  }
+
+  implicit def toBiConsumer[A,B](fn: (A, B) => Unit): BiConsumer[A, B] = {
+    new BiConsumer[A, B] {
+      override def accept(a: A, b: B): Unit = {
+        fn(a, b)
+      }
     }
   }
 
