@@ -6,14 +6,15 @@ package kafka.manager
 
 import java.nio.charset.StandardCharsets
 import java.util.Properties
+import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.pattern._
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
-import kafka.manager.actor.cluster.{ClusterManagerActorConfig, ClusterManagerActor}
+import kafka.manager.actor.cluster.{ClusterManagerActor, ClusterManagerActorConfig}
 import kafka.manager.base.LongRunningPoolConfig
-import kafka.manager.model.{ClusterConfig, CuratorConfig, ActorModel}
+import kafka.manager.model.{ActorModel, ClusterConfig, CuratorConfig}
 import kafka.manager.utils.zero81.PreferredLeaderElectionErrors
 import kafka.test.SeededBroker
 import kafka.manager.utils.{CuratorAwareTest, ZkUtils}
@@ -46,7 +47,7 @@ class TestClusterManagerActor extends CuratorAwareTest with BaseTest {
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, restrictOperations=false,  pollConsumers = true, filterConsumers = true, logkafkaEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning))
+    val clusterConfig = ClusterConfig("dev","0.8.2.0",kafkaServerZkPath, jmxEnabled = false, restrictOperations=false,  pollConsumers = true, filterConsumers = true, logkafkaEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning), securityProtocol="PLAINTEXT", saslMechanism=None, jaasConfig=None)
     val curatorConfig = CuratorConfig(testServer.getConnectString)
     val config = ClusterManagerActorConfig(
       "pinned-dispatcher"
@@ -62,7 +63,7 @@ class TestClusterManagerActor extends CuratorAwareTest with BaseTest {
   override protected def afterAll(): Unit = {
     Thread.sleep(1000)
     Try(clusterManagerActor.foreach( _ ! CMShutdown))
-    Try(system.shutdown())
+    Try(Await.ready(system.terminate(), Duration(5, TimeUnit.SECONDS)))
     Try(broker.shutdown())
     super.afterAll()
   }

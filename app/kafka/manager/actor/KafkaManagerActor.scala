@@ -146,10 +146,13 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
       Future {
         try {
           log.debug(s"Acquiring kafka manager mutex...")
-          mutex.acquire(kafkaManagerConfig.mutexTimeoutMillis,TimeUnit.MILLISECONDS)
-          KMCommandResult(Try {
-            fn
-          })
+          if(mutex.acquire(kafkaManagerConfig.mutexTimeoutMillis,TimeUnit.MILLISECONDS)) {
+            KMCommandResult(Try {
+              fn
+            })
+          } else {
+            throw new RuntimeException("Failed to acquire lock for kafka manager command")
+          }
         } finally {
           if(mutex.isAcquiredInThisProcess) {
             log.debug(s"Releasing kafka manger mutex...")
@@ -417,24 +420,30 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
     val offsetCacheThreadPoolQueueSize = config.tuning.flatMap(_.offsetCacheThreadPoolQueueSize) orElse kmConfig.defaultTuning.offsetCacheThreadPoolQueueSize
     val kafkaAdminClientThreadPoolSize = config.tuning.flatMap(_.kafkaAdminClientThreadPoolSize) orElse kmConfig.defaultTuning.kafkaAdminClientThreadPoolSize
     val kafkaAdminClientThreadPoolQueueSize = config.tuning.flatMap(_.kafkaAdminClientThreadPoolQueueSize) orElse kmConfig.defaultTuning.kafkaAdminClientThreadPoolQueueSize
+    val kafkaManagedOffsetMetadataCheckMillis = config.tuning.flatMap(_.kafkaManagedOffsetMetadataCheckMillis) orElse kmConfig.defaultTuning.kafkaManagedOffsetMetadataCheckMillis
+    val kafkaManagedOffsetGroupCacheSize = config.tuning.flatMap(_.kafkaManagedOffsetGroupCacheSize) orElse kmConfig.defaultTuning.kafkaManagedOffsetGroupCacheSize
+    val kafkaManagedOffsetGroupExpireDays = config.tuning.flatMap(_.kafkaManagedOffsetGroupExpireDays) orElse kmConfig.defaultTuning.kafkaManagedOffsetGroupExpireDays
 
     val tuning = Option(
       ClusterTuning(
-      brokerViewUpdatePeriodSeconds = brokerViewUpdatePeriodSeconds
-      , clusterManagerThreadPoolSize = clusterManagerThreadPoolSize
-      , clusterManagerThreadPoolQueueSize = clusterManagerThreadPoolQueueSize
-      , kafkaCommandThreadPoolSize = kafkaCommandThreadPoolSize
-      , kafkaCommandThreadPoolQueueSize = kafkaCommandThreadPoolQueueSize
-      , logkafkaCommandThreadPoolSize = logkafkaCommandThreadPoolSize
-      , logkafkaCommandThreadPoolQueueSize = logkafkaCommandThreadPoolQueueSize
-      , logkafkaUpdatePeriodSeconds = logkafkaUpdatePeriodSeconds
-      , partitionOffsetCacheTimeoutSecs = partitionOffsetCacheTimeoutSecs
-      , brokerViewThreadPoolSize = brokerViewThreadPoolSize
-      , brokerViewThreadPoolQueueSize = brokerViewThreadPoolQueueSize
-      , offsetCacheThreadPoolSize = offsetCacheThreadPoolSize
-      , offsetCacheThreadPoolQueueSize = offsetCacheThreadPoolQueueSize
-      , kafkaAdminClientThreadPoolSize = kafkaAdminClientThreadPoolSize
-      , kafkaAdminClientThreadPoolQueueSize = kafkaAdminClientThreadPoolQueueSize
+        brokerViewUpdatePeriodSeconds = brokerViewUpdatePeriodSeconds
+        , clusterManagerThreadPoolSize = clusterManagerThreadPoolSize
+        , clusterManagerThreadPoolQueueSize = clusterManagerThreadPoolQueueSize
+        , kafkaCommandThreadPoolSize = kafkaCommandThreadPoolSize
+        , kafkaCommandThreadPoolQueueSize = kafkaCommandThreadPoolQueueSize
+        , logkafkaCommandThreadPoolSize = logkafkaCommandThreadPoolSize
+        , logkafkaCommandThreadPoolQueueSize = logkafkaCommandThreadPoolQueueSize
+        , logkafkaUpdatePeriodSeconds = logkafkaUpdatePeriodSeconds
+        , partitionOffsetCacheTimeoutSecs = partitionOffsetCacheTimeoutSecs
+        , brokerViewThreadPoolSize = brokerViewThreadPoolSize
+        , brokerViewThreadPoolQueueSize = brokerViewThreadPoolQueueSize
+        , offsetCacheThreadPoolSize = offsetCacheThreadPoolSize
+        , offsetCacheThreadPoolQueueSize = offsetCacheThreadPoolQueueSize
+        , kafkaAdminClientThreadPoolSize = kafkaAdminClientThreadPoolSize
+        , kafkaAdminClientThreadPoolQueueSize = kafkaAdminClientThreadPoolQueueSize
+        , kafkaManagedOffsetMetadataCheckMillis = kafkaManagedOffsetMetadataCheckMillis
+        , kafkaManagedOffsetGroupCacheSize = kafkaManagedOffsetGroupCacheSize
+        , kafkaManagedOffsetGroupExpireDays = kafkaManagedOffsetGroupExpireDays
       )
     )
     config.copy(
@@ -478,6 +487,7 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
         && newConfig.jmxEnabled == currentConfig.jmxEnabled
         && newConfig.jmxUser == currentConfig.jmxUser
         && newConfig.jmxPass == currentConfig.jmxPass
+        && newConfig.jmxSsl == currentConfig.jmxSsl
         && newConfig.logkafkaEnabled == currentConfig.logkafkaEnabled
         && newConfig.restrictOperations == currentConfig.restrictOperations
         && newConfig.pollConsumers == currentConfig.pollConsumers
@@ -485,6 +495,9 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
         && newConfig.activeOffsetCacheEnabled == currentConfig.activeOffsetCacheEnabled
         && newConfig.displaySizeEnabled == currentConfig.displaySizeEnabled
         && newConfig.tuning == currentConfig.tuning
+        && newConfig.securityProtocol == currentConfig.securityProtocol
+        && newConfig.saslMechanism == currentConfig.saslMechanism
+        && newConfig.jaasConfig == currentConfig.jaasConfig
       ) {
         //nothing changed
         false

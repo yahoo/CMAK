@@ -5,29 +5,28 @@
 
 package controllers
 
-import features.{KMClusterManagerFeature, ApplicationFeatures}
-import kafka.manager.model.{CuratorConfig, ClusterTuning, KafkaVersion, ClusterConfig}
+import features.{ApplicationFeatures, KMClusterManagerFeature}
 import kafka.manager.ApiError
+import kafka.manager.model._
 import models.FollowLink
 import models.form._
 import models.navigation.Menus
 import play.api.data.Form
 import play.api.data.Forms._
-import play.api.data.validation.{Valid, Invalid, Constraint}
 import play.api.data.validation.Constraints._
-import play.api.i18n.{I18nSupport, MessagesApi}
+import play.api.data.validation.{Constraint, Invalid, Valid}
+import play.api.i18n.I18nSupport
 import play.api.mvc._
 
-import scala.concurrent.Future
-import scala.util.{Success, Failure, Try}
+import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 import scalaz.{-\/, \/-}
 
 /**
  * @author hiral
  */
-class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManagerContext)
-              (implicit af: ApplicationFeatures, menus: Menus) extends Controller with I18nSupport {
-  import play.api.libs.concurrent.Execution.Implicits.defaultContext
+class Cluster (val cc: ControllerComponents, val kafkaManagerContext: KafkaManagerContext)
+              (implicit af: ApplicationFeatures, menus: Menus, ec:ExecutionContext) extends AbstractController(cc) with I18nSupport {
 
   private[this] val kafkaManager = kafkaManagerContext.getKafkaManager
   private[this] val defaultTuning = kafkaManager.defaultTuning
@@ -67,6 +66,23 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
     }
   }
 
+  val validateSecurityProtocol: Constraint[String] = Constraint("validate security protocol") { string =>
+    Try {
+      SecurityProtocol(string)
+    } match {
+      case Failure(t) => Invalid(t.getMessage)
+      case Success(_) => Valid
+    }
+  }
+  val validateSASLmechanism: Constraint[Option[String]] = Constraint("validate SASL mechanism") { stringOption =>
+    Try {
+      stringOption.foreach(SASLmechanism.from)
+    } match {
+      case Failure(t) => Invalid(t.getMessage)
+      case Success(_) => Valid
+    }
+  }
+
   val clusterConfigForm = Form(
     mapping(
       "name" -> nonEmptyText.verifying(maxLength(250), validateName)
@@ -87,21 +103,27 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
         mapping(
           "brokerViewUpdatePeriodSeconds" -> optional(number(10, 1000))
           , "clusterManagerThreadPoolSize" -> optional(number(2, 1000))
-          , "clusterManagerThreadPoolQueueSize" -> optional(number(10, 1000))
+          , "clusterManagerThreadPoolQueueSize" -> optional(number(10, 10000))
           , "kafkaCommandThreadPoolSize" -> optional(number(2, 1000))
-          , "kafkaCommandThreadPoolQueueSize" -> optional(number(10, 1000))
+          , "kafkaCommandThreadPoolQueueSize" -> optional(number(10, 10000))
           , "logkafkaCommandThreadPoolSize" -> optional(number(2, 1000))
-          , "logkafkaCommandThreadPoolQueueSize" -> optional(number(10, 1000))
+          , "logkafkaCommandThreadPoolQueueSize" -> optional(number(10, 10000))
           , "logkafkaUpdatePeriodSeconds" -> optional(number(10, 1000))
           , "partitionOffsetCacheTimeoutSecs" -> optional(number(5, 100))
           , "brokerViewThreadPoolSize" -> optional(number(2, 1000))
-          , "brokerViewThreadPoolQueueSize" -> optional(number(10, 1000))
+          , "brokerViewThreadPoolQueueSize" -> optional(number(10, 10000))
           , "offsetCacheThreadPoolSize" -> optional(number(2, 1000))
-          , "offsetCacheThreadPoolQueueSize" -> optional(number(10, 1000))
+          , "offsetCacheThreadPoolQueueSize" -> optional(number(10, 10000))
           , "kafkaAdminClientThreadPoolSize" -> optional(number(2, 1000))
-          , "kafkaAdminClientThreadPoolQueueSize" -> optional(number(10, 1000))
+          , "kafkaAdminClientThreadPoolQueueSize" -> optional(number(10, 10000))
+          , "kafkaManagedOffsetMetadataCheckMillis" -> optional(number(10000, 120000))
+          , "kafkaManagedOffsetGroupCacheSize" -> optional(number(10000, 100000000))
+          , "kafkaManagedOffsetGroupExpireDays" -> optional(number(1, 100))
         )(ClusterTuning.apply)(ClusterTuning.unapply)
       )
+      , "securityProtocol" -> nonEmptyText.verifying(validateSecurityProtocol)
+      , "saslMechanism" -> optional(text).verifying(validateSASLmechanism)
+      , "jaasConfig" -> optional(text)
     )(ClusterConfig.apply)(ClusterConfig.customUnapply)
   )
 
@@ -126,21 +148,27 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
         mapping(
           "brokerViewUpdatePeriodSeconds" -> optional(number(10, 1000))
           , "clusterManagerThreadPoolSize" -> optional(number(2, 1000))
-          , "clusterManagerThreadPoolQueueSize" -> optional(number(10, 1000))
+          , "clusterManagerThreadPoolQueueSize" -> optional(number(10, 10000))
           , "kafkaCommandThreadPoolSize" -> optional(number(2, 1000))
-          , "kafkaCommandThreadPoolQueueSize" -> optional(number(10, 1000))
+          , "kafkaCommandThreadPoolQueueSize" -> optional(number(10, 10000))
           , "logkafkaCommandThreadPoolSize" -> optional(number(2, 1000))
-          , "logkafkaCommandThreadPoolQueueSize" -> optional(number(10, 1000))
+          , "logkafkaCommandThreadPoolQueueSize" -> optional(number(10, 10000))
           , "logkafkaUpdatePeriodSeconds" -> optional(number(10, 1000))
           , "partitionOffsetCacheTimeoutSecs" -> optional(number(5, 100))
           , "brokerViewThreadPoolSize" -> optional(number(2, 1000))
-          , "brokerViewThreadPoolQueueSize" -> optional(number(10, 1000))
+          , "brokerViewThreadPoolQueueSize" -> optional(number(10, 10000))
           , "offsetCacheThreadPoolSize" -> optional(number(2, 1000))
-          , "offsetCacheThreadPoolQueueSize" -> optional(number(10, 1000))
+          , "offsetCacheThreadPoolQueueSize" -> optional(number(10, 10000))
           , "kafkaAdminClientThreadPoolSize" -> optional(number(2, 1000))
-          , "kafkaAdminClientThreadPoolQueueSize" -> optional(number(10, 1000))
+          , "kafkaAdminClientThreadPoolQueueSize" -> optional(number(10, 10000))
+          , "kafkaManagedOffsetMetadataCheckMillis" -> optional(number(10000, 120000))
+          , "kafkaManagedOffsetGroupCacheSize" -> optional(number(10000, 100000000))
+          , "kafkaManagedOffsetGroupExpireDays" -> optional(number(1, 100))
         )(ClusterTuning.apply)(ClusterTuning.unapply)
       )
+      , "securityProtocol" -> nonEmptyText.verifying(validateSecurityProtocol)
+      , "saslMechanism" -> optional(text).verifying(validateSASLmechanism)
+      , "jaasConfig" -> optional(text)
     )(ClusterOperation.apply)(ClusterOperation.customUnapply)
   )
 
@@ -161,34 +189,37 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
       ,false
       ,false
       ,Option(defaultTuning)
+      ,PLAINTEXT
+      ,None
+      ,None
     )
   }
 
-  def cluster(c: String) = Action.async {
+  def cluster(c: String) = Action.async { implicit request: RequestHeader =>
     kafkaManager.getClusterView(c).map { errorOrClusterView =>
-      Ok(views.html.cluster.clusterView(c,errorOrClusterView))
+      Ok(views.html.cluster.clusterView(c,errorOrClusterView)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }
   }
 
-  def brokers(c: String) = Action.async {
+  def brokers(c: String) = Action.async { implicit request: RequestHeader =>
     kafkaManager.getBrokerList(c).map { errorOrBrokerList =>
-      Ok(views.html.broker.brokerList(c,errorOrBrokerList))
+      Ok(views.html.broker.brokerList(c,errorOrBrokerList)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }
   }
 
-  def broker(c: String, b: Int) = Action.async {
+  def broker(c: String, b: Int) = Action.async { implicit request: RequestHeader =>
     kafkaManager.getBrokerView(c,b).map { errorOrBrokerView =>
-      Ok(views.html.broker.brokerView(c,b,errorOrBrokerView))
+      Ok(views.html.broker.brokerView(c,b,errorOrBrokerView)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }
   }
 
-  def addCluster = Action.async { implicit request =>
+  def addCluster = Action.async { implicit request: RequestHeader =>
     featureGate(KMClusterManagerFeature) {
-      Future.successful(Ok(views.html.cluster.addCluster(clusterConfigForm.fill(defaultClusterConfig))))
+      Future.successful(Ok(views.html.cluster.addCluster(clusterConfigForm.fill(defaultClusterConfig))).withHeaders("X-Frame-Options" -> "SAMEORIGIN"))
     }
   }
 
-  def updateCluster(c: String) = Action.async { implicit request =>
+  def updateCluster(c: String) = Action.async { implicit request: RequestHeader =>
     featureGate(KMClusterManagerFeature) {
       kafkaManager.getClusterConfig(c).map { errorOrClusterConfig =>
         Ok(views.html.cluster.updateCluster(c,errorOrClusterConfig.map { cc =>
@@ -208,15 +239,18 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
             cc.logkafkaEnabled,
             cc.activeOffsetCacheEnabled,
             cc.displaySizeEnabled,
-            cc.tuning
+            cc.tuning,
+            cc.securityProtocol.stringId,
+            cc.saslMechanism.map(_.stringId),
+            cc.jaasConfig
           ))
-        }))
+        })).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
       }
     }
 
   }
 
-  def handleAddCluster = Action.async { implicit request =>
+  def handleAddCluster = Action.async { implicit request: Request[AnyContent] =>
     featureGate(KMClusterManagerFeature) {
       clusterConfigForm.bindFromRequest.fold(
         formWithErrors => Future.successful(BadRequest(views.html.cluster.addCluster(formWithErrors))),
@@ -232,6 +266,9 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
             clusterConfig.pollConsumers,
             clusterConfig.filterConsumers,
             clusterConfig.tuning,
+            clusterConfig.securityProtocol.stringId,
+            clusterConfig.saslMechanism.map(_.stringId),
+            clusterConfig.jaasConfig,
             clusterConfig.logkafkaEnabled,
             clusterConfig.activeOffsetCacheEnabled,
             clusterConfig.displaySizeEnabled
@@ -243,14 +280,14 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
               "Add Cluster",
               FollowLink("Go to cluster view.",routes.Cluster.cluster(clusterConfig.name).toString()),
               FollowLink("Try again.",routes.Cluster.addCluster().toString())
-            ))
+            )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
           }
         }
       )
     }
   }
 
-  def handleUpdateCluster(c: String) = Action.async { implicit request =>
+  def handleUpdateCluster(c: String) = Action.async { implicit request: Request[AnyContent] =>
     featureGate(KMClusterManagerFeature) {
       updateForm.bindFromRequest.fold(
         formWithErrors => Future.successful(BadRequest(views.html.cluster.updateCluster(c, \/-(formWithErrors)))),
@@ -264,7 +301,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
                 "Enable Cluster",
                 FollowLink("Go to cluster list.", routes.Application.index().toString()),
                 FollowLink("Back to cluster list.", routes.Application.index().toString())
-              ))
+              )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
             }
           case Disable =>
             kafkaManager.disableCluster(c).map { errorOrSuccess =>
@@ -275,7 +312,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
                 "Disable Cluster",
                 FollowLink("Back to cluster list.", routes.Application.index().toString()),
                 FollowLink("Back to cluster list.", routes.Application.index().toString())
-              ))
+              )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
             }
           case Delete =>
             kafkaManager.deleteCluster(c).map { errorOrSuccess =>
@@ -286,7 +323,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
                 "Delete Cluster",
                 FollowLink("Back to cluster list.", routes.Application.index().toString()),
                 FollowLink("Back to cluster list.", routes.Application.index().toString())
-              ))
+              )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
             }
           case Update =>
             kafkaManager.updateCluster(
@@ -301,6 +338,9 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
               clusterOperation.clusterConfig.pollConsumers,
               clusterOperation.clusterConfig.filterConsumers,
               clusterOperation.clusterConfig.tuning,
+              clusterOperation.clusterConfig.securityProtocol.stringId,
+              clusterOperation.clusterConfig.saslMechanism.map(_.stringId),
+              clusterOperation.clusterConfig.jaasConfig,
               clusterOperation.clusterConfig.logkafkaEnabled,
               clusterOperation.clusterConfig.activeOffsetCacheEnabled,
               clusterOperation.clusterConfig.displaySizeEnabled
@@ -312,7 +352,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
                 "Update Cluster",
                 FollowLink("Go to cluster view.", routes.Cluster.cluster(clusterOperation.clusterConfig.name).toString()),
                 FollowLink("Try again.", routes.Cluster.updateCluster(c).toString())
-              ))
+              )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
             }
           case Unknown(opString) =>
             Future.successful(Ok(views.html.common.resultOfCommand(
@@ -322,7 +362,7 @@ class Cluster (val messagesApi: MessagesApi, val kafkaManagerContext: KafkaManag
               "Unknown Cluster Operation",
               FollowLink("Back to cluster list.", routes.Application.index().toString()),
               FollowLink("Back to cluster list.", routes.Application.index().toString())
-            )))
+            )).withHeaders("X-Frame-Options" -> "SAMEORIGIN"))
         }
       )
     }

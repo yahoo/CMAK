@@ -69,8 +69,5 @@ GET    /vassets/*file                                       controllers.Assets.v
 # Unversioned Assets
 GET    /assets/*file                                        controllers.Assets.at(path="/public", file)
 
-# WebJars
-GET    /webjars/*file                                       controllers.WebJarAssets.at(file)
-
 # Ping / Health Check
 GET    /api/health                                          controllers.ApiHealth.ping

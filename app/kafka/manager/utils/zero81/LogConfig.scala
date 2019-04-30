@@ -74,7 +74,7 @@ object LogConfig extends TopicConfigs {
   val MinCleanableDirtyRatioProp = "min.cleanable.dirty.ratio"
   val CleanupPolicyProp = "cleanup.policy"
 
-  val ConfigNames = Set(SegmentBytesProp,
+  val ConfigNames = Seq(SegmentBytesProp,
     SegmentMsProp,
     SegmentIndexBytesProp,
     FlushMessagesProp,
@@ -114,7 +114,8 @@ object LogConfig extends TopicConfigs {
    */
   def fromProps(defaults: Properties, overrides: Properties): LogConfig = {
     val props = new Properties(defaults)
-    props.putAll(overrides)
+    //to handle to Scala bug with Java 9+ versions https://github.com/scala/bug/issues/10418
+    overrides.forEach((k, v) => props.put(k, v))
     fromProps(props)
   }
 
@@ -122,9 +123,9 @@ object LogConfig extends TopicConfigs {
    * Check that property names are valid
    */
   def validateNames(props: Properties) {
-    import scala.collection.JavaConversions._
-    for (name <- props.keys)
-      require(LogConfig.ConfigNames.contains(name), "Unknown configuration \"%s\".".format(name))
+    import scala.collection.JavaConverters._
+    for (name <- props.keys.asScala)
+      require(LogConfig.ConfigNames.asJava.contains(name), "Unknown configuration \"%s\".".format(name))
   }
 
   /**
@@ -133,5 +134,9 @@ object LogConfig extends TopicConfigs {
   def validate(props: Properties) {
     validateNames(props)
     LogConfig.fromProps(LogConfig().toProps, props) // check that we can parse the values
+  }
+
+  def configNamesAndDoc: Seq[(String, String)] = {
+    configNames.map(n => n -> "")
   }
 }

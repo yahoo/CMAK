@@ -6,7 +6,7 @@
 @(cluster:String,
   consumer: String,
   errorOrConsumerIdentity: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.ConsumerIdentity
-)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
 
 @theMenu = {
     @views.html.navigation.clusterMenu(cluster,"Consumer","",menus.clusterMenus(cluster)(
@@ -18,11 +18,12 @@
     menu = theMenu,
     breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndCluster("Consumer View",cluster,consumer))) {
 <div class="col-md-12 un-pad-me">
-    <div class="panel panel-default">
-        <div class="panel-heading">
-            <h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="glyphicon glyphicon-arrow-left" aria-hidden="true"></span></button>@consumer</h3>
-        </div>
+    <div class="card">
+        <div class="card-header">
+            <h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="octicon octicon-arrow-left" aria-hidden="true"></span></button>@consumer</h3></div>
+        <div class="card-body">
         @errorOrConsumerIdentity.fold(views.html.errors.onApiError(_),views.html.consumer.consumerViewContent(cluster,consumer,_))
+        </div>
     </div>
 </div>
 }

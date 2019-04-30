@@ -4,7 +4,7 @@
 *@
 @import scalaz.{\/}
 @(cluster: String, errorOrClusterView: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.CMView
-)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
 
 @theMenu = {
     @views.html.navigation.clusterMenu(cluster,"Cluster","Summary",menus.clusterMenus(cluster)(

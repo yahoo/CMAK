@@ -4,17 +4,16 @@
 *@
 @(cluster: String, menuTitle: String, menuItem: String, menuList: IndexedSeq[models.navigation.Menu])
 
-<div class="navbar navbar-default" role="navigation">
-    <div class="container">
+<header class="navbar navbar-expand navbar-light">
+    <nav class="navbar navbar-expand-lg">
         <div class="navbar-header">
-            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
-                <!--  Display three horizontal lines when navbar collapsed. -->
-                <span class="icon-bar"></span> <span class="icon-bar"></span> <span class="icon-bar"></span>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarText" aria-controls="navbarText" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
             </button>
-            <img src="@routes.Assets.versioned("images/favicon.png")">
+            <img src="@routes.Assets.at("images/favicon.png")">
             <a class="navbar-brand un-float-me" href="@routes.Application.index()">
-                Kafka Manager</a><span class="label label-primary">@cluster</span>
+                Kafka Manager</a><span class="badge badge-primary">@cluster</span>
         </div>
         @menuNav(menuTitle,menuItem,menuList)
-    </div>
-</div>
+    </nav>
+</header>

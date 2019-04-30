@@ -4,7 +4,7 @@
 *@
 @import scalaz.{\/}
 @(cluster:String, errorOrTopics: kafka.manager.ApiError \/ kafka.manager.TopicListExtended
-)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
 
 @theMenu = {
     @views.html.navigation.clusterMenu(cluster,"Topic","List",menus.clusterMenus(cluster)(
@@ -19,14 +19,19 @@
             $('#topics-table').DataTable( {
                 columnDefs: [
                     { type: 'file-size', targets: 7 }
-                ]
+                ],
+                "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "All"]]
             } );
         } );
         </script>
     } else {
         <script ype="text/javascript">
         $(document).ready(function() {
-            $('#topics-table').DataTable();
+            $('#topics-table').DataTable(
+                    {
+                        "lengthMenu": [[10, 25, 50, -1], [10, 25, 50, "All"]]
+                    }
+            );
         } );
         </script>
     }
@@ -34,28 +39,28 @@
 
 @renderOperations = {
 
-    @if(errorOrTopics.fold(err=>false,tl=>tl.list.headOption.map(opt => opt._2.map(ti => ti.clusterContext.config.restrictOperations && ti.clusterContext.config.name.equals(cluster)).getOrElse(false)).getOrElse(false))){
-        <div class="alert alert-info" role="alert">
-            Operations are restricted for @cluster Cluster (Enable at the cluster configurations)
-        </div>
-    } else {
-        <table class="table">
-            <tr>
-                @features.app(features.KMReassignPartitionsFeature) {
+@if(errorOrTopics.fold(err=>false,tl=>tl.list.headOption.map(opt => opt._2.map(ti => ti.clusterContext.config.restrictOperations && ti.clusterContext.config.name.equals(cluster)).getOrElse(false)).getOrElse(false))){
+    <div class="alert alert-info" role="alert">
+        Operations are restricted for @cluster Cluster (Enable at the cluster configurations)
+    </div>
+} else {
+    <table class="table">
+        <tr>
+            @features.app(features.KMReassignPartitionsFeature) {
                 <td>
                     <a href="@routes.ReassignPartitions.confirmMultipleAssignments(cluster)" class="submit-button btn btn-primary" role="button">Generate Partition Assignments</a>
                 </td>
                 <td>
                     <a href="@routes.ReassignPartitions.runMultipleAssignments(cluster)" class="submit-button btn btn-primary" role="button">Run Partition Assignments</a>
                 </td>
-                }
-                <td>
-                    <a href="@routes.Topic.addPartitionsToMultipleTopics(cluster)" class="submit-button btn btn-primary" role="button">Add Partitions</a>
-                </td>
-            </tr>
-            </tbody>
-        </table>
-    }
+            }
+            <td>
+                <a href="@routes.Topic.addPartitionsToMultipleTopics(cluster)" class="submit-button btn btn-primary" role="button">Add Partitions</a>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+}
 }
 
 @main(
@@ -65,15 +70,19 @@
     scripts=topicScripts) {
     <div class="col-md-12">
         @features.app(features.KMTopicManagerFeature) {
-        <div class="panel panel-default">
-            <div class="panel-heading"><h4>Operations</h4></div>
+        <div class="card">
+            <div class="card-header"><h4>Operations</h4></div>
+            <div class="card-body">
+            <div class="col-md-6">
             @renderOperations
+            </div>
+            </div>
         </div>
         }
     </div>
     <div class="col-md-12">
-        <div class="panel panel-default">
-            <div class="panel-heading"><h3>Topics</h3></div>
+        <div class="card">
+            <div class="card-body"><h3>Topics</h3>
             @errorOrTopics.fold( 
                 views.html.errors.onApiError(_),
                 tl => views.html.topic.topicListContent(
@@ -81,6 +90,7 @@
                         tl.underReassignments,
                         tl.list.headOption.map(opt => opt._2.map(ti => ti.clusterContext.config.pollConsumers).getOrElse(false)).getOrElse(false),
                         tl.list.headOption.map(opt => opt._2.map(ti => ti.clusterContext.config.displaySizeEnabled).getOrElse(false)).getOrElse(false)))
+            </div>
         </div>
     </div>
 }

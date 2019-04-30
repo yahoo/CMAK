@@ -2,40 +2,49 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
+@import kafka.manager.utils.LongFormatted
 @(cluster: String,
   topics: IndexedSeq[((String, Option[kafka.manager.model.ActorModel.TopicIdentity]),Boolean)],
   topicsUnderReassignment: IndexedSeq[String],
   pollConsumers: Boolean,
   displayTopicSize: Boolean
-)(implicit messages: play.api.i18n.Messages)
+)(implicit messages: play.api.i18n.Messages, request:RequestHeader)
 
 @getDeletedLevel(deleted: Boolean) = {
     @deleted match {
-        case true => {danger}
+        case true => {table-danger}
         case i => {}
     }
 }
 
 @getBrokersSpreadLevel(percentage: Int) = {
     @percentage match {
-        case i if i > 50 && i <= 75 => {warning}
-        case i if i <= 50 => {danger}
+        case i if i > 50 && i <= 75 => {table-warning}
+        case i if i <= 50 => {table-danger}
         case i => {}
     }
 }
 
 @getBrokersSkewLevel(percentage: Int) = {
     @percentage match {
-        case i if i > 0 && i <= 33 => {warning}
-        case i if i >= 34 => {danger}
+        case i if i > 0 && i <= 33 => {table-warning}
+        case i if i >= 34 => {table-danger}
+        case i => {}
+    }
+}
+
+@getBrokersLeaderSkewLevel(percentage: Int) = {
+    @percentage match {
+        case i if i > 0 && i <= 33 => {table-warning}
+        case i if i >= 34 => {table-danger}
         case i => {}
     }
 }
 
 @getUnderReplicatedLevel(percentage: Int) = {
     @percentage match {
-        case i if i > 0 && i <= 33 => {warning}
-        case i if i >= 34 => {danger}
+        case i if i > 0 && i <= 33 => {table-warning}
+        case i if i >= 34 => {table-danger}
         case i => {}
     }
 }
@@ -51,6 +60,7 @@
         <th># Brokers</th>
         <th><span title="Percentage of cluster brokers having partitions from the topic">Brokers Spread %</span></th>
         <th><span title="Percentage of brokers having more partitions than the average">Brokers Skew %</span></th>
+        <th><span title="Percentage of brokers having more partitions as leader than the average">Brokers Leader Skew %</span></th>
         <th># Replicas</th>
         <th><span title="Percentage of partitions having a missing replica">Under Replicated %</span></th>
         @if(displayTopicSize){
@@ -70,6 +80,7 @@
           @topicIdentity.map{ ti => <td>@ti.topicBrokers</td>}.getOrElse{<td> </td>}
           @topicIdentity.map{ ti => <td class="@getBrokersSpreadLevel(ti.brokersSpreadPercentage)">@ti.brokersSpreadPercentage</td>}.getOrElse{<td> </td>}
           @topicIdentity.map{ ti => <td class="@getBrokersSkewLevel(ti.brokersSkewPercentage)">@ti.brokersSkewPercentage</td>}.getOrElse{<td> </td>}
+          @topicIdentity.map{ ti => <td class="@getBrokersLeaderSkewLevel(ti.brokersLeaderSkewPercentage)">@ti.brokersLeaderSkewPercentage</td>}.getOrElse{<td> </td>}
           @topicIdentity.map{ ti => <td>@ti.replicationFactor</td>}.getOrElse{<td> </td>}
           @topicIdentity.map{ ti => <td class="@getUnderReplicatedLevel(ti.underReplicatedPercentage)">@ti.underReplicatedPercentage</td>}.getOrElse{<td> </td>}
           @if(displayTopicSize){
@@ -77,7 +88,7 @@
           }
           @if(pollConsumers){
           @topicIdentity.map{ ti => <td>@ti.producerRate</td>}.getOrElse{<td> </td>}
-          @topicIdentity.map{ ti => <td>@ti.summedTopicOffsets</td>}.getOrElse{<td> </td>}
+          @topicIdentity.map{ ti => <td>@ti.summedTopicOffsets.formattedAsDecimal</td>}.getOrElse{<td> </td>}
           }
       </tr>
     }

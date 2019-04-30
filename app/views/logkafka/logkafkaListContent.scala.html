@@ -3,13 +3,13 @@
 * See accompanying LICENSE file.
 *@
 @(cluster: String, logkafkas: IndexedSeq[((String, Option[kafka.manager.model.ActorModel.LogkafkaIdentity]),Boolean)]
-)(implicit messages: play.api.i18n.Messages)
+)(implicit messages: play.api.i18n.Messages, request:RequestHeader)
 
-@import b3.vertical.fieldConstructor; var row_num = 0
+@import scala.Int; var row_num = 0;
 
 @getFilesizeStatus(filesize: Int) = {
     @filesize match {
-        case i if i < 0 => {warning}
+        case i if i < 0 => {table-warning}
         case i => {}
     }
 }
@@ -32,7 +32,7 @@
             @for( (log_path, im) <- li.identityMap) {
                 @{row_num = row_num + 1}
                 <tr>
-                <td class=@getLogkafkaStatus(li.active, "", "danger")>
+                <td class=@getLogkafkaStatus(li.active, "", "table-danger")>
                     <a href="@routes.Logkafka.logkafka(cluster, logkafka_id, log_path)">@row_num</a>
                 </td>
 
@@ -45,9 +45,9 @@
                 @im._2.map { c =>
                     @c.get("realpath").map { d =>
                         <td>@d</td>
-                    }.getOrElse{<td class = "danger"> no corresponding file </td>}
+                    }.getOrElse{<td class = "table-danger"> no corresponding file </td>}
                 }.getOrElse{
-                    <td class = @getLogkafkaStatus(li.active, "warning", "danger")> 
+                    <td class = @getLogkafkaStatus(li.active, "table-warning", "table-danger")>
                         @getLogkafkaStatus(li.active,"scanning for new file", "logkafka is inactive") 
                     </td>
                 }
@@ -83,23 +83,23 @@
                 }.getOrElse{<td> </td>}
 
                 <td>
-                    <div class="btn-group-horizontal" role="group" aria-label="...">
+                    <div class="btn-group" role="group" aria-label="Operations">
                         @im._1.map { c =>
                             @c.get("valid").map { enabled =>
                                 @if(enabled.toBoolean) {
-                                    <a href="@routes.Logkafka.updateConfig(cluster, logkafka_id, log_path)" class="btn btn-default ops-button" role="button">Modify</a>
-                                    @b3.form(routes.Logkafka.handleDisableConfig(cluster, logkafka_id, log_path)) {
+                                    <a href="@routes.Logkafka.updateConfig(cluster, logkafka_id, log_path)" class="btn btn-outline-primary ops-button" role="button">Modify</a>
+                                    @b4.vertical.form(routes.Logkafka.handleDisableConfig(cluster, logkafka_id, log_path)) { implicit fc =>
                                         <input type="hidden" name="name" value="@cluster">
-                                        @b3.submit('class -> "btn btn-warning ops-button"){ Disable }
+                                        @b4.submit('class -> "btn btn-outline-warning ops-button"){ Disable }
                                     }
                                 } else {
-                                    @b3.form(routes.Logkafka.handleEnableConfig(cluster, logkafka_id, log_path)) {
+                                    @b4.vertical.form(routes.Logkafka.handleEnableConfig(cluster, logkafka_id, log_path)) { implicit fc =>
                                         <input type="hidden" name="name" value="@cluster">
-                                        @b3.submit('class -> "btn btn-success ops-button"){ Enable }
+                                        @b4.submit('class -> "btn btn-outline-success ops-button"){ Enable }
                                     }
-                                    @b3.form(routes.Logkafka.handleDeleteLogkafka(cluster, logkafka_id, log_path)) {
+                                    @b4.vertical.form(routes.Logkafka.handleDeleteLogkafka(cluster, logkafka_id, log_path)) { implicit fc =>
                                         <input type="hidden" name="name" value="@cluster">
-                                        @b3.submit('class -> "btn btn-danger ops-button"){ Delete }
+                                        @b4.submit('class -> "btn btn-outline-danger ops-button"){ Delete }
                                     }
                                 }
                             }.getOrElse{<td> </td>}

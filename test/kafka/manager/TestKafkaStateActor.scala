@@ -5,16 +5,17 @@
 package kafka.manager
 
 import java.util.Properties
+import java.util.concurrent.TimeUnit
 
 import akka.actor.{ActorRef, ActorSystem, Kill, Props}
 import akka.pattern._
 import akka.util.Timeout
 import akka.util.Timeout._
 import com.typesafe.config.{Config, ConfigFactory}
-import kafka.manager.actor.cluster.{KafkaStateActorConfig, KafkaStateActor}
+import kafka.manager.actor.cluster.{KafkaManagedOffsetCacheConfig, KafkaStateActor, KafkaStateActorConfig}
 import kafka.manager.base.LongRunningPoolConfig
 import kafka.manager.features.ClusterFeatures
-import kafka.manager.model.{ClusterContext, ClusterConfig, ActorModel}
+import kafka.manager.model.{ActorModel, ClusterConfig, ClusterContext}
 import kafka.manager.utils.KafkaServerInTest
 import ActorModel._
 import kafka.test.SeededBroker
@@ -38,7 +39,7 @@ class TestKafkaStateActor extends KafkaServerInTest with BaseTest {
   override val kafkaServerZkPath = broker.getZookeeperConnectionString
   private[this] var kafkaStateActor : Option[ActorRef] = None
   private[this] implicit val timeout: Timeout = 10.seconds
-  private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning))
+  private[this] val defaultClusterConfig = ClusterConfig("test","0.8.2.0","localhost:2818",100,false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning), securityProtocol="PLAINTEXT", saslMechanism=None, jaasConfig=None)
   private[this] val defaultClusterContext = ClusterContext(ClusterFeatures.from(defaultClusterConfig), defaultClusterConfig)
 
   override protected def beforeAll(): Unit = {
@@ -52,6 +53,7 @@ class TestKafkaStateActor extends KafkaServerInTest with BaseTest {
       , 5
       , 10000
       , None
+      , KafkaManagedOffsetCacheConfig()
     )
     val props = Props(classOf[KafkaStateActor],ksConfig)
 
@@ -60,7 +62,7 @@ class TestKafkaStateActor extends KafkaServerInTest with BaseTest {
 
   override protected def afterAll(): Unit = {
     kafkaStateActor.foreach( _ ! Kill )
-    system.shutdown()
+    Try(Await.ready(system.terminate(), Duration(5, TimeUnit.SECONDS)))
     Try(broker.shutdown())
     super.afterAll()
   }

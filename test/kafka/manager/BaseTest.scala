@@ -1,5 +1,6 @@
 package kafka.manager
 
+import kafka.manager.actor.cluster.KafkaManagedOffsetCacheConfig
 import kafka.manager.model.ClusterTuning
 
 /**
@@ -25,9 +26,17 @@ trait BaseTest {
     ,Option(defaultPoolQueueSize)
     ,Option(defaultPoolSize)
     ,Option(defaultPoolQueueSize)
+    ,Option(KafkaManagedOffsetCacheConfig.defaultGroupMemberMetadataCheckMillis)
+    ,Option(KafkaManagedOffsetCacheConfig.defaultGroupTopicPartitionOffsetMaxSize)
+    ,Option(KafkaManagedOffsetCacheConfig.defaultGroupTopicPartitionOffsetExpireDays)
   )
 
-  def getClusterTuning(defaultPoolSize: Int, defaultPoolQueueSize: Int, defaultPollingSeconds: Int) : ClusterTuning = {
+  def getClusterTuning(defaultPoolSize: Int
+                       , defaultPoolQueueSize: Int
+                       , defaultPollingSeconds: Int
+                       , defaultGroupMemberMetadataCheckMillis: Int
+                       , defaultGroupTopicPartitionOffsetMaxSize: Int
+                       , defaultGroupTopicPartitionOffsetExpireDays: Int) : ClusterTuning = {
     ClusterTuning(
       Option(defaultPollingSeconds)
       ,Option(defaultPoolSize)
@@ -44,6 +53,9 @@ trait BaseTest {
       ,Option(defaultPoolQueueSize)
       ,Option(defaultPoolSize)
       ,Option(defaultPoolQueueSize)
+      ,Option(defaultGroupMemberMetadataCheckMillis)
+      ,Option(defaultGroupTopicPartitionOffsetMaxSize)
+      ,Option(defaultGroupTopicPartitionOffsetExpireDays)
     )
   }
 }
