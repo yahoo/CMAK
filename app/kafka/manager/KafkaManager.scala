@@ -963,12 +963,11 @@ class KafkaManager(akkaConfig: Config) extends Logging {
 
   def initialiseSchedulePreferredLeaderElection(): Unit = {
     implicit val ec = apiExecutionContext
+    implicit val formats = org.json4s.DefaultFormats
 
     var temp: Map[String, Int] = Map.empty
     val x = system.actorSelection(kafkaManagerActor).ask(KSGetScheduleLeaderElection)
     x.foreach { schedule =>
-      implicit val formats = org.json4s.DefaultFormats
-
       temp = parse(schedule.toString).extract[Map[String, Int]]
       for ((cluster, timeInterval) <- temp) {
         schedulePreferredLeaderElection(cluster, Set(), timeInterval)
