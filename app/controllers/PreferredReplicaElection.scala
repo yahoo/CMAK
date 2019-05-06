@@ -95,37 +95,33 @@ class PreferredReplicaElection (val cc: ControllerComponents, val kafkaManagerCo
   }
 
   def scheduleRunElection(c: String) = Action.async { implicit request =>
-    var status_string: String = ""
-    var timePeriod: Int = 0
-    if(kafkaManager.pleCancellable.contains(c)){
-      status_string = "Scheduler is running"
-      timePeriod = kafkaManager.pleCancellable(c)._2
+    def getOrZero : (Int, String) = if(kafkaManager.pleCancellable.contains(c)){
+      (kafkaManager.pleCancellable(c)._2, "Scheduler is running")
     }
     else {
-      status_string = "Scheduler is not running"
+      (0, "Scheduler is not running")
     }
+    val (timePeriod, status_string) = getOrZero
     kafkaManager.getTopicList(c).map { errorOrStatus =>
       Ok(views.html.scheduleLeaderElection(c,errorOrStatus, status_string, timePeriod)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }
   }
 
   def handleScheduleRunElection(c: String) = Action.async { implicit request =>
-    var status_string: String = ""
-    var timeIntervalMinutes = request.body.asFormUrlEncoded.get("timePeriod")(0).toInt
-    if(!kafkaManager.pleCancellable.contains(c)){
+    def setOrExtract : (Int, String) = if(!kafkaManager.pleCancellable.contains(c)){
       kafkaManager.getTopicList(c).flatMap { errorOrTopicList =>
         errorOrTopicList.fold({ e =>
           Future.successful(-\/(e))
         }, { topicList =>
-          kafkaManager.schedulePreferredLeaderElection(c, topicList.list.toSet, timeIntervalMinutes)
+          kafkaManager.schedulePreferredLeaderElection(c, topicList.list.toSet, request.body.asFormUrlEncoded.get("timePeriod")(0).toInt)
         })
       }
-      status_string = "Scheduler started"
+      (request.body.asFormUrlEncoded.get("timePeriod")(0).toInt, "Scheduler started")
     }
     else{
-      status_string = "Scheduler already scheduled"
-      timeIntervalMinutes = kafkaManager.pleCancellable(c)._2
+      (kafkaManager.pleCancellable(c)._2, "Scheduler already scheduled")
     }
+    val (timeIntervalMinutes, status_string) = setOrExtract
     kafkaManager.getTopicList(c).map { errorOrStatus =>
       Ok(views.html.scheduleLeaderElection(c, errorOrStatus, status_string, timeIntervalMinutes)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }
@@ -145,23 +141,20 @@ class PreferredReplicaElection (val cc: ControllerComponents, val kafkaManagerCo
   def handleScheduleRunElectionAPI(c: String) = Action.async { implicit request =>
     // ToDo: Refactor out common part from handleScheduleRunElection
     featureGate(KMScheduleLeaderElectionFeature) {
-
-      var timePeriod = request.body.asInstanceOf[AnyContentAsJson].json.asInstanceOf[JsObject].values.toList(0).toString().toInt
-      var status_string: String = ""
-      if(!kafkaManager.pleCancellable.contains(c)){
+      def setOrExtract : (Int, String) = if(!kafkaManager.pleCancellable.contains(c)){
         kafkaManager.getTopicList(c).flatMap { errorOrTopicList =>
           errorOrTopicList.fold({ e =>
             Future.successful(-\/(e))
           }, { topicList =>
-            kafkaManager.schedulePreferredLeaderElection(c, topicList.list.toSet, timePeriod)
+            kafkaManager.schedulePreferredLeaderElection(c, topicList.list.toSet, request.body.asInstanceOf[AnyContentAsJson].json.asInstanceOf[JsObject].values.toList(0).toString().toInt)
           })
         }
-        status_string = "Scheduler started"
+        (request.body.asInstanceOf[AnyContentAsJson].json.asInstanceOf[JsObject].values.toList(0).toString().toInt, "Scheduler started")
       }
       else{
-        status_string = "Scheduler already scheduled"
-        timePeriod = kafkaManager.pleCancellable(c)._2
+        (kafkaManager.pleCancellable(c)._2, "Scheduler already scheduled")
       }
+      val (timePeriod, status_string) = setOrExtract
       Future(
         Ok(Json.obj(
           "scheduledInterval" -> timePeriod, "message" -> status_string
