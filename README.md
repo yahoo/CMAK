@@ -141,9 +141,11 @@ LDAP support is through the basic authentication filter.
 - basicAuthentication.ldap.password=< LDAP search password>
 - basicAuthentication.ldap.search-base-dn=< LDAP search base>
 - basicAuthentication.ldap.search-filter=< LDAP search filter>
-- basicAuthentication.ldap.group-filter=< LDAP group filter>
 - basicAuthentication.ldap.connection-pool-size=< number of connection to LDAP server>
 - basicAuthentication.ldap.ssl=< Boolean flag to enable/disable LDAPS>
+
+4. (Optional) Limit access to a specific LDAP Group
+- basicAuthentication.ldap.group-filter=< LDAP group filter>
 
 #### Example (Online LDAP Test Server):
 
