@@ -7,6 +7,7 @@ package kafka.manager
 
 import java.util.Properties
 import java.util.concurrent.{LinkedBlockingQueue, ThreadPoolExecutor, TimeUnit}
+import java.lang.Runtime.{getRuntime, _}
 
 import akka.actor.{ActorPath, ActorSystem, Props}
 import akka.util.Timeout
@@ -15,7 +16,7 @@ import grizzled.slf4j.Logging
 import kafka.manager.actor.{KafkaManagerActor, KafkaManagerActorConfig}
 import kafka.manager.base.LongRunningPoolConfig
 import kafka.manager.model._
-import ActorModel._
+import kafka.manager.model.ActorModel._
 import kafka.manager.actor.cluster.KafkaManagedOffsetCacheConfig
 import kafka.manager.utils.UtilException
 import kafka.manager.utils.zero81.ReassignPartitionErrors.ReplicationOutOfSync
@@ -59,6 +60,12 @@ object ApiError extends Logging {
 
 object KafkaManager {
 
+  val AvailableProcessors: Int = getRuntime().availableProcessors();
+  val DefaultMinThreadPoolSize: Int = 2;
+  val DefaultMinThreadPoolSizeAsString: String = DefaultMinThreadPoolSize.toString;
+  val DefaultThreadPoolSize: Int = if (AvailableProcessors < DefaultMinThreadPoolSize) DefaultMinThreadPoolSize else AvailableProcessors;
+  val DefaultThreadPoolSizeAsString: String = DefaultThreadPoolSize.toString;
+
   val ConsumerPropertiesFile = "kafka-manager.consumer.properties.file"
   val BaseZkPath = "kafka-manager.base-zk-path"
   val PinnedDispatchName = "kafka-manager.pinned-dispatcher-name"
@@ -94,18 +101,18 @@ object KafkaManager {
       DeleteClusterUpdateSeconds -> "10",
       DeletionBatchSize -> "2",
       MaxQueueSize -> "100",
-      ThreadPoolSize -> "2",
+      ThreadPoolSize -> DefaultMinThreadPoolSizeAsString,
       MutexTimeoutMillis -> "4000",
       StartDelayMillis -> "1000",
       ApiTimeoutMillis -> "5000",
       ClusterActorsAskTimeoutMillis -> "2000",
       PartitionOffsetCacheTimeoutSecs -> "5",
       SimpleConsumerSocketTimeoutMillis -> "10000",
-      BrokerViewThreadPoolSize -> Runtime.getRuntime.availableProcessors().toString,
+      BrokerViewThreadPoolSize -> DefaultThreadPoolSizeAsString,
       BrokerViewMaxQueueSize -> "1000",
-      OffsetCacheThreadPoolSize -> Runtime.getRuntime.availableProcessors().toString,
+      OffsetCacheThreadPoolSize -> DefaultThreadPoolSizeAsString,
       OffsetCacheMaxQueueSize -> "1000",
-      KafkaAdminClientThreadPoolSize -> Runtime.getRuntime.availableProcessors().toString,
+      KafkaAdminClientThreadPoolSize -> DefaultThreadPoolSizeAsString,
       KafkaAdminClientMaxQueueSize -> "1000",
       KafkaManagedOffsetMetadataCheckMillis -> KafkaManagedOffsetCacheConfig.defaultGroupMemberMetadataCheckMillis.toString,
       KafkaManagedOffsetGroupCacheSize -> KafkaManagedOffsetCacheConfig.defaultGroupTopicPartitionOffsetMaxSize.toString,

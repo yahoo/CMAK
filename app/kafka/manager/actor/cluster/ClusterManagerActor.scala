@@ -49,6 +49,7 @@ object ClusterManagerActor {
 }
 
 import kafka.manager.model.ActorModel._
+import kafka.manager.KafkaManager._
 
 case class ClusterManagerActorConfig(pinnedDispatcherName: String
                                      , baseZkPath : String
@@ -168,7 +169,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         LogkafkaViewCacheActorConfig(
           logkafkaStateActor.get,
           clusterContext,
-          LongRunningPoolConfig(Runtime.getRuntime.availableProcessors(), 1000),
+          LongRunningPoolConfig(AvailableProcessors, 1000),
           FiniteDuration(clusterConfig.tuning.get.logkafkaUpdatePeriodSeconds.get, TimeUnit.SECONDS)
         )
       )
