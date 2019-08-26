@@ -71,7 +71,7 @@ RUN set -ex \
     && apt remove unzip -y \
     && apt autoremove -y \
     && apt autoclean -y \
-    && rm -f /kafka-manager-${VERSION}.zip
+    && rm -f /kafka-manager-${VERSION}.zip /var/lib/apt/lists/*
 
 WORKDIR ${KAFKA_MANAGER_HOME}
 
