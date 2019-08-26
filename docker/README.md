@@ -11,7 +11,7 @@ docker build -t kafka-manager:2.0.0.2 .
 The Dockerfile provides two parameters for customizing the **kafka-manager version** and **JVM options**:
 
 ``` sh
-docker build --build-arg VERSION=2.0.0.1 --build-arg JAVA_OPTS="-XX:+PrintGCDetails -XX:+PrintGCApplicationStoppedTime" -t kafka-manager:2.0.0.1
+docker build --build-arg VERSION=2.0.0.1 --build-arg JAVA_OPTS="-XX:+PrintGCDetails -XX:+PrintGCApplicationStoppedTime" -t kafka-manager:2.0.0.1 .
 ```
 
 ### Run with docker
