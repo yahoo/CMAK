@@ -172,7 +172,7 @@ case class LDAPAuthenticator(config: LDAPAuthenticationConfig)(implicit val mat:
       authorization.split("\\s+").toList match {
         case "Basic" :: base64Hash :: Nil => {
           val credentials = new String(org.apache.commons.codec.binary.Base64.decodeBase64(base64Hash.getBytes))
-          credentials.split(":").toList match {
+          credentials.split(":", 2).toList match {
             case username :: password :: Nil => Some(username -> password)
             case _ => None
           }
