@@ -197,7 +197,19 @@ case class LDAPAuthenticator(config: LDAPAuthenticationConfig)(implicit val mat:
               s"Base DN: ${config.searchBaseDN}. " +
               s"Filter: ${renderSearchFilter(config.searchFilter, username)}")
             false
-          case Some(userDN) => Try(connection.bind(userDN, password)).isSuccess
+          case Some(userDN) =>
+            //Check if user is in specified group
+            if (!config.groupFilter.isEmpty) {
+              val compareResult = connection.compare(new CompareRequest(userDN, "memberOf", config.groupFilter))
+              if (compareResult.compareMatched()) {
+                Try(connection.bind(userDN, password)).isSuccess
+              } else {
+                logger.debug(s"User $username is not member of Group ${config.groupFilter}")
+                false
+              }
+            } else {
+              Try(connection.bind(userDN, password)).isSuccess
+            }
         }
       } finally {
         connection.close()
@@ -257,6 +269,7 @@ case class LDAPAuthenticationConfig(salt: Array[Byte]
                                     , password: String
                                     , searchBaseDN: String
                                     , searchFilter: String
+                                    , groupFilter: String
                                     , connectionPoolSize: Int
                                     , sslEnabled: Boolean) extends AuthenticationConfig
 
@@ -336,6 +349,7 @@ object BasicAuthenticationFilterConfiguration {
 
       val searchDN = string("ldap.search-base-dn").getOrElse("")
       val searchFilter = string("ldap.search-filter").getOrElse("")
+      val groupFilter = string("ldap.group-filter").getOrElse("")
       val connectionPoolSize = int("ldap.connection-pool-size").getOrElse(10)
       val sslEnabled = boolean("ldap.ssl").getOrElse(false)
 
@@ -344,7 +358,7 @@ object BasicAuthenticationFilterConfiguration {
         LDAPAuth,
         LDAPAuthenticationConfig(salt, iv, secret,
           string("realm").getOrElse(defaultRealm),
-          server, port, username, password, searchDN, searchFilter, connectionPoolSize, sslEnabled
+          server, port, username, password, searchDN, searchFilter, groupFilter, connectionPoolSize, sslEnabled
         ),
         excluded
       )
