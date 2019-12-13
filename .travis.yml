@@ -1,6 +1,6 @@
 language: scala
 sudo: true
-jdk: oraclejdk8
+jdk: openjdk8
 install: true
 script: travis_wait 30 ./sbt clean coverage assembly
 scala:
