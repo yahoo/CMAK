@@ -79,6 +79,7 @@ dockerfile in docker := {
 
   new Dockerfile {
     from("openjdk:8-jre-slim")
+    runRaw("apt-get update && apt-get install -y --no-install-recommends unzip")
     add(zipFile, file("/opt/kafka-manager.zip"))
     workDir("/opt")
     run("unzip", "kafka-manager.zip")
