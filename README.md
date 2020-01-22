@@ -1,9 +1,10 @@
-Kafka Manager
+CMAK (Cluster Manager for Apache Kafka, previously known as Kafka Manager)
 =============
 
-A tool for managing [Apache Kafka](http://kafka.apache.org).
+CMAK (previously known as Kafka Manager) is a tool for managing [Apache Kafka](http://kafka.apache.org) clusters.
+_See below for details about the name change._
 
-It supports the following :
+CMAK supports the following:
 
  - Manage multiple clusters
  - Easy inspection of cluster state (topics, consumers, offsets, brokers, replica distribution, partition distribution)
@@ -71,7 +72,7 @@ Requirements
 Configuration
 -------------
 
-The minimum configuration is the zookeeper hosts which are to be used for kafka manager state.
+The minimum configuration is the zookeeper hosts which are to be used for CMAK (pka kafka manager) state.
 This can be found in the application.conf file in conf directory.  The same file will be packaged
 in the distribution zip file; you may modify settings after unzipping the file on the desired server.
 
@@ -89,7 +90,7 @@ You can optionally enable/disable the following functionality by modifying the d
 
     application.features=["KMClusterManagerFeature","KMTopicManagerFeature","KMPreferredReplicaElectionFeature","KMReassignPartitionsFeature"]
 
- - KMClusterManagerFeature - allows adding, updating, deleting cluster from Kafka Manager
+ - KMClusterManagerFeature - allows adding, updating, deleting cluster from CMAK (pka Kafka Manager)
  - KMTopicManagerFeature - allows adding, updating, deleting topic from a Kafka cluster
  - KMPreferredReplicaElectionFeature - allows running of preferred replica election for a Kafka cluster
  - KMReassignPartitionsFeature - allows generating partition assignments and reassigning partitions
@@ -118,7 +119,7 @@ You should increase the above for large # of consumers with consumer polling ena
 Kafka managed consumer offset is now consumed by KafkaManagedOffsetCache from the "__consumer_offsets" topic.  Note, this has not been tested with large number of offsets being tracked.  There is a single thread per cluster consuming this topic so it may not be able to keep up on large # of offsets being pushed to the topic.
 
 ### Authenticating a User with LDAP
-Warning, you need to have SSL configured with Kafka Manager to ensure your credentials aren't passed unencrypted.
+Warning, you need to have SSL configured with CMAK (pka Kafka Manager) to ensure your credentials aren't passed unencrypted.
 Authenticating a User with LDAP is possible by passing the user credentials with the Authorization header.
 LDAP authentication is done on first visit, if successful, a cookie is set.
 On next request, the cookie value is compared with credentials from Authorization header.
@@ -207,7 +208,7 @@ To add JAAS configuration for SASL, add the config file location at start:
 
     $ bin/kafka-manager -Djava.security.auth.login.config=/path/to/my-jaas.conf
 
-NOTE: Make sure the user running kafka manager has read permissions on the jaas config file
+NOTE: Make sure the user running CMAK (pka kafka manager) has read permissions on the jaas config file
 
 
 Packaging
@@ -222,12 +223,16 @@ If you'd like to create a Debian or RPM package instead, you can run one of:
 Credits
 -------
 
-Logo/favicon used is from [Apache Kafka](http://kafka.apache.org).
+Logo/favicon used is from [Apache Kafka](http://kafka.apache.org) project and a registered trademark of the Apache Software Foundation.
 
 Most of the utils code has been adapted to work with [Apache Curator](http://curator.apache.org) from [Apache Kafka](http://kafka.apache.org).
 
+Name and Management
+-------
+
+CMAK was renamed from its previous name due to [this issue](https://github.com/yahoo/kafka-manager/issues/713). CMAK is designed to be used with Apache Kafka and is offered to support the needs of the Kafka community. This project is currently managed by employees at Verizon Media and the community who supports this project. 
 
 License
 -------
 
-Apache Licensed. See accompanying LICENSE file.
+Licensed under the terms of the Apache License 2.0. See accompanying LICENSE file for terms.
