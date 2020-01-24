@@ -8,6 +8,7 @@ package controllers
 import features.{ApplicationFeatures, KMClusterManagerFeature}
 import kafka.manager.ApiError
 import kafka.manager.model._
+import kafka.manager.KafkaManager._
 import models.FollowLink
 import models.form._
 import models.navigation.Menus
@@ -101,19 +102,19 @@ class Cluster (val cc: ControllerComponents, val kafkaManagerContext: KafkaManag
       , "tuning" -> optional(
         mapping(
           "brokerViewUpdatePeriodSeconds" -> optional(number(10, 1000))
-          , "clusterManagerThreadPoolSize" -> optional(number(2, 1000))
+          , "clusterManagerThreadPoolSize" -> optional(number(DefaultMinThreadPoolSize, 1000))
           , "clusterManagerThreadPoolQueueSize" -> optional(number(10, 10000))
-          , "kafkaCommandThreadPoolSize" -> optional(number(2, 1000))
+          , "kafkaCommandThreadPoolSize" -> optional(number(DefaultMinThreadPoolSize, 1000))
           , "kafkaCommandThreadPoolQueueSize" -> optional(number(10, 10000))
-          , "logkafkaCommandThreadPoolSize" -> optional(number(2, 1000))
+          , "logkafkaCommandThreadPoolSize" -> optional(number(DefaultMinThreadPoolSize, 1000))
           , "logkafkaCommandThreadPoolQueueSize" -> optional(number(10, 10000))
           , "logkafkaUpdatePeriodSeconds" -> optional(number(10, 1000))
           , "partitionOffsetCacheTimeoutSecs" -> optional(number(5, 100))
-          , "brokerViewThreadPoolSize" -> optional(number(2, 1000))
+          , "brokerViewThreadPoolSize" -> optional(number(DefaultMinThreadPoolSize, 1000))
           , "brokerViewThreadPoolQueueSize" -> optional(number(10, 10000))
-          , "offsetCacheThreadPoolSize" -> optional(number(2, 1000))
+          , "offsetCacheThreadPoolSize" -> optional(number(DefaultMinThreadPoolSize, 1000))
           , "offsetCacheThreadPoolQueueSize" -> optional(number(10, 10000))
-          , "kafkaAdminClientThreadPoolSize" -> optional(number(2, 1000))
+          , "kafkaAdminClientThreadPoolSize" -> optional(number(DefaultMinThreadPoolSize, 1000))
           , "kafkaAdminClientThreadPoolQueueSize" -> optional(number(10, 10000))
           , "kafkaManagedOffsetMetadataCheckMillis" -> optional(number(10000, 120000))
           , "kafkaManagedOffsetGroupCacheSize" -> optional(number(10000, 100000000))
@@ -145,19 +146,19 @@ class Cluster (val cc: ControllerComponents, val kafkaManagerContext: KafkaManag
       "tuning" -> optional(
         mapping(
           "brokerViewUpdatePeriodSeconds" -> optional(number(10, 1000))
-          , "clusterManagerThreadPoolSize" -> optional(number(2, 1000))
+          , "clusterManagerThreadPoolSize" -> optional(number(DefaultMinThreadPoolSize, 1000))
           , "clusterManagerThreadPoolQueueSize" -> optional(number(10, 10000))
-          , "kafkaCommandThreadPoolSize" -> optional(number(2, 1000))
+          , "kafkaCommandThreadPoolSize" -> optional(number(DefaultMinThreadPoolSize, 1000))
           , "kafkaCommandThreadPoolQueueSize" -> optional(number(10, 10000))
-          , "logkafkaCommandThreadPoolSize" -> optional(number(2, 1000))
+          , "logkafkaCommandThreadPoolSize" -> optional(number(DefaultMinThreadPoolSize, 1000))
           , "logkafkaCommandThreadPoolQueueSize" -> optional(number(10, 10000))
           , "logkafkaUpdatePeriodSeconds" -> optional(number(10, 1000))
           , "partitionOffsetCacheTimeoutSecs" -> optional(number(5, 100))
-          , "brokerViewThreadPoolSize" -> optional(number(2, 1000))
+          , "brokerViewThreadPoolSize" -> optional(number(DefaultMinThreadPoolSize, 1000))
           , "brokerViewThreadPoolQueueSize" -> optional(number(10, 10000))
-          , "offsetCacheThreadPoolSize" -> optional(number(2, 1000))
+          , "offsetCacheThreadPoolSize" -> optional(number(DefaultMinThreadPoolSize, 1000))
           , "offsetCacheThreadPoolQueueSize" -> optional(number(10, 10000))
-          , "kafkaAdminClientThreadPoolSize" -> optional(number(2, 1000))
+          , "kafkaAdminClientThreadPoolSize" -> optional(number(DefaultMinThreadPoolSize, 1000))
           , "kafkaAdminClientThreadPoolQueueSize" -> optional(number(10, 10000))
           , "kafkaManagedOffsetMetadataCheckMillis" -> optional(number(10000, 120000))
           , "kafkaManagedOffsetGroupCacheSize" -> optional(number(10000, 100000000))

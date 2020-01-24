@@ -27,7 +27,7 @@ import scala.util.Try
  * @author hiral
  */
 class TestKafkaManagerActor extends CuratorAwareTest with BaseTest {
-
+  private[this] val KafkaVersion: String = "2.3.0"
   private[this] val akkaConfig: Properties = new Properties()
   akkaConfig.setProperty("pinned-dispatcher.type","PinnedDispatcher")
   akkaConfig.setProperty("pinned-dispatcher.executor","thread-pool-executor")
@@ -68,8 +68,9 @@ class TestKafkaManagerActor extends CuratorAwareTest with BaseTest {
     fn(result)
   }
 
+
   test("add cluster") {
-    val cc = ClusterConfig("dev","2.2.0",testServer.getConnectString, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning), securityProtocol="PLAINTEXT", saslMechanism = None, jaasConfig = None)
+    val cc = ClusterConfig("dev",KafkaVersion,testServer.getConnectString, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning), securityProtocol="PLAINTEXT", saslMechanism = None, jaasConfig = None)
     withKafkaManagerActor(KMAddCluster(cc)) { result: KMCommandResult =>
       result.result.get
       Thread.sleep(1000)
@@ -80,7 +81,7 @@ class TestKafkaManagerActor extends CuratorAwareTest with BaseTest {
   }
 
   test("update cluster zkhost") {
-    val cc2 = ClusterConfig("dev","2.2.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning), securityProtocol="PLAINTEXT", saslMechanism = None, jaasConfig = None)
+    val cc2 = ClusterConfig("dev",KafkaVersion,kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning), securityProtocol="PLAINTEXT", saslMechanism = None, jaasConfig = None)
     withKafkaManagerActor(KMUpdateCluster(cc2)) { result: KMCommandResult =>
       result.result.get
       Thread.sleep(3000)
@@ -112,7 +113,7 @@ class TestKafkaManagerActor extends CuratorAwareTest with BaseTest {
   }
 
   test("update cluster version") {
-    val cc2 = ClusterConfig("dev","2.2.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning), securityProtocol="PLAINTEXT", saslMechanism = None, jaasConfig = None)
+    val cc2 = ClusterConfig("dev",KafkaVersion,kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning), securityProtocol="PLAINTEXT", saslMechanism = None, jaasConfig = None)
     withKafkaManagerActor(KMUpdateCluster(cc2)) { result: KMCommandResult =>
       result.result.get
       Thread.sleep(3000)
@@ -139,7 +140,7 @@ class TestKafkaManagerActor extends CuratorAwareTest with BaseTest {
       println(result)
       result.msg.contains("dev")
     }
-    val cc2 = ClusterConfig("dev","2.2.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning), securityProtocol="PLAINTEXT", saslMechanism = None, jaasConfig = None)
+    val cc2 = ClusterConfig("dev",KafkaVersion,kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning), securityProtocol="PLAINTEXT", saslMechanism = None, jaasConfig = None)
     withKafkaManagerActor(KMAddCluster(cc2)) { result: KMCommandResult =>
       result.result.get
       Thread.sleep(1000)
@@ -156,7 +157,7 @@ class TestKafkaManagerActor extends CuratorAwareTest with BaseTest {
   }
 
   test("update cluster logkafka enabled") {
-    val cc2 = ClusterConfig("dev","2.2.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, logkafkaEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning), securityProtocol="PLAINTEXT", saslMechanism = None, jaasConfig = None)
+    val cc2 = ClusterConfig("dev",KafkaVersion,kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, logkafkaEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning), securityProtocol="PLAINTEXT", saslMechanism = None, jaasConfig = None)
     withKafkaManagerActor(KMUpdateCluster(cc2)) { result: KMCommandResult =>
       result.result.get
       Thread.sleep(3000)
@@ -168,7 +169,7 @@ class TestKafkaManagerActor extends CuratorAwareTest with BaseTest {
 
   test("update cluster tuning") {
     val newTuning = getClusterTuning(3, 101, 11, 10000, 10000, 1)
-    val cc2 = ClusterConfig("dev","2.2.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, logkafkaEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false,
+    val cc2 = ClusterConfig("dev",KafkaVersion,kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, logkafkaEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false,
       tuning = Option(newTuning), securityProtocol="PLAINTEXT", saslMechanism = None, jaasConfig = None
     )
     withKafkaManagerActor(KMUpdateCluster(cc2)) { result: KMCommandResult =>
@@ -185,7 +186,7 @@ class TestKafkaManagerActor extends CuratorAwareTest with BaseTest {
   }
 
   test("update cluster security protocol") {
-    val cc2 = ClusterConfig("dev","2.2.0",kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, logkafkaEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning), securityProtocol="SASL_PLAINTEXT", saslMechanism = Option("PLAIN"), jaasConfig = Option("blah"))
+    val cc2 = ClusterConfig("dev",KafkaVersion,kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, logkafkaEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(defaultTuning), securityProtocol="SASL_PLAINTEXT", saslMechanism = Option("PLAIN"), jaasConfig = Option("blah"))
     withKafkaManagerActor(KMUpdateCluster(cc2)) { result: KMCommandResult =>
       result.result.get
       Thread.sleep(3000)

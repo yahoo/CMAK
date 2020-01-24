@@ -29,6 +29,7 @@ import scala.concurrent.{Await, ExecutionContext}
 import scala.util.Try
 
 class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with MockitoSugar {
+  val KafkaVersion = "2.3.0"
   private[this] val broker = new SeededBroker("controller-api-test", 4)
   override val kafkaServerZkPath = broker.getZookeeperConnectionString
   private[this] val duration = FiniteDuration(10, SECONDS)
@@ -76,9 +77,11 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
     super.afterAll()
   }
 
+
+
   private[this] def createCluster() = {
     val future = kafkaManagerContext.get.getKafkaManager.addCluster(
-      testClusterName, "2.2.0", kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(kafkaManagerContext.get.getKafkaManager.defaultTuning), securityProtocol = "PLAINTEXT", saslMechanism = None, jaasConfig = None
+      testClusterName, KafkaVersion, kafkaServerZkPath, jmxEnabled = false, pollConsumers = true, filterConsumers = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = Option(kafkaManagerContext.get.getKafkaManager.defaultTuning), securityProtocol = "PLAINTEXT", saslMechanism = None, jaasConfig = None
     )
     val result = Await.result(future, duration)
     result.toEither.left.foreach(apiError => sys.error(apiError.msg))
