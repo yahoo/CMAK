@@ -110,6 +110,64 @@
     }
 }
 
+@renderOperations = {
+    @if(topicIdentity.clusterContext.config.restrictOperations){
+    <div class="alert alert-info" role="alert">
+        Operations are restricted for @cluster Cluster (Enable at the cluster configurations)
+    </div>
+    } else {
+        <table class="table">
+            <tbody>
+                <tr>
+                    @if(topicIdentity.clusterContext.clusterFeatures.features(kafka.manager.features.KMDeleteTopicFeature)) {
+                        <td>
+                            <a href="@routes.Topic.confirmDeleteTopic(cluster,topic)" class='btn btn-primary btn-block'>Delete Topic</a>
+                        </td>
+                    }
+                    @features.app(features.KMReassignPartitionsFeature) {
+                        <td>
+                        @b4.vertical.form(routes.ReassignPartitions.handleOperation(cluster,topic)) { implicit fc =>
+                            @reassignPartitionOperation match {
+                                case ForceRunAssignment => {
+                                    <fieldset>
+                                        <input type="hidden" name="operation" value="force">
+                                        <input type="hidden" name="brokers" value="@Seq()">
+                                        @b4.submit('class -> "btn btn-primary btn-block"){ Force Reassign Partitions }
+                                    </fieldset>
+                                }
+                                case _ => {
+                                    <fieldset>
+                                        <input type="hidden" name="operation" value="run">
+                                        <input type="hidden" name="brokers" value="@Seq()">
+                                        @b4.submit('class -> "btn btn-primary btn-block"){ Reassign Partitions }
+                                    </fieldset>
+                                }
+                            }
+                        }
+                        </td>
+                        <td>
+                            <a href="@routes.ReassignPartitions.confirmAssignment(cluster,topic)" class="submit-button btn btn-primary" role="button">Generate Partition Assignments</a>
+                        </td>
+                    }
+                </tr>
+                <tr>
+                    <td>
+                        <a href="@routes.Topic.addPartitions(cluster,topic)" class="submit-button btn btn-primary" role="button">Add Partitions</a>
+                    </td>
+                    <td>
+                        <a href="@routes.Topic.updateConfig(cluster,topic)" class="submit-button btn btn-primary" role="button">Update Config</a>
+                    </td>
+                    @features.app(features.KMReassignPartitionsFeature) {
+                        <td>
+                            <a href="@routes.ReassignPartitions.manualAssignments(cluster, topic)" class="submit-button btn btn-primary" role="button">Manual Partition Assignments</a>
+                        </td>
+                    }
+                </tr>
+            </tbody>
+        </table>
+    }
+}
+
 
 <div class="row">
     <div class="col-md-5">
@@ -204,55 +262,7 @@
         <div class="card">
             <div class="card-header"><h4>Operations</h4></div>
             <div class="card-body">
-            <table class="table">
-                <tbody>
-                <tr>
-                    @if(topicIdentity.clusterContext.clusterFeatures.features(kafka.manager.features.KMDeleteTopicFeature)) {
-                    <td>
-                        <a href="@routes.Topic.confirmDeleteTopic(cluster,topic)" class='btn btn-primary btn-block'>Delete Topic</a>
-                    </td>
-                    }
-                    @features.app(features.KMReassignPartitionsFeature) {
-                    <td>
-                        @b4.vertical.form(routes.ReassignPartitions.handleOperation(cluster,topic)) { implicit fc =>
-                            @reassignPartitionOperation match {
-                                case ForceRunAssignment => {
-                                    <fieldset>
-                                        <input type="hidden" name="operation" value="force">
-                                        <input type="hidden" name="brokers" value="@Seq()">
-                                        @b4.submit('class -> "btn btn-primary btn-block"){ Force Reassign Partitions }
-                                    </fieldset>
-                                }
-                                case _ => {
-                                    <fieldset>
-                                        <input type="hidden" name="operation" value="run">
-                                        <input type="hidden" name="brokers" value="@Seq()">
-                                        @b4.submit('class -> "btn btn-primary btn-block"){ Reassign Partitions }
-                                    </fieldset>
-                                }
-                            }
-                        }
-                    </td>
-                    <td>
-                        <a href="@routes.ReassignPartitions.confirmAssignment(cluster,topic)" class="submit-button btn btn-primary" role="button">Generate Partition Assignments</a>
-                    </td>
-                    }
-                </tr>
-                <tr>
-                    <td>
-                        <a href="@routes.Topic.addPartitions(cluster,topic)" class="submit-button btn btn-primary" role="button">Add Partitions</a>
-                    </td>
-                    <td>
-                        <a href="@routes.Topic.updateConfig(cluster,topic)" class="submit-button btn btn-primary" role="button">Update Config</a>
-                    </td>
-                    @features.app(features.KMReassignPartitionsFeature) {
-                    <td>
-                        <a href="@routes.ReassignPartitions.manualAssignments(cluster, topic)" class="submit-button btn btn-primary" role="button">Manual Partition Assignments</a>
-                    </td>
-                    }
-                </tr>
-                </tbody>
-            </table>
+            @renderOperations
             </div>
         </div>
         }

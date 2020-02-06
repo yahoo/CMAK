@@ -173,8 +173,9 @@ object LogConfig extends TopicConfigs {
     */
   def fromProps(defaults: java.util.Map[_ <: Object, _ <: Object], overrides: Properties): LogConfig = {
     val props = new Properties()
-    props.putAll(defaults)
-    props.putAll(overrides)
+    //to handle to Scala bug with Java 9+ versions https://github.com/scala/bug/issues/10418
+    defaults.forEach((k, v) => props.put(k, v))
+    overrides.forEach((k, v) => props.put(k, v))
     LogConfig(props)
   }
 

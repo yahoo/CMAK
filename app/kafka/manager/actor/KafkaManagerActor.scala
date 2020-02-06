@@ -489,6 +489,7 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
         && newConfig.jmxPass == currentConfig.jmxPass
         && newConfig.jmxSsl == currentConfig.jmxSsl
         && newConfig.logkafkaEnabled == currentConfig.logkafkaEnabled
+        && newConfig.restrictOperations == currentConfig.restrictOperations
         && newConfig.pollConsumers == currentConfig.pollConsumers
         && newConfig.filterConsumers == currentConfig.filterConsumers
         && newConfig.activeOffsetCacheEnabled == currentConfig.activeOffsetCacheEnabled

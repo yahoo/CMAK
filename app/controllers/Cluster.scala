@@ -93,6 +93,7 @@ class Cluster (val cc: ControllerComponents, val kafkaManagerContext: KafkaManag
       , "jmxUser" -> optional(text)
       , "jmxPass" -> optional(text)
       , "jmxSsl" -> boolean
+      , "restrictOperations" -> boolean
       , "pollConsumers" -> boolean
       , "filterConsumers" -> boolean
       , "logkafkaEnabled" -> boolean
@@ -137,6 +138,7 @@ class Cluster (val cc: ControllerComponents, val kafkaManagerContext: KafkaManag
       "jmxUser" -> optional(text),
       "jmxPass" -> optional(text),
       "jmxSsl" -> boolean,
+      "restrictOperations" -> boolean,
       "pollConsumers" -> boolean,
       "filterConsumers" -> boolean,
       "logkafkaEnabled" -> boolean,
@@ -179,6 +181,7 @@ class Cluster (val cc: ControllerComponents, val kafkaManagerContext: KafkaManag
       ,false
       ,None
       ,None
+      ,false
       ,false
       ,false
       ,false
@@ -230,6 +233,7 @@ class Cluster (val cc: ControllerComponents, val kafkaManagerContext: KafkaManag
             cc.jmxUser,
             cc.jmxPass,
             cc.jmxSsl,
+            cc.restrictOperations,
             cc.pollConsumers,
             cc.filterConsumers,
             cc.logkafkaEnabled,
@@ -258,6 +262,7 @@ class Cluster (val cc: ControllerComponents, val kafkaManagerContext: KafkaManag
             clusterConfig.jmxUser,
             clusterConfig.jmxPass,
             clusterConfig.jmxSsl,
+            clusterConfig.restrictOperations,
             clusterConfig.pollConsumers,
             clusterConfig.filterConsumers,
             clusterConfig.tuning,
@@ -329,6 +334,7 @@ class Cluster (val cc: ControllerComponents, val kafkaManagerContext: KafkaManag
               clusterOperation.clusterConfig.jmxUser,
               clusterOperation.clusterConfig.jmxPass,
               clusterOperation.clusterConfig.jmxSsl,
+              clusterOperation.clusterConfig.restrictOperations,
               clusterOperation.clusterConfig.pollConsumers,
               clusterOperation.clusterConfig.filterConsumers,
               clusterOperation.clusterConfig.tuning,
