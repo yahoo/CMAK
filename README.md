@@ -67,7 +67,7 @@ Requirements
 ------------
 
 1. [Kafka 0.8.*.* or 0.9.*.* or 0.10.*.* or 0.11.*.*](http://kafka.apache.org/downloads.html)
-2. Java 8+
+2. Java 11+
 
 Configuration
 -------------
