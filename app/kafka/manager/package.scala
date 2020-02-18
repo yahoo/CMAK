@@ -27,4 +27,7 @@ package object manager {
     str.getBytes(StandardCharsets.UTF_8)
   }
 
+  implicit class PropertiesHelper(p: java.util.Properties) {
+    def asMap: java.util.Map[_, _] = p.asInstanceOf[java.util.Map[_, _]]
+  }
 }

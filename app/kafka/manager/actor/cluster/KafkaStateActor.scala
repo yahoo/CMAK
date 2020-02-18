@@ -99,7 +99,7 @@ case class KafkaAdminClientActor(config: KafkaAdminClientActorConfig) extends Ba
     }.mkString(",")
     val props = new Properties()
     config.consumerProperties.foreach {
-      cp => props.putAll(cp)
+      cp => props.putAll(cp.asMap)
     }
     props.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, config.clusterContext.config.securityProtocol.stringId)
     props.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, brokerListStr)
@@ -262,7 +262,7 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
     props.put(VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArrayDeserializer")
     props.put(AUTO_OFFSET_RESET_CONFIG, "latest")
     consumerProperties.foreach {
-      cp => props.putAll(cp)
+      cp => props.putAll(cp.asMap)
     }
     props.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, clusterContext.config.securityProtocol.stringId)
     if(clusterContext.config.saslMechanism.nonEmpty){

@@ -1,10 +1,10 @@
 language: scala
 sudo: true
-jdk: openjdk8
+jdk: openjdk11
 install: true
 script: travis_wait 30 ./sbt clean coverage assembly
 scala:
-  - 2.12.8
+  - 2.12.10
 #after_success:
 #  - sbt coverageReport coveralls
 

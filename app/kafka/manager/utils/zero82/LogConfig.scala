@@ -18,7 +18,7 @@
 package kafka.manager.utils.zero82
 
 import java.util.Properties
-
+import kafka.manager._
 import kafka.manager.utils.TopicConfigs
 
 /**
@@ -181,7 +181,7 @@ object LogConfig extends TopicConfigs {
    */
   def fromProps(defaults: Properties, overrides: Properties): LogConfig = {
     val props = new Properties(defaults)
-    props.putAll(overrides)
+    props.putAll(overrides.asMap)
     fromProps(props)
   }
 

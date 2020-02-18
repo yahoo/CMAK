@@ -18,6 +18,7 @@
 package kafka.manager.utils.logkafka82
 
 import java.util.Properties
+import kafka.manager._
 import scala.util.matching.Regex
 import kafka.manager.utils.LogkafkaNewConfigs
 
@@ -173,7 +174,7 @@ object LogConfig extends LogkafkaNewConfigs {
    */
   def fromProps(defaults: Properties, overrides: Properties): LogConfig = {
     val props = new Properties(defaults)
-    props.putAll(overrides)
+    props.putAll(overrides.asMap)
     fromProps(props)
   }
 
