@@ -189,24 +189,24 @@ Starting the service
 After extracting the produced zipfile, and changing the working directory to it, you can
 run the service like this:
 
-    $ bin/kafka-manager
+    $ bin/cmak
 
 By default, it will choose port 9000. This is overridable, as is the location of the
 configuration file. For example:
 
-    $ bin/kafka-manager -Dconfig.file=/path/to/application.conf -Dhttp.port=8080
+    $ bin/cmak -Dconfig.file=/path/to/application.conf -Dhttp.port=8080
 
 Again, if java is not in your path, or you need to run against a different version of java,
 add the -java-home option as follows:
 
-    $ bin/kafka-manager -java-home /usr/local/oracle-java-8
+    $ bin/cmak -java-home /usr/local/oracle-java-8
 
 Starting the service with Security
 ----------------------------------
 
 To add JAAS configuration for SASL, add the config file location at start:
 
-    $ bin/kafka-manager -Djava.security.auth.login.config=/path/to/my-jaas.conf
+    $ bin/cmak -Djava.security.auth.login.config=/path/to/my-jaas.conf
 
 NOTE: Make sure the user running CMAK (pka kafka manager) has read permissions on the jaas config file
 
