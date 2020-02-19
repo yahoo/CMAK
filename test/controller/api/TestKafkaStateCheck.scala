@@ -45,8 +45,8 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
     val configMap: Map[String, AnyRef] = Map(
       "pinned-dispatcher.type" -> "PinnedDispatcher",
       "pinned-dispatcher.executor" -> "thread-pool-executor",
-      "kafka-manager.zkhosts" -> kafkaServerZkPath,
-      KafkaManager.ConsumerPropertiesFile -> "conf/consumer.properties"
+      "cmak.zkhosts" -> kafkaServerZkPath,
+      "cmak.consumer.properties.file" -> "conf/consumer.properties"
     )
     val loader = new KafkaManagerLoaderForTests
     application = Option(loader.load(ApplicationLoader.createContext(
