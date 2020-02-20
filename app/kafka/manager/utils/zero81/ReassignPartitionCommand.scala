@@ -18,11 +18,11 @@
 package kafka.manager.utils.zero81
 
 import grizzled.slf4j.Logging
-import kafka.common.TopicAndPartition
 import kafka.manager.model.ActorModel
 import kafka.manager.utils._
-import ActorModel.{TopicPartitionIdentity, TopicIdentity}
+import ActorModel.{TopicIdentity, TopicPartitionIdentity}
 import org.apache.curator.framework.CuratorFramework
+import org.apache.kafka.common.TopicPartition
 import org.apache.zookeeper.KeeperException.NodeExistsException
 
 import scala.util.Try
@@ -77,12 +77,12 @@ class ReassignPartitionCommand(adminUtils: AdminUtils) extends Logging {
 
   def getValidAssignments(currentTopicIdentity: Map[String, TopicIdentity]
                           , generatedTopicIdentity: Map[String, TopicIdentity]
-                          , forceSet: Set[ForceReassignmentCommand]): Try[Map[TopicAndPartition, Seq[Int]]] = {
+                          , forceSet: Set[ForceReassignmentCommand]): Try[Map[TopicPartition, Seq[Int]]] = {
     Try {
       currentTopicIdentity.flatMap { case (topic, current) =>
         generatedTopicIdentity.get(topic).fold {
           logger.info(s"No generated assignment found for topic=$topic, skipping")
-          Map.empty[TopicAndPartition, Seq[Int]]
+          Map.empty[TopicPartition, Seq[Int]]
         } { generated =>
           validateAssignment(current, generated, forceSet)
           for {
@@ -93,7 +93,7 @@ class ReassignPartitionCommand(adminUtils: AdminUtils) extends Logging {
           } yield {
             logger.info("Reassigning replicas for topic=%s, partition=%s,  current=%s, generated=%s"
               .format(topic, currentPart, current.partitionsIdentity, generated.partitionsIdentity))
-            (TopicAndPartition(topic, currentPart), generatedTpi.replicas.toSeq)
+            (new TopicPartition(topic, currentPart), generatedTpi.replicas.toSeq)
           }
         }
       }
@@ -128,18 +128,18 @@ class ReassignPartitionCommand(adminUtils: AdminUtils) extends Logging {
   
 object ReassignPartitionCommand {
 
-  def parsePartitionReassignmentZkData(json : String) : Map[TopicAndPartition, Seq[Int]] = {
+  def parsePartitionReassignmentZkData(json : String) : Map[TopicPartition, Seq[Int]] = {
     import org.json4s.JsonAST._
     parseJson(json).findField(_._1 == "partitions") match {
       case Some((_, arr)) =>
-        val result : List[(TopicAndPartition, Seq[Int])] = for {
+        val result : List[(TopicPartition, Seq[Int])] = for {
           JArray(elements) <- arr
           JObject(children) <- elements
           JField("topic", JString(t)) <- children
           JField("partition", JInt(i)) <- children
           JField("replicas", arr2) <- children
           JArray(assignments) <- arr2
-        } yield (TopicAndPartition(t,i.toInt),assignments.map(_.extract[Int]))
+        } yield (new TopicPartition(t,i.toInt),assignments.map(_.extract[Int]))
         checkCondition(result.nonEmpty, NoValidAssignments)
         result.foreach { case (tAndP, a) =>
           checkCondition(a.nonEmpty, ReassignmentDataEmptyForTopic(tAndP.topic))

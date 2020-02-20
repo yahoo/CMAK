@@ -5,7 +5,7 @@
 name := """cmak"""
 
 /* For packaging purposes, -SNAPSHOT MUST contain a digit */
-version := "3.0.0.0"
+version := "3.0.0.1"
 
 scalaVersion := "2.12.10"
 
@@ -15,6 +15,8 @@ scalacOptions ++= Seq("-Xlint:-missing-interpolator","-Xfatal-warnings","-deprec
 assemblyMergeStrategy in assembly := {
   case "play/reference-overrides.conf" => MergeStrategy.first
   case "logger.xml" => MergeStrategy.first
+  case "META-INF/io.netty.versions.properties" => MergeStrategy.first
+  case "module-info.class" => MergeStrategy.first
   case "play/core/server/ServerWithStop.class" => MergeStrategy.first
   case other => (assemblyMergeStrategy in assembly).value(other)
 }
@@ -37,7 +39,7 @@ libraryDependencies ++= Seq(
   "org.slf4j" % "log4j-over-slf4j" % "1.7.25",
   "com.adrianhurt" %% "play-bootstrap" % "1.4-P26-B4" exclude("com.typesafe.play", "*"),
   "org.clapper" %% "grizzled-slf4j" % "1.3.3",
-  "org.apache.kafka" %% "kafka" % "2.2.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
+  "org.apache.kafka" %% "kafka" % "2.4.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
   "org.apache.kafka" % "kafka-streams" % "2.2.0",
   "com.beachape" %% "enumeratum" % "1.5.13",
   "com.github.ben-manes.caffeine" % "caffeine" % "2.6.2",

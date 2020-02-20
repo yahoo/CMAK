@@ -15,7 +15,7 @@
   * limitations under the License.
   */
 
-package kafka.manager.utils.one10
+package kafka.manager.utils.two40
 import java.nio.ByteBuffer
 
 import org.apache.kafka.clients.admin.{ConsumerGroupDescription, MemberDescription}
@@ -30,6 +30,7 @@ object MemberMetadata {
     MemberMetadata(
       memberSummary.consumerId()
       , groupId
+      , None
       , memberSummary.clientId
       , memberSummary.host()
       , "(n/a on backfill)"
@@ -62,6 +63,7 @@ object MemberMetadata {
 
 case class MemberMetadata(memberId: String,
                           groupId: String,
+                          groupInstanceId: Option[String],
                           clientId: String,
                           clientHost: String,
                           protocolType: String,
@@ -82,6 +84,7 @@ case class MemberMetadata(memberId: String,
   override def toString: String = {
     "MemberMetadata(" +
       s"memberId=$memberId, " +
+      s"groupInstanceId=$groupInstanceId, " +
       s"clientId=$clientId, " +
       s"clientHost=$clientHost, " +
       s"supportedProtocols=${supportedProtocols.map(_._1)}, " +

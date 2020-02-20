@@ -4,8 +4,8 @@
  */
 package kafka.manager.utils
 
-import kafka.common.TopicAndPartition
 import kafka.manager.utils.zero81.{PreferredLeaderElectionErrors, PreferredReplicaLeaderElectionCommand}
+import org.apache.kafka.common.TopicPartition
 
 /**
  * @author hiral
@@ -23,7 +23,7 @@ class TestPreferredReplicaLeaderElection extends CuratorAwareTest {
 
   test("preferred replica leader election") {
     withCurator { curator =>
-      val set = Set(TopicAndPartition("mytopic",1),TopicAndPartition("mytopic",2),TopicAndPartition("mytopic",3))
+      val set = Set(new TopicPartition("mytopic",1),new TopicPartition("mytopic",2),new TopicPartition("mytopic",3))
       PreferredReplicaLeaderElectionCommand.writePreferredReplicaElectionData(curator,set)
       val json: String = curator.getData.forPath(ZkUtils.PreferredReplicaLeaderElectionPath)
       assert(json == "{\"version\":1,\"partitions\":[{\"topic\":\"mytopic\",\"partition\":1},{\"topic\":\"mytopic\",\"partition\":2},{\"topic\":\"mytopic\",\"partition\":3}]}")
@@ -33,7 +33,7 @@ class TestPreferredReplicaLeaderElection extends CuratorAwareTest {
   test("preferred replica leader election already running") {
     checkError[ElectionAlreadyInProgress] {
       withCurator { curator =>
-        val set = Set(TopicAndPartition("mytopic", 1), TopicAndPartition("mytopic", 2), TopicAndPartition("mytopic", 3))
+        val set = Set(new TopicPartition("mytopic", 1), new TopicPartition("mytopic", 2), new TopicPartition("mytopic", 3))
         PreferredReplicaLeaderElectionCommand.writePreferredReplicaElectionData(curator, set)
         val json: String = curator.getData.forPath(ZkUtils.PreferredReplicaLeaderElectionPath)
         assert(json == "{\"version\":1,\"partitions\":[{\"topic\":\"mytopic\",\"partition\":1},{\"topic\":\"mytopic\",\"partition\":2},{\"topic\":\"mytopic\",\"partition\":3}]}")

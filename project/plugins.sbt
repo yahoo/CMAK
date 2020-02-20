@@ -26,16 +26,16 @@ addSbtPlugin("com.typesafe.sbt" % "sbt-gzip" % "1.0.2")
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-less" % "1.1.2")
 
-addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.9.2")
+addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.10.0-RC1")
 
-addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.9")
+addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.10")
 
 // Support packaging plugins
-addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.3.19")
+addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.6.1")
 
 resolvers += Classpaths.sbtPluginReleases
 
-addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.5.1")
+addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.6.0")
 
 addSbtPlugin("org.scoverage" % "sbt-coveralls" % "1.2.6")
 

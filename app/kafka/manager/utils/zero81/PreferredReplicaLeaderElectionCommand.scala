@@ -18,9 +18,9 @@
 package kafka.manager.utils.zero81
 
 import grizzled.slf4j.Logging
-import kafka.common.TopicAndPartition
 import kafka.manager.utils._
 import org.apache.curator.framework.CuratorFramework
+import org.apache.kafka.common.TopicPartition
 import org.apache.zookeeper.KeeperException.NodeExistsException
 import org.json4s.JsonAST._
 
@@ -30,15 +30,15 @@ import org.json4s.JsonAST._
  */
 object PreferredReplicaLeaderElectionCommand extends Logging {
 
-  def parsePreferredReplicaElectionData(jsonString: String): Set[TopicAndPartition] = {
+  def parsePreferredReplicaElectionData(jsonString: String): Set[TopicPartition] = {
     parseJson(jsonString).findField(_._1 == "partitions") match {
       case Some((_, arr)) =>
-        val result: List[TopicAndPartition] = for {
+        val result: List[TopicPartition] = for {
           JArray(elements) <- arr
           JObject(children) <- elements
           JField("topic", JString(t)) <- children
           JField("partition", JInt(p)) <- children
-        } yield TopicAndPartition(t, p.toInt)
+        } yield new TopicPartition(t, p.toInt)
         checkCondition(result.nonEmpty, PreferredLeaderElectionErrors.ElectionSetEmptyOnRead(jsonString))
         result.toSet
       case None =>
@@ -48,7 +48,7 @@ object PreferredReplicaLeaderElectionCommand extends Logging {
 
 
   def writePreferredReplicaElectionData(curator: CuratorFramework,
-                                        partitionsUndergoingPreferredReplicaElection: Set[TopicAndPartition]) {
+                                        partitionsUndergoingPreferredReplicaElection: Set[TopicPartition]) {
     checkCondition(partitionsUndergoingPreferredReplicaElection.nonEmpty,PreferredLeaderElectionErrors.ElectionSetEmptyOnWrite)
     val zkPath = ZkUtils.PreferredReplicaLeaderElectionPath
     val partitionsList : Set[Map[String,Any]] =
@@ -71,13 +71,13 @@ object PreferredReplicaLeaderElectionCommand extends Logging {
 object PreferredLeaderElectionErrors {
   class ElectionSetEmptyOnWrite private[PreferredLeaderElectionErrors] extends UtilError("Preferred replica election data is empty")
   class ElectionSetEmptyOnRead private[PreferredLeaderElectionErrors] (json: String) extends UtilError(s"Preferred replica election data is empty on read : $json")
-  class ElectionAlreadyInProgress private[PreferredLeaderElectionErrors] (partitionsUndergoingPreferredReplicaElection: Set[TopicAndPartition]) extends UtilError(
+  class ElectionAlreadyInProgress private[PreferredLeaderElectionErrors] (partitionsUndergoingPreferredReplicaElection: Set[TopicPartition]) extends UtilError(
     "Preferred replica leader election currently in progress for " +
     "%s. Aborting operation".format(partitionsUndergoingPreferredReplicaElection))
   class UnhandledException private[PreferredLeaderElectionErrors] extends UtilError("Unhandled exception")
 
   def ElectionSetEmptyOnRead(json: String) = new ElectionSetEmptyOnRead(json)
   val ElectionSetEmptyOnWrite = new ElectionSetEmptyOnWrite
-  def ElectionAlreadyInProgress(set: Set[TopicAndPartition]) = new ElectionAlreadyInProgress(set)
+  def ElectionAlreadyInProgress(set: Set[TopicPartition]) = new ElectionAlreadyInProgress(set)
   val UnhandledException = new UnhandledException
 }

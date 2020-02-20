@@ -7,7 +7,7 @@
 )(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
 
 @main(
-    "Kafka Manager",
+    "CMAK",
     views.html.navigation.defaultMenu(views.html.navigation.menuNav("Cluster","List",menus.indexMenu)),
     views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withView("Clusters"))) {
 <div class="col-md-6 un-pad-me">

@@ -172,15 +172,15 @@ The command below will create a zip file which can be used to deploy the applica
 Please refer to play framework documentation on [production deployment/configuration](https://www.playframework.com/documentation/2.4.x/ProductionConfiguration).
 
 If java is not in your path, or you need to build against a specific java version,
-please use the following (the example assumes oracle java8):
+please use the following (the example assumes zulu java11):
 
-    $ PATH=/usr/local/oracle-java-8/bin:$PATH \
-      JAVA_HOME=/usr/local/oracle-java-8 \
-      /path/to/sbt -java-home /usr/local/oracle-java-8 clean dist
+    $ PATH=/usr/lib/jvm/zulu-11-amd64/bin:$PATH \
+      JAVA_HOME=/usr/lib/jvm/zulu-11-amd64 \
+      /path/to/sbt -java-home /usr/lib/jvm/zulu-11-amd64 clean dist
 
 This ensures that the 'java' and 'javac' binaries in your path are first looked up in the
-oracle java8 release. Next, for all downstream tools that only listen to JAVA_HOME, it points
-them to the oracle java8 location. Lastly, it tells sbt to use the oracle java8 location as
+correct location. Next, for all downstream tools that only listen to JAVA_HOME, it points
+them to the java11 location. Lastly, it tells sbt to use the java11 location as
 well.
 
 Starting the service
@@ -199,7 +199,7 @@ configuration file. For example:
 Again, if java is not in your path, or you need to run against a different version of java,
 add the -java-home option as follows:
 
-    $ bin/cmak -java-home /usr/local/oracle-java-8
+    $ bin/cmak -java-home /usr/lib/jvm/zulu-11-amd64
 
 Starting the service with Security
 ----------------------------------
@@ -223,8 +223,6 @@ If you'd like to create a Debian or RPM package instead, you can run one of:
 Credits
 -------
 
-Logo/favicon used is from [Apache Kafka](http://kafka.apache.org) project and a registered trademark of the Apache Software Foundation.
-
 Most of the utils code has been adapted to work with [Apache Curator](http://curator.apache.org) from [Apache Kafka](http://kafka.apache.org).
 
 Name and Management
@@ -236,3 +234,8 @@ License
 -------
 
 Licensed under the terms of the Apache License 2.0. See accompanying LICENSE file for terms.
+
+Consumer/Producer Lag
+-------
+
+Producer offset is polled.  Consumer offset is read from the offset topic for Kafka based consumers.  This means the reported lag may be negative since we are consuming offset from the offset topic faster then polling the producer offset.  This is normal and not a problem.
