@@ -239,3 +239,10 @@ Consumer/Producer Lag
 -------
 
 Producer offset is polled.  Consumer offset is read from the offset topic for Kafka based consumers.  This means the reported lag may be negative since we are consuming offset from the offset topic faster then polling the producer offset.  This is normal and not a problem.
+
+Migration from Kafka Manager to CMAK
+-------
+
+1. Copy config files from old version to new version (application.conf, consumer.properties)
+2. Change start script to use bin/cmak instead of bin/kafka-manager
+
