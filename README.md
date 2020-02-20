@@ -76,11 +76,11 @@ The minimum configuration is the zookeeper hosts which are to be used for CMAK (
 This can be found in the application.conf file in conf directory.  The same file will be packaged
 in the distribution zip file; you may modify settings after unzipping the file on the desired server.
 
-    kafka-manager.zkhosts="my.zookeeper.host.com:2181"
+    cmak.zkhosts="my.zookeeper.host.com:2181"
 
 You can specify multiple zookeeper hosts by comma delimiting them, like so:
 
-    kafka-manager.zkhosts="my.zookeeper.host.com:2181,other.zookeeper.host.com:2181"
+    cmak.zkhosts="my.zookeeper.host.com:2181,other.zookeeper.host.com:2181"
 
 Alternatively, use the environment variable `ZK_HOSTS` if you don't want to hardcode any values.
 
@@ -97,22 +97,22 @@ You can optionally enable/disable the following functionality by modifying the d
 
 Consider setting these parameters for larger clusters with jmx enabled :
 
- - kafka-manager.broker-view-thread-pool-size=< 3 * number_of_brokers>
- - kafka-manager.broker-view-max-queue-size=< 3 * total # of partitions across all topics>
- - kafka-manager.broker-view-update-seconds=< kafka-manager.broker-view-max-queue-size / (10 * number_of_brokers) >
+ - cmak.broker-view-thread-pool-size=< 3 * number_of_brokers>
+ - cmak.broker-view-max-queue-size=< 3 * total # of partitions across all topics>
+ - cmak.broker-view-update-seconds=< cmak.broker-view-max-queue-size / (10 * number_of_brokers) >
 
 Here is an example for a kafka cluster with 10 brokers, 100 topics, with each topic having 10 partitions giving 1000 total partitions with JMX enabled :
 
- - kafka-manager.broker-view-thread-pool-size=30
- - kafka-manager.broker-view-max-queue-size=3000
- - kafka-manager.broker-view-update-seconds=30
+ - cmak.broker-view-thread-pool-size=30
+ - cmak.broker-view-max-queue-size=3000
+ - cmak.broker-view-update-seconds=30
 
 The follow control consumer offset cache's thread pool and queue :
 
- - kafka-manager.offset-cache-thread-pool-size=< default is # of processors>
- - kafka-manager.offset-cache-max-queue-size=< default is 1000>
- - kafka-manager.kafka-admin-client-thread-pool-size=< default is # of processors>
- - kafka-manager.kafka-admin-client-max-queue-size=< default is 1000>
+ - cmak.offset-cache-thread-pool-size=< default is # of processors>
+ - cmak.offset-cache-max-queue-size=< default is 1000>
+ - cmak.kafka-admin-client-thread-pool-size=< default is # of processors>
+ - cmak.kafka-admin-client-max-queue-size=< default is 1000>
 
 You should increase the above for large # of consumers with consumer polling enabled.  Though it mainly affects ZK based consumer polling.
 
