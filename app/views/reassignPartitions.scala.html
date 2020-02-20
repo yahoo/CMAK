@@ -47,7 +47,7 @@
             <tr><th>Topic</th><th>Partition</th><th>Replica Assignment</th></tr>
             </thead>
             <tbody>
-            @for((kafka.common.TopicAndPartition(topic,partNum),assignment) <- repar.partitionsToBeReassigned.toList.sortBy(partition => (partition._1.topic, partition._1.partition))) {
+            @for(((topic,partNum),assignment) <- repar.sortedTopicPartitionAssignmentList) {
             <tr>
                 <td><a href="@routes.Topic.topic(cluster,topic)">@topic</a></td>
                 <td>@partNum</td>

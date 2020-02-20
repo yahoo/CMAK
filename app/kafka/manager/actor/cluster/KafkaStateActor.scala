@@ -17,7 +17,7 @@ import akka.pattern._
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine, RemovalCause, RemovalListener}
 import com.google.common.cache.{CacheBuilder, CacheLoader, LoadingCache}
 import grizzled.slf4j.Logging
-import kafka.common.{OffsetAndMetadata, TopicAndPartition}
+import kafka.common.OffsetAndMetadata
 import kafka.manager._
 import kafka.manager.base.cluster.{BaseClusterQueryActor, BaseClusterQueryCommandActor}
 import kafka.manager.base.{LongRunningPoolActor, LongRunningPoolConfig}
@@ -26,7 +26,7 @@ import kafka.manager.model.ActorModel._
 import kafka.manager.model._
 import kafka.manager.utils.ZkUtils
 import kafka.manager.utils.zero81.{PreferredReplicaLeaderElectionCommand, ReassignPartitionCommand}
-import kafka.manager.utils.one10.{GroupMetadata, GroupMetadataKey, MemberMetadata, OffsetKey}
+import kafka.manager.utils.two40.{GroupMetadata, GroupMetadataKey, MemberMetadata, OffsetKey}
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.cache._
@@ -114,9 +114,6 @@ case class KafkaAdminClientActor(config: KafkaAdminClientActorConfig) extends Ba
     log.info(s"Creating admin client with security protocol=${config.clusterContext.config.securityProtocol.stringId} , broker list : $brokerListStr")
     AdminClient.create(props)
   }
-
-  private def isValidConsumerGroupResponse(metadata: DescribeGroupsResponse.GroupMetadata): Boolean =
-    metadata.error == Errors.NONE && (metadata.state == "Dead" || metadata.state == "Empty" || metadata.protocolType == ConsumerProtocol.PROTOCOL_TYPE)
 
   override def processQueryRequest(request: QueryRequest): Unit = {
     if(adminClientOption.isEmpty) {
@@ -238,8 +235,7 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
   private[this] var lastGroupMemberMetadataCheckMillis : Long = System.currentTimeMillis()
 
   import KafkaManagedOffsetCache._
-  //import kafka.manager.utils.zero90.GroupMetadataManager._
-  import kafka.manager.utils.one10.GroupMetadataManager._
+  import kafka.manager.utils.two40.GroupMetadataManager._
 
   require(isSupported(clusterContext.config.version), s"Kafka version not support : ${clusterContext.config}")
 
@@ -506,8 +502,8 @@ trait OffsetCache extends Logging {
               val kafkaConsumer = getKafkaConsumer()
               val f: Future[Map[TopicPartition, java.lang.Long]] = Future {
                 try {
-                  val topicAndPartitions = parts.map(tpl => (TopicAndPartition(topic, tpl._2), PartitionOffsetRequestInfo(time, nOffsets)))
-                  val request: List[TopicPartition] = topicAndPartitions.map(f => new TopicPartition(f._1.topic, f._1.partition))
+                  val topicAndPartitions = parts.map(tpl => (new TopicPartition(topic, tpl._2), PartitionOffsetRequestInfo(time, nOffsets)))
+                  val request: List[TopicPartition] = topicAndPartitions.map(f => new TopicPartition(f._1.topic(), f._1.partition()))
                   kafkaConsumer.endOffsets(request.asJava).asScala.toMap
                 } finally {
                   kafkaConsumer.close()
@@ -1336,7 +1332,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
     request match {
       case KSUpdatePreferredLeaderElection(millis,json) =>
         safeExecute {
-          val s: Set[TopicAndPartition] = PreferredReplicaLeaderElectionCommand.parsePreferredReplicaElectionData(json)
+          val s: Set[TopicPartition] = PreferredReplicaLeaderElectionCommand.parsePreferredReplicaElectionData(json)
           preferredLeaderElection.fold {
             //nothing there, add as new
             preferredLeaderElection = Some(PreferredReplicaElection(getDateTime(millis), s, None, config.clusterContext))
@@ -1353,7 +1349,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
         }
       case KSUpdateReassignPartition(millis,json) =>
         safeExecute {
-          val m : Map[TopicAndPartition, Seq[Int]] = ReassignPartitionCommand.parsePartitionReassignmentZkData(json)
+          val m : Map[TopicPartition, Seq[Int]] = ReassignPartitionCommand.parsePartitionReassignmentZkData(json)
           reassignPartitions.fold {
             //nothing there, add as new
             reassignPartitions = Some(ReassignPartitions(getDateTime(millis),m, None, config.clusterContext))
@@ -1433,7 +1429,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
             cache.getCurrentChildren(ZkUtils.BrokerTopicsPath)
           }.fold {
           } { data: java.util.Map[String, ChildData] =>
-            var broker2TopicPartitionMap: Map[BrokerIdentity, List[(TopicAndPartition, PartitionOffsetRequestInfo)]] = Map()
+            var broker2TopicPartitionMap: Map[BrokerIdentity, List[(TopicPartition, PartitionOffsetRequestInfo)]] = Map()
 
             breakable {
               data.asScala.keys.toIndexedSeq.foreach(topic => {
@@ -1446,13 +1442,13 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
                     leaders.foreach(leader => {
                       leader._2 match {
                         case Some(brokerIden) =>
-                          var tlList : List[(TopicAndPartition, PartitionOffsetRequestInfo)] = null
+                          var tlList : List[(TopicPartition, PartitionOffsetRequestInfo)] = null
                           if (broker2TopicPartitionMap.contains(brokerIden)) {
                             tlList = broker2TopicPartitionMap(brokerIden)
                           } else {
                             tlList = List()
                           }
-                          tlList = (TopicAndPartition(topic, leader._1), PartitionOffsetRequestInfo(-1, 1)) +: tlList
+                          tlList = (new TopicPartition(topic, leader._1), PartitionOffsetRequestInfo(-1, 1)) +: tlList
                           broker2TopicPartitionMap += (brokerIden -> tlList)
                         case None =>
                       }
@@ -1487,7 +1483,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
                 var kafkaConsumer: Option[KafkaConsumer[Any, Any]] = None
                 try {
                   kafkaConsumer = Option(new KafkaConsumer(consumerProperties))
-                  val request = tpList.map(f => new TopicPartition(f._1.topic, f._1.partition))
+                  val request = tpList.map(f => new TopicPartition(f._1.topic(), f._1.partition()))
                   var tpOffsetMapOption = kafkaConsumer.map(_.endOffsets(request.asJavaCollection).asScala)
 
                   var topicOffsetMap: Map[Int, Long] = null

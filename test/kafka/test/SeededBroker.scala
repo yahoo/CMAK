@@ -47,6 +47,8 @@ class SeededBroker(seedTopic: String, partitions: Int) {
   //seed with table
   {
     adminUtils.createTopic(zookeeper, Set(0),seedTopic,partitions,1)
+    Thread.sleep(5000)
+    require(adminUtils.topicExists(zookeeper, seedTopic), "Failed to create seed topic!")
   }
 
   private[this] val commonConsumerConfig = new Properties()

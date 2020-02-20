@@ -48,7 +48,7 @@ operationForm: Form[models.form.PreferredReplicaElectionOperation]
             <tr><th>Topic</th><th>Partition</th></tr>
             </thead>
             <tbody>
-            @for(kafka.common.TopicAndPartition(topic,partNum) <- pre.topicAndPartition.toList.sortBy(_.topic) ) {
+            @for((topic,partNum) <- pre.sortedTopicPartitionList) {
             <tr>
                 <td><a href="@routes.Topic.topic(cluster,topic)">@topic</a></td>
                 <td>@partNum</td>

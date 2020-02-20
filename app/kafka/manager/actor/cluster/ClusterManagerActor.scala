@@ -12,17 +12,17 @@ import java.util.concurrent.{LinkedBlockingQueue, ThreadPoolExecutor, TimeUnit}
 import akka.actor.{ActorPath, Props}
 import akka.pattern._
 import akka.util.Timeout
-import kafka.common.TopicAndPartition
 import kafka.manager.base._
 import kafka.manager.base.cluster.BaseClusterQueryCommandActor
 import kafka.manager.features.{ClusterFeatures, KMJMXMetricsFeature, KMLogKafkaFeature}
 import kafka.manager.logkafka._
-import kafka.manager.model.{ClusterContext, ClusterConfig, CuratorConfig}
+import kafka.manager.model.{ClusterConfig, ClusterContext, CuratorConfig}
 import kafka.manager.utils.AdminUtils
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.recipes.cache.PathChildrenCache
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex
+import org.apache.kafka.common.TopicPartition
 import org.apache.zookeeper.CreateMode
 
 import scala.concurrent.duration.{FiniteDuration, _}
@@ -513,7 +513,7 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           bl <- eventualBrokerList
           tds <- eventualDescriptions
           tis = tds.descriptions.map(TopicIdentity.from(bl, _, None, None, clusterContext, None))
-          toElect = tis.flatMap(ti => ti.partitionsIdentity.values.filter(!_.isPreferredLeader).map(tpi => TopicAndPartition(ti.topic, tpi.partNum))).toSet
+          toElect = tis.flatMap(ti => ti.partitionsIdentity.values.filter(!_.isPreferredLeader).map(tpi => new TopicPartition(ti.topic, tpi.partNum))).toSet
         } yield toElect
         preferredLeaderElections.map { toElect =>
           withKafkaCommandActor(KCPreferredReplicaLeaderElection(toElect)) { kcResponse: KCCommandResult =>
