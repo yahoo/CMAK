@@ -15,6 +15,8 @@ scalacOptions ++= Seq("-Xlint:-missing-interpolator","-Xfatal-warnings","-deprec
 assemblyMergeStrategy in assembly := {
   case "play/reference-overrides.conf" => MergeStrategy.first
   case "logger.xml" => MergeStrategy.first
+  case "META-INF/io.netty.versions.properties" => MergeStrategy.first
+  case "module-info.class" => MergeStrategy.first
   case "play/core/server/ServerWithStop.class" => MergeStrategy.first
   case other => (assemblyMergeStrategy in assembly).value(other)
 }
