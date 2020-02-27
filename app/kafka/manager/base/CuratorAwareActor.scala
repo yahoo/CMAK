@@ -5,12 +5,22 @@
 
 package kafka.manager.base
 
+import akka.actor.ActorLogging
 import kafka.manager.model.CuratorConfig
+import org.apache.curator.RetrySleeper
 import org.apache.curator.framework.{CuratorFramework, CuratorFrameworkFactory}
 import org.apache.curator.retry.BoundedExponentialBackoffRetry
 
 import scala.util.Try
 
+class LoggingRetryPolicy(curatorConfig: CuratorConfig, actorLogging: ActorLogging
+                        ) extends BoundedExponentialBackoffRetry(curatorConfig.baseSleepTimeMs
+  , curatorConfig.maxSleepTimeMs, curatorConfig.zkMaxRetry) {
+  override def allowRetry(retryCount: Int, elapsedTimeMs: Long, sleeper: RetrySleeper): Boolean = {
+    actorLogging.log.info(s"retryCount=$retryCount maxRetries=${curatorConfig.zkMaxRetry} zkConnect=${curatorConfig.zkConnect}")
+    super.allowRetry(retryCount, elapsedTimeMs, sleeper)
+  }
+}
 
 trait CuratorAwareActor extends BaseActor {
   
@@ -23,7 +33,7 @@ trait CuratorAwareActor extends BaseActor {
   protected def getCurator(config: CuratorConfig) : CuratorFramework = {
     val curator: CuratorFramework = CuratorFrameworkFactory.newClient(
       config.zkConnect,
-      new BoundedExponentialBackoffRetry(config.baseSleepTimeMs, config.maxSleepTimeMs, config.zkMaxRetry))
+      new LoggingRetryPolicy(config, this))
     curator
   }
 

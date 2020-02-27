@@ -16,7 +16,7 @@ import scalaz.Validation.FlatMap._
 /**
   * @author hiral
   */
-case class CuratorConfig(zkConnect: String, zkMaxRetry: Int = 100, baseSleepTimeMs : Int = 100, maxSleepTimeMs: Int = 1000)
+case class CuratorConfig(zkConnect: String, zkMaxRetry: Int = 10, baseSleepTimeMs : Int = 100, maxSleepTimeMs: Int = 1000)
 
 sealed trait KafkaVersion
 case object Kafka_0_8_1_1 extends KafkaVersion {
@@ -185,7 +185,7 @@ object ClusterConfig {
   def apply(name: String
             , version : String
             , zkHosts: String
-            , zkMaxRetry: Int = 100
+            , zkMaxRetry: Int = 10
             , jmxEnabled: Boolean
             , jmxUser: Option[String]
             , jmxPass: Option[String]
