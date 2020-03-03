@@ -1,0 +1,55 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import scalaz.{\/}
+@(cluster:String, errorOrStatus: kafka.manager.ApiError \/ kafka.manager.model.ActorModel.TopicList, status: String, timePeriod: Int
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
+
+@theMenu = {
+@views.html.navigation.clusterMenu(cluster,"Schedule Leader Election","",menus.clusterMenus(cluster)(
+    errorOrStatus.map(_.clusterContext.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
+}
+
+@main(
+    "Schedule Leader Election",
+    menu = theMenu,
+    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withViewAndCluster("Schedule Leader Election",cluster))) {
+    <div class="col-md-6 un-pad-me">
+        <div class="card">
+            <div class="card-header"><h3>Schedule Leader Election</h3></div>
+            <div class="col-md-6">
+                @features.app(features.KMScheduleLeaderElectionFeature) {
+                    <div>
+                    @if(timePeriod == 0) {
+                        @b4.vertical.form(routes.PreferredReplicaElection.handleScheduleRunElection(cluster)) { implicit fc =>
+                            <input type="number" min="1" name="timePeriod" class="form-control col-md-8" placeholder="Time for scheduling (in min)" required />
+                            <fieldset>
+                            @b4.submit('class -> "btn btn-primary"){ Schedule Preferred Replica Election }
+                            </fieldset>
+                        }
+                    } else {
+                        @b4.vertical.form(routes.PreferredReplicaElection.cancelScheduleRunElection(cluster)) { implicit fc =>
+                            <fieldset>
+                            @b4.submit('class -> "btn btn-primary"){ Cancel Preferred Replica Election }
+                            </fieldset>
+                        }
+                    }
+                    </div>
+                }
+
+            </div>
+        </div>
+
+        <div class="row col-md-12">
+            <div class="alert alert-warning" role="alert">
+            @if(timePeriod == 0) {
+                @status
+            } else {
+                @status (every @timePeriod minutes)
+            }
+            </div>
+        </div>
+    </div>
+}
+

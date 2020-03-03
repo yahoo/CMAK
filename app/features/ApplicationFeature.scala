@@ -16,6 +16,7 @@ sealed trait ApplicationFeature extends KMFeature
 case object KMClusterManagerFeature extends ApplicationFeature
 case object KMTopicManagerFeature extends ApplicationFeature
 case object KMPreferredReplicaElectionFeature extends ApplicationFeature
+case object KMScheduleLeaderElectionFeature extends ApplicationFeature
 case object KMReassignPartitionsFeature extends ApplicationFeature
 case object KMBootstrapClusterConfigFeature extends ApplicationFeature
 

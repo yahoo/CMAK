@@ -21,6 +21,10 @@ GET    /clusters/:c/consumers/:g/type/:ct                   controllers.Consumer
 GET    /clusters/:c/consumers/:g/topic/:t/type/:ct          controllers.Consumer.consumerAndTopic(c: String, g:String, t:String, ct: String)
 GET    /clusters/:c/leader                                  controllers.PreferredReplicaElection.preferredReplicaElection(c:String)
 POST   /clusters/:c/leader                                  controllers.PreferredReplicaElection.handleRunElection(c:String)
+GET    /clusters/:c/leader/schedule                         controllers.PreferredReplicaElection.scheduleRunElection(c:String)
+POST   /clusters/:c/leader/schedule                         controllers.PreferredReplicaElection.handleScheduleRunElection(c:String)
+GET    /clusters/:c/leader/schedule/cancel                  controllers.PreferredReplicaElection.scheduleRunElection(c:String)
+POST   /clusters/:c/leader/schedule/cancel                  controllers.PreferredReplicaElection.cancelScheduleRunElection(c:String)
 GET    /clusters/:c/assignment                              controllers.ReassignPartitions.reassignPartitions(c:String)
 POST   /clusters/:c/assignment                              controllers.ReassignPartitions.handleOperation(c:String,t:String)
 GET    /clusters/:c/assignment/confirm                      controllers.ReassignPartitions.confirmAssignment(c:String,t:String)
@@ -62,6 +66,10 @@ GET    /api/status/:c/:t/unavailablePartitions              controllers.api.Kafk
 GET    /api/status/:cluster/:consumer/:topic/:consumerType/topicSummary   controllers.api.KafkaStateCheck.topicSummaryAction(cluster:String, consumer:String, topic:String, consumerType:String)
 GET    /api/status/:cluster/:consumer/:consumerType/groupSummary          controllers.api.KafkaStateCheck.groupSummaryAction(cluster:String, consumer:String, consumerType:String)
 GET    /api/status/:cluster/consumersSummary                controllers.api.KafkaStateCheck.consumersSummaryAction(cluster:String)
+
+GET    /api/clusters/:c/leader/scheduledInterval            controllers.PreferredReplicaElection.handleScheduledIntervalAPI(c:String)
+POST   /api/clusters/:c/leader/schedule                     controllers.PreferredReplicaElection.handleScheduleRunElectionAPI(c:String)
+POST   /api/clusters/:c/leader/schedule/cancel              controllers.PreferredReplicaElection.cancelScheduleRunElectionAPI(c:String)
 
 # Versioned Assets
 GET    /vassets/*file                                       controllers.Assets.versioned(path="/public", file: Asset)

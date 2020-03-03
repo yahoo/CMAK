@@ -74,6 +74,9 @@ object BreadCrumbs {
     "Preferred Replica Election" -> IndexedSeq(
       "Clusters".baseRouteBreadCrumb,
       BCDynamicNamedLink(identity,"Summary".clusterRoute)),
+    "Schedule Leader Election" -> IndexedSeq(
+      "Clusters".baseRouteBreadCrumb,
+      BCDynamicNamedLink(identity,"Summary".clusterRoute)),
     "Reassign Partitions" -> IndexedSeq(
       "Clusters".baseRouteBreadCrumb,
       BCDynamicNamedLink(identity,"Summary".clusterRoute)),
