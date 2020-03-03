@@ -257,6 +257,7 @@ case class KafkaManagedOffsetCache(clusterContext: ClusterContext
     props.put(KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArrayDeserializer")
     props.put(VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.ByteArrayDeserializer")
     props.put(AUTO_OFFSET_RESET_CONFIG, "latest")
+    props.put(METRIC_REPORTER_CLASSES_CONFIG, "")
     consumerProperties.foreach {
       cp => props.putAll(cp.asMap)
     }
