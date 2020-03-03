@@ -44,7 +44,6 @@ libraryDependencies ++= Seq(
   "org.apache.kafka" % "kafka-streams" % "2.2.0",
   "com.beachape" %% "enumeratum" % "1.5.13",
   "com.github.ben-manes.caffeine" % "caffeine" % "2.6.2",
-  "com.typesafe.play" %% "play-logback" % "2.6.21",
   "org.scalatest" %% "scalatest" % "3.0.5" % "test",
   "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2" % "test",
   "org.apache.curator" % "curator-test" % "2.12.0" % "test",
