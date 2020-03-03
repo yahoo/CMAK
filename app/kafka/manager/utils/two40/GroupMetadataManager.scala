@@ -133,12 +133,6 @@ case class CommitRecordMetadataAndOffset(appendedBatchOffset: Option[Long], offs
 }
 
 object GroupMetadata {
-  private val validPreviousStates: Map[GroupState, Set[GroupState]] =
-    Map(Dead -> Set(Stable, PreparingRebalance, CompletingRebalance, Empty, Dead),
-      CompletingRebalance -> Set(PreparingRebalance),
-      Stable -> Set(CompletingRebalance),
-      PreparingRebalance -> Set(Stable, CompletingRebalance, Empty),
-      Empty -> Set(PreparingRebalance))
 
   def loadGroup(groupId: String,
                 initialState: GroupState,
@@ -179,7 +173,7 @@ class GroupMetadata(val groupId: String, initialState: GroupState, time: Time) e
 
   private[two40] val lock = new ReentrantLock
 
-  private var state: GroupState = initialState
+  private val state: GroupState = initialState
   var currentStateTimestamp: Option[Long] = Some(time.milliseconds())
   var protocolType: Option[String] = None
   var generationId = 0
@@ -187,14 +181,10 @@ class GroupMetadata(val groupId: String, initialState: GroupState, time: Time) e
   private var protocol: Option[String] = None
 
   private val members = new mutable.HashMap[String, MemberMetadata]
-  private val pendingMembers = new mutable.HashSet[String]
-  private var numMembersAwaitingJoin = 0
   private val supportedProtocols = new mutable.HashMap[String, Integer]().withDefaultValue(0)
   private val offsets = new mutable.HashMap[TopicPartition, CommitRecordMetadataAndOffset]
   private val pendingOffsetCommits = new mutable.HashMap[TopicPartition, OffsetAndMetadata]
   private val pendingTransactionalOffsetCommits = new mutable.HashMap[Long, mutable.Map[TopicPartition, CommitRecordMetadataAndOffset]]()
-  private var receivedTransactionalOffsetCommits = false
-  private var receivedConsumerOffsetCommits = false
 
   var newMemberAdded: Boolean = false
 
@@ -828,23 +818,6 @@ object GroupMetadataManager {
     }
   }
 
-  private def parseOffsets(offsetKey: OffsetKey, payload: ByteBuffer): (Option[String], Option[String]) = {
-    val groupId = offsetKey.key.group
-    val topicPartition = offsetKey.key.topicPartition
-    val keyString = s"offset_commit::group=$groupId,partition=$topicPartition"
-
-    val offset = GroupMetadataManager.readOffsetMessageValue(payload)
-    val valueString = if (offset == null) {
-      "<DELETE>"
-    } else {
-      if (offset.metadata.isEmpty)
-        s"offset=${offset.offset}"
-      else
-        s"offset=${offset.offset},metadata=${offset.metadata}"
-    }
-
-    (Some(keyString), Some(valueString))
-  }
 }
 
 case class GroupTopicPartition(group: String, topicPartition: TopicPartition) {

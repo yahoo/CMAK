@@ -267,7 +267,7 @@ object ActorModel {
       val portResult = fieldExtended[Int]("port")(json)
       val jmxPortResult = fieldExtended[Int]("jmx_port")(json)
       val hostPortResult: JsonScalaz.Result[(String, Map[SecurityProtocol, Int])] = json.findField(_._1 == "endpoints").map(_ => fieldExtended[List[String]]("endpoints")(json))
-        .fold((hostResult |@| portResult |@| DEFAULT_SECURE)((a, b, c) => (a, Map(PLAINTEXT.asInstanceOf[SecurityProtocol] -> b)))){
+        .fold((hostResult |@| portResult |@| DEFAULT_SECURE)((a, b, _) => (a, Map(PLAINTEXT.asInstanceOf[SecurityProtocol] -> b)))){
         r =>
           r.flatMap {
             endpointList =>
@@ -296,7 +296,7 @@ object ActorModel {
                 }
                 result
               } else {
-                (hostResult |@| portResult |@| DEFAULT_SECURE)((a, b, c) => (a, Map(PLAINTEXT.asInstanceOf[SecurityProtocol] -> b)))
+                (hostResult |@| portResult |@| DEFAULT_SECURE)((a, b, _) => (a, Map(PLAINTEXT.asInstanceOf[SecurityProtocol] -> b)))
               }
           }
       }
@@ -304,11 +304,11 @@ object ActorModel {
         tpl <- hostPortResult
         host = tpl._1
         port = tpl._2
-        secure = (tpl._2.contains(PLAINTEXT) && tpl._2.size > 1) || (!tpl._2.contains(PLAINTEXT) && tpl._2.nonEmpty)
-        nonSecure = tpl._2.contains(PLAINTEXT)
+        secure = (port.contains(PLAINTEXT) && port.size > 1) || (!port.contains(PLAINTEXT) && port.nonEmpty)
+        nonSecure = port.contains(PLAINTEXT)
         jmxPort <- jmxPortResult
       } yield {
-        BrokerIdentity(brokerId, host, jmxPort, secure, nonSecure, tpl._2)
+        BrokerIdentity(brokerId, host, jmxPort, secure, nonSecure, port)
       }
     }
   }
@@ -494,7 +494,7 @@ import scala.language.reflectiveCalls
     private[this] def getPartitionReplicaMap(td: TopicDescription) : Map[String, List[Int]] = {
       // Get the topic description information
       val descJson = parse(td.description._2)
-      field[Map[String,List[Int]]]("partitions")(descJson).fold({ e =>
+      field[Map[String,List[Int]]]("partitions")(descJson).fold({ _ =>
         logger.error(s"[topic=${td.topic}] Failed to get partitions from topic json ${td.description._2}")
         Map.empty
       }, identity)
@@ -550,7 +550,7 @@ import scala.language.reflectiveCalls
         try {
           val resultOption: Option[(Int,Map[String, String])] = td.config.map { configString =>
             val configJson = parse(configString._2)
-            val configMap : Map[String, String] = field[Map[String,String]]("config")(configJson).fold({ e =>
+            val configMap : Map[String, String] = field[Map[String,String]]("config")(configJson).fold({ _ =>
               logger.error(s"Failed to parse topic config ${configString._2}")
               Map.empty
             }, identity)

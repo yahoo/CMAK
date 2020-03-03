@@ -21,35 +21,40 @@ assemblyMergeStrategy in assembly := {
   case other => (assemblyMergeStrategy in assembly).value(other)
 }
 
+val akkaVersion = "2.6.2"
+val curatorVersion = "4.2.0"
+val json4sVersion = "3.6.7"
+val kafkaVersion = "2.4.0"
+
 libraryDependencies ++= Seq(
-  "com.typesafe.akka" %% "akka-actor" % "2.5.19",
-  "com.typesafe.akka" %% "akka-slf4j" % "2.5.19",
+  "com.typesafe.akka" %% "akka-actor" % akkaVersion,
+  "com.typesafe.akka" %% "akka-slf4j" % akkaVersion,
   "com.google.code.findbugs" % "jsr305" % "3.0.2",
-  "org.webjars" %% "webjars-play" % "2.6.3",
-  "org.webjars" % "bootstrap" % "4.3.1",
-  "org.webjars" % "jquery" % "3.3.1-2",
+  "org.webjars" %% "webjars-play" % "2.8.0",
+  "org.webjars" % "bootstrap" % "4.4.1",
+  "org.webjars" % "jquery" % "3.4.0",
   "org.webjars" % "backbonejs" % "1.3.3",
   "org.webjars" % "underscorejs" % "1.9.0",
   "org.webjars" % "dustjs-linkedin" % "2.7.2",
   "org.webjars" % "octicons" % "4.3.0",
-  "org.apache.curator" % "curator-framework" % "2.12.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
-  "org.apache.curator" % "curator-recipes" % "2.12.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
-  "org.json4s" %% "json4s-jackson" % "3.6.5",
-  "org.json4s" %% "json4s-scalaz" % "3.6.5",
-  "org.slf4j" % "log4j-over-slf4j" % "1.7.25",
-  "com.adrianhurt" %% "play-bootstrap" % "1.4-P26-B4" exclude("com.typesafe.play", "*"),
+  "org.apache.curator" % "curator-framework" % curatorVersion exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
+  "org.apache.curator" % "curator-recipes" % curatorVersion exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
+  "org.json4s" %% "json4s-jackson" % json4sVersion,
+  "org.json4s" %% "json4s-scalaz" % json4sVersion,
+  "org.slf4j" % "log4j-over-slf4j" % "1.7.30",
+  "com.adrianhurt" %% "play-bootstrap" % "1.5.1-P27-B3" exclude("com.typesafe.play", "*"),
   "org.clapper" %% "grizzled-slf4j" % "1.3.3",
-  "org.apache.kafka" %% "kafka" % "2.4.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
-  "org.apache.kafka" % "kafka-streams" % "2.2.0",
-  "com.beachape" %% "enumeratum" % "1.5.13",
-  "com.github.ben-manes.caffeine" % "caffeine" % "2.6.2",
-  "com.typesafe.play" %% "play-logback" % "2.6.21",
-  "org.scalatest" %% "scalatest" % "3.0.5" % "test",
-  "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2" % "test",
-  "org.apache.curator" % "curator-test" % "2.12.0" % "test",
-  "org.mockito" % "mockito-core" % "1.10.19" % "test",
+  "org.apache.kafka" %% "kafka" % kafkaVersion exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
+  "org.apache.kafka" % "kafka-streams" % kafkaVersion,
+  "com.beachape" %% "enumeratum" % "1.5.14",
+  "com.github.ben-manes.caffeine" % "caffeine" % "2.8.0",
+  "com.typesafe.play" %% "play-logback" % "2.8.0",
+  "org.scalatest" %% "scalatest" % "3.1.0" % "test",
+  "org.scalatestplus.play" %% "scalatestplus-play" % "4.0.3" % "test",
+  "org.apache.curator" % "curator-test" % curatorVersion % "test",
+  "org.mockito" % "mockito-core" % "3.2.4" % "test",
   "com.yammer.metrics" % "metrics-core" % "2.2.0" force(),
-  "com.unboundid" % "unboundid-ldapsdk" % "4.0.9"
+  "com.unboundid" % "unboundid-ldapsdk" % "4.0.14"
 )
 
 routesGenerator := InjectedRoutesGenerator
