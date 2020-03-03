@@ -18,6 +18,7 @@ assemblyMergeStrategy in assembly := {
   case "META-INF/io.netty.versions.properties" => MergeStrategy.first
   case "module-info.class" => MergeStrategy.first
   case "play/core/server/ServerWithStop.class" => MergeStrategy.first
+  case "org/apache/kafka/common/metrics/JmxReporter.class" => MergeStrategy.first
   case other => (assemblyMergeStrategy in assembly).value(other)
 }
 
