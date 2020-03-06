@@ -485,7 +485,7 @@ case object PLAINTEXT extends SecurityProtocol {
 object SecurityProtocol {
   private[this] val typesMap: Map[String, SecurityProtocol] = Map(
     SASL_PLAINTEXT.stringId -> SASL_PLAINTEXT
-    , PLAINTEXTSASL.stringId -> SASL_PLAINTEXT
+    , PLAINTEXTSASL.stringId -> PLAINTEXTSASL
     , SASL_SSL.stringId -> SASL_SSL
     , SSL.stringId -> SSL
     , PLAINTEXT.stringId -> PLAINTEXT
