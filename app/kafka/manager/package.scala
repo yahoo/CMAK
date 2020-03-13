@@ -28,6 +28,6 @@ package object manager {
   }
 
   implicit class PropertiesHelper(p: java.util.Properties) {
-    def asMap: java.util.Map[_, _] = p.asInstanceOf[java.util.Map[_, _]]
+    def asMap: java.util.Map[Object, Object] = p.asInstanceOf[java.util.Map[Object, Object]]
   }
 }
