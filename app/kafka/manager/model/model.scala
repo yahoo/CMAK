@@ -513,12 +513,17 @@ case object SASL_MECHANISM_SCRAM512 extends SASLmechanism {
   val stringId = "SCRAM-SHA-512"
 }
 
+case object SASL_MECHANISM_OAUTHBEARER extends SASLmechanism {
+  val stringId = "OAUTHBEARER"
+}
+
 object SASLmechanism {
   private[this] val typesMap: Map[String, SASLmechanism] = Map(
    SASL_MECHANISM_PLAIN.stringId -> SASL_MECHANISM_PLAIN
     , SASL_MECHANISM_GSSAPI.stringId -> SASL_MECHANISM_GSSAPI
     , SASL_MECHANISM_SCRAM256.stringId -> SASL_MECHANISM_SCRAM256
     , SASL_MECHANISM_SCRAM512.stringId -> SASL_MECHANISM_SCRAM512
+    , SASL_MECHANISM_OAUTHBEARER.stringId -> SASL_MECHANISM_OAUTHBEARER
   )
 
   val formSelectList : IndexedSeq[(String,String)] = IndexedSeq(("DEFAULT", "DEFAULT")) ++ typesMap.toIndexedSeq.map(t => (t._1,t._2.stringId))
