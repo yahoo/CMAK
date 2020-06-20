@@ -3,26 +3,25 @@ package controllers
 
 import java.nio.charset.StandardCharsets
 import java.security.SecureRandom
-
-import com.typesafe.config.ConfigValueType
 import java.util.UUID
 
-import com.unboundid.ldap.sdk._
-import javax.net.ssl.SSLSocketFactory
 import akka.stream.Materializer
+import com.typesafe.config.ConfigValueType
+import com.unboundid.ldap.sdk._
+import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
+import grizzled.slf4j.Logging
+import javax.crypto.Mac
+import javax.net.ssl
 import org.apache.commons.codec.binary.Base64
 import play.api.Configuration
 import play.api.http.HeaderNames.{AUTHORIZATION, WWW_AUTHENTICATE}
+import play.api.libs.Codecs
 import play.api.mvc.Results.Unauthorized
 import play.api.mvc.{Cookie, Filter, RequestHeader, Result}
 
 import scala.collection.JavaConverters._
-import scala.util.{Success, Try}
-import grizzled.slf4j.Logging
-import javax.crypto.Mac
-import play.api.libs.Codecs
-
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.{Success, Try}
 
 class BasicAuthenticationFilter(configuration: BasicAuthenticationFilterConfiguration, authenticator: Authenticator)(implicit val mat: Materializer, ec: ExecutionContext) extends Filter {
 
@@ -39,11 +38,8 @@ class BasicAuthenticationFilter(configuration: BasicAuthenticationFilterConfigur
 
 trait Authenticator {
 
-  import javax.crypto.Cipher
-  import javax.crypto.SecretKeyFactory
-  import javax.crypto.spec.PBEKeySpec
-  import javax.crypto.spec.SecretKeySpec
-  import javax.crypto.spec.IvParameterSpec
+  import javax.crypto.spec.{IvParameterSpec, PBEKeySpec, SecretKeySpec}
+  import javax.crypto.{Cipher, SecretKeyFactory}
 
   private lazy val factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
   private lazy val spec = new PBEKeySpec(secret, salt, 65536, 256)
@@ -75,7 +71,7 @@ trait Authenticator {
     cipher.doFinal(content)
   }
 
-  def sign(content: String) : String = {
+  def sign(content: String): String = {
     Codecs.toHexString(mac.doFinal(content.getBytes(StandardCharsets.UTF_8)))
   }
 
@@ -148,7 +144,14 @@ case class LDAPAuthenticator(config: LDAPAuthenticationConfig)(implicit val mat:
   private lazy val ldapConnectionPool: LDAPConnectionPool = {
     val (address, port) = (config.address, config.port)
     val connection = if (config.sslEnabled) {
-      new LDAPConnection(SSLSocketFactory.getDefault, address, port, config.username, config.password)
+      if (config.sslTrustAll) {
+        val sslUtil = new SSLUtil(null, new TrustAllTrustManager(true))
+        val sslSocketFactory = sslUtil.createSSLSocketFactory
+        new LDAPConnection(sslSocketFactory, address, port, config.username, config.password)
+      } else {
+        val sslSocketFactory = ssl.SSLSocketFactory.getDefault
+        new LDAPConnection(sslSocketFactory, address, port, config.username, config.password)
+      }
     } else {
       new LDAPConnection(address, port, config.username, config.password)
     }
@@ -271,7 +274,8 @@ case class LDAPAuthenticationConfig(salt: Array[Byte]
                                     , searchFilter: String
                                     , groupFilter: String
                                     , connectionPoolSize: Int
-                                    , sslEnabled: Boolean) extends AuthenticationConfig
+                                    , sslEnabled: Boolean
+                                    , sslTrustAll: Boolean) extends AuthenticationConfig
 
 sealed trait AuthType[T <: AuthenticationConfig] {
   def getConfig(config: AuthenticationConfig): T
@@ -352,13 +356,14 @@ object BasicAuthenticationFilterConfiguration {
       val groupFilter = string("ldap.group-filter").getOrElse("")
       val connectionPoolSize = int("ldap.connection-pool-size").getOrElse(10)
       val sslEnabled = boolean("ldap.ssl").getOrElse(false)
+      val sslTrustAll = boolean("ldap.ssl-trust-all").getOrElse(false)
 
       BasicAuthenticationFilterConfiguration(
         enabled,
         LDAPAuth,
         LDAPAuthenticationConfig(salt, iv, secret,
           string("realm").getOrElse(defaultRealm),
-          server, port, username, password, searchDN, searchFilter, groupFilter, connectionPoolSize, sslEnabled
+          server, port, username, password, searchDN, searchFilter, groupFilter, connectionPoolSize, sslEnabled, sslTrustAll
         ),
         excluded
       )
