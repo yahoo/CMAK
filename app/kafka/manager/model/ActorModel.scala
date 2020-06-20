@@ -19,6 +19,7 @@ import scala.collection.immutable.Queue
 import scala.util.Try
 import scalaz.{NonEmptyList, Validation}
 
+import scala.collection.immutable.SortedMap
 import scala.collection.immutable.Map
 
 /**
@@ -101,8 +102,8 @@ object ActorModel {
                               log_path: String,
                               config: Properties = new Properties
                               ) extends CommandRequest
-  case class CMUpdateLogkafkaConfig(logkafka_id: String, 
-                                    log_path: String, 
+  case class CMUpdateLogkafkaConfig(logkafka_id: String,
+                                    log_path: String,
                                     config: Properties,
                                     checkConfig: Boolean = true
                                     ) extends CommandRequest
@@ -200,22 +201,22 @@ object ActorModel {
 
   case class TopicDescription(topic: String,
                               description: (Int,String),
-                              partitionState: Option[Map[String, String]], 
+                              partitionState: Option[Map[String, String]],
                               partitionOffsets: PartitionOffsetsCapture,
                               config:Option[(Int,String)]) extends  QueryResponse
   case class TopicDescriptions(descriptions: IndexedSeq[TopicDescription], lastUpdateMillis: Long) extends QueryResponse
 
   case class BrokerList(list: IndexedSeq[BrokerIdentity], clusterContext: ClusterContext) extends QueryResponse
 
-  case class PreferredReplicaElection(startTime: DateTime, 
+  case class PreferredReplicaElection(startTime: DateTime,
                                       topicAndPartition: Set[TopicPartition],
-                                      endTime: Option[DateTime], 
+                                      endTime: Option[DateTime],
                                       clusterContext: ClusterContext) extends QueryResponse {
     def sortedTopicPartitionList: List[(String, Int)] = topicAndPartition.toList.map(tp => (tp.topic(), tp.partition())).sortBy(_._1)
   }
-  case class ReassignPartitions(startTime: DateTime, 
+  case class ReassignPartitions(startTime: DateTime,
                                 partitionsToBeReassigned: Map[TopicPartition, Seq[Int]],
-                                endTime: Option[DateTime], 
+                                endTime: Option[DateTime],
                                 clusterContext: ClusterContext) extends QueryResponse {
     def sortedTopicPartitionAssignmentList : List[((String, Int), Seq[Int])] = partitionsToBeReassigned.toList.sortBy(partition => (partition._1.topic(), partition._1.partition())).map { case (tp, a) => ((tp.topic(), tp.partition()), a)}
   }
@@ -371,7 +372,7 @@ import scala.language.reflectiveCalls
 
   object PartitionOffsetsCapture {
     val ZERO : Option[Double] = Option(0D)
-    
+
     val EMPTY : PartitionOffsetsCapture = PartitionOffsetsCapture(0, Map.empty)
 
     def getRate(part: Int, currentOffsets: PartitionOffsetsCapture, previousOffsets: PartitionOffsetsCapture): Option[Double] = {
@@ -656,7 +657,7 @@ import scala.language.reflectiveCalls
 
   case class ConsumerIdentity(consumerGroup:String,
                               consumerType: ConsumerType,
-                              topicMap: Map[String, ConsumedTopicState],
+                              topicMap: collection.Map[String, ConsumedTopicState],
                               clusterContext: ClusterContext)
   object ConsumerIdentity extends Logging {
     import scala.language.reflectiveCalls
@@ -669,7 +670,7 @@ import scala.language.reflectiveCalls
       } yield (topic, cts)
       ConsumerIdentity(cd.consumer,
         cd.consumerType,
-        topicMap.toMap,
+        SortedMap(topicMap: _*),
         clusterContext)
     }
 
@@ -713,7 +714,7 @@ import scala.language.reflectiveCalls
   }
 
   case class BrokerClusterStats(perMessages: BigDecimal, perIncoming: BigDecimal, perOutgoing: BigDecimal)
-  
+
   sealed trait LKVRequest extends QueryRequest
 
   case object LKVForceUpdate extends CommandRequest
