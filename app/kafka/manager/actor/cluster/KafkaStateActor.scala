@@ -143,7 +143,7 @@ case class KafkaAdminClientActor(config: KafkaAdminClientActorConfig) extends Ba
                   val options = new DescribeConsumerGroupsOptions
                   options.timeoutMs(1000)
                   client.describeConsumerGroups(groupList.asJava, options).all().whenComplete {
-                    (mapGroupDescription, error) => mapGroupDescription.asScala.foreach {
+                    (mapGroupDescription, _) => mapGroupDescription.asScala.foreach {
                       case (group, desc) =>
                         enqueue.offer(group -> desc.members().asScala.map(m => MemberMetadata.from(group, desc, m)).toList)
                     }
@@ -451,7 +451,7 @@ object ConsumerInstanceSubscriptions extends Logging {
     import org.json4s.jackson.JsonMethods.parse
     import org.json4s.scalaz.JsonScalaz.field
     val json = parse(jsonString)
-    val subs: Map[String, Int] = field[Map[String,Int]]("subscription")(json).fold({ e =>
+    val subs: Map[String, Int] = field[Map[String,Int]]("subscription")(json).fold({ _ =>
       error(s"[consumer=$consumer] Failed to parse consumer instance subscriptions : $id : $jsonString"); Map.empty}, identity)
     new ConsumerInstanceSubscriptions(id, subs)
   }
@@ -496,10 +496,8 @@ trait OffsetCache extends Logging {
     // Get partition leader broker information
     val optPartitionsWithLeaders : Option[List[(Int, Option[BrokerIdentity])]] = getTopicPartitionLeaders(topic)
 
-    val clientId = "partitionOffsetGetter"
     val time = -1
     val nOffsets = 1
-    val simpleConsumerBufferSize = 256 * 1024
     val currentActiveBrokerSet:Set[String] = getBrokerList().list.map(_.host).toSet
 
     val partitionsByBroker = optPartitionsWithLeaders.map {
@@ -685,13 +683,13 @@ trait OffsetCache extends Logging {
     val (partitionOffsets, partitionOwners) = consumerType match {
       case ZKManagedConsumer =>
         val partitionOffsets = for {
-          td <- optTopic
+          _ <- optTopic
           tpi <- optTpi
         } yield {
           readConsumerOffsetByTopicPartition(consumer, topic, tpi)
         }
         val partitionOwners = for {
-          td <- optTopic
+          _ <- optTopic
           tpi <- optTpi
         } yield {
           readConsumerOwnerByTopicPartition(consumer, topic, tpi)
@@ -699,13 +697,13 @@ trait OffsetCache extends Logging {
         (partitionOffsets, partitionOwners)
       case KafkaManagedConsumer =>
         val partitionOffsets = for {
-          td <- optTopic
+          _ <- optTopic
           tpi <- optTpi
         } yield {
           readKafkaManagedConsumerOffsetByTopicPartition(consumer, topic, tpi)
         }
         val partitionOwners = for {
-          td <- optTopic
+          _ <- optTopic
           tpi <- optTpi
         } yield {
           readKafkaManagedConsumerOwnerByTopicPartition(consumer, topic, tpi)
@@ -831,7 +829,7 @@ case class OffsetCacheActive(curator: CuratorFramework
       IndexedSeq.empty[ConsumerNameAndType]
     } { data: java.util.Map[String, ChildData] =>
       data.asScala.filter{
-        case (consumer, childData) =>
+        case (_, childData) =>
           if (clusterContext.config.filterConsumers)
           // Defining "inactive consumer" as a consumer that is missing one of three children ids/ offsets/ or owners/
             childData.getStat.getNumChildren > 2
@@ -1216,7 +1214,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
     states.map(_.map{case (part, state) =>
       val partition = part.toInt
       val descJson = parse(state)
-      val leaderID = field[Int]("leader")(descJson).fold({ e =>
+      val leaderID = field[Int]("leader")(descJson).fold({ _ =>
         log.error(s"[topic=$topic] Failed to get partitions from topic json $state"); 0}, identity)
       val leader = targetBrokers.find(_.id == leaderID)
       (partition, leader)
@@ -1457,7 +1455,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
                 if (shutdown) {
                   return
                 }
-                var optPartitionsWithLeaders : Option[List[(Int, Option[BrokerIdentity])]] = getPartitionLeaders(topic)
+                val optPartitionsWithLeaders : Option[List[(Int, Option[BrokerIdentity])]] = getPartitionLeaders(topic)
                 optPartitionsWithLeaders match {
                   case Some(leaders) =>
                     leaders.foreach(leader => {
@@ -1506,7 +1504,7 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
                 try {
                   kafkaConsumer = Option(new KafkaConsumer(consumerProperties))
                   val request = tpList.map(f => new TopicPartition(f._1.topic(), f._1.partition()))
-                  var tpOffsetMapOption = kafkaConsumer.map(_.endOffsets(request.asJavaCollection).asScala)
+                  val tpOffsetMapOption = kafkaConsumer.map(_.endOffsets(request.asJavaCollection).asScala)
 
                   var topicOffsetMap: Map[Int, Long] = null
                   tpOffsetMapOption.foreach(tpOffsetMap => tpOffsetMap.keys.foreach(tp => {
