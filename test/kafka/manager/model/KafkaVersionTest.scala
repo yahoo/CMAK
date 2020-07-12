@@ -35,7 +35,8 @@ class KafkaVersionTest extends FunSuite {
     "2.1.0" -> Kafka_2_1_0,
     "2.1.1" -> Kafka_2_1_1,
     "2.2.0" -> Kafka_2_2_0,
-    "2.4.0" -> Kafka_2_4_0
+    "2.4.0" -> Kafka_2_4_0,
+    "2.4.1" -> Kafka_2_4_1
   )
 
   test("apply method: supported version.") {
@@ -77,7 +78,8 @@ class KafkaVersionTest extends FunSuite {
       ("2.1.0","2.1.0"),
       ("2.1.1","2.1.1"),
       ("2.2.0","2.2.0"),
-      ("2.4.0","2.4.0")
+      ("2.4.0","2.4.0"),
+      ("2.4.1","2.4.1")
     )
     assertResult(expected)(KafkaVersion.formSelectList)
   }
