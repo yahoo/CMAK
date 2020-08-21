@@ -228,9 +228,73 @@ class TestClusterConfig extends FunSuite with Matchers {
     assert(deserialize.isSuccess === true)
     assert(cc == deserialize.get)
   }
+  
+  test("serialize and deserialize 2.2.1") {
+    val cc = ClusterConfig("qa", "2.2.1", "localhost:2181", jmxEnabled = false, pollConsumers = true, filterConsumers = true, activeOffsetCacheEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = None, securityProtocol = "SASL_PLAINTEXT", saslMechanism = Option("PLAIN"), jaasConfig = Option("blah"))
+    val serialize: String = ClusterConfig.serialize(cc)
+    val deserialize = ClusterConfig.deserialize(serialize)
+    assert(deserialize.isSuccess === true)
+    assert(cc == deserialize.get)
+  }
+  
+  test("serialize and deserialize 2.2.2") {
+    val cc = ClusterConfig("qa", "2.2.2", "localhost:2181", jmxEnabled = false, pollConsumers = true, filterConsumers = true, activeOffsetCacheEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = None, securityProtocol = "SASL_PLAINTEXT", saslMechanism = Option("PLAIN"), jaasConfig = Option("blah"))
+    val serialize: String = ClusterConfig.serialize(cc)
+    val deserialize = ClusterConfig.deserialize(serialize)
+    assert(deserialize.isSuccess === true)
+    assert(cc == deserialize.get)
+  }
+  
+  test("serialize and deserialize 2.3.0") {
+    val cc = ClusterConfig("qa", "2.3.0", "localhost:2181", jmxEnabled = false, pollConsumers = true, filterConsumers = true, activeOffsetCacheEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = None, securityProtocol = "SASL_PLAINTEXT", saslMechanism = Option("PLAIN"), jaasConfig = Option("blah"))
+    val serialize: String = ClusterConfig.serialize(cc)
+    val deserialize = ClusterConfig.deserialize(serialize)
+    assert(deserialize.isSuccess === true)
+    assert(cc == deserialize.get)
+  }
+  
+  test("serialize and deserialize 2.3.1") {
+    val cc = ClusterConfig("qa", "2.3.1", "localhost:2181", jmxEnabled = false, pollConsumers = true, filterConsumers = true, activeOffsetCacheEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = None, securityProtocol = "SASL_PLAINTEXT", saslMechanism = Option("PLAIN"), jaasConfig = Option("blah"))
+    val serialize: String = ClusterConfig.serialize(cc)
+    val deserialize = ClusterConfig.deserialize(serialize)
+    assert(deserialize.isSuccess === true)
+    assert(cc == deserialize.get)
+  }
 
   test("serialize and deserialize 2.4.0") {
     val cc = ClusterConfig("qa", "2.4.0", "localhost:2181", jmxEnabled = false, pollConsumers = true, filterConsumers = true, activeOffsetCacheEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = None, securityProtocol = "SASL_PLAINTEXT", saslMechanism = Option("PLAIN"), jaasConfig = Option("blah"))
+    val serialize: String = ClusterConfig.serialize(cc)
+    val deserialize = ClusterConfig.deserialize(serialize)
+    assert(deserialize.isSuccess === true)
+    assert(cc == deserialize.get)
+  }
+
+  test("serialize and deserialize 2.4.1") {
+    val cc = ClusterConfig("qa", "2.4.1", "localhost:2181", jmxEnabled = false, pollConsumers = true, filterConsumers = true, activeOffsetCacheEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = None, securityProtocol = "SASL_PLAINTEXT", saslMechanism = Option("PLAIN"), jaasConfig = Option("blah"))
+    val serialize: String = ClusterConfig.serialize(cc)
+    val deserialize = ClusterConfig.deserialize(serialize)
+    assert(deserialize.isSuccess === true)
+    assert(cc == deserialize.get)
+  }
+  
+  test("serialize and deserialize 2.5.0") {
+    val cc = ClusterConfig("qa", "2.5.0", "localhost:2181", jmxEnabled = false, pollConsumers = true, filterConsumers = true, activeOffsetCacheEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = None, securityProtocol = "SASL_PLAINTEXT", saslMechanism = Option("PLAIN"), jaasConfig = Option("blah"))
+    val serialize: String = ClusterConfig.serialize(cc)
+    val deserialize = ClusterConfig.deserialize(serialize)
+    assert(deserialize.isSuccess === true)
+    assert(cc == deserialize.get)
+  }
+
+  test("serialize and deserialize 2.5.1") {
+    val cc = ClusterConfig("qa", "2.5.1", "localhost:2181", jmxEnabled = false, pollConsumers = true, filterConsumers = true, activeOffsetCacheEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = None, securityProtocol = "SASL_PLAINTEXT", saslMechanism = Option("PLAIN"), jaasConfig = Option("blah"))
+    val serialize: String = ClusterConfig.serialize(cc)
+    val deserialize = ClusterConfig.deserialize(serialize)
+    assert(deserialize.isSuccess === true)
+    assert(cc == deserialize.get)
+  }
+  
+  test("serialize and deserialize 2.6.0") {
+    val cc = ClusterConfig("qa", "2.6.0", "localhost:2181", jmxEnabled = false, pollConsumers = true, filterConsumers = true, activeOffsetCacheEnabled = true, jmxUser = None, jmxPass = None, jmxSsl = false, tuning = None, securityProtocol = "SASL_PLAINTEXT", saslMechanism = Option("PLAIN"), jaasConfig = Option("blah"))
     val serialize: String = ClusterConfig.serialize(cc)
     val deserialize = ClusterConfig.deserialize(serialize)
     assert(deserialize.isSuccess === true)
