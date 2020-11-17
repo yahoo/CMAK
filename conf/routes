@@ -79,3 +79,7 @@ GET    /assets/*file                                        controllers.Assets.a
 
 # Ping / Health Check
 GET    /api/health                                          controllers.ApiHealth.ping
+
+# Monitoring Broker Status
+GET    /api/status/:c/monitoring                            controllers.api.KafkaStateCheck.monitoring(c:String)
+GET    /api/status/:c/:b/brokermonitoring                   controllers.api.KafkaStateCheck.brokermonitoring(c:String, b:Int)
