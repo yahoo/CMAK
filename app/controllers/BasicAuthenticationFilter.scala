@@ -82,7 +82,7 @@ object BasicAuthenticator {
   private lazy val COOKIE_NAME = "play-basic-authentication"
 }
 
-case class BasicAuthenticator(config: BasicAuthenticationConfig)(implicit val mat: Materializer, ec: ExecutionContext) extends Authenticator {
+case class BasicAuthenticator(config: BasicAuthenticationConfig)(implicit val mat: Materializer, ec: ExecutionContext) extends Authenticator with Logging {
 
   import BasicAuthenticator._
 
@@ -109,6 +109,13 @@ case class BasicAuthenticator(config: BasicAuthenticationConfig)(implicit val ma
 
     val expectedCookie = cookieValue
     val authorizedByCookie = requestHeader.cookies.get(COOKIE_NAME).exists(_.value == expectedCookie)
+
+    logger.info("Attempt by User :"+  config.username + " to login.")
+    val headers: Map[String, String] = requestHeader.headers.toSimpleMap
+    for ((k,v) <- headers) {
+      logger.info(s"key: $k, value: $v")
+    }
+
 
     authorizedByHeader || authorizedByCookie
   }
