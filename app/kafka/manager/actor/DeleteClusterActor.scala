@@ -6,10 +6,10 @@
 package kafka.manager.actor
 
 import akka.actor.Cancellable
-import kafka.manager.model.ActorModel
-import ActorModel.{ActorResponse, CommandRequest, DCUpdateState}
 import kafka.manager._
 import kafka.manager.base.BaseCommandActor
+import kafka.manager.model.ActorModel
+import kafka.manager.model.ActorModel.{ActorResponse, CommandRequest, DCUpdateState}
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.cache.{PathChildrenCache, PathChildrenCacheEvent, PathChildrenCacheListener}

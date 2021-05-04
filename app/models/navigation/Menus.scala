@@ -5,8 +5,8 @@
 
 package models.navigation
 
-import features.{KMTopicManagerFeature, KMClusterManagerFeature, KMPreferredReplicaElectionFeature, KMScheduleLeaderElectionFeature, KMReassignPartitionsFeature, ApplicationFeatures}
-import kafka.manager.features.{KMLogKafkaFeature, ClusterFeatures}
+import features._
+import kafka.manager.features.{ClusterFeatures, KMLogKafkaFeature}
 
 /**
  * @author hiral

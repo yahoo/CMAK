@@ -5,10 +5,10 @@
 package kafka.manager.features
 
 import grizzled.slf4j.Logging
-import kafka.manager.model.{Kafka_0_8_1_1, ClusterConfig}
+import kafka.manager.model.{ClusterConfig, Kafka_0_8_1_1}
 
 import scala.collection.mutable.ListBuffer
-import scala.util.{Success, Failure, Try}
+import scala.util.{Failure, Success, Try}
 
 /**
  * Created by hiral on 8/22/15.

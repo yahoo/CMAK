@@ -17,14 +17,13 @@
 
 package kafka.manager.utils
 
-import java.util.Properties
-
 import grizzled.slf4j.Logging
 import kafka.manager.model._
 import org.apache.curator.framework.CuratorFramework
 import org.apache.zookeeper.CreateMode
 import org.apache.zookeeper.KeeperException.NodeExistsException
 
+import java.util.Properties
 import scala.collection.{Set, mutable}
 import scala.util.Random
 

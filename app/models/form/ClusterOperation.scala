@@ -5,7 +5,7 @@
 
 package models.form
 
-import kafka.manager.model.{ClusterConfig, ClusterTuning, SASLmechanism, SecurityProtocol}
+import kafka.manager.model.{ClusterConfig, ClusterTuning}
 
 /**
  * @author hiral

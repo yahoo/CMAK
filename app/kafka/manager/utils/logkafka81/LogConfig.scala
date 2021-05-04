@@ -17,10 +17,10 @@
 
 package kafka.manager.utils.logkafka81
 
-import java.util.Properties
 import kafka.manager._
-import scala.util.matching.Regex
 import kafka.manager.utils.LogkafkaNewConfigs
+
+import java.util.Properties
 
 object Defaults {
   val Valid = true
@@ -106,7 +106,6 @@ case class LogConfig(val valid: Boolean = Defaults.Valid,
 }
 
 object LogConfig extends LogkafkaNewConfigs {
-  import kafka.manager.utils.logkafka81.LogkafkaConfigErrors._
   import kafka.manager.utils._
 
   val minLineDelimiter = 0

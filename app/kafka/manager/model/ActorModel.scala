@@ -5,8 +5,6 @@
 
 package kafka.manager.model
 
-import java.util.Properties
-
 import grizzled.slf4j.Logging
 import kafka.manager.jmx._
 import kafka.manager.utils
@@ -14,13 +12,11 @@ import kafka.manager.utils.two40.MemberMetadata
 import kafka.manager.utils.zero81.ForceReassignmentCommand
 import org.apache.kafka.common.TopicPartition
 import org.joda.time.DateTime
-
-import scala.collection.immutable.Queue
-import scala.util.Try
 import scalaz.{NonEmptyList, Validation}
 
-import scala.collection.immutable.SortedMap
-import scala.collection.immutable.Map
+import java.util.Properties
+import scala.collection.immutable.{Map, Queue, SortedMap}
+import scala.util.Try
 
 /**
  * @author hiral
@@ -242,15 +238,15 @@ object ActorModel {
   }
 
   object BrokerIdentity extends Logging {
+    import org.json4s.JValue
     import org.json4s.jackson.JsonMethods._
     import org.json4s.scalaz.JsonScalaz
     import org.json4s.scalaz.JsonScalaz._
-    import org.json4s.JValue
+    import scalaz.Validation.FlatMap._
+    import scalaz.syntax.applicative._
+    import scalaz.syntax.validation._
 
     import scala.language.reflectiveCalls
-    import scalaz.Validation.FlatMap._
-    import scalaz.syntax.validation._
-    import scalaz.syntax.applicative._
 
     val DEFAULT_SECURE : JsonScalaz.Result[Boolean] = false.successNel
 
@@ -329,9 +325,9 @@ object ActorModel {
 
     import org.json4s.jackson.JsonMethods._
     import org.json4s.scalaz.JsonScalaz._
-
-import scala.language.reflectiveCalls
     import scalaz.syntax.applicative._
+
+    import scala.language.reflectiveCalls
 
     implicit def from(partition: Int,
                       state:Option[String],
@@ -458,13 +454,12 @@ import scala.language.reflectiveCalls
 
   object TopicIdentity extends Logging {
 
-    import org.json4s.jackson.JsonMethods._
-    import org.json4s.scalaz.JsonScalaz._
     import org.json4s._
+    import org.json4s.jackson.JsonMethods._
     import org.json4s.jackson.Serialization
+    import org.json4s.scalaz.JsonScalaz._
 
     import scala.language.reflectiveCalls
-    import scala.concurrent.duration._
 
     implicit val formats = Serialization.formats(FullTypeHints(List(classOf[TopicIdentity])))
     // Adding a write method to transform/sort the partitionsIdentity to be more readable in JSON and include Topic Identity vals
@@ -633,7 +628,6 @@ import scala.language.reflectiveCalls
   }
 
   object ConsumedTopicState {
-    import scala.concurrent.duration._
 
     def from(ctd: ConsumedTopicDescription, clusterContext: ClusterContext): ConsumedTopicState = {
       val partitionOffsetsMap = ctd.partitionOffsets.getOrElse(Map.empty)

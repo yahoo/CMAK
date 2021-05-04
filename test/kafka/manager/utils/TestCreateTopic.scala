@@ -4,16 +4,14 @@
  */
 package kafka.manager.utils
 
-import java.util.Properties
-
-import TopicErrors._
 import kafka.manager.BaseTest
-import kafka.manager.model.ActorModel
-import ActorModel.{PartitionOffsetsCapture, TopicIdentity, TopicDescription}
 import kafka.manager.features.ClusterFeatures
-import kafka.manager.model.{ClusterContext, ClusterConfig, Kafka_0_8_2_0}
+import kafka.manager.model.ActorModel.{PartitionOffsetsCapture, TopicDescription, TopicIdentity}
+import kafka.manager.model.{ActorModel, ClusterConfig, ClusterContext, Kafka_0_8_2_0}
+import kafka.manager.utils.TopicErrors._
 import org.apache.zookeeper.data.Stat
-import scala.concurrent.Future
+
+import java.util.Properties
 /**
  * @author hiral
  */

@@ -17,21 +17,20 @@
 
 package kafka.manager.utils.two40
 
-import java.util.{Collections, Locale, Properties}
-
-import scala.collection.JavaConverters._
 import kafka.api.ApiVersion
 import kafka.manager.utils.TopicConfigs
 import kafka.message.BrokerCompressionCodec
 import kafka.server.{KafkaConfig, ThrottledReplicaListValidator}
 import kafka.utils.Implicits._
-import org.apache.kafka.common.errors.InvalidConfigurationException
+import org.apache.kafka.common.config.ConfigDef.{ConfigKey, ValidList, Validator}
 import org.apache.kafka.common.config.{AbstractConfig, ConfigDef, TopicConfig}
+import org.apache.kafka.common.errors.InvalidConfigurationException
 import org.apache.kafka.common.record.{LegacyRecord, TimestampType}
 import org.apache.kafka.common.utils.Utils
 
+import java.util.{Collections, Locale, Properties}
+import scala.collection.JavaConverters._
 import scala.collection.{Map, mutable}
-import org.apache.kafka.common.config.ConfigDef.{ConfigKey, ValidList, Validator}
 
 object Defaults {
   val SegmentSize = kafka.server.Defaults.LogSegmentBytes

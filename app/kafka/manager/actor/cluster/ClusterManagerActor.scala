@@ -5,10 +5,6 @@
 
 package kafka.manager.actor.cluster
 
-import java.nio.charset.StandardCharsets
-import java.util.Properties
-import java.util.concurrent.{LinkedBlockingQueue, ThreadPoolExecutor, TimeUnit}
-
 import akka.actor.{ActorPath, Props}
 import akka.pattern._
 import akka.util.Timeout
@@ -26,6 +22,9 @@ import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex
 import org.apache.kafka.common.TopicPartition
 import org.apache.zookeeper.CreateMode
 
+import java.nio.charset.StandardCharsets
+import java.util.Properties
+import java.util.concurrent.{LinkedBlockingQueue, ThreadPoolExecutor, TimeUnit}
 import scala.concurrent.duration.{FiniteDuration, _}
 import scala.concurrent.{ExecutionContext, Future}
 import scala.reflect.ClassTag

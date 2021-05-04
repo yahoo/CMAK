@@ -17,13 +17,14 @@
 
 package kafka.manager.utils.zero90
 
-import java.util.Properties
 import kafka.manager._
 import kafka.manager.utils.TopicConfigs
-import org.apache.kafka.common.utils.Utils
-import org.apache.kafka.common.config.{AbstractConfig, ConfigDef}
 import kafka.message.BrokerCompressionCodec
+import org.apache.kafka.common.config.{AbstractConfig, ConfigDef}
 import org.apache.kafka.common.record.LegacyRecord
+import org.apache.kafka.common.utils.Utils
+
+import java.util.Properties
 
 object Defaults {
   val SegmentSize = kafka.server.Defaults.LogSegmentBytes
@@ -128,10 +129,10 @@ object LogConfig extends TopicConfigs {
   val PreAllocateEnableDoc ="Should pre allocate file when create new segment?"
 
   private val configDef = {
-    import ConfigDef.Range._
-    import ConfigDef.ValidString._
-    import ConfigDef.Type._
     import ConfigDef.Importance._
+    import ConfigDef.Range._
+    import ConfigDef.Type._
+    import ConfigDef.ValidString._
 
     new ConfigDef()
       .define(SegmentBytesProp, INT, Defaults.SegmentSize, atLeast(LegacyRecord.RECORD_OVERHEAD_V0), MEDIUM, SegmentSizeDoc)

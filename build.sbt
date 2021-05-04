@@ -138,7 +138,7 @@ rpmUrl := Some("https://github.com/yahoo/cmak")
 rpmLicense := Some("Apache")
 rpmGroup := Some("cmak")
 
-import RpmConstants._
+import com.typesafe.sbt.packager.rpm.RpmPlugin.autoImport.RpmConstants._
 
 Rpm / maintainerScripts := maintainerScriptsAppend((Rpm / maintainerScripts).value)(
   Pre -> "%define _binary_payload w9.xzdio"

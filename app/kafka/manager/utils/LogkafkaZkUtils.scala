@@ -17,13 +17,6 @@
 
 package kafka.manager.utils
 
-import java.nio.charset.StandardCharsets
-
-import org.apache.curator.framework.CuratorFramework
-import org.apache.zookeeper.CreateMode
-import org.apache.zookeeper.KeeperException.{NodeExistsException, NoNodeException}
-import org.apache.zookeeper.data.Stat
-
 object LogkafkaZkUtils {
   val LogkafkaConfigPath = "/logkafka/config"
   val LogkafkaClientPath = "/logkafka/client"

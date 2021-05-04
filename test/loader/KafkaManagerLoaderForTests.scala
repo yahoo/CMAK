@@ -1,7 +1,7 @@
 package loader
 
-import controllers.{ApiHealth, KafkaManagerContext}
 import controllers.api.KafkaStateCheck
+import controllers.{ApiHealth, KafkaManagerContext}
 import features.ApplicationFeatures
 import models.navigation.Menus
 import play.api.ApplicationLoader.Context

@@ -2,12 +2,11 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@import scalaz.{\/}
+@import scalaz.\/
 @(cluster: String, logkafka_id: String, log_path: String,
 errorOrForm: kafka.manager.ApiError \/ (Form[models.form.UpdateLogkafkaConfig], kafka.manager.model.ClusterContext)
 )(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
 
-@import helper._
 @import controllers.routes
 
 @theMenu = {

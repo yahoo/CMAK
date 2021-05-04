@@ -1,17 +1,11 @@
 package controllers
 
 
-import java.nio.charset.StandardCharsets
-import java.security.SecureRandom
-import java.util.UUID
-
 import akka.stream.Materializer
 import com.typesafe.config.ConfigValueType
 import com.unboundid.ldap.sdk._
 import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
 import grizzled.slf4j.Logging
-import javax.crypto.Mac
-import javax.net.ssl
 import org.apache.commons.codec.binary.Base64
 import play.api.Configuration
 import play.api.http.HeaderNames.{AUTHORIZATION, WWW_AUTHENTICATE}
@@ -19,6 +13,11 @@ import play.api.libs.Codecs
 import play.api.mvc.Results.Unauthorized
 import play.api.mvc.{Cookie, Filter, RequestHeader, Result}
 
+import java.nio.charset.StandardCharsets
+import java.security.SecureRandom
+import java.util.UUID
+import javax.crypto.Mac
+import javax.net.ssl
 import scala.collection.JavaConverters._
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Success, Try}

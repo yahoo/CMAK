@@ -5,10 +5,10 @@
 
 package models.form
 
+import enumeratum.EnumEntry.{Snakecase, Uppercase}
 import enumeratum.{Enum, EnumEntry}
-import enumeratum.EnumEntry.{Uppercase, Snakecase}
 import kafka.manager.model.ActorModel
-import ActorModel.BrokerIdentity
+import kafka.manager.model.ActorModel.BrokerIdentity
 
 /**
  * @author hiral

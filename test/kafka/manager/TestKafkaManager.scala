@@ -4,17 +4,16 @@
  */
 package kafka.manager
 
-import java.util.Properties
-import java.util.concurrent.atomic.AtomicBoolean
-
 import akka.actor.Cancellable
 import com.typesafe.config.{Config, ConfigFactory}
 import kafka.manager.features.KMDeleteTopicFeature
+import kafka.manager.model.ActorModel.{KafkaManagedConsumer, TopicList}
 import kafka.manager.model._
 import kafka.manager.utils.CuratorAwareTest
-import kafka.manager.model.ActorModel.{KafkaManagedConsumer, TopicList, ZKManagedConsumer}
 import kafka.test.{HighLevelConsumer, NewKafkaManagedConsumer, SeededBroker, SimpleProducer}
 
+import java.util.Properties
+import java.util.concurrent.atomic.AtomicBoolean
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.util.Try

@@ -4,20 +4,18 @@
  */
 package kafka.manager
 
-import java.util.Properties
-import java.util.concurrent.TimeUnit
-
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.pattern._
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
 import kafka.manager.actor.{KafkaManagerActor, KafkaManagerActorConfig}
-import kafka.manager.base.LongRunningPoolConfig
+import kafka.manager.model.ActorModel._
 import kafka.manager.model.{ActorModel, ClusterConfig, CuratorConfig, SASL_PLAINTEXT}
 import kafka.manager.utils.CuratorAwareTest
-import ActorModel._
 import kafka.test.SeededBroker
 
+import java.util.Properties
+import java.util.concurrent.TimeUnit
 import scala.concurrent.Await
 import scala.concurrent.duration._
 import scala.reflect.ClassTag

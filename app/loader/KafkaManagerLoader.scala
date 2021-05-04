@@ -8,11 +8,11 @@ package loader
 import controllers.{AssetsComponents, BasicAuthenticationFilter, KafkaManagerContext}
 import features.ApplicationFeatures
 import models.navigation.Menus
-import play.api.{Application, ApplicationLoader, BuiltInComponentsFromContext, LoggerConfigurator}
 import play.api.ApplicationLoader.Context
 import play.api.i18n.I18nComponents
 import play.api.mvc.Filter
 import play.api.routing.Router
+import play.api.{Application, ApplicationLoader, BuiltInComponentsFromContext, LoggerConfigurator}
 import router.Routes
 
 import scala.concurrent.ExecutionContext

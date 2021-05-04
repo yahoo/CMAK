@@ -16,12 +16,7 @@
   */
 
 package kafka.manager.utils.two40
-import java.nio.ByteBuffer
-
 import org.apache.kafka.clients.admin.{ConsumerGroupDescription, MemberDescription}
-import org.apache.kafka.clients.consumer.internals.ConsumerProtocol
-import org.apache.kafka.common.requests.DescribeGroupsResponse
-import org.apache.kafka.common.utils.Utils
 
 object MemberMetadata {
   import collection.JavaConverters._

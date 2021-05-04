@@ -5,9 +5,9 @@
 
 package kafka.manager.logkafka
 
-import kafka.manager.model.{ClusterContext, ActorModel}
-import ActorModel._
 import kafka.manager.base.{BaseCommandActor, LongRunningPoolActor, LongRunningPoolConfig}
+import kafka.manager.model.ActorModel._
+import kafka.manager.model.{ActorModel, ClusterContext}
 import kafka.manager.utils.LogkafkaAdminUtils
 import org.apache.curator.framework.CuratorFramework
 

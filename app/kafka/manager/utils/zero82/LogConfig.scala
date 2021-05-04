@@ -17,9 +17,10 @@
 
 package kafka.manager.utils.zero82
 
-import java.util.Properties
 import kafka.manager._
 import kafka.manager.utils.TopicConfigs
+
+import java.util.Properties
 
 /**
  * Copied from kafka 0.8.2.1

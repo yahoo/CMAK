@@ -4,17 +4,14 @@
  */
 package kafka.manager.utils
 
-import java.util.Properties
-
 import kafka.manager.BaseTest
-import kafka.manager.model.ActorModel
-import ActorModel._
 import kafka.manager.features.ClusterFeatures
-import kafka.manager.model.{ClusterContext, ClusterConfig, Kafka_0_8_2_0}
+import kafka.manager.model.ActorModel._
+import kafka.manager.model.{ActorModel, ClusterConfig, ClusterContext, Kafka_0_8_2_0}
 import kafka.manager.utils.zero81._
 import org.apache.zookeeper.data.Stat
 
-import scala.concurrent.Future
+import java.util.Properties
 
 /**
  * @author hiral

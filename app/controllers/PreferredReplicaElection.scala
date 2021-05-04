@@ -17,9 +17,9 @@ import play.api.data.validation.{Constraint, Invalid, Valid}
 import play.api.i18n.I18nSupport
 import play.api.libs.json.{JsObject, Json}
 import play.api.mvc._
+import scalaz.-\/
 
 import scala.concurrent.{ExecutionContext, Future}
-import scalaz.-\/
 
 /**
  * @author hiral

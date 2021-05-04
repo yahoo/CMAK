@@ -19,8 +19,8 @@ package kafka.manager.utils.zero81
 
 import grizzled.slf4j.Logging
 import kafka.manager.model.ActorModel
+import kafka.manager.model.ActorModel.{TopicIdentity, TopicPartitionIdentity}
 import kafka.manager.utils._
-import ActorModel.{TopicIdentity, TopicPartitionIdentity}
 import org.apache.curator.framework.CuratorFramework
 import org.apache.kafka.common.TopicPartition
 import org.apache.zookeeper.KeeperException.NodeExistsException

@@ -5,8 +5,6 @@
 
 package controllers
 
-import java.util.Properties
-
 import _root_.features.ApplicationFeatures
 import kafka.manager._
 import kafka.manager.features.KMLogKafkaFeature
@@ -22,10 +20,11 @@ import play.api.data.validation.Constraints._
 import play.api.data.validation.{Constraint, Invalid, Valid}
 import play.api.i18n.I18nSupport
 import play.api.mvc._
+import scalaz.{-\/, \/-}
 
+import java.util.Properties
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
-import scalaz.{-\/, \/-}
 
 /**
  * @author hiral

@@ -5,14 +5,6 @@
 
 package kafka.manager.actor.cluster
 
-import java.io.Closeable
-import java.net.InetAddress
-import java.nio.ByteBuffer
-import java.time.Duration
-import java.util
-import java.util.Properties
-import java.util.concurrent.{ConcurrentLinkedDeque, TimeUnit}
-
 import akka.actor.{ActorContext, ActorPath, ActorRef, Props}
 import akka.pattern._
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine, RemovalCause, RemovalListener}
@@ -26,31 +18,34 @@ import kafka.manager.features.{ClusterFeatures, KMDeleteTopicFeature, KMPollCons
 import kafka.manager.model.ActorModel._
 import kafka.manager.model._
 import kafka.manager.utils.ZkUtils
-import kafka.manager.utils.zero81.{PreferredReplicaLeaderElectionCommand, ReassignPartitionCommand}
 import kafka.manager.utils.two40.{GroupMetadata, GroupMetadataKey, MemberMetadata, OffsetKey}
+import kafka.manager.utils.zero81.{PreferredReplicaLeaderElectionCommand, ReassignPartitionCommand}
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.cache._
 import org.apache.kafka.clients.CommonClientConfigs
+import org.apache.kafka.clients.CommonClientConfigs.SECURITY_PROTOCOL_CONFIG
+import org.apache.kafka.clients.admin.{AdminClient, DescribeConsumerGroupsOptions}
+import org.apache.kafka.clients.consumer.ConsumerConfig._
 import org.apache.kafka.clients.consumer.{Consumer, ConsumerRecords, KafkaConsumer}
-import org.apache.kafka.common.{ConsumerGroupState, TopicPartition}
-import org.apache.kafka.common.requests.DescribeGroupsResponse
+import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.config.SaslConfigs
+import org.apache.kafka.common.metrics.{KafkaMetric, MetricsReporter}
+import org.apache.kafka.common.utils.Time
 import org.joda.time.{DateTime, DateTimeZone}
 
+import java.io.Closeable
+import java.net.InetAddress
+import java.nio.ByteBuffer
+import java.time.Duration
+import java.util
+import java.util.Properties
+import java.util.concurrent.{ConcurrentLinkedDeque, TimeUnit}
 import scala.collection.concurrent.TrieMap
 import scala.collection.immutable.Map
 import scala.collection.mutable
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
-import org.apache.kafka.clients.consumer.ConsumerConfig._
-import org.apache.kafka.clients.consumer.internals.ConsumerProtocol
-import org.apache.kafka.common.config.SaslConfigs
-import org.apache.kafka.common.protocol.Errors
-import org.apache.kafka.clients.CommonClientConfigs.SECURITY_PROTOCOL_CONFIG
-import org.apache.kafka.clients.admin.{AdminClient, ConsumerGroupDescription, DescribeConsumerGroupsOptions}
-import org.apache.kafka.common.KafkaFuture.BiConsumer
-import org.apache.kafka.common.metrics.{KafkaMetric, MetricsReporter}
-import org.apache.kafka.common.utils.Time
 
 /**
   * @author hiral

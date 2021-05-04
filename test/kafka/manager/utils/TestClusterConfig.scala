@@ -4,7 +4,7 @@
  */
 package kafka.manager.utils
 
-import kafka.manager.model.{ClusterConfig, ClusterTuning, Kafka_0_8_1_1, PLAINTEXT}
+import kafka.manager.model.{ClusterConfig, ClusterTuning, Kafka_0_8_1_1}
 import org.scalatest.funsuite.AnyFunSuite
 import org.scalatest.matchers.should.Matchers
 

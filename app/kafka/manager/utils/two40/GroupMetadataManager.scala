@@ -17,14 +17,8 @@
 
 package kafka.manager.utils.two40
 
-import java.io.PrintStream
-import java.nio.ByteBuffer
-import java.nio.charset.StandardCharsets
-import java.util.Optional
-import java.util.concurrent.locks.ReentrantLock
-
 import kafka.api.{ApiVersion, KAFKA_2_1_IV0, KAFKA_2_1_IV1}
-import kafka.common.{OffsetAndMetadata}
+import kafka.common.OffsetAndMetadata
 import kafka.coordinator.group.JoinGroupResult
 import kafka.utils.{CoreUtils, Logging, nonthreadsafe}
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -33,8 +27,13 @@ import org.apache.kafka.common.protocol.types.Type._
 import org.apache.kafka.common.protocol.types._
 import org.apache.kafka.common.record._
 import org.apache.kafka.common.utils.Time
-import org.apache.kafka.common.{KafkaException, TopicPartition, MessageFormatter}
+import org.apache.kafka.common.{KafkaException, MessageFormatter, TopicPartition}
 
+import java.io.PrintStream
+import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets
+import java.util.Optional
+import java.util.concurrent.locks.ReentrantLock
 import scala.collection.JavaConverters._
 import scala.collection.{Seq, immutable, mutable, _}
 

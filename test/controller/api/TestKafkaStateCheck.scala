@@ -5,14 +5,8 @@
 
 package controller.api
 
-import java.io.File
-import java.util.Properties
-
-import akka.actor.ActorSystem
-import com.typesafe.config.{Config, ConfigFactory}
 import controllers.KafkaManagerContext
 import controllers.api.KafkaStateCheck
-import kafka.manager.KafkaManager
 import kafka.manager.utils.{CuratorAwareTest, KafkaServerInTest}
 import kafka.test.SeededBroker
 import loader.KafkaManagerLoaderForTests
@@ -24,6 +18,7 @@ import play.api.test.Helpers._
 import play.api.{Application, ApplicationLoader, Environment, Mode}
 import play.mvc.Http.Status.{BAD_REQUEST, OK}
 
+import java.io.File
 import scala.annotation.nowarn
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext}

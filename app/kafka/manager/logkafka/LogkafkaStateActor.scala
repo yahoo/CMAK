@@ -5,11 +5,11 @@
 
 package kafka.manager.logkafka
 
-import kafka.manager.model.{ClusterContext, ActorModel}
-import ActorModel._
 import kafka.manager._
 import kafka.manager.base.BaseQueryCommandActor
 import kafka.manager.features.KMLogKafkaFeature
+import kafka.manager.model.ActorModel._
+import kafka.manager.model.{ActorModel, ClusterContext}
 import kafka.manager.utils.LogkafkaZkUtils
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.recipes.cache._

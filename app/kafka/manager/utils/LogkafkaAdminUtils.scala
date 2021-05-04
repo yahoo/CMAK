@@ -17,12 +17,11 @@
 
 package kafka.manager.utils
 
-import java.util.Properties
-
 import grizzled.slf4j.Logging
-import kafka.manager.model.{Kafka_0_8_2_0, KafkaVersion, ActorModel}
+import kafka.manager.model.{ActorModel, KafkaVersion, Kafka_0_8_2_0}
 import org.apache.curator.framework.CuratorFramework
 
+import java.util.Properties
 import scala.collection.mutable
 import scala.util.Random
 

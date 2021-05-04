@@ -84,10 +84,10 @@ object Logkafka extends Logging {
   }
 
   def parseJsonStr(logkafka_id: String, jsonStr: String): Map[String, Map[String, String]] = {
-    import org.json4s.jackson.JsonMethods._
-    import org.json4s.scalaz.JsonScalaz._
-    import scala.language.reflectiveCalls
     import org.json4s.JsonAST._
+    import org.json4s.jackson.JsonMethods._
+
+    import scala.language.reflectiveCalls
     try {
       implicit val formats = org.json4s.DefaultFormats
       val json = parse(jsonStr)

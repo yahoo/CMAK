@@ -6,7 +6,7 @@
 package kafka.manager.base
 
 import kafka.manager.model.ActorModel
-import ActorModel.{ActorRequest, CommandRequest, QueryRequest}
+import kafka.manager.model.ActorModel.{ActorRequest, CommandRequest, QueryRequest}
 
 /**
  * @author hiral

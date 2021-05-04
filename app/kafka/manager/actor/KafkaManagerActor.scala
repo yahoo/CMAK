@@ -5,15 +5,12 @@
 
 package kafka.manager.actor
 
-import java.util.Properties
-import java.util.concurrent.{LinkedBlockingQueue, ThreadPoolExecutor, TimeUnit}
-
 import akka.actor.{ActorPath, Props}
 import akka.pattern._
 import kafka.manager.actor.cluster.{ClusterManagerActor, ClusterManagerActorConfig}
-import kafka.manager.base.{LongRunningPoolConfig, BaseZkPath, CuratorAwareActor, BaseQueryCommandActor}
-import kafka.manager.model.{ClusterTuning, ClusterConfig, CuratorConfig}
+import kafka.manager.base.{BaseQueryCommandActor, BaseZkPath, CuratorAwareActor}
 import kafka.manager.model.ActorModel.CMShutdown
+import kafka.manager.model.{ClusterConfig, ClusterTuning, CuratorConfig}
 import kafka.manager.utils.ZkUtils
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
@@ -21,6 +18,8 @@ import org.apache.curator.framework.recipes.cache.{PathChildrenCache, PathChildr
 import org.apache.curator.framework.recipes.locks.InterProcessSemaphoreMutex
 import org.apache.zookeeper.CreateMode
 
+import java.util.Properties
+import java.util.concurrent.{LinkedBlockingQueue, ThreadPoolExecutor, TimeUnit}
 import scala.annotation.nowarn
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}

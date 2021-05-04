@@ -4,22 +4,20 @@
  */
 package kafka.manager
 
-import java.nio.charset.StandardCharsets
-import java.util.Properties
-import java.util.concurrent.TimeUnit
-
 import akka.actor.{ActorRef, ActorSystem, Props}
 import akka.pattern._
 import akka.util.Timeout
 import com.typesafe.config.{Config, ConfigFactory}
 import kafka.manager.actor.cluster.{ClusterManagerActor, ClusterManagerActorConfig}
-import kafka.manager.base.LongRunningPoolConfig
+import kafka.manager.model.ActorModel._
 import kafka.manager.model.{ActorModel, ClusterConfig, CuratorConfig}
 import kafka.manager.utils.zero81.PreferredLeaderElectionErrors
-import kafka.test.SeededBroker
 import kafka.manager.utils.{CuratorAwareTest, ZkUtils}
-import ActorModel._
+import kafka.test.SeededBroker
 
+import java.nio.charset.StandardCharsets
+import java.util.Properties
+import java.util.concurrent.TimeUnit
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 import scala.reflect.ClassTag

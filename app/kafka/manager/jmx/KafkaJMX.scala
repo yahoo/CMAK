@@ -5,19 +5,18 @@
 
 package kafka.manager.jmx
 
+import com.yammer.metrics.reporting.JmxReporter.GaugeMBean
+import grizzled.slf4j.Logging
+import kafka.manager.model.ActorModel.BrokerMetrics
+import kafka.manager.model.{ActorModel, KafkaVersion, Kafka_0_8_1_1}
+
 import java.io.File
 import java.{util => ju}
 import javax.management._
 import javax.management.remote.rmi.RMIConnectorServer
-import javax.management.remote.{JMXConnectorFactory, JMXServiceURL, JMXConnector}
+import javax.management.remote.{JMXConnector, JMXConnectorFactory, JMXServiceURL}
 import javax.naming.Context
 import javax.rmi.ssl.SslRMIClientSocketFactory
-
-import com.yammer.metrics.reporting.JmxReporter.GaugeMBean
-import grizzled.slf4j.Logging
-import kafka.manager.model.{Kafka_0_8_1_1, KafkaVersion, ActorModel}
-import ActorModel.BrokerMetrics
-
 import scala.collection.JavaConverters._
 import scala.util.matching.Regex
 import scala.util.{Failure, Try}

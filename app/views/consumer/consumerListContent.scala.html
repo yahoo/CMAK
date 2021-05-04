@@ -2,8 +2,7 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@import kafka.manager.model.ActorModel.ConsumerType
-@import kafka.manager.model.ActorModel.ConsumerIdentity
+@import kafka.manager.model.ActorModel.{ConsumerIdentity, ConsumerType}
 @import kafka.manager.model.ClusterContext
 @(cluster: String, consumers: IndexedSeq[((String, ConsumerType), Option[ConsumerIdentity])],
         clusterContext: ClusterContext)(implicit messages: play.api.i18n.Messages, request:RequestHeader)

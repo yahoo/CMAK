@@ -9,7 +9,7 @@ import com.typesafe.config.Config
 import grizzled.slf4j.Logging
 import kafka.manager.features.KMFeature
 
-import scala.util.{Success, Failure, Try}
+import scala.util.{Failure, Success, Try}
 
 sealed trait ApplicationFeature extends KMFeature
 

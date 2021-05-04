@@ -17,13 +17,13 @@
 
 package kafka.manager.utils
 
-import java.nio.charset.StandardCharsets
-
 import org.apache.curator.framework.CuratorFramework
 import org.apache.kafka.common.TopicPartition
 import org.apache.zookeeper.CreateMode
 import org.apache.zookeeper.KeeperException.{NoNodeException, NodeExistsException}
 import org.apache.zookeeper.data.Stat
+
+import java.nio.charset.StandardCharsets
 
 /**
  * Borrowed from kafka 0.8.1.1.  Adapted to use curator framework.

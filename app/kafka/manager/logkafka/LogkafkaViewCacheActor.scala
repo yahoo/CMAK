@@ -6,10 +6,10 @@
 package kafka.manager.logkafka
 
 import akka.actor.{ActorPath, Cancellable}
-import kafka.manager.model.{ClusterContext, ActorModel}
-import ActorModel._
 import kafka.manager.base.{LongRunningPoolActor, LongRunningPoolConfig}
 import kafka.manager.features.KMLogKafkaFeature
+import kafka.manager.model.ActorModel._
+import kafka.manager.model.{ActorModel, ClusterContext}
 
 import scala.annotation.nowarn
 import scala.concurrent.duration._

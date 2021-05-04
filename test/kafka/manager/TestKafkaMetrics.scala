@@ -6,7 +6,7 @@
 package kafka.manager
 
 import kafka.manager.jmx.KafkaMetrics
-import kafka.manager.model.{Kafka_1_1_1, Kafka_1_1_0, Kafka_1_0_0, Kafka_0_11_0_2, Kafka_0_10_2_1, Kafka_0_10_1_1, Kafka_0_10_0_1, Kafka_0_9_0_1, Kafka_0_8_2_1, Kafka_0_8_1_1}
+import kafka.manager.model._
 import org.scalatest.funsuite.AnyFunSuite
 
 /**

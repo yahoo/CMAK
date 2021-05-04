@@ -4,14 +4,13 @@
  */
 package kafka.test
 
-import java.io.File
-import java.util.Properties
-
 import com.google.common.io.Files
 import kafka.server.{KafkaConfig, KafkaServer}
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.test.InstanceSpec
 
+import java.io.File
+import java.util.Properties
 import scala.util.Try
 
 /**

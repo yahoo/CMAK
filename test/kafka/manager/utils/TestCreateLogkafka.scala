@@ -4,16 +4,12 @@
  */
 package kafka.manager.utils
 
-import java.util.Properties
-
-import LogkafkaErrors._
 import kafka.manager.BaseTest
-import kafka.manager.model.ActorModel
-import ActorModel.{LogkafkaIdentity}
 import kafka.manager.features.ClusterFeatures
-import kafka.manager.model.{ClusterContext, ClusterConfig, Kafka_0_8_2_0}
-import org.apache.zookeeper.data.Stat
-import scala.concurrent.Future
+import kafka.manager.model.{ClusterConfig, ClusterContext, Kafka_0_8_2_0}
+import kafka.manager.utils.LogkafkaErrors._
+
+import java.util.Properties
 /**
  * @author zheolong
  */

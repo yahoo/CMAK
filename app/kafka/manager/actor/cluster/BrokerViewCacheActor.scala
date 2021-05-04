@@ -8,8 +8,8 @@ package kafka.manager.actor.cluster
 import akka.actor.{ActorPath, ActorRef, Cancellable}
 import kafka.manager.base.cluster.BaseClusterActor
 import kafka.manager.base.{LongRunningPoolActor, LongRunningPoolConfig}
-import kafka.manager.features.{KMPollConsumersFeature, KMDisplaySizeFeature, KMJMXMetricsFeature}
-import kafka.manager.jmx.{SegmentsMetric, KafkaJMX, KafkaMetrics, LogInfo}
+import kafka.manager.features.{KMDisplaySizeFeature, KMJMXMetricsFeature, KMPollConsumersFeature}
+import kafka.manager.jmx.{KafkaJMX, KafkaMetrics, LogInfo, SegmentsMetric}
 import kafka.manager.model.ClusterContext
 import kafka.manager.utils.FiniteQueue
 import org.joda.time.DateTime

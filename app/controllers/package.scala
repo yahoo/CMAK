@@ -8,9 +8,9 @@ import kafka.manager.model.ClusterContext
 import kafka.manager.{ApiError, KafkaManager}
 import play.api.mvc.Results._
 import play.api.mvc._
+import scalaz.{-\/, \/-}
 
 import scala.concurrent.{ExecutionContext, Future}
-import scalaz.{-\/, \/-}
 
 /**
  * Created by hiral on 8/23/15.

@@ -5,8 +5,6 @@
 
 package controllers
 
-import java.util.Properties
-
 import features.{ApplicationFeatures, KMTopicManagerFeature}
 import kafka.manager.ApiError
 import kafka.manager.features.ClusterFeatures
@@ -23,10 +21,11 @@ import play.api.data.validation.Constraints._
 import play.api.data.validation.{Constraint, Invalid, Valid}
 import play.api.i18n.I18nSupport
 import play.api.mvc._
+import scalaz.-\/
 
+import java.util.Properties
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
-import scalaz.-\/
 
 /**
  * @author hiral

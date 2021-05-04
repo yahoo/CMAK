@@ -5,9 +5,9 @@
 
 package kafka.manager.base.cluster
 
-import kafka.manager.base.{BaseQueryCommandActor, BaseQueryActor, BaseCommandActor, BaseActor}
+import kafka.manager.base.{BaseActor, BaseCommandActor, BaseQueryActor, BaseQueryCommandActor}
 import kafka.manager.features.ClusterFeatures
-import kafka.manager.model.{ClusterContext, ClusterConfig}
+import kafka.manager.model.{ClusterConfig, ClusterContext}
 
 /**
  * Created by hiral on 12/1/15.

@@ -5,9 +5,9 @@
 
 package kafka.manager.utils
 
-import java.util.Properties
-
 import kafka.manager.model.{Kafka_1_0_0, _}
+
+import java.util.Properties
 
 trait LogkafkaNewConfigs {
   def configNames : Set[String]

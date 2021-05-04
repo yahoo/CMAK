@@ -5,13 +5,12 @@
 
 package kafka.manager.model
 
-import java.nio.charset.StandardCharsets
-
 import kafka.manager.features.ClusterFeatures
+import scalaz.Validation.FlatMap._
 
+import java.nio.charset.StandardCharsets
 import scala.util.Try
 import scala.util.matching.Regex
-import scalaz.Validation.FlatMap._
 
 /**
   * @author hiral

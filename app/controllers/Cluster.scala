@@ -17,10 +17,10 @@ import play.api.data.validation.Constraints._
 import play.api.data.validation.{Constraint, Invalid, Valid}
 import play.api.i18n.I18nSupport
 import play.api.mvc._
+import scalaz.{-\/, \/-}
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
-import scalaz.{-\/, \/-}
 
 /**
  * @author hiral

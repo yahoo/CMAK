@@ -1,9 +1,10 @@
 package kafka.test
 
 import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler
+import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse._
+
 import java.time.Instant
 import java.time.temporal.ChronoUnit
-import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse._
 
 class MaxFailuresUncaughtExceptionHandler(val maxFailures: Int, val maxTimeIntervalMillis: Long) extends StreamsUncaughtExceptionHandler {
   private var previousErrorTime: Instant = null
