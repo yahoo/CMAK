@@ -8,7 +8,7 @@ package kafka.manager.jmx
 import com.yammer.metrics.reporting.JmxReporter.GaugeMBean
 import grizzled.slf4j.Logging
 import kafka.manager.model.ActorModel.BrokerMetrics
-import kafka.manager.model.{ActorModel, KafkaVersion, Kafka_0_8_1_1}
+import kafka.manager.model.{KafkaVersion, Kafka_0_8_1_1}
 
 import java.io.File
 import java.{util => ju}

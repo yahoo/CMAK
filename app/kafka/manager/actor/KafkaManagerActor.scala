@@ -20,7 +20,6 @@ import org.apache.zookeeper.CreateMode
 
 import java.util.Properties
 import java.util.concurrent.{LinkedBlockingQueue, ThreadPoolExecutor, TimeUnit}
-import scala.annotation.nowarn
 import scala.concurrent.duration.FiniteDuration
 import scala.concurrent.{ExecutionContext, Future}
 import scala.util.{Failure, Success, Try}
@@ -164,7 +163,6 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
     }
   }
 
-  @nowarn("cat=deprecation")
   @scala.throws[Exception](classOf[Exception])
   override def preStart() = {
     super.preStart()
@@ -183,9 +181,11 @@ class KafkaManagerActor(kafkaManagerConfig: KafkaManagerActorConfig)
 
     implicit val ec = longRunningExecutionContext
     //schedule periodic forced update
-    context.system.scheduler.schedule(
+    context.system.scheduler.scheduleAtFixedRate(
       Duration(kafkaManagerConfig.startDelayMillis,TimeUnit.MILLISECONDS),kafkaManagerConfig.kafkaManagerUpdatePeriod) {
-      self ! KMUpdateState
+      () => {
+        self ! KMUpdateState
+      }
     }
   }
 

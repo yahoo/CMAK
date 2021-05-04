@@ -20,7 +20,6 @@ import org.json4s.jackson.JsonMethods.parse
 
 import java.util.Properties
 import java.util.concurrent.{LinkedBlockingQueue, ThreadPoolExecutor, TimeUnit}
-import scala.annotation.nowarn
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.reflect.ClassTag
@@ -380,15 +379,16 @@ class KafkaManager(akkaConfig: Config) extends Logging {
     ))
   }
 
-  @nowarn("cat=deprecation")
   def schedulePreferredLeaderElection(clusterName: String, topics: Set[String], timeIntervalMinutes: Int): Future[String] = {
     implicit val ec = apiExecutionContext
 
     pleCancellable += (clusterName ->
       (
         Some(
-          system.scheduler.schedule(0 seconds, Duration(timeIntervalMinutes, TimeUnit.MINUTES)) {
-            runPreferredLeaderElectionWithAllTopics(clusterName)
+          system.scheduler.scheduleAtFixedRate(0 seconds, Duration(timeIntervalMinutes, TimeUnit.MINUTES)) {
+            () => {
+              runPreferredLeaderElectionWithAllTopics(clusterName)
+            }
           }
         ),
         timeIntervalMinutes

@@ -6,7 +6,6 @@
 package kafka.manager.base
 
 import akka.actor.{Actor, ActorLogging}
-import kafka.manager.model.ActorModel
 import kafka.manager.model.ActorModel.{ActorErrorResponse, ActorRequest, ActorResponse}
 
 /**

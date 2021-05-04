@@ -5,7 +5,6 @@
 
 package kafka.manager.base
 
-import kafka.manager.model.ActorModel
 import kafka.manager.model.ActorModel.{ActorRequest, CommandRequest}
 
 /**

@@ -19,7 +19,6 @@ import play.api.{Application, ApplicationLoader, Environment, Mode}
 import play.mvc.Http.Status.{BAD_REQUEST, OK}
 
 import java.io.File
-import scala.annotation.nowarn
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext}
 import scala.util.Try
@@ -35,7 +34,6 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
   private[this] var kafkaStateCheck: Option[KafkaStateCheck] = None
   private[this] var application: Option[Application] = None
 
-  @nowarn("cat=deprecation")
   override protected def beforeAll(): Unit = {
     super.beforeAll()
 
@@ -46,7 +44,7 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
       "cmak.consumer.properties.file" -> "conf/consumer.properties"
     )
     val loader = new KafkaManagerLoaderForTests
-    application = Option(loader.load(ApplicationLoader.createContext(
+    application = Option(loader.load(ApplicationLoader.Context.create(
       Environment(new File("app"), Thread.currentThread().getContextClassLoader, Mode.Test)
       , configMap
     )))

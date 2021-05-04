@@ -19,7 +19,6 @@ assembly / assemblyMergeStrategy := {
   case "logger.xml" => MergeStrategy.first
   case "META-INF/io.netty.versions.properties" => MergeStrategy.first
   case "module-info.class" => MergeStrategy.first
-  case PathList("scala", "annotation", xs@_*) => MergeStrategy.first
   case other => (assembly / assemblyMergeStrategy).value(other)
 }
 

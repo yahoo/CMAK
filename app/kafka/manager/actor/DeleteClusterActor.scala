@@ -8,13 +8,11 @@ package kafka.manager.actor
 import akka.actor.Cancellable
 import kafka.manager._
 import kafka.manager.base.BaseCommandActor
-import kafka.manager.model.ActorModel
 import kafka.manager.model.ActorModel.{ActorResponse, CommandRequest, DCUpdateState}
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.cache.{PathChildrenCache, PathChildrenCacheEvent, PathChildrenCacheListener}
 
-import scala.annotation.nowarn
 import scala.concurrent.duration._
 import scala.util.Try
 
@@ -44,7 +42,6 @@ class DeleteClusterActor(config: DeleteClusterActorConfig) extends BaseCommandAc
     }
   }
 
-  @nowarn("cat=deprecation")
   @scala.throws[Exception](classOf[Exception])
   override def preStart() = {
     super.preStart()
@@ -59,7 +56,7 @@ class DeleteClusterActor(config: DeleteClusterActorConfig) extends BaseCommandAc
 
     log.info("Scheduling updater for %s".format(config.updatePeriod))
     cancellable = Some(
-      context.system.scheduler.schedule(0 seconds,
+      context.system.scheduler.scheduleAtFixedRate(0 seconds,
         config.updatePeriod,
         self,
         DCUpdateState)(context.system.dispatcher,self)

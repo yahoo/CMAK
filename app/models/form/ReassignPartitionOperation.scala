@@ -7,7 +7,6 @@ package models.form
 
 import enumeratum.EnumEntry.{Snakecase, Uppercase}
 import enumeratum.{Enum, EnumEntry}
-import kafka.manager.model.ActorModel
 import kafka.manager.model.ActorModel.BrokerIdentity
 
 /**

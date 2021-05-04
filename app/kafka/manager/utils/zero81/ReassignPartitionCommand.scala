@@ -18,7 +18,6 @@
 package kafka.manager.utils.zero81
 
 import grizzled.slf4j.Logging
-import kafka.manager.model.ActorModel
 import kafka.manager.model.ActorModel.{TopicIdentity, TopicPartitionIdentity}
 import kafka.manager.utils._
 import org.apache.curator.framework.CuratorFramework
