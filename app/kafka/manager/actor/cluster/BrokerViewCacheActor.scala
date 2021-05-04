@@ -14,6 +14,7 @@ import kafka.manager.model.ClusterContext
 import kafka.manager.utils.FiniteQueue
 import org.joda.time.DateTime
 
+import scala.annotation.nowarn
 import scala.collection.immutable.Queue
 import scala.collection.mutable
 import scala.concurrent.duration._
@@ -67,6 +68,7 @@ class BrokerViewCacheActor(config: BrokerViewCacheActorConfig) extends LongRunni
 
   private[this] var brokerMessagesPerSecCountHistory : Map[Int, Queue[BrokerMessagesPerSecCount]] = Map.empty
 
+  @nowarn("cat=deprecation")
   override def preStart() = {
     log.info("Started actor %s".format(self.path))
     log.info("Scheduling updater for %s".format(config.updatePeriod))

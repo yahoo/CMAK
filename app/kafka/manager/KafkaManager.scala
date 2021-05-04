@@ -22,6 +22,7 @@ import kafka.manager.utils.UtilException
 import kafka.manager.utils.zero81.ReassignPartitionErrors.ReplicationOutOfSync
 import kafka.manager.utils.zero81.{ForceOnReplicationOutOfSync, ForceReassignmentCommand, ReassignPartitionErrors}
 
+import scala.annotation.nowarn
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration._
 import scala.reflect.ClassTag
@@ -381,6 +382,7 @@ class KafkaManager(akkaConfig: Config) extends Logging {
     ))
   }
 
+  @nowarn("cat=deprecation")
   def schedulePreferredLeaderElection(clusterName: String, topics: Set[String], timeIntervalMinutes: Int): Future[String] = {
     implicit val ec = apiExecutionContext
 

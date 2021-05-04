@@ -11,6 +11,7 @@ import ActorModel._
 import kafka.manager.base.{LongRunningPoolActor, LongRunningPoolConfig}
 import kafka.manager.features.KMLogKafkaFeature
 
+import scala.annotation.nowarn
 import scala.concurrent.duration._
 import scala.util.Try
 
@@ -33,6 +34,7 @@ class LogkafkaViewCacheActor(config: LogkafkaViewCacheActorConfig) extends LongR
 
   private[this] var logkafkaClientsOption : Option[LogkafkaClients] = None
 
+  @nowarn("cat=deprecation")
   override def preStart() = {
     if (config.clusterContext.clusterFeatures.features(KMLogKafkaFeature)) {
       log.info("Started actor %s".format(self.path))

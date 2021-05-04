@@ -4,12 +4,12 @@
  */
 package kafka.manager.model
 
-import org.scalatest.FunSuite
+import org.scalatest.funsuite.AnyFunSuite
 
 /**
   * @author fuji-151a
   */
-class KafkaVersionTest extends FunSuite {
+class KafkaVersionTest extends AnyFunSuite {
 
   private val kafkaVersionMap: Map[String, KafkaVersion] = Map(
     "0.8.1.1" -> Kafka_0_8_1_1,
@@ -43,7 +43,9 @@ class KafkaVersionTest extends FunSuite {
     "2.4.1" -> Kafka_2_4_1,
     "2.5.0" -> Kafka_2_5_0,
     "2.5.1" -> Kafka_2_5_1,
-    "2.6.0" -> Kafka_2_6_0
+    "2.6.0" -> Kafka_2_6_0,
+    "2.7.0" -> Kafka_2_7_0,
+    "2.8.0" -> Kafka_2_8_0
   )
 
   test("apply method: supported version.") {
@@ -93,7 +95,9 @@ class KafkaVersionTest extends FunSuite {
       ("2.4.1","2.4.1"),
       ("2.5.0","2.5.0"),
       ("2.5.1","2.5.1"),
-      ("2.6.0","2.6.0")
+      ("2.6.0","2.6.0"),
+      ("2.7.0","2.7.0"),
+      ("2.8.0","2.8.0")
     )
     assertResult(expected)(KafkaVersion.formSelectList)
   }

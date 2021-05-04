@@ -274,7 +274,7 @@ class Cluster (val cc: ControllerComponents, val kafkaManagerContext: KafkaManag
               errorOrSuccess,
               "Add Cluster",
               FollowLink("Go to cluster view.",routes.Cluster.cluster(clusterConfig.name).toString()),
-              FollowLink("Try again.",routes.Cluster.addCluster().toString())
+              FollowLink("Try again.",routes.Cluster.addCluster.toString())
             )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
           }
         }
@@ -294,8 +294,8 @@ class Cluster (val cc: ControllerComponents, val kafkaManagerContext: KafkaManag
                 models.navigation.BreadCrumbs.withViewAndCluster("Enable Cluster", c),
                 errorOrSuccess,
                 "Enable Cluster",
-                FollowLink("Go to cluster list.", routes.Application.index().toString()),
-                FollowLink("Back to cluster list.", routes.Application.index().toString())
+                FollowLink("Go to cluster list.", routes.Application.index.toString()),
+                FollowLink("Back to cluster list.", routes.Application.index.toString())
               )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
             }
           case Disable =>
@@ -305,8 +305,8 @@ class Cluster (val cc: ControllerComponents, val kafkaManagerContext: KafkaManag
                 models.navigation.BreadCrumbs.withViewAndCluster("Disable Cluster", c),
                 errorOrSuccess,
                 "Disable Cluster",
-                FollowLink("Back to cluster list.", routes.Application.index().toString()),
-                FollowLink("Back to cluster list.", routes.Application.index().toString())
+                FollowLink("Back to cluster list.", routes.Application.index.toString()),
+                FollowLink("Back to cluster list.", routes.Application.index.toString())
               )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
             }
           case Delete =>
@@ -316,8 +316,8 @@ class Cluster (val cc: ControllerComponents, val kafkaManagerContext: KafkaManag
                 models.navigation.BreadCrumbs.withViewAndCluster("Delete Cluster", c),
                 errorOrSuccess,
                 "Delete Cluster",
-                FollowLink("Back to cluster list.", routes.Application.index().toString()),
-                FollowLink("Back to cluster list.", routes.Application.index().toString())
+                FollowLink("Back to cluster list.", routes.Application.index.toString()),
+                FollowLink("Back to cluster list.", routes.Application.index.toString())
               )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
             }
           case Update =>
@@ -354,8 +354,8 @@ class Cluster (val cc: ControllerComponents, val kafkaManagerContext: KafkaManag
               models.navigation.BreadCrumbs.withViewAndCluster("Unknown Cluster Operation", c),
               -\/(ApiError(s"Unknown operation $opString")),
               "Unknown Cluster Operation",
-              FollowLink("Back to cluster list.", routes.Application.index().toString()),
-              FollowLink("Back to cluster list.", routes.Application.index().toString())
+              FollowLink("Back to cluster list.", routes.Application.index.toString()),
+              FollowLink("Back to cluster list.", routes.Application.index.toString())
             )).withHeaders("X-Frame-Options" -> "SAMEORIGIN"))
         }
       )

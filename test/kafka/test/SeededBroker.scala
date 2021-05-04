@@ -22,6 +22,7 @@ import org.apache.kafka.clients.consumer.{ConsumerRecords, KafkaConsumer}
 import org.apache.kafka.clients.producer.{KafkaProducer, ProducerConfig, ProducerRecord}
 import org.apache.kafka.streams.kstream.{ForeachAction, KStream, Printed}
 import org.apache.kafka.streams.{KafkaStreams, StreamsBuilder}
+import org.apache.kafka.streams.errors.{StreamsUncaughtExceptionHandler}
 import org.apache.kafka.clients.consumer.ConsumerConfig._
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.common.serialization.{ByteArrayDeserializer, Serdes}
@@ -136,11 +137,7 @@ case class HighLevelConsumer(topic: String,
   val kstream : KStream[Array[Byte], Array[Byte]] = streamsBuilder.stream(topic)
 
   val kafkaStreams = new KafkaStreams(streamsBuilder.build(), commonConsumerConfig)
-  kafkaStreams.setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler {
-    override def uncaughtException(t: Thread, e: Throwable): Unit = {
-      error("Failed to initialize KafkStreams", e)
-    }
-  })
+  kafkaStreams.setUncaughtExceptionHandler(new MaxFailuresUncaughtExceptionHandler(3, 3600000 ))
 
   kafkaStreams.start()
   info("setup:complete topic=%s for bk=%s and groupId=%s".format(topic,commonConsumerConfig.getProperty(BOOTSTRAP_SERVERS_CONFIG),groupId))

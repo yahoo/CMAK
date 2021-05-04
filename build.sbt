@@ -5,21 +5,22 @@
 name := """cmak"""
 
 /* For packaging purposes, -SNAPSHOT MUST contain a digit */
-version := "3.0.0.5"
+version := "3.0.0.6"
 
-scalaVersion := "2.12.10"
+scalaVersion := "2.12.13"
 
-scalacOptions ++= Seq("-Xlint:-missing-interpolator","-Xfatal-warnings","-deprecation","-feature","-language:implicitConversions","-language:postfixOps","-Xmax-classfile-name","240")
+scalacOptions ++= Seq("-Xlint:-missing-interpolator", "-Xfatal-warnings", "-deprecation", "-feature", "-language:implicitConversions", "-language:postfixOps", "-Xmax-classfile-name", "240")
 
-// From https://www.playframework.com/documentation/2.3.x/ProductionDist
-assemblyMergeStrategy in assembly := {
-  case "play/reference-overrides.conf" => MergeStrategy.first
+// From https://www.playframework.com/documentation/2.8.x/Deploying
+assembly / assemblyMergeStrategy := {
+  case referenceOverrides if referenceOverrides.contains("reference-overrides.conf") =>
+    // Keep the content for all reference-overrides.conf files
+    MergeStrategy.concat
   case "logger.xml" => MergeStrategy.first
   case "META-INF/io.netty.versions.properties" => MergeStrategy.first
   case "module-info.class" => MergeStrategy.first
-  case "play/core/server/ServerWithStop.class" => MergeStrategy.first
-  case "org/apache/kafka/common/metrics/JmxReporter.class" => MergeStrategy.first
-  case other => (assemblyMergeStrategy in assembly).value(other)
+  case PathList("scala", "annotation", xs@_*) => MergeStrategy.first
+  case other => (assembly / assemblyMergeStrategy).value(other)
 }
 
 libraryDependencies ++= Seq(
@@ -33,33 +34,34 @@ libraryDependencies ++= Seq(
   "org.webjars" % "underscorejs" % "1.9.0",
   "org.webjars" % "dustjs-linkedin" % "2.7.2",
   "org.webjars" % "octicons" % "4.3.0",
-  "org.apache.curator" % "curator-framework" % "2.12.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
-  "org.apache.curator" % "curator-recipes" % "2.12.0" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
+  "org.apache.curator" % "curator-framework" % "2.12.0" exclude("log4j", "log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
+  "org.apache.curator" % "curator-recipes" % "2.12.0" exclude("log4j", "log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
+  "commons-codec" % "commons-codec" % "1.15",
   "org.json4s" %% "json4s-jackson" % "3.6.5",
   "org.json4s" %% "json4s-scalaz" % "3.6.5",
   "org.slf4j" % "log4j-over-slf4j" % "1.7.25",
-  "com.adrianhurt" %% "play-bootstrap" % "1.4-P26-B4" exclude("com.typesafe.play", "*"),
+  "com.adrianhurt" %% "play-bootstrap" % "1.6.1-P28-B4" exclude("com.typesafe.play", "*"),
   "org.clapper" %% "grizzled-slf4j" % "1.3.3",
-  "org.apache.kafka" %% "kafka" % "2.4.1" exclude("log4j","log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
-  "org.apache.kafka" % "kafka-streams" % "2.2.0",
+  "org.apache.kafka" %% "kafka" % "2.8.0" exclude("log4j", "log4j") exclude("org.slf4j", "slf4j-log4j12") force(),
+  "org.apache.kafka" % "kafka-streams" % "2.8.0",
   "com.beachape" %% "enumeratum" % "1.5.13",
   "com.github.ben-manes.caffeine" % "caffeine" % "2.6.2",
-  "com.typesafe.play" %% "play-logback" % "2.6.21",
-  "org.scalatest" %% "scalatest" % "3.0.5" % "test",
-  "org.scalatestplus.play" %% "scalatestplus-play" % "3.1.2" % "test",
+  "com.typesafe.play" %% "play-logback" % "2.8.8",
+  "org.scalatest" %% "scalatest" % "3.1.4" % "test",
+  "org.scalatestplus.play" %% "scalatestplus-play" % "5.1.0" % "test",
   "org.apache.curator" % "curator-test" % "2.12.0" % "test",
-  "org.mockito" % "mockito-core" % "1.10.19" % "test",
+  "org.scalatestplus" % "mockito-3-4_2.12" % "3.2.8.0" % "test",
   "com.yammer.metrics" % "metrics-core" % "2.2.0" force(),
   "com.unboundid" % "unboundid-ldapsdk" % "4.0.9"
 )
 
 routesGenerator := InjectedRoutesGenerator
 
-LessKeys.compress in Assets := true
+Assets / LessKeys.compress := true
 
 pipelineStages := Seq(digest, gzip)
 
-includeFilter in (Assets, LessKeys.less) := "*.less"
+Assets / LessKeys.less / includeFilter := "*.less"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala)
 
@@ -77,7 +79,7 @@ enablePlugins(SystemdPlugin)
 
 
 enablePlugins(sbtdocker.DockerPlugin)
-dockerfile in docker := {
+docker / dockerfile := {
   val zipFile: File = dist.value
 
   new Dockerfile {
@@ -94,13 +96,13 @@ dockerfile in docker := {
   }
 }
 
-imageNames in docker := Seq(
+docker / imageNames := Seq(
   ImageName(
     s"${name.value}:${version.value}"
   )
 )
 
-buildOptions in docker := BuildOptions(
+docker / buildOptions := BuildOptions(
   pullBaseImage = BuildOptions.Pull.Always
 )
 
@@ -108,7 +110,7 @@ buildOptions in docker := BuildOptions(
  * Start service as user root
  */
 
-daemonUser in Linux := "root"
+Linux / daemonUser := "root"
 
 /* Debian Settings - to create, run as:
    $ sbt debian:packageBin
@@ -137,8 +139,9 @@ rpmLicense := Some("Apache")
 rpmGroup := Some("cmak")
 
 import RpmConstants._
-maintainerScripts in Rpm := maintainerScriptsAppend((maintainerScripts in Rpm).value)(
-   Pre -> "%define _binary_payload w9.xzdio"
+
+Rpm / maintainerScripts := maintainerScriptsAppend((Rpm / maintainerScripts).value)(
+  Pre -> "%define _binary_payload w9.xzdio"
 )
 
 /* End RPM Settings */

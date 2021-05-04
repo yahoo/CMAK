@@ -14,9 +14,9 @@ object QuickRoutes {
   import models.navigation.BreadCrumbs._
 
   val baseRoutes : Map[String, () => Call] = Map(
-    "Clusters" -> { () => controllers.routes.Application.index() },
-    "List" -> { () => controllers.routes.Application.index() },
-    "Add Cluster" -> { () => controllers.routes.Cluster.addCluster() }
+    "Clusters" -> { () => controllers.routes.Application.index },
+    "List" -> { () => controllers.routes.Application.index },
+    "Add Cluster" -> { () => controllers.routes.Cluster.addCluster }
   )
   val clusterRoutes : Map[String, String => Call] = Map(
     "Update Cluster" -> controllers.routes.Cluster.updateCluster,

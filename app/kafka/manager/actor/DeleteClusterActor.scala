@@ -14,6 +14,7 @@ import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.framework.recipes.cache.PathChildrenCache.StartMode
 import org.apache.curator.framework.recipes.cache.{PathChildrenCache, PathChildrenCacheEvent, PathChildrenCacheListener}
 
+import scala.annotation.nowarn
 import scala.concurrent.duration._
 import scala.util.Try
 
@@ -43,6 +44,7 @@ class DeleteClusterActor(config: DeleteClusterActorConfig) extends BaseCommandAc
     }
   }
 
+  @nowarn("cat=deprecation")
   @scala.throws[Exception](classOf[Exception])
   override def preStart() = {
     super.preStart()

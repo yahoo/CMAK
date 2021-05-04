@@ -115,6 +115,10 @@ class Logkafka (val cc: ControllerComponents, val kafkaManagerContext: KafkaMana
     LogkafkaNewConfigs.configMaps(Kafka_2_5_1).map{case(k,v) => LKConfig(k,Some(v))}.toList)
   val kafka_2_6_0_Default = CreateLogkafka("","",
     LogkafkaNewConfigs.configMaps(Kafka_2_6_0).map{case(k,v) => LKConfig(k,Some(v))}.toList)
+  val kafka_2_7_0_Default = CreateLogkafka("","",
+    LogkafkaNewConfigs.configMaps(Kafka_2_7_0).map{case(k,v) => LKConfig(k,Some(v))}.toList)
+  val kafka_2_8_0_Default = CreateLogkafka("","",
+    LogkafkaNewConfigs.configMaps(Kafka_2_8_0).map{case(k,v) => LKConfig(k,Some(v))}.toList)
 
   val defaultCreateForm = Form(
     mapping(
@@ -184,6 +188,8 @@ class Logkafka (val cc: ControllerComponents, val kafkaManagerContext: KafkaMana
           case Kafka_2_5_0 => (defaultCreateForm.fill(kafka_2_5_0_Default), clusterContext)
           case Kafka_2_5_1 => (defaultCreateForm.fill(kafka_2_5_1_Default), clusterContext)
           case Kafka_2_6_0 => (defaultCreateForm.fill(kafka_2_6_0_Default), clusterContext)
+          case Kafka_2_7_0 => (defaultCreateForm.fill(kafka_2_7_0_Default), clusterContext)
+          case Kafka_2_8_0 => (defaultCreateForm.fill(kafka_2_8_0_Default), clusterContext)
         }
       }
     }
@@ -297,6 +303,8 @@ class Logkafka (val cc: ControllerComponents, val kafkaManagerContext: KafkaMana
       case Kafka_2_5_0 => LogkafkaNewConfigs.configNames(Kafka_2_5_0).map(n => (n,LKConfig(n,None))).toMap
       case Kafka_2_5_1 => LogkafkaNewConfigs.configNames(Kafka_2_5_1).map(n => (n,LKConfig(n,None))).toMap
       case Kafka_2_6_0 => LogkafkaNewConfigs.configNames(Kafka_2_6_0).map(n => (n,LKConfig(n,None))).toMap
+      case Kafka_2_7_0 => LogkafkaNewConfigs.configNames(Kafka_2_7_0).map(n => (n,LKConfig(n,None))).toMap
+      case Kafka_2_8_0 => LogkafkaNewConfigs.configNames(Kafka_2_8_0).map(n => (n,LKConfig(n,None))).toMap
     }
     val identityOption = li.identityMap.get(log_path)
     if (identityOption.isDefined) {

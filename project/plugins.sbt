@@ -16,7 +16,7 @@ addSbtPlugin("org.foundweekends" % "sbt-bintray" % "0.5.4")
 resolvers += "Typesafe repository" at "https://repo.typesafe.com/typesafe/releases/"
 
 // Use the Play sbt plugin for Play projects
-addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.6.21")
+addSbtPlugin("com.typesafe.play" % "sbt-plugin" % "2.8.8")
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-jshint" % "1.0.6")
 
@@ -26,17 +26,17 @@ addSbtPlugin("com.typesafe.sbt" % "sbt-gzip" % "1.0.2")
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-less" % "1.1.2")
 
-addSbtPlugin("net.virtual-void" % "sbt-dependency-graph" % "0.10.0-RC1")
+addDependencyTreePlugin
 
-addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.10")
+addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.15.0")
 
 // Support packaging plugins
-addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.6.1")
+addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.7.6")
 
 resolvers += Classpaths.sbtPluginReleases
 
-addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.6.0")
+addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.7.2")
 
 addSbtPlugin("org.scoverage" % "sbt-coveralls" % "1.2.6")
 
-addSbtPlugin("se.marcuslonnberg" % "sbt-docker" % "1.5.0")
+addSbtPlugin("se.marcuslonnberg" % "sbt-docker" % "1.8.2")

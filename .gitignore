@@ -6,6 +6,7 @@ tmp
 .history
 dist
 /.idea
+/.bsp
 /*.iml
 /.idea_modules
 /.settings

@@ -58,7 +58,7 @@
         @b4.select(form("saslMechanism"), options = kafka.manager.model.SASLmechanism.formSelectList, '_label -> "SASL Mechanism (only applies to SASL based security)" )
         @b4.text(form("jaasConfig"), '_label -> "SASL JAAS Config (only applies to SASL based security)")
         @b4.submit('class -> "submit-button btn btn-primary"){ Save }
-        <a href="@routes.Application.index()" class="cancel-button btn btn-secondary" role="button">Cancel</a>
+        <a href="@routes.Application.index" class="cancel-button btn btn-secondary" role="button">Cancel</a>
     </fieldset>
     }
 }

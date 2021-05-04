@@ -7,12 +7,13 @@ package kafka.manager.utils
 import kafka.manager.model.CuratorConfig
 import org.apache.curator.framework.{CuratorFrameworkFactory, CuratorFramework}
 import org.apache.curator.retry.BoundedExponentialBackoffRetry
-import org.scalatest.{BeforeAndAfterAll, FunSuite}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.funsuite.AnyFunSuite
 
 /**
  * @author hiral
  */
-trait KafkaServerInTest extends FunSuite with BeforeAndAfterAll {
+trait KafkaServerInTest extends AnyFunSuite with BeforeAndAfterAll {
   val kafkaServerZkPath : String
 
   lazy val sharedCurator: CuratorFramework = {

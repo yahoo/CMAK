@@ -5,13 +5,14 @@
 package kafka.manager.utils
 
 import org.apache.curator.test.TestingServer
-import org.scalatest.{BeforeAndAfterAll, FunSuite}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.funsuite.AnyFunSuite
 
 
 /**
  * @author hiral
  */
-trait ZookeeperServerAwareTest extends FunSuite with BeforeAndAfterAll {
+trait ZookeeperServerAwareTest extends AnyFunSuite with BeforeAndAfterAll {
 
   protected[this] val testServer = new TestingServer()
 

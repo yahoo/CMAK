@@ -7,14 +7,15 @@ package kafka.manager.utils
 import org.apache.curator.framework.{CuratorFrameworkFactory, CuratorFramework}
 import org.apache.curator.retry.ExponentialBackoffRetry
 import org.apache.curator.test.TestingServer
-import org.scalatest.{BeforeAndAfterAll, FunSuite}
+import org.scalatest.BeforeAndAfterAll
+import org.scalatest.funsuite.AnyFunSuite
 
 import scala.reflect.ClassTag
 
 /**
  * @author hiral
  */
-trait CuratorAwareTest extends FunSuite with BeforeAndAfterAll with ZookeeperServerAwareTest {
+trait CuratorAwareTest extends AnyFunSuite with BeforeAndAfterAll with ZookeeperServerAwareTest {
 
   private[this] var curator: Option[CuratorFramework] = None
 

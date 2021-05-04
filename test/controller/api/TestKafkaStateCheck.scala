@@ -16,14 +16,15 @@ import kafka.manager.KafkaManager
 import kafka.manager.utils.{CuratorAwareTest, KafkaServerInTest}
 import kafka.test.SeededBroker
 import loader.KafkaManagerLoaderForTests
-import org.scalatest.Matchers._
-import org.scalatest.mockito.MockitoSugar
+import org.scalatest.matchers.should.Matchers._
+import org.scalatestplus.mockito.MockitoSugar
 import play.api.libs.json.{JsDefined, Json}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import play.api.{Application, ApplicationLoader, Environment, Mode}
 import play.mvc.Http.Status.{BAD_REQUEST, OK}
 
+import scala.annotation.nowarn
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext}
 import scala.util.Try
@@ -39,6 +40,7 @@ class TestKafkaStateCheck extends CuratorAwareTest with KafkaServerInTest with M
   private[this] var kafkaStateCheck: Option[KafkaStateCheck] = None
   private[this] var application: Option[Application] = None
 
+  @nowarn("cat=deprecation")
   override protected def beforeAll(): Unit = {
     super.beforeAll()
 

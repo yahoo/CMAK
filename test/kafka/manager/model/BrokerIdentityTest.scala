@@ -5,9 +5,10 @@
 package kafka.manager.model
 
 import kafka.manager.model.ActorModel.BrokerIdentity
-import org.scalatest.{Matchers, FunSuite}
+import org.scalatest.funsuite.AnyFunSuite
+import org.scalatest.matchers.should.Matchers
 
-class BrokerIdentityTest extends FunSuite with Matchers {
+class BrokerIdentityTest extends AnyFunSuite with Matchers {
   test("successfully parse json with endpoints with sasl") {
     val jsonString = """{"jmx_port":9999,"timestamp":"1461773047828","endpoints":["SASL_PLAINTEXT://host.com:9092"],"host":null,"version":2,"port":-1}"""
 
