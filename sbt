@@ -1,614 +1,725 @@
 #!/usr/bin/env bash
-#
-# A more capable sbt runner, coincidentally also called sbt.
-# Author: Paul Phillips <paulp@improving.org>
-# https://github.com/paulp/sbt-extras
 
-set -o pipefail
+set +e
+declare builtin_sbt_version="1.5.1"
+declare -a residual_args
+declare -a java_args
+declare -a scalac_args
+declare -a sbt_commands
+declare -a sbt_options
+declare -a print_version
+declare -a print_sbt_version
+declare -a print_sbt_script_version
+declare -a original_args
+declare java_cmd=java
+declare java_version
+declare init_sbt_version=1.5.1
+declare sbt_default_mem=1024
+declare -r default_sbt_opts=""
+declare -r default_java_opts="-Dfile.encoding=UTF-8"
+declare sbt_verbose=
+declare sbt_debug=
+declare build_props_sbt_version=
+declare use_sbtn=
+declare sbtn_command="$SBTN_CMD"
 
-declare -r sbt_release_version="1.3.8"
-declare -r sbt_unreleased_version="1.3.8"
+###  ------------------------------- ###
+###  Helper methods for BASH scripts ###
+###  ------------------------------- ###
 
-declare -r latest_213="2.13.1"
-declare -r latest_212="2.12.10"
-declare -r latest_211="2.11.12"
-declare -r latest_210="2.10.7"
-declare -r latest_29="2.9.3"
-declare -r latest_28="2.8.2"
+# Bash reimplementation of realpath to return the absolute path
+realpathish () {
+(
+  TARGET_FILE="$1"
+  FIX_CYGPATH="$2"
 
-declare -r buildProps="project/build.properties"
+  cd "$(dirname "$TARGET_FILE")"
+  TARGET_FILE=$(basename "$TARGET_FILE")
 
-declare -r sbt_launch_ivy_release_repo="https://repo.typesafe.com/typesafe/ivy-releases"
-declare -r sbt_launch_ivy_snapshot_repo="https://repo.scala-sbt.org/scalasbt/ivy-snapshots"
-declare -r sbt_launch_mvn_release_repo="https://repo.scala-sbt.org/scalasbt/maven-releases"
-declare -r sbt_launch_mvn_snapshot_repo="https://repo.scala-sbt.org/scalasbt/maven-snapshots"
+  COUNT=0
+  while [ -L "$TARGET_FILE" -a $COUNT -lt 100 ]
+  do
+    TARGET_FILE=$(readlink "$TARGET_FILE")
+    cd "$(dirname "$TARGET_FILE")"
+    TARGET_FILE=$(basename "$TARGET_FILE")
+    COUNT=$(($COUNT + 1))
+  done
 
-declare -r default_jvm_opts_common="-Xms512m -Xss2m -XX:MaxInlineLevel=18"
-declare -r noshare_opts="-Dsbt.global.base=project/.sbtboot -Dsbt.boot.directory=project/.boot -Dsbt.ivy.home=project/.ivy"
-
-declare sbt_jar sbt_dir sbt_create sbt_version sbt_script sbt_new
-declare sbt_explicit_version
-declare verbose noshare batch trace_level
-
-declare java_cmd="java"
-declare sbt_launch_dir="$HOME/.sbt/launchers"
-declare sbt_launch_repo
-
-# pull -J and -D options to give to java.
-declare -a java_args scalac_args sbt_commands residual_args
-
-# args to jvm/sbt via files or environment variables
-declare -a extra_jvm_opts extra_sbt_opts
-
-echoerr() { echo >&2 "$@"; }
-vlog()    { [[ -n "$verbose" ]] && echoerr "$@"; }
-die()     {
-  echo "Aborting: $*"
-  exit 1
-}
-
-setTrapExit() {
-  # save stty and trap exit, to ensure echo is re-enabled if we are interrupted.
-  SBT_STTY="$(stty -g 2>/dev/null)"
-  export SBT_STTY
-
-  # restore stty settings (echo in particular)
-  onSbtRunnerExit() {
-    [ -t 0 ] || return
-    vlog ""
-    vlog "restoring stty: $SBT_STTY"
-    stty "$SBT_STTY"
-  }
-
-  vlog "saving stty: $SBT_STTY"
-  trap onSbtRunnerExit EXIT
-}
-
-# this seems to cover the bases on OSX, and someone will
-# have to tell me about the others.
-get_script_path() {
-  local path="$1"
-  [[ -L "$path" ]] || {
-    echo "$path"
-    return
-  }
-
-  local -r target="$(readlink "$path")"
-  if [[ "${target:0:1}" == "/" ]]; then
-    echo "$target"
+  # make sure we grab the actual windows path, instead of cygwin's path.
+  if [[ "x$FIX_CYGPATH" != "x" ]]; then
+    echo "$(cygwinpath "$(pwd -P)/$TARGET_FILE")"
   else
-    echo "${path%/*}/$target"
+    echo "$(pwd -P)/$TARGET_FILE"
   fi
+)
 }
 
-script_path="$(get_script_path "${BASH_SOURCE[0]}")"
-declare -r script_path
-script_name="${script_path##*/}"
-declare -r script_name
-
-init_default_option_file() {
-  local overriding_var="${!1}"
-  local default_file="$2"
-  if [[ ! -r "$default_file" && "$overriding_var" =~ ^@(.*)$ ]]; then
-    local envvar_file="${BASH_REMATCH[1]}"
-    if [[ -r "$envvar_file" ]]; then
-      default_file="$envvar_file"
-    fi
-  fi
-  echo "$default_file"
-}
-
-sbt_opts_file="$(init_default_option_file SBT_OPTS .sbtopts)"
-jvm_opts_file="$(init_default_option_file JVM_OPTS .jvmopts)"
-
-build_props_sbt() {
-  [[ -r "$buildProps" ]] &&
-    grep '^sbt\.version' "$buildProps" | tr '=\r' ' ' | awk '{ print $2; }'
-}
-
-set_sbt_version() {
-  sbt_version="${sbt_explicit_version:-$(build_props_sbt)}"
-  [[ -n "$sbt_version" ]] || sbt_version=$sbt_release_version
-  export sbt_version
-}
-
-url_base() {
-  local version="$1"
-
-  case "$version" in
-    0.7.*)     echo "https://storage.googleapis.com/google-code-archive-downloads/v2/code.google.com/simple-build-tool" ;;
-    0.10.*)    echo "$sbt_launch_ivy_release_repo" ;;
-    0.11.[12]) echo "$sbt_launch_ivy_release_repo" ;;
-    0.*-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-[0-9][0-9][0-9][0-9][0-9][0-9]) # ie "*-yyyymmdd-hhMMss"
-      echo          "$sbt_launch_ivy_snapshot_repo" ;;
-    0.*)       echo "$sbt_launch_ivy_release_repo" ;;
-    *-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]T[0-9][0-9][0-9][0-9][0-9][0-9]) # ie "*-yyyymmddThhMMss"
-      echo          "$sbt_launch_mvn_snapshot_repo" ;;
-    *)         echo "$sbt_launch_mvn_release_repo" ;;
+# Uses uname to detect if we're in the odd cygwin environment.
+is_cygwin() {
+  local os=$(uname -s)
+  case "$os" in
+    CYGWIN*) return 0 ;;
+    MINGW*) return 0 ;;
+    MSYS*) return 0 ;;
+    *)  return 1 ;;
   esac
 }
 
-make_url() {
-  local version="$1"
+# TODO - Use nicer bash-isms here.
+CYGWIN_FLAG=$(if is_cygwin; then echo true; else echo false; fi)
 
-  local base="${sbt_launch_repo:-$(url_base "$version")}"
-
-  case "$version" in
-    0.7.*)     echo "$base/sbt-launch-0.7.7.jar" ;;
-    0.10.*)    echo "$base/org.scala-tools.sbt/sbt-launch/$version/sbt-launch.jar" ;;
-    0.11.[12]) echo "$base/org.scala-tools.sbt/sbt-launch/$version/sbt-launch.jar" ;;
-    0.*)       echo "$base/org.scala-sbt/sbt-launch/$version/sbt-launch.jar" ;;
-    *)         echo "$base/org/scala-sbt/sbt-launch/$version/sbt-launch-${version}.jar" ;;
-  esac
-}
-
-addJava()      {
-  vlog "[addJava] arg = '$1'"
-  java_args+=("$1")
-}
-addSbt()       {
-  vlog "[addSbt] arg = '$1'"
-  sbt_commands+=("$1")
-}
-addScalac()    {
-  vlog "[addScalac] arg = '$1'"
-  scalac_args+=("$1")
-}
-addResidual()  {
-  vlog "[residual] arg = '$1'"
-  residual_args+=("$1")
-}
-
-addResolver() { addSbt "set resolvers += $1"; }
-
-addDebugger() { addJava "-Xdebug" && addJava "-Xrunjdwp:transport=dt_socket,server=y,suspend=n,address=$1"; }
-
-setThisBuild() {
-  vlog "[addBuild] args = '$*'"
-  local key="$1" && shift
-  addSbt "set $key in ThisBuild := $*"
-}
-setScalaVersion() {
-  [[ "$1" == *"-SNAPSHOT" ]] && addResolver 'Resolver.sonatypeRepo("snapshots")'
-  addSbt "++ $1"
-}
-setJavaHome() {
-  java_cmd="$1/bin/java"
-  setThisBuild javaHome "_root_.scala.Some(file(\"$1\"))"
-  export JAVA_HOME="$1"
-  export JDK_HOME="$1"
-  export PATH="$JAVA_HOME/bin:$PATH"
-}
-
-getJavaVersion() {
-  local -r str=$("$1" -version 2>&1 | grep -E -e '(java|openjdk) version' | awk '{ print $3 }' | tr -d '"')
-
-  # java -version on java8 says 1.8.x
-  # but on 9 and 10 it's 9.x.y and 10.x.y.
-  if [[ "$str" =~ ^1\.([0-9]+)(\..*)?$ ]]; then
-    echo "${BASH_REMATCH[1]}"
-  elif [[ "$str" =~ ^([0-9]+)(\..*)?$ ]]; then
-    echo "${BASH_REMATCH[1]}"
-  elif [[ -n "$str" ]]; then
-    echoerr "Can't parse java version from: $str"
-  fi
-}
-
-checkJava() {
-  # Warn if there is a Java version mismatch between PATH and JAVA_HOME/JDK_HOME
-
-  [[ -n "$JAVA_HOME" && -e "$JAVA_HOME/bin/java"    ]] && java="$JAVA_HOME/bin/java"
-  [[ -n "$JDK_HOME" && -e "$JDK_HOME/lib/tools.jar" ]] && java="$JDK_HOME/bin/java"
-
-  if [[ -n "$java" ]]; then
-    pathJavaVersion=$(getJavaVersion java)
-    homeJavaVersion=$(getJavaVersion "$java")
-    if [[ "$pathJavaVersion" != "$homeJavaVersion" ]]; then
-      echoerr "Warning: Java version mismatch between PATH and JAVA_HOME/JDK_HOME, sbt will use the one in PATH"
-      echoerr "  Either: fix your PATH, remove JAVA_HOME/JDK_HOME or use -java-home"
-      echoerr "  java version from PATH:               $pathJavaVersion"
-      echoerr "  java version from JAVA_HOME/JDK_HOME: $homeJavaVersion"
-    fi
-  fi
-}
-
-java_version() {
-  local -r version=$(getJavaVersion "$java_cmd")
-  vlog "Detected Java version: $version"
-  echo "$version"
-}
-
-# MaxPermSize critical on pre-8 JVMs but incurs noisy warning on 8+
-default_jvm_opts() {
-  local -r v="$(java_version)"
-  if [[ $v -ge 10 ]]; then
-    echo "$default_jvm_opts_common -XX:+UnlockExperimentalVMOptions -XX:+UseJVMCICompiler"
-  elif [[ $v -ge 8 ]]; then
-    echo "$default_jvm_opts_common"
+# This can fix cygwin style /cygdrive paths so we get the
+# windows style paths.
+cygwinpath() {
+  local file="$1"
+  if [[ "$CYGWIN_FLAG" == "true" ]]; then #"
+    echo $(cygpath -w $file)
   else
-    echo "-XX:MaxPermSize=384m $default_jvm_opts_common"
+    echo $file
   fi
 }
 
-build_props_scala() {
-  if [[ -r "$buildProps" ]]; then
-    versionLine="$(grep '^build.scala.versions' "$buildProps")"
-    versionString="${versionLine##build.scala.versions=}"
-    echo "${versionString%% .*}"
+
+declare -r sbt_bin_dir="$(dirname "$(realpathish "$0")")"
+declare -r sbt_home="$(dirname "$sbt_bin_dir")"
+
+echoerr () {
+  echo 1>&2 "$@"
+}
+vlog () {
+  [[ $sbt_verbose || $sbt_debug ]] && echoerr "$@"
+}
+dlog () {
+  [[ $sbt_debug ]] && echoerr "$@"
+}
+
+jar_file () {
+  echo "$(cygwinpath "${sbt_home}/bin/sbt-launch.jar")"
+}
+
+jar_url () {
+  local repo_base="$SBT_LAUNCH_REPO"
+  if [[ $repo_base == "" ]]; then
+    repo_base="https://repo1.maven.org/maven2"
   fi
+  echo "$repo_base/org/scala-sbt/sbt-launch/$1/sbt-launch-$1.jar"
 }
 
-execRunner() {
-  # print the arguments one to a line, quoting any containing spaces
-  vlog "# Executing command line:" && {
-    for arg; do
-      if [[ -n "$arg" ]]; then
-        if printf "%s\n" "$arg" | grep -q ' '; then
-          printf >&2 "\"%s\"\n" "$arg"
-        else
-          printf >&2 "%s\n" "$arg"
-        fi
-      fi
-    done
-    vlog ""
-  }
-
-  setTrapExit
-
-  if [[ -n "$batch" ]]; then
-    "$@" </dev/null
-  else
-    "$@"
-  fi
-}
-
-jar_url() { make_url "$1"; }
-
-is_cygwin() { [[ "$(uname -a)" == "CYGWIN"* ]]; }
-
-jar_file() {
-  is_cygwin &&
-    cygpath -w "$sbt_launch_dir/$1/sbt-launch.jar" ||
-    echo "$sbt_launch_dir/$1/sbt-launch.jar"
-}
-
-download_url() {
+download_url () {
   local url="$1"
   local jar="$2"
-
-  mkdir -p "${jar%/*}" && {
-    if command -v curl >/dev/null 2>&1; then
-      curl --fail --silent --location "$url" --output "$jar"
-    elif command -v wget >/dev/null 2>&1; then
-      wget -q -O "$jar" "$url"
+  mkdir -p $(dirname "$jar") && {
+    if command -v curl > /dev/null; then
+      curl --silent -L "$url" --output "$jar"
+    elif command -v wget > /dev/null; then
+      wget --quiet -O "$jar" "$url"
     fi
-  } && [[ -r "$jar" ]]
+  } && [[ -f "$jar" ]]
 }
 
-acquire_sbt_jar() {
-  {
-    sbt_jar="$(jar_file "$sbt_version")"
-    [[ -r "$sbt_jar" ]]
-  } || {
-    sbt_jar="$HOME/.ivy2/local/org.scala-sbt/sbt-launch/$sbt_version/jars/sbt-launch.jar"
-    [[ -r "$sbt_jar" ]]
-  } || {
-    sbt_jar="$(jar_file "$sbt_version")"
-    jar_url="$(make_url "$sbt_version")"
+acquire_sbt_jar () {
+  local launcher_sv="$1"
+  if [[ "$launcher_sv" == "" ]]; then
+    if [[ "$init_sbt_version" != "_to_be_replaced" ]]; then
+      launcher_sv="$init_sbt_version"
+    else
+      launcher_sv="$builtin_sbt_version"
+    fi
+  fi
+  download_jar="$HOME/.cache/sbt/boot/sbt-launch/$launcher_sv/sbt-launch-$launcher_sv.jar"
+  if [[ -f "$download_jar" ]]; then
+    sbt_jar="$download_jar"
+  else
+    sbt_url=$(jar_url "$launcher_sv")
+    echoerr "downloading sbt launcher $launcher_sv"
+    download_url "$sbt_url" "${download_jar}.temp"
+    download_url "${sbt_url}.sha1" "${download_jar}.sha1"
+    if command -v shasum > /dev/null; then
+      if echo "$(cat "${download_jar}.sha1")  ${download_jar}.temp" | shasum -c - > /dev/null; then
+        mv "${download_jar}.temp" "${download_jar}"
+      else
+        echoerr "failed to download launcher jar: $sbt_url (shasum mismatch)"
+        exit 2
+      fi
+    else
+      mv "${download_jar}.temp" "${download_jar}"
+    fi
+    if [[ -f "$download_jar" ]]; then
+      sbt_jar="$download_jar"
+    else
+      echoerr "failed to download launcher jar: $sbt_url"
+      exit 2
+    fi
+  fi
+}
 
-    echoerr "Downloading sbt launcher for ${sbt_version}:"
-    echoerr "  From  ${jar_url}"
-    echoerr "    To  ${sbt_jar}"
+# execRunner should be called only once to give up control to java
+execRunner () {
+  # print the arguments one to a line, quoting any containing spaces
+  [[ $sbt_verbose || $sbt_debug ]] && echo "# Executing command line:" && {
+    for arg; do
+      if printf "%s\n" "$arg" | grep -q ' '; then
+        printf "\"%s\"\n" "$arg"
+      else
+        printf "%s\n" "$arg"
+      fi
+    done
+    echo ""
+  }
 
-    download_url "${jar_url}" "${sbt_jar}"
+  if [[ "$CYGWIN_FLAG" == "true" ]]; then
+    # In cygwin we loose the ability to re-hook stty if exec is used
+    # https://github.com/sbt/sbt-launcher-package/issues/53
+    "$@"
+  else
+    exec "$@"
+  fi
+}
 
-    case "${sbt_version}" in
-      0.*)
-        vlog "SBT versions < 1.0 do not have published MD5 checksums, skipping check"
-        echo ""
-        ;;
-      *)   verify_sbt_jar "${sbt_jar}" ;;
-    esac
+addJava () {
+  dlog "[addJava] arg = '$1'"
+  java_args=( "${java_args[@]}" "$1" )
+}
+addSbt () {
+  dlog "[addSbt] arg = '$1'"
+  sbt_commands=( "${sbt_commands[@]}" "$1" )
+}
+addResidual () {
+  dlog "[residual] arg = '$1'"
+  residual_args=( "${residual_args[@]}" "$1" )
+}
+addDebugger () {
+  addJava "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=$1"
+}
+
+addMemory () {
+  dlog "[addMemory] arg = '$1'"
+  # evict memory related options
+  local xs=("${java_args[@]}")
+  java_args=()
+  for i in "${xs[@]}"; do
+    if ! [[ "${i}" == *-Xmx* ]] && ! [[ "${i}" == *-Xms* ]] && ! [[ "${i}" == *-Xss* ]] && ! [[ "${i}" == *-XX:MaxPermSize* ]] && ! [[ "${i}" == *-XX:MaxMetaspaceSize* ]] && ! [[ "${i}" == *-XX:ReservedCodeCacheSize* ]]; then
+      java_args+=("${i}")
+    fi
+  done
+  local ys=("${sbt_options[@]}")
+  sbt_options=()
+  for i in "${ys[@]}"; do
+    if ! [[ "${i}" == *-Xmx* ]] && ! [[ "${i}" == *-Xms* ]] && ! [[ "${i}" == *-Xss* ]] && ! [[ "${i}" == *-XX:MaxPermSize* ]] && ! [[ "${i}" == *-XX:MaxMetaspaceSize* ]] && ! [[ "${i}" == *-XX:ReservedCodeCacheSize* ]]; then
+      sbt_options+=("${i}")
+    fi
+  done
+  # a ham-fisted attempt to move some memory settings in concert
+  local mem=$1
+  local codecache=$(( $mem / 8 ))
+  (( $codecache > 128 )) || codecache=128
+  (( $codecache < 512 )) || codecache=512
+  local class_metadata_size=$(( $codecache * 2 ))
+  if [[ -z $java_version ]]; then
+      java_version=$(jdk_version)
+  fi
+
+  addJava "-Xms${mem}m"
+  addJava "-Xmx${mem}m"
+  addJava "-Xss4M"
+  addJava "-XX:ReservedCodeCacheSize=${codecache}m"
+  (( $java_version >= 8 )) || addJava "-XX:MaxPermSize=${class_metadata_size}m"
+}
+
+addDefaultMemory() {
+  # if we detect any of these settings in ${JAVA_OPTS} or ${JAVA_TOOL_OPTIONS} we need to NOT output our settings.
+  # The reason is the Xms/Xmx, if they don't line up, cause errors.
+  if [[ "${java_args[@]}" == *-Xmx* ]] || \
+     [[ "${java_args[@]}" == *-Xms* ]] || \
+     [[ "${java_args[@]}" == *-Xss* ]] || \
+     [[ "${java_args[@]}" == *-XX:+UseCGroupMemoryLimitForHeap* ]] || \
+     [[ "${java_args[@]}" == *-XX:MaxRAM* ]] || \
+     [[ "${java_args[@]}" == *-XX:InitialRAMPercentage* ]] || \
+     [[ "${java_args[@]}" == *-XX:MaxRAMPercentage* ]] || \
+     [[ "${java_args[@]}" == *-XX:MinRAMPercentage* ]]; then
+    :
+  elif [[ "${JAVA_TOOL_OPTIONS}" == *-Xmx* ]] || \
+       [[ "${JAVA_TOOL_OPTIONS}" == *-Xms* ]] || \
+       [[ "${JAVA_TOOL_OPTIONS}" == *-Xss* ]] || \
+       [[ "${JAVA_TOOL_OPTIONS}" == *-XX:+UseCGroupMemoryLimitForHeap* ]] || \
+       [[ "${JAVA_TOOL_OPTIONS}" == *-XX:MaxRAM* ]] || \
+       [[ "${JAVA_TOOL_OPTIONS}" == *-XX:InitialRAMPercentage* ]] || \
+       [[ "${JAVA_TOOL_OPTIONS}" == *-XX:MaxRAMPercentage* ]] || \
+       [[ "${JAVA_TOOL_OPTIONS}" == *-XX:MinRAMPercentage* ]] ; then
+    :
+  elif [[ "${sbt_options[@]}" == *-Xmx* ]] || \
+       [[ "${sbt_options[@]}" == *-Xms* ]] || \
+       [[ "${sbt_options[@]}" == *-Xss* ]] || \
+       [[ "${sbt_options[@]}" == *-XX:+UseCGroupMemoryLimitForHeap* ]] || \
+       [[ "${sbt_options[@]}" == *-XX:MaxRAM* ]] || \
+       [[ "${sbt_options[@]}" == *-XX:InitialRAMPercentage* ]] || \
+       [[ "${sbt_options[@]}" == *-XX:MaxRAMPercentage* ]] || \
+       [[ "${sbt_options[@]}" == *-XX:MinRAMPercentage* ]] ; then
+    :
+  else
+    addMemory $sbt_default_mem
+  fi
+}
+
+require_arg () {
+  local type="$1"
+  local opt="$2"
+  local arg="$3"
+  if [[ -z "$arg" ]] || [[ "${arg:0:1}" == "-" ]]; then
+    echo "$opt requires <$type> argument"
+    exit 1
+  fi
+}
+
+is_function_defined() {
+  declare -f "$1" > /dev/null
+}
+
+# parses JDK version from the -version output line.
+# 8 for 1.8.0_nn, 9 for 9-ea etc, and "no_java" for undetected
+jdk_version() {
+  local result
+  local lines=$("$java_cmd" -Xms32M -Xmx32M -version 2>&1 | tr '\r' '\n')
+  local IFS=$'\n'
+  for line in $lines; do
+    if [[ (-z $result) && ($line = *"version \""*) ]]
+    then
+      local ver=$(echo $line | sed -e 's/.*version "\(.*\)"\(.*\)/\1/; 1q')
+      # on macOS sed doesn't support '?'
+      if [[ $ver = "1."* ]]
+      then
+        result=$(echo $ver | sed -e 's/1\.\([0-9]*\)\(.*\)/\1/; 1q')
+      else
+        result=$(echo $ver | sed -e 's/\([0-9]*\)\(.*\)/\1/; 1q')
+      fi
+    fi
+  done
+  if [[ -z $result ]]
+  then
+    result=no_java
+  fi
+  echo "$result"
+}
+
+# Extracts the preloaded directory from either -Dsbt.preloaded or -Dsbt.global.base
+# properties by looking at:
+#   - _JAVA_OPTIONS environment variable,
+#   - SBT_OPTS environment variable,
+#   - JAVA_OPTS environment variable and
+#   - properties set by command-line options
+# in that order. The last one will be chosen such that `sbt.preloaded` is
+# always preferred over `sbt.global.base`.
+getPreloaded() {
+  local -a _java_options_array
+  local -a sbt_opts_array
+  local -a java_opts_array
+  read -a _java_options_array <<< "$_JAVA_OPTIONS"
+  read -a sbt_opts_array <<< "$SBT_OPTS"
+  read -a java_opts_array <<< "$JAVA_OPTS"
+
+  local args_to_check=(
+    "${_java_options_array[@]}"
+    "${sbt_opts_array[@]}"
+    "${java_opts_array[@]}"
+    "${java_args[@]}")
+  local via_global_base="$HOME/.sbt/preloaded"
+  local via_explicit=""
+
+  for opt in "${args_to_check[@]}"; do
+    if [[ "$opt" == -Dsbt.preloaded=* ]]; then
+      via_explicit="${opt#-Dsbt.preloaded=}"
+    elif [[ "$opt" == -Dsbt.global.base=* ]]; then
+      via_global_base="${opt#-Dsbt.global.base=}/preloaded"
+    fi
+  done
+
+  echo "${via_explicit:-${via_global_base}}"
+}
+
+syncPreloaded() {
+  local source_preloaded="$sbt_home/lib/local-preloaded/"
+  local target_preloaded="$(getPreloaded)"
+  if [[ "$init_sbt_version" == "" ]]; then
+    # FIXME: better $init_sbt_version detection
+    init_sbt_version="$(ls -1 "$source_preloaded/org/scala-sbt/sbt/")"
+  fi
+  [[ -f "$target_preloaded/org/scala-sbt/sbt/$init_sbt_version/" ]] || {
+    # lib/local-preloaded exists (This is optional)
+    [[ -d "$source_preloaded" ]] && {
+      command -v rsync >/dev/null 2>&1 && {
+        mkdir -p "$target_preloaded"
+        rsync --recursive --links --perms --times --ignore-existing "$source_preloaded" "$target_preloaded" || true
+      }
+    }
   }
 }
 
-verify_sbt_jar() {
-  local jar="${1}"
-  local md5="${jar}.md5"
-  md5url="$(make_url "${sbt_version}").md5"
-
-  echoerr "Downloading sbt launcher ${sbt_version} md5 hash:"
-  echoerr "  From  ${md5url}"
-  echoerr "    To  ${md5}"
-
-  download_url "${md5url}" "${md5}" >/dev/null 2>&1
-
-  if command -v md5sum >/dev/null 2>&1; then
-    if echo "$(cat "${md5}")  ${jar}" | md5sum -c -; then
-      rm -rf "${md5}"
-      return 0
-    else
-      echoerr "Checksum does not match"
-      return 1
-    fi
-  elif command -v md5 >/dev/null 2>&1; then
-    if [ "$(md5 -q "${jar}")" == "$(cat "${md5}")" ]; then
-      rm -rf "${md5}"
-      return 0
-    else
-      echoerr "Checksum does not match"
-      return 1
-    fi
-  elif command -v openssl >/dev/null 2>&1; then
-    if [ "$(openssl md5 -r "${jar}" | awk '{print $1}')" == "$(cat "${md5}")" ]; then
-      rm -rf "${md5}"
-      return 0
-    else
-      echoerr "Checksum does not match"
-      return 1
-    fi
-  else
-    echoerr "Could not find an MD5 command"
-    return 1
+# Detect that we have java installed.
+checkJava() {
+  local required_version="$1"
+  # Now check to see if it's a good enough version
+  local good_enough="$(expr $java_version ">=" $required_version)"
+  if [[ "$java_version" == "" ]]; then
+    echo
+    echo "No Java Development Kit (JDK) installation was detected."
+    echo Please go to http://www.oracle.com/technetwork/java/javase/downloads/ and download.
+    echo
+    exit 1
+  elif [[ "$good_enough" != "1" ]]; then
+    echo
+    echo "The Java Development Kit (JDK) installation you have is not up to date."
+    echo $script_name requires at least version $required_version+, you have
+    echo version $java_version
+    echo
+    echo Please go to http://www.oracle.com/technetwork/java/javase/downloads/ and download
+    echo a valid JDK and install before running $script_name.
+    echo
+    exit 1
   fi
 }
+
+copyRt() {
+  local at_least_9="$(expr $java_version ">=" 9)"
+  if [[ "$at_least_9" == "1" ]]; then
+    # The grep for java9-rt-ext- matches the filename prefix printed in Export.java
+    java9_ext=$("$java_cmd" "${sbt_options[@]}" "${java_args[@]}" \
+      -jar "$sbt_jar" --rt-ext-dir | grep java9-rt-ext- | tr -d '\r')
+    java9_rt=$(echo "$java9_ext/rt.jar")
+    vlog "[copyRt] java9_rt = '$java9_rt'"
+    if [[ ! -f "$java9_rt" ]]; then
+      echo copying runtime jar...
+      mkdir -p "$java9_ext"
+      "$java_cmd" \
+        "${sbt_options[@]}" \
+        "${java_args[@]}" \
+        -jar "$sbt_jar" \
+        --export-rt \
+        "${java9_rt}"
+    fi
+    addJava "-Dscala.ext.dirs=${java9_ext}"
+  fi
+}
+
+run() {
+  # Copy preloaded repo to user's preloaded directory
+  syncPreloaded
+
+  # no jar? download it.
+  [[ -f "$sbt_jar" ]] || acquire_sbt_jar "$sbt_version" || {
+    exit 1
+  }
+
+  # TODO - java check should be configurable...
+  checkJava "6"
+
+  # Java 9 support
+  copyRt
+
+  # If we're in cygwin, we should use the windows config, and terminal hacks
+  if [[ "$CYGWIN_FLAG" == "true" ]]; then #"
+    stty -icanon min 1 -echo > /dev/null 2>&1
+    addJava "-Djline.terminal=jline.UnixTerminal"
+    addJava "-Dsbt.cygwin=true"
+  fi
+
+  if [[ $print_sbt_version ]]; then
+    execRunner "$java_cmd" -jar "$sbt_jar" "sbtVersion" | tail -1 | sed -e 's/\[info\]//g'
+  elif [[ $print_sbt_script_version ]]; then
+    echo "$init_sbt_version"
+  elif [[ $print_version ]]; then
+    execRunner "$java_cmd" -jar "$sbt_jar" "sbtVersion" | tail -1 | sed -e 's/\[info\]/sbt version in this project:/g'
+    echo "sbt script version: $init_sbt_version"
+  else
+    # run sbt
+    execRunner "$java_cmd" \
+      "${java_args[@]}" \
+      "${sbt_options[@]}" \
+      -jar "$sbt_jar" \
+      "${sbt_commands[@]}" \
+      "${residual_args[@]}"
+  fi
+
+  exit_code=$?
+
+  # Clean up the terminal from cygwin hacks.
+  if [[ "$CYGWIN_FLAG" == "true" ]]; then #"
+    stty icanon echo > /dev/null 2>&1
+  fi
+  exit $exit_code
+}
+
+declare -ra noshare_opts=(-Dsbt.global.base=project/.sbtboot -Dsbt.boot.directory=project/.boot -Dsbt.ivy.home=project/.ivy)
+declare -r sbt_opts_file=".sbtopts"
+declare -r build_props_file="$(pwd)/project/build.properties"
+declare -r etc_sbt_opts_file="/etc/sbt/sbtopts"
+# this allows /etc/sbt/sbtopts location to be changed
+declare -r etc_file="${SBT_ETC_FILE:-$etc_sbt_opts_file}"
+declare -r dist_sbt_opts_file="${sbt_home}/conf/sbtopts"
+declare -r win_sbt_opts_file="${sbt_home}/conf/sbtconfig.txt"
+declare sbt_jar="$(jar_file)"
 
 usage() {
-  set_sbt_version
-  cat <<EOM
-Usage: $script_name [options]
+ cat <<EOM
+Usage: `basename "$0"` [options]
 
-Note that options which are passed along to sbt begin with -- whereas
-options to this runner use a single dash. Any sbt command can be scheduled
-to run first by prefixing the command with --, so --warn, --error and so on
-are not special.
+  -h | --help         print this message
+  -v | --verbose      this runner is chattier
+  -V | --version      print sbt version information
+  --numeric-version   print the numeric sbt version (sbt sbtVersion)
+  --script-version    print the version of sbt script
+  -d | --debug        set sbt log level to debug
+  -debug-inc | --debug-inc
+                      enable extra debugging for the incremental debugger
+  --no-colors         disable ANSI color codes
+  --color=auto|always|true|false|never
+                      enable or disable ANSI color codes      (sbt 1.3 and above)
+  --supershell=auto|always|true|false|never
+                      enable or disable supershell            (sbt 1.3 and above)
+  --traces            generate Trace Event report on shutdown (sbt 1.3 and above)
+  --timings           display task timings report on shutdown
+  --sbt-create        start sbt even if current directory contains no sbt project
+  --sbt-dir   <path>  path to global settings/plugins directory (default: ~/.sbt)
+  --sbt-boot  <path>  path to shared boot directory (default: ~/.sbt/boot in 0.11 series)
+  --ivy       <path>  path to local Ivy repository (default: ~/.ivy2)
+  --mem    <integer>  set memory options (default: $sbt_default_mem)
+  --no-share          use all local caches; no sharing
+  --no-global         uses global caches, but does not use global ~/.sbt directory.
+  --jvm-debug <port>  Turn on JVM debugging, open at the given port.
+  --batch             disable interactive mode
 
-  -h | -help         print this message
-  -v                 verbose operation (this runner is chattier)
-  -d, -w, -q         aliases for --debug, --warn, --error (q means quiet)
-  -x                 debug this script
-  -trace <level>     display stack traces with a max of <level> frames (default: -1, traces suppressed)
-  -debug-inc         enable debugging log for the incremental compiler
-  -no-colors         disable ANSI color codes
-  -sbt-create        start sbt even if current directory contains no sbt project
-  -sbt-dir   <path>  path to global settings/plugins directory (default: ~/.sbt/<version>)
-  -sbt-boot  <path>  path to shared boot directory (default: ~/.sbt/boot in 0.11+)
-  -ivy       <path>  path to local Ivy repository (default: ~/.ivy2)
-  -no-share          use all local caches; no sharing
-  -offline           put sbt in offline mode
-  -jvm-debug <port>  Turn on JVM debugging, open at the given port.
-  -batch             Disable interactive mode
-  -prompt <expr>     Set the sbt prompt; in expr, 's' is the State and 'e' is Extracted
-  -script <file>     Run the specified file as a scala script
-
-  # sbt version (default: sbt.version from $buildProps if present, otherwise $sbt_release_version)
-  -sbt-version <version>  use the specified version of sbt (default: $sbt_release_version)
-  -sbt-force-latest       force the use of the latest release of sbt: $sbt_release_version
-  -sbt-dev                use the latest pre-release version of sbt: $sbt_unreleased_version
-  -sbt-jar      <path>    use the specified jar as the sbt launcher
-  -sbt-launch-dir <path>  directory to hold sbt launchers (default: $sbt_launch_dir)
-  -sbt-launch-repo <url>  repo url for downloading sbt launcher jar (default: $(url_base "$sbt_version"))
-
-  # scala version (default: as chosen by sbt)
-  -28                        use $latest_28
-  -29                        use $latest_29
-  -210                       use $latest_210
-  -211                       use $latest_211
-  -212                       use $latest_212
-  -213                       use $latest_213
-  -scala-home <path>         use the scala build at the specified directory
-  -scala-version <version>   use the specified version of scala
-  -binary-version <version>  use the specified scala version when searching for dependencies
+  # sbt version (default: from project/build.properties if present, else latest release)
+  --sbt-version  <version>   use the specified version of sbt
+  --sbt-jar      <path>      use the specified jar as the sbt launcher
 
   # java version (default: java from PATH, currently $(java -version 2>&1 | grep version))
-  -java-home <path>          alternate JAVA_HOME
+  --java-home <path>         alternate JAVA_HOME
 
-  # passing options to the jvm - note it does NOT use JAVA_OPTS due to pollution
-  # The default set is used if JVM_OPTS is unset and no -jvm-opts file is found
-  <default>         $(default_jvm_opts)
-  JVM_OPTS          environment variable holding either the jvm args directly, or
-                    the reference to a file containing jvm args if given path is prepended by '@' (e.g. '@/etc/jvmopts')
-                    Note: "@"-file is overridden by local '.jvmopts' or '-jvm-opts' argument.
-  -jvm-opts <path>  file containing jvm args (if not given, .jvmopts in project root is used if present)
-  -Dkey=val         pass -Dkey=val directly to the jvm
-  -J-X              pass option -X directly to the jvm (-J is stripped)
+  # jvm options and output control
+  JAVA_OPTS           environment variable, if unset uses "$default_java_opts"
+  .jvmopts            if this file exists in the current directory, its contents
+                      are appended to JAVA_OPTS
+  SBT_OPTS            environment variable, if unset uses "$default_sbt_opts"
+  .sbtopts            if this file exists in the current directory, its contents
+                      are prepended to the runner args
+  /etc/sbt/sbtopts    if this file exists, it is prepended to the runner args
+  -Dkey=val           pass -Dkey=val directly to the java runtime
+  -J-X                pass option -X directly to the java runtime
+                      (-J is stripped)
+  -S-X                add -X to sbt's scalacOptions (-S is stripped)
 
-  # passing options to sbt, OR to this runner
-  SBT_OPTS          environment variable holding either the sbt args directly, or
-                    the reference to a file containing sbt args if given path is prepended by '@' (e.g. '@/etc/sbtopts')
-                    Note: "@"-file is overridden by local '.sbtopts' or '-sbt-opts' argument.
-  -sbt-opts <path>  file containing sbt args (if not given, .sbtopts in project root is used if present)
-  -S-X              add -X to sbt's scalacOptions (-S is stripped)
+In the case of duplicated or conflicting options, the order above
+shows precedence: JAVA_OPTS lowest, command line options highest.
 EOM
-  exit 0
 }
 
-process_args() {
-  require_arg() {
-    local type="$1"
-    local opt="$2"
-    local arg="$3"
-
-    if [[ -z "$arg" ]] || [[ "${arg:0:1}" == "-" ]]; then
-      die "$opt requires <$type> argument"
-    fi
-  }
+process_my_args () {
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      -h |   -help) usage ;;
-      -v)           verbose=true && shift ;;
-      -d)           addSbt "--debug" && shift ;;
-      -w)           addSbt "--warn"  && shift ;;
-      -q)           addSbt "--error" && shift ;;
-      -x)           shift ;; # currently unused
-      -trace)       require_arg integer "$1" "$2" && trace_level="$2" && shift 2 ;;
-      -debug-inc)   addJava "-Dxsbt.inc.debug=true" && shift ;;
+             -batch|--batch) exec </dev/null && shift ;; #>
 
-      -no-colors)   addJava "-Dsbt.log.noformat=true" && shift ;;
-      -sbt-create)  sbt_create=true && shift ;;
-      -sbt-dir)     require_arg path "$1" "$2" && sbt_dir="$2" && shift 2 ;;
-      -sbt-boot)    require_arg path "$1" "$2" && addJava "-Dsbt.boot.directory=$2" && shift 2 ;;
-      -ivy)         require_arg path "$1" "$2" && addJava "-Dsbt.ivy.home=$2" && shift 2 ;;
-      -no-share)    noshare=true && shift ;;
-      -offline)     addSbt "set offline in Global := true" && shift ;;
-      -jvm-debug)   require_arg port "$1" "$2" && addDebugger "$2" && shift 2 ;;
-      -batch)       batch=true && shift ;;
-      -prompt)      require_arg "expr" "$1" "$2" && setThisBuild shellPrompt "(s => { val e = Project.extract(s) ; $2 })" && shift 2 ;;
-      -script)      require_arg file "$1" "$2" && sbt_script="$2" && addJava "-Dsbt.main.class=sbt.ScriptMain" && shift 2 ;;
+   -sbt-create|--sbt-create) sbt_create=true && shift ;;
 
-      -sbt-version) require_arg version "$1" "$2" && sbt_explicit_version="$2" && shift 2 ;;
-      -sbt-force-latest) sbt_explicit_version="$sbt_release_version" && shift ;;
-      -sbt-dev)     sbt_explicit_version="$sbt_unreleased_version" && shift ;;
-      -sbt-jar)     require_arg path "$1" "$2" && sbt_jar="$2" && shift 2 ;;
-      -sbt-launch-dir) require_arg path "$1" "$2" && sbt_launch_dir="$2" && shift 2 ;;
-      -sbt-launch-repo) require_arg path "$1" "$2" && sbt_launch_repo="$2" && shift 2 ;;
+                        new) sbt_new=true && addResidual "$1" && shift ;;
 
-      -28)          setScalaVersion "$latest_28"  && shift ;;
-      -29)          setScalaVersion "$latest_29"  && shift ;;
-      -210)         setScalaVersion "$latest_210" && shift ;;
-      -211)         setScalaVersion "$latest_211" && shift ;;
-      -212)         setScalaVersion "$latest_212" && shift ;;
-      -213)         setScalaVersion "$latest_213" && shift ;;
-
-      -scala-version) require_arg version "$1" "$2" && setScalaVersion "$2" && shift 2 ;;
-      -binary-version) require_arg version "$1" "$2" && setThisBuild scalaBinaryVersion "\"$2\"" && shift 2 ;;
-      -scala-home)  require_arg path "$1" "$2" && setThisBuild scalaHome "_root_.scala.Some(file(\"$2\"))" && shift 2 ;;
-      -java-home)   require_arg path "$1" "$2" && setJavaHome "$2" && shift 2 ;;
-      -sbt-opts)    require_arg path "$1" "$2" && sbt_opts_file="$2" && shift 2 ;;
-      -jvm-opts)    require_arg path "$1" "$2" && jvm_opts_file="$2" && shift 2 ;;
-
-      -D*)          addJava "$1" && shift ;;
-      -J*)          addJava "${1:2}" && shift ;;
-      -S*)          addScalac "${1:2}" && shift ;;
-
-      new)          sbt_new=true && : ${sbt_explicit_version:=$sbt_release_version} && addResidual "$1" && shift ;;
-
-      *)            addResidual "$1" && shift ;;
+                          *) addResidual "$1" && shift ;;
     esac
   done
-}
 
-# process the direct command line arguments
-process_args "$@"
+  # Now, ensure sbt version is used.
+  [[ "${sbt_version}XXX" != "XXX" ]] && addJava "-Dsbt.version=$sbt_version"
 
-# skip #-styled comments and blank lines
-readConfigFile() {
-  local end=false
-  until $end; do
-    read -r || end=true
-    [[ $REPLY =~ ^# ]] || [[ -z $REPLY ]] || echo "$REPLY"
-  done <"$1"
-}
+  # Confirm a user's intent if the current directory does not look like an sbt
+  # top-level directory and neither the -sbt-create option nor the "new"
+  # command was given.
+  [[ -f ./build.sbt || -d ./project || -n "$sbt_create" || -n "$sbt_new" ]] || {
+    echo "[warn] Neither build.sbt nor a 'project' directory in the current directory: $(pwd)"
+    while true; do
+      echo 'c) continue'
+      echo 'q) quit'
 
-# if there are file/environment sbt_opts, process again so we
-# can supply args to this runner
-if [[ -r "$sbt_opts_file" ]]; then
-  vlog "Using sbt options defined in file $sbt_opts_file"
-  while read -r opt; do extra_sbt_opts+=("$opt"); done < <(readConfigFile "$sbt_opts_file")
-elif [[ -n "$SBT_OPTS" && ! ("$SBT_OPTS" =~ ^@.*) ]]; then
-  vlog "Using sbt options defined in variable \$SBT_OPTS"
-  IFS=" " read -r -a extra_sbt_opts <<<"$SBT_OPTS"
-else
-  vlog "No extra sbt options have been defined"
-fi
-
-[[ -n "${extra_sbt_opts[*]}" ]] && process_args "${extra_sbt_opts[@]}"
-
-# reset "$@" to the residual args
-set -- "${residual_args[@]}"
-argumentCount=$#
-
-# set sbt version
-set_sbt_version
-
-checkJava
-
-# only exists in 0.12+
-setTraceLevel() {
-  case "$sbt_version" in
-    "0.7."* | "0.10."* | "0.11."*) echoerr "Cannot set trace level in sbt version $sbt_version" ;;
-    *)                             setThisBuild traceLevel "$trace_level" ;;
-  esac
-}
-
-# set scalacOptions if we were given any -S opts
-[[ ${#scalac_args[@]} -eq 0 ]] || addSbt "set scalacOptions in ThisBuild += \"${scalac_args[*]}\""
-
-[[ -n "$sbt_explicit_version" && -z "$sbt_new" ]] && addJava "-Dsbt.version=$sbt_explicit_version"
-vlog "Detected sbt version $sbt_version"
-
-if [[ -n "$sbt_script" ]]; then
-  residual_args=("$sbt_script" "${residual_args[@]}")
-else
-  # no args - alert them there's stuff in here
-  ((argumentCount > 0)) || {
-    vlog "Starting $script_name: invoke with -help for other options"
-    residual_args=(shell)
+      read -p '? ' || exit 1
+      case "$REPLY" in
+        c|C) break ;;
+        q|Q) exit 1 ;;
+      esac
+    done
   }
-fi
-
-# verify this is an sbt dir, -create was given or user attempts to run a scala script
-[[ -r ./build.sbt || -d ./project || -n "$sbt_create" || -n "$sbt_script" || -n "$sbt_new" ]] || {
-  cat <<EOM
-$(pwd) doesn't appear to be an sbt project.
-If you want to start sbt anyway, run:
-  $0 -sbt-create
-
-EOM
-  exit 1
 }
 
-# pick up completion if present; todo
-# shellcheck disable=SC1091
-[[ -r .sbt_completion.sh ]] && source .sbt_completion.sh
-
-# directory to store sbt launchers
-[[ -d "$sbt_launch_dir" ]] || mkdir -p "$sbt_launch_dir"
-[[ -w "$sbt_launch_dir" ]] || sbt_launch_dir="$(mktemp -d -t sbt_extras_launchers.XXXXXX)"
-
-# no jar? download it.
-[[ -r "$sbt_jar" ]] || acquire_sbt_jar || {
-  # still no jar? uh-oh.
-  echo "Could not download and verify the launcher. Obtain the jar manually and place it at $sbt_jar"
-  exit 1
-}
-
-if [[ -n "$noshare" ]]; then
-  for opt in ${noshare_opts}; do
-    addJava "$opt"
+## map over argument array. this is used to process both command line arguments and SBT_OPTS
+map_args () {
+  local options=()
+  local commands=()
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+     -no-colors|--no-colors) options=( "${options[@]}" "-Dsbt.log.noformat=true" ) && shift ;;
+         -timings|--timings) options=( "${options[@]}" "-Dsbt.task.timings=true" "-Dsbt.task.timings.on.shutdown=true" ) && shift ;;
+           -traces|--traces) options=( "${options[@]}" "-Dsbt.traces=true" ) && shift ;;
+             --supershell=*) options=( "${options[@]}" "-Dsbt.supershell=${1:13}" ) && shift ;;
+              -supershell=*) options=( "${options[@]}" "-Dsbt.supershell=${1:12}" ) && shift ;;
+                  --color=*) options=( "${options[@]}" "-Dsbt.color=${1:8}" ) && shift ;;
+                   -color=*) options=( "${options[@]}" "-Dsbt.color=${1:7}" ) && shift ;;
+       -no-share|--no-share) options=( "${options[@]}" "${noshare_opts[@]}" ) && shift ;;
+     -no-global|--no-global) options=( "${options[@]}" "-Dsbt.global.base=$(pwd)/project/.sbtboot" ) && shift ;;
+                 -ivy|--ivy) require_arg path "$1" "$2" && options=( "${options[@]}" "-Dsbt.ivy.home=$2" ) && shift 2 ;;
+       -sbt-boot|--sbt-boot) require_arg path "$1" "$2" && options=( "${options[@]}" "-Dsbt.boot.directory=$2" ) && shift 2 ;;
+         -sbt-dir|--sbt-dir) require_arg path "$1" "$2" && options=( "${options[@]}" "-Dsbt.global.base=$2" ) && shift 2 ;;
+             -debug|--debug) commands=( "${commands[@]}" "-debug" ) && shift ;;
+     -debug-inc|--debug-inc) options=( "${options[@]}" "-Dxsbt.inc.debug=true" ) && shift ;;
+                          *) options=( "${options[@]}" "$1" ) && shift ;;
+    esac
   done
-else
-  case "$sbt_version" in
-    "0.7."* | "0.10."* | "0.11."* | "0.12."*)
-      [[ -n "$sbt_dir" ]] || {
-        sbt_dir="$HOME/.sbt/$sbt_version"
-        vlog "Using $sbt_dir as sbt dir, -sbt-dir to override."
-      }
-      ;;
-  esac
+  declare -p options
+  declare -p commands
+}
 
-  if [[ -n "$sbt_dir" ]]; then
-    addJava "-Dsbt.global.base=$sbt_dir"
+process_args () {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+            -h|-help|--help) usage; exit 1 ;;
+      -v|-verbose|--verbose) sbt_verbose=1 && shift ;;
+      -V|-version|--version) print_version=1 && shift ;;
+          --numeric-version) print_sbt_version=1 && shift ;;
+           --script-version) print_sbt_script_version=1 && shift ;;
+          -d|-debug|--debug) sbt_debug=1 && addSbt "-debug" && shift ;;
+                   --client) use_sbtn=1 && shift ;;
+                   --server) use_sbtn=0 && shift ;;
+
+                 -mem|--mem) require_arg integer "$1" "$2" && addMemory "$2" && shift 2 ;;
+     -jvm-debug|--jvm-debug) require_arg port "$1" "$2" && addDebugger $2 && shift 2 ;;
+             -batch|--batch) exec </dev/null && shift ;;
+
+         -sbt-jar|--sbt-jar) require_arg path "$1" "$2" && sbt_jar="$2" && shift 2 ;;
+ -sbt-version|--sbt-version) require_arg version "$1" "$2" && sbt_version="$2" && shift 2 ;;
+     -java-home|--java-home) require_arg path "$1" "$2" &&
+                             java_cmd="$2/bin/java" &&
+                             export JAVA_HOME="$2" &&
+                             export JDK_HOME="$2" &&
+                             export PATH="$2/bin:$PATH" &&
+                             shift 2 ;;
+
+                  "-D*"|-D*) addJava "$1" && shift ;;
+                        -J*) addJava "${1:2}" && shift ;;
+                          *) addResidual "$1" && shift ;;
+    esac
+  done
+
+  is_function_defined process_my_args && {
+    myargs=("${residual_args[@]}")
+    residual_args=()
+    process_my_args "${myargs[@]}"
+  }
+}
+
+loadConfigFile() {
+  # Make sure the last line is read even if it doesn't have a terminating \n
+  cat "$1" | sed $'/^\#/d;s/\r$//' | while read -r line || [[ -n "$line" ]]; do
+    eval echo $line
+  done
+}
+
+loadPropFile() {
+  while IFS='=' read -r k v; do
+    if [[ "$k" == "sbt.version" ]]; then
+      build_props_sbt_version="$v"
+    fi
+  done <<< "$(cat "$1" | sed $'/^\#/d;s/\r$//')"
+}
+
+detectNativeClient() {
+  if [[ "$sbtn_command" != "" ]]; then
+    :
+  elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    [[ -f "${sbt_bin_dir}/sbtn-x86_64-pc-linux" ]] && sbtn_command="${sbt_bin_dir}/sbtn-x86_64-pc-linux"
+  elif [[ "$OSTYPE" == "darwin"* ]]; then
+    [[ -f "${sbt_bin_dir}/sbtn-x86_64-apple-darwin" ]] && sbtn_command="${sbt_bin_dir}/sbtn-x86_64-apple-darwin"
+  elif [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
+    [[ -f "${sbt_bin_dir}/sbtn-x86_64-pc-win32.exe" ]] && sbtn_command="${sbt_bin_dir}/sbtn-x86_64-pc-win32.exe"
+  elif [[ "$OSTYPE" == "freebsd"* ]]; then
+    :
+  else
+    :
   fi
+}
+
+# Run native client if build.properties points to 1.4+ and has SBT_NATIVE_CLIENT
+isRunNativeClient() {
+  sbtV="$build_props_sbt_version"
+  [[ "$sbtV" == "" ]] && sbtV="$init_sbt_version"
+  [[ "$sbtV" == "" ]] && sbtV="0.0.0"
+  sbtBinaryV_1=$(echo "$sbtV" | sed 's/^\([0-9]*\)\.\([0-9]*\).*$/\1/')
+  sbtBinaryV_2=$(echo "$sbtV" | sed 's/^\([0-9]*\)\.\([0-9]*\).*$/\2/')
+  if (( $sbtBinaryV_1 >= 2 )) || ( (( $sbtBinaryV_1 >= 1 )) && (( $sbtBinaryV_2 >= 4 )) ); then
+    if [[ "$use_sbtn" == "1" ]] && [[ "$sbtn_command" != "" ]]; then
+      echo "true"
+    else
+      echo "false"
+    fi
+  else
+    echo "false"
+  fi
+}
+
+runNativeClient() {
+  vlog "[debug] running native client"
+  for i in "${!original_args[@]}"; do
+    if [[ "${original_args[i]}" = "--client" ]]; then
+      unset 'original_args[i]'
+    fi
+  done
+  sbt_script=$0
+  sbt_script=${sbt_script/ /%20}
+  execRunner "$sbtn_command" "--sbt-script=$sbt_script" "${original_args[@]}"
+}
+
+original_args=("$@")
+
+# Here we pull in the default settings configuration.
+[[ -f "$dist_sbt_opts_file" ]] && set -- $(loadConfigFile "$dist_sbt_opts_file") "$@"
+
+# Here we pull in the global settings configuration.
+[[ -f "$etc_file" ]] && set -- $(loadConfigFile "$etc_file") "$@"
+
+# Pull in the project-level config file, if it exists.
+[[ -f "$sbt_opts_file" ]] && set -- $(loadConfigFile "$sbt_opts_file") "$@"
+
+# Pull in the project-level java config, if it exists.
+[[ -f ".jvmopts" ]] && export JAVA_OPTS="$JAVA_OPTS $(loadConfigFile .jvmopts)"
+
+# Pull in default JAVA_OPTS
+[[ -z "${JAVA_OPTS// }" ]] && export JAVA_OPTS="$default_java_opts"
+
+[[ -f "$build_props_file" ]] && loadPropFile "$build_props_file"
+
+detectNativeClient
+
+java_args=($JAVA_OPTS)
+sbt_options0=(${SBT_OPTS:-$default_sbt_opts})
+if [[ "$SBT_NATIVE_CLIENT" == "true" ]]; then
+  use_sbtn=1
 fi
 
-if [[ -r "$jvm_opts_file" ]]; then
-  vlog "Using jvm options defined in file $jvm_opts_file"
-  while read -r opt; do extra_jvm_opts+=("$opt"); done < <(readConfigFile "$jvm_opts_file")
-elif [[ -n "$JVM_OPTS" && ! ("$JVM_OPTS" =~ ^@.*) ]]; then
-  vlog "Using jvm options defined in \$JVM_OPTS variable"
-  IFS=" " read -r -a extra_jvm_opts <<<"$JVM_OPTS"
+# Split SBT_OPTS into options/commands
+miniscript=$(map_args "${sbt_options0[@]}") && eval "${miniscript/options/sbt_options}" && \
+eval "${miniscript/commands/sbt_additional_commands}"
+
+# Combine command line options/commands and commands from SBT_OPTS
+miniscript=$(map_args "$@") && eval "${miniscript/options/cli_options}" && eval "${miniscript/commands/cli_commands}"
+args1=( "${cli_options[@]}" "${cli_commands[@]}" "${sbt_additional_commands[@]}" )
+
+# process the combined args, then reset "$@" to the residuals
+process_args "${args1[@]}"
+vlog "[sbt_options] $(declare -p sbt_options)"
+
+if [[ "$(isRunNativeClient)" == "true" ]]; then
+  set -- "${residual_args[@]}"
+  argumentCount=$#
+  runNativeClient
 else
-  vlog "Using default jvm options"
-  IFS=" " read -r -a extra_jvm_opts <<<"$( default_jvm_opts)"
+  java_version="$(jdk_version)"
+  vlog "[process_args] java_version = '$java_version'"
+  addDefaultMemory
+  set -- "${residual_args[@]}"
+  argumentCount=$#
+  run
 fi
-
-# traceLevel is 0.12+
-[[ -n "$trace_level" ]] && setTraceLevel
-
-execRunner "$java_cmd" \
-  "${extra_jvm_opts[@]}" \
-  "${java_args[@]}" \
-  -jar "$sbt_jar" \
-  "${sbt_commands[@]}" \
-  "${residual_args[@]}"
