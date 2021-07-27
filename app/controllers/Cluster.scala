@@ -5,9 +5,14 @@
 
 package controllers
 
+import java.util.Properties
+
 import features.{ApplicationFeatures, KMClusterManagerFeature}
 import kafka.manager.ApiError
+import kafka.manager.features.ClusterFeatures
+import kafka.manager.model.ActorModel.BrokerIdentity
 import kafka.manager.model._
+import kafka.manager.utils.BrokerConfigs
 import models.FollowLink
 import models.form._
 import models.navigation.Menus
@@ -209,6 +214,98 @@ class Cluster (val cc: ControllerComponents, val kafkaManagerContext: KafkaManag
       Ok(views.html.broker.brokerView(c,b,errorOrBrokerView)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }
   }
+
+  val defaultUpdateBrokerConfigForm = Form(
+    mapping(
+      "broker" -> number,
+      "configs" -> list(
+        mapping(
+          "name" -> nonEmptyText,
+          "value" -> optional(text),
+          "help" -> optional(text),
+        )(BConfig.apply)(BConfig.unapply)
+      ),
+      "readVersion" -> number(min = 0)
+    )(UpdateBrokerConfig.apply)(UpdateBrokerConfig.unapply)
+  )
+
+  private def updateBrokerConfigForm(clusterName: String, broker: BrokerIdentity) = {
+    kafkaManager.getClusterConfig(clusterName).map { errorOrConfig =>
+      errorOrConfig.map { clusterConfig =>
+        val defaultConfigs = clusterConfig.version match {
+          case Kafka_0_10_1_1 => BrokerConfigs.configNamesAndDoc(Kafka_0_10_1_1).map { case (n, h) => (n,BConfig(n,None, Option(h))) }
+          case _=> BrokerConfigs.configNamesAndDoc(Kafka_0_10_1_1).map { case (n, h) => (n,BConfig(n,None, Option(h))) }
+        }
+        val updatedConfigMap = broker.config.toMap
+        val updatedConfigList = defaultConfigs.map {
+          case (n, cfg) =>
+            if(updatedConfigMap.contains(n)) {
+              cfg.copy(value = Option(updatedConfigMap(n)))
+            } else {
+              cfg
+            }
+        }
+        (defaultUpdateBrokerConfigForm.fill(UpdateBrokerConfig(broker.id,updatedConfigList.toList,broker.configReadVersion)),
+          clusterName)
+      }
+    }
+  }
+
+  def updateBrokerConfig(clusterName: String, broker: Int) = Action.async { implicit request:RequestHeader =>
+    featureGate(KMClusterManagerFeature) {
+      val errorOrFormFuture = kafkaManager.getBrokerIdentity(clusterName, broker).flatMap { errorOrBrokerIdentity =>
+        errorOrBrokerIdentity.fold(e => Future.successful(-\/(e)), { brokerIdentity =>
+          updateBrokerConfigForm(clusterName, brokerIdentity)
+        })
+      }
+      errorOrFormFuture.map { errorOrForm =>
+        Ok(views.html.broker.updateConfig(clusterName, broker, errorOrForm)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
+      }
+    }
+  }
+
+  def handleUpdateBrokerConfig(clusterName: String, broker: Int) = Action.async { implicit request:Request[AnyContent] =>
+    featureGate(KMClusterManagerFeature) {
+
+      throw new IllegalStateException("");
+
+//      defaultUpdateBrokerConfigForm.bindFromRequest.fold(
+//        formWithErrors => {
+//          kafkaManager.getClusterContext(clusterName).map { clusterContext =>
+//            BadRequest(views.html.broker.updateConfig(clusterName, broker, clusterContext.map(c => (formWithErrors, c))))
+//          }.recover {
+//            case t =>
+//              implicit val clusterFeatures = ClusterFeatures.default
+//              Ok(views.html.common.resultOfCommand(
+//                views.html.navigation.clusterMenu(clusterName, "Topic", "Topic View", menus.clusterMenus(clusterName)),
+//                models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View", clusterName, broker, "Update Config"),
+//                -\/(ApiError(s"Unknown error : ${t.getMessage}")),
+//                "Update Config",
+//                FollowLink("Try again.", routes.Cluster.brokers.updateConfig(clusterName, broker).toString()),
+//                FollowLink("Try again.", routes.Topic.updateConfig(clusterName, broker).toString())
+//              )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
+//          }
+//        },
+//        updateBrokerConfig => {
+//          val props = new Properties()
+//          updateBrokerConfig.configs.filter(_.value.isDefined).foreach(c => props.setProperty(c.name, c.value.get))
+//          kafkaManager.updateTopicConfig(clusterName, updateBrokerConfig.broker, props, updateBrokerConfig.readVersion).map { errorOrSuccess =>
+//            implicit val clusterFeatures = errorOrSuccess.toOption.map(_.clusterFeatures).getOrElse(ClusterFeatures.default)
+//            Ok(views.html.common.resultOfCommand(
+//              views.html.navigation.clusterMenu(clusterName, "Topic", "Topic View", menus.clusterMenus(clusterName)),
+//              models.navigation.BreadCrumbs.withNamedViewAndClusterAndTopic("Topic View", clusterName, broker, "Update Config"),
+//              errorOrSuccess,
+//              "Update Config",
+//              FollowLink("Go to topic view.", routes.Topic.topic(clusterName, updateBrokerConfig.broker).toString()),
+//              FollowLink("Try again.", routes.Topic.updateConfig(clusterName, broker).toString())
+//            )).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
+//          }
+//        }
+//      )
+    }
+  }
+
+
 
   def addCluster = Action.async { implicit request: RequestHeader =>
     featureGate(KMClusterManagerFeature) {

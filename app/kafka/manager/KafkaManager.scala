@@ -777,6 +777,31 @@ class KafkaManager(akkaConfig: Config) extends Logging {
     }
   }
 
+  def getBrokerIdentity(clusterName: String, broker: Int): Future[ApiError \/ BrokerIdentity] = {
+    val futureCMBrokerIdentity = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, CMGetBrokerIdentity(broker)))(
+      identity[Option[CMBrokerIdentity]]
+    )
+    implicit val ec = apiExecutionContext
+    futureCMBrokerIdentity.map[ApiError \/ BrokerIdentity] { errOrTI =>
+      errOrTI.fold[ApiError \/ BrokerIdentity](
+        { err: ApiError =>
+          -\/[ApiError](err)
+        }, { tiOption: Option[CMBrokerIdentity] =>
+          tiOption.fold[ApiError \/ BrokerIdentity] {
+            -\/(ApiError(s"Broker not found $broker for cluster $clusterName"))
+          } { cmBrokerIdentity =>
+            cmBrokerIdentity.brokerIdentity match {
+              case scala.util.Failure(t) =>
+                -\/[ApiError](t)
+              case scala.util.Success(ti) =>
+                \/-(ti)
+            }
+          }
+        }
+      )
+    }
+  }
+
   def getTopicIdentity(clusterName: String, topic: String): Future[ApiError \/ TopicIdentity] = {
     val futureCMTopicIdentity = tryWithKafkaManagerActor(KMClusterQueryRequest(clusterName, CMGetTopicIdentity(topic)))(
       identity[Option[CMTopicIdentity]]
