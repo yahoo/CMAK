@@ -276,6 +276,15 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
         } yield CMView(tl.list.size, bl.list.size, clusterContext)
         result pipeTo sender
 
+      case CMGetBrokerIdentity(id) =>
+        implicit val ec = context.dispatcher
+        val eventualBrokerList = withKafkaStateActor(KSGetBrokers)(identity[BrokerList])
+        val result = eventualBrokerList.map(bl=>bl.list.find(b=>b.id==id))
+            .map(b=>CMBrokerIdentity(Try(b.get)))
+        result pipeTo sender
+
+
+
       case CMGetTopicIdentity(topic) =>
         implicit val ec = context.dispatcher
         val eventualBrokerList = withKafkaStateActor(KSGetBrokers)(identity[BrokerList])
