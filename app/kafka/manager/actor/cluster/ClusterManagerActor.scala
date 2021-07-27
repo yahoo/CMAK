@@ -279,8 +279,8 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
       case CMGetBrokerIdentity(id) =>
         implicit val ec = context.dispatcher
         val eventualBrokerList = withKafkaStateActor(KSGetBrokers)(identity[BrokerList])
-        val result = eventualBrokerList.map(bl=>bl.list.find(b=>b.id==id))
-            .map(b=>CMBrokerIdentity(Try(b.get)))
+        val result: Future[Option[CMBrokerIdentity]]  = eventualBrokerList.map(bl=>bl.list.find(b=>b.id==id))
+            .map(b=>Option(CMBrokerIdentity(Try(b.get))))
         result pipeTo sender
 
 
