@@ -9,6 +9,7 @@
 @import helper._
 @import controllers.routes
 
+@*
 @theMenu = {
     @views.html.navigation.clusterMenu(cluster,"Broker","Update Config",menus.clusterMenus(cluster)(
         errorOrForm.toOption.map(_._2.clusterFeatures).getOrElse(kafka.manager.features.ClusterFeatures.default)))
@@ -52,4 +53,4 @@
         </div>
     </div>
 }
-
+*@

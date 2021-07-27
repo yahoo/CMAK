@@ -19,7 +19,6 @@ package kafka.manager.utils.zero10
 
 import java.util.Properties
 
-import kafka.log.LogConfig
 import kafka.manager.utils.BrokerConfigs
 import kafka.server.{KafkaConfig, ReplicationQuotaManagerConfig}
 import org.apache.kafka.common.config.ConfigDef.{ConfigKey, Validator}
