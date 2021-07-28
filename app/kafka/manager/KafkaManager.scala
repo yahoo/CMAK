@@ -557,6 +557,25 @@ class KafkaManager(akkaConfig: Config) extends Logging {
     }
   }
 
+  def updateBrokerConfig(
+                          clusterName: String,
+                          broker: Int,
+                          config: Properties,
+                          readVersion: Int
+                        ) =
+    {
+      implicit val ec = apiExecutionContext
+      withKafkaManagerActor(
+        KMClusterCommandRequest(
+          clusterName,
+          CMUpdateBrokerConfig(broker, config, readVersion)
+        )
+      ) {
+        result: Future[CMCommandResult] =>
+          result.map(cmr => toDisjunction(cmr.result))
+      }
+    }
+
   def updateTopicConfig(
                          clusterName: String,
                          topic: String,

@@ -106,6 +106,14 @@ class KafkaCommandActor(kafkaCommandActorConfig: KafkaCommandActorConfig) extend
             })
           }
         }
+      case KCUpdateBrokerConfig(broker, config, readVersion) =>
+        longRunning {
+          Future {
+            KCCommandResult(Try {
+              kafkaCommandActorConfig.adminUtils.changeBrokerConfig(kafkaCommandActorConfig.curator, broker, config, readVersion)
+            })
+          }
+        }
       case KCUpdateTopicConfig(topic, config, readVersion) =>
         longRunning {
           Future {

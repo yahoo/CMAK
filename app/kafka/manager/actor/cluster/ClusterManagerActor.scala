@@ -279,8 +279,22 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
       case CMGetBrokerIdentity(id) =>
         implicit val ec = context.dispatcher
         val eventualBrokerList = withKafkaStateActor(KSGetBrokers)(identity[BrokerList])
-        val result: Future[Option[CMBrokerIdentity]]  = eventualBrokerList.map(bl=>bl.list.find(b=>b.id==id))
-            .map(b=>Option(CMBrokerIdentity(Try(b.get))))
+        val eventualBrokerConfig = withKafkaStateActor(KSGetBrokerDescription(id))(identity[Option[BrokerDescription]])
+        val result: Future[Option[CMBrokerIdentity]] = for {
+          bl <- eventualBrokerList
+          bc <- eventualBrokerConfig
+        } yield bl.list.find(x => x.id == id)
+          .flatMap { x =>
+            if(bc.isEmpty){
+              Option(CMBrokerIdentity(Try(x)))
+            }
+            else{
+              bc.map(c => TopicIdentity.parseCofig(c.config))
+                .map(c => BrokerIdentity(x.id, x.host, x.jmxPort, x.secure, x.nonSecure, x.endpoints, c._2.toList, c._1))
+                .map(b => CMBrokerIdentity(Try(b)))
+            }
+
+          }
         result pipeTo sender
 
 
@@ -455,6 +469,26 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
             }
           }
         } pipeTo sender()
+
+      case CMUpdateBrokerConfig(broker, config, readVersion) =>
+        implicit val ec = longRunningExecutionContext
+        val eventualBrokerList = withKafkaStateActor(KSGetBrokers)(identity[BrokerList])
+        eventualBrokerList.map{
+          bl=>{
+            val exist = bl.list.exists(x=>x.id==broker)
+            if(!exist){
+              Future.successful(CMCommandResult(Failure(new IllegalArgumentException(s"Broker doesn't exist : $broker"))))
+            }
+            else{
+              withKafkaCommandActor(KCUpdateBrokerConfig(broker, config, readVersion))
+              {
+                kcResponse: KCCommandResult =>
+                  CMCommandResult(kcResponse.result)
+              }
+            }
+          }
+        } pipeTo sender()
+
 
       case CMUpdateTopicConfig(topic, config, readVersion) =>
         implicit val ec = longRunningExecutionContext

@@ -34,6 +34,7 @@ object ZkUtils {
   val ConsumersPath = "/consumers"
   val BrokerIdsPath = "/brokers/ids"
   val BrokerTopicsPath = "/brokers/topics"
+  val BrokerConfigPath = "/config/brokers"
   val TopicConfigPath = "/config/topics"
   val TopicConfigChangesPath = "/config/changes"
   val ControllerPath = "/controller"
@@ -54,6 +55,9 @@ object ZkUtils {
 
   def getTopicConfigPath(topic: String): String =
     TopicConfigPath + "/" + topic
+
+  def getBrokerConfigPath(broker: Int): String =
+    BrokerConfigPath + "/" + broker.toString
 
   def getDeleteTopicPath(topic: String): String =
     DeleteTopicsPath + "/" + topic

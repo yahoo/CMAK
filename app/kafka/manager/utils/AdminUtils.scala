@@ -134,6 +134,15 @@ class AdminUtils(version: KafkaVersion) extends Logging {
     writeTopicPartitionAssignment(curator, topic, partitionReplicaAssignment, update, readVersion)
   }
 
+  private def writeBrokerConfig(curator: CuratorFramework, broker: Int, config: Properties, readVersion: Int): Unit ={
+    val configMap: mutable.Map[String, String] = {
+      import scala.collection.JavaConverters._
+      config.asScala
+    }
+    val map : Map[String, Any] = Map("version" -> 1, "config" -> configMap)
+    ZkUtils.updatePersistentPath(curator, ZkUtils.getBrokerConfigPath(broker), toJson(map), readVersion)
+  }
+
   /**
    * Write out the topic config to zk, if there is any
    */
@@ -245,6 +254,14 @@ class AdminUtils(version: KafkaVersion) extends Logging {
     } {
       addPartitions(curator, topic, newNumPartitions, replicaList, brokerList, readVersion)
     }
+  }
+
+  def changeBrokerConfig(curator: CuratorFramework, broker: Int, config: Properties, readVersion: Int): Unit ={
+    //todo fix me do check of right version
+    BrokerConfigs.validate(Kafka_0_10_1_1,config)
+
+    writeBrokerConfig(curator, broker, config, readVersion)
+
   }
 
   /**
