@@ -2,7 +2,7 @@
 * Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
 * See accompanying LICENSE file.
 *@
-@(cluster: String, brokerId: Int, brokerView :kafka.manager.model.ActorModel.BVView)(implicit messages: play.api.i18n.Messages, request:RequestHeader)
+@(cluster: String, brokerId: Int, brokerView :kafka.manager.model.ActorModel.BVView)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, request:RequestHeader)
 
 @renderBrokerMetrics = {
     @if(brokerView.clusterContext.clusterFeatures.features(kafka.manager.features.KMJMXMetricsFeature)) {
@@ -13,18 +13,6 @@
         </div>
     }
 }
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-header">
-                        operation
-                    </div>
-                    <div class="card-body">
-                        <a href="@routes.Cluster.updateBrokerConfig(cluster,brokerId).relative">update broker config</a>
-                    </div>
-                </div>
-            </div>
-        </div>
         <div class="row">
             <div class="col-md-7">
                 <div class="card">
@@ -46,6 +34,14 @@
                 </div>
             </div>
             <div class="col-md-5">
+                @features.app(features.KMClusterManagerFeature) {
+                <div class="card">
+                    <div class="card-header"><h4>Operations</h4></div>
+                    <div class="card-body">
+                        <a href="@routes.Cluster.updateBrokerConfig(cluster,brokerId).relative" class='btn btn-primary'>update broker config</a>
+                    </div>
+                </div>
+                }
                 <div class="card">
                     <div class="card-header"><h4>Metrics</h4></div>
                     <div class="card-body">
