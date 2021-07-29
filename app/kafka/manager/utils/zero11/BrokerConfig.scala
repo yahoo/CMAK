@@ -15,12 +15,12 @@
  * limitations under the License.
  */
 
-package kafka.manager.utils.zero10
+package kafka.manager.utils.zero11
 
 import java.util.Properties
 
 import kafka.manager.utils.BrokerConfigs
-import kafka.server.{KafkaConfig, ReplicationQuotaManagerConfig}
+import kafka.server.ReplicationQuotaManagerConfig
 import org.apache.kafka.common.config.ConfigDef.{ConfigKey, Validator}
 import org.apache.kafka.common.config.{AbstractConfig, ConfigDef}
 import org.apache.kafka.common.errors.InvalidConfigurationException

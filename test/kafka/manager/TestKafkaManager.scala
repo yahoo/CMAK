@@ -391,6 +391,32 @@ class TestKafkaManager extends CuratorAwareTest with BaseTest {
     }
   }
 
+  test("update broker config") {
+    val tiFuture= kafkaManager.getBrokerIdentity("dev",0)
+    val tiOrError = Await.result(tiFuture, duration)
+    assert(tiOrError.isRight, "Failed to get broker identity!")
+    val ti = tiOrError.toOption.get
+    val config = new Properties()
+    config.put(kafka.manager.utils.zero11.BrokerConfig.FollowerReplicationThrottledRateProp,"10000000")
+    val configReadVersion = ti.configReadVersion
+    val future = kafkaManager.updateBrokerConfig("dev",0,config,configReadVersion)
+    val result = Await.result(future,duration)
+    assert(result.isRight === true)
+    Thread.sleep(2000)
+
+    //check new config
+    {
+      val tiFuture= kafkaManager.getBrokerIdentity("dev",0)
+      val tiOrError = Await.result(tiFuture, duration)
+      assert(tiOrError.isRight, "Failed to get broker identity!")
+      val ti = tiOrError.toOption.get
+      assert(ti.configReadVersion > configReadVersion)
+      assert(ti.config.toMap.apply(kafka.manager.utils.zero11.BrokerConfig.FollowerReplicationThrottledRateProp) === "10000000")
+    }
+  }
+
+
+
   test("delete topic") {
     val futureA = kafkaManager.deleteTopic("dev",createTopicNameA)
     val resultA = Await.result(futureA,duration)
