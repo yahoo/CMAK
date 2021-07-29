@@ -19,7 +19,7 @@ trait BrokerConfigs {
 }
 object BrokerConfigs{
   val brokerConfigsByVersion: Map[KafkaVersion, BrokerConfigs] = Map(
-    Kafka_0_10_1_1 -> zero10.BrokerConfig,
+    Kafka_0_10_1_1 -> zero11.BrokerConfig,
   )
 
   def configNames(version: KafkaVersion): Seq[String] = {
