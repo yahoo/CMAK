@@ -31,6 +31,21 @@
                         }
                         </tbody>
                     </table>
+                        @if(!brokerView.broker.isEmpty && !brokerView.broker.get.config.isEmpty) {
+                        <table class="table">
+                            <thead>
+                            <th>Config</th><th>Value</th>
+                            </thead>
+                            <tbody>
+                            @for( (k,v) <- brokerView.broker.get.config) {
+                            <tr>
+                                <td>@k</td>
+                                <td>@v</td>
+                            </tr>
+                            }
+                            </tbody>
+                        </table>
+                        }
                     </div>
                 </div>
             </div>

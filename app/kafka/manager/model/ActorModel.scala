@@ -52,7 +52,9 @@ object ActorModel {
   case class BVView(topicPartitions: Map[TopicIdentity, BrokerTopicInfo], clusterContext: ClusterContext,
                     metrics: Option[BrokerMetrics] = None,
                     messagesPerSecCountHistory: Option[Queue[BrokerMessagesPerSecCount]] = None,
-                    stats: Option[BrokerClusterStats] = None) extends QueryResponse {
+                    stats: Option[BrokerClusterStats] = None,
+                    broker: Option[BrokerIdentity] = None
+                   ) extends QueryResponse {
     def numTopics : Int = topicPartitions.size
     def numPartitions : Int = topicPartitions.values.foldLeft(0)((acc,i) => acc + i.partitions.size)
     def numPartitionsAsLeader : Int = topicPartitions.values.foldLeft(0)((acc,i) => acc + i.partitionsAsLeader.size)

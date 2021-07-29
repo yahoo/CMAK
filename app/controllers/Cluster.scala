@@ -210,8 +210,14 @@ class Cluster (val cc: ControllerComponents, val kafkaManagerContext: KafkaManag
   }
 
   def broker(c: String, b: Int) = Action.async { implicit request: RequestHeader =>
-    kafkaManager.getBrokerView(c,b).map { errorOrBrokerView =>
-      Ok(views.html.broker.brokerView(c,b,errorOrBrokerView)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
+    val futureErrorOrBrokerIdentity = kafkaManager.getBrokerIdentity(c,b)
+    kafkaManager.getBrokerView(c,b).zip(futureErrorOrBrokerIdentity).map {
+      case (errorOrBrokerView,errorOrBrokerIdentity) =>
+        var newRst = errorOrBrokerView
+        errorOrBrokerIdentity.map(bi=>{
+            newRst = errorOrBrokerView.map(x=>x.copy(broker=Option(bi)))
+        })
+      Ok(views.html.broker.brokerView(c,b,newRst)).withHeaders("X-Frame-Options" -> "SAMEORIGIN")
     }
   }
 
