@@ -297,8 +297,6 @@ class ClusterManagerActor(cmConfig: ClusterManagerActorConfig)
           }
         result pipeTo sender
 
-
-
       case CMGetTopicIdentity(topic) =>
         implicit val ec = context.dispatcher
         val eventualBrokerList = withKafkaStateActor(KSGetBrokers)(identity[BrokerList])

@@ -490,7 +490,7 @@ import scala.language.reflectiveCalls
         resultOption.getOrElse((-1,Map.empty[String, String]))
       } catch {
         case e: Exception =>
-          logger.error(s"[Failed to parse topic config : ${config.getOrElse("")}",e)
+          logger.error(s"[Failed to parse config : ${config.getOrElse("")}",e)
           (-1,Map.empty[String, String])
       }
     }

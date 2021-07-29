@@ -257,11 +257,9 @@ class AdminUtils(version: KafkaVersion) extends Logging {
   }
 
   def changeBrokerConfig(curator: CuratorFramework, broker: Int, config: Properties, readVersion: Int): Unit ={
-    //todo fix me do check of right version
-    BrokerConfigs.validate(Kafka_0_10_1_1,config)
+    BrokerConfigs.validate(version,config)
 
     writeBrokerConfig(curator, broker, config, readVersion)
-
   }
 
   /**

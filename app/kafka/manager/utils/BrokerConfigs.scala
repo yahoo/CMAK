@@ -7,7 +7,7 @@ package kafka.manager.utils
 
 import java.util.Properties
 
-import kafka.manager.model.{KafkaVersion, Kafka_0_10_1_1, Kafka_0_8_1_1}
+import kafka.manager.model.{KafkaVersion, Kafka_0_10_1_1}
 
 
 trait BrokerConfigs {
@@ -32,7 +32,15 @@ object BrokerConfigs{
   def validate(version: KafkaVersion, props: Properties): Unit = {
     brokerConfigsByVersion.get(version) match {
       case Some(tc) => tc.validate(props)
-      case None => throw new IllegalArgumentException(s"Undefined topic configs for version : $version, cannot validate config")
+      case None =>{
+        if(version==Kafka_0_10_1_1){
+          throw new IllegalArgumentException(s"Undefined broker configs for version : $version, cannot validate config")
+        }
+        else {
+          //use default 0.10.1.1 to check, other versions likely to be the same, avoid many same config class
+          validate(Kafka_0_10_1_1,props)
+        }
+      }
     }
   }
 

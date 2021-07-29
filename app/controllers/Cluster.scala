@@ -233,6 +233,7 @@ class Cluster (val cc: ControllerComponents, val kafkaManagerContext: KafkaManag
     kafkaManager.getClusterConfig(clusterName).map { errorOrConfig =>
       errorOrConfig.map { clusterConfig =>
         val defaultConfigs = clusterConfig.version match {
+            //todo add other version configs
           case Kafka_0_10_1_1 => BrokerConfigs.configNamesAndDoc(Kafka_0_10_1_1).map { case (n, h) => (n,BConfig(n,None, Option(h))) }
           case _=> BrokerConfigs.configNamesAndDoc(Kafka_0_10_1_1).map { case (n, h) => (n,BConfig(n,None, Option(h))) }
         }
@@ -302,8 +303,6 @@ class Cluster (val cc: ControllerComponents, val kafkaManagerContext: KafkaManag
       )
     }
   }
-
-
 
   def addCluster = Action.async { implicit request: RequestHeader =>
     featureGate(KMClusterManagerFeature) {
