@@ -44,7 +44,7 @@
 @main(
     "Update Config",
     menu = theMenu,
-    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndCluster("Broker View",cluster,"Update Config"))) {
+    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndClusterAndBroker("Broker View",cluster,brokerId,"Update Config"))) {
     <div class="col-md-6 un-pad-me">
         <div class="card">
             <div class="card-header"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="octicon octicon-arrow-left" aria-hidden="true"></span></button>Update Config</h3></div>
