@@ -225,7 +225,7 @@ class Cluster (val cc: ControllerComponents, val kafkaManagerContext: KafkaManag
           "help" -> optional(text),
         )(BConfig.apply)(BConfig.unapply)
       ),
-      "readVersion" -> number(min = 0)
+      "readVersion" -> number(min = -1)
     )(UpdateBrokerConfig.apply)(UpdateBrokerConfig.unapply)
   )
 
