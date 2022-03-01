@@ -136,6 +136,26 @@ case object Kafka_2_6_0 extends KafkaVersion {
   override def toString = "2.6.0"
 }
 
+case object Kafka_2_7_0 extends KafkaVersion {
+  override def toString = "2.7.0"
+}
+
+case object Kafka_2_8_0 extends KafkaVersion {
+  override def toString = "2.8.0"
+}
+
+case object Kafka_2_8_1 extends KafkaVersion {
+  override def toString = "2.8.1"
+}
+
+case object Kafka_3_0_0 extends KafkaVersion {
+  override def toString = "3.0.0"
+}
+
+case object Kafka_3_1_0 extends KafkaVersion {
+  override def toString = "3.1.0"
+}
+
 object KafkaVersion {
   val supportedVersions: Map[String,KafkaVersion] = Map(
     "0.8.1.1" -> Kafka_0_8_1_1,
@@ -169,7 +189,12 @@ object KafkaVersion {
     "2.4.1" -> Kafka_2_4_1,
     "2.5.0" -> Kafka_2_5_0,
     "2.5.1" -> Kafka_2_5_1,
-    "2.6.0" -> Kafka_2_6_0
+    "2.6.0" -> Kafka_2_6_0,
+    "2.7.0" -> Kafka_2_7_0,
+    "2.8.0" -> Kafka_2_8_0,
+    "2.8.1" -> Kafka_2_8_1,
+    "3.0.0" -> Kafka_3_0_0,
+    "3.1.0" -> Kafka_3_1_0
   )
 
   val formSelectList : IndexedSeq[(String,String)] = supportedVersions.toIndexedSeq.filterNot(_._1.contains("beta")).map(t => (t._1,t._2.toString)).sortWith((a, b) => sortVersion(a._1, b._1))
