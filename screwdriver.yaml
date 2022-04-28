@@ -1,0 +1,21 @@
+shared:
+  annotations:
+    screwdriver.cd/cpu: TURBO
+    screwdriver.cd/ram: TURBO
+  image: hseeberger/scala-sbt:11.0.14.1_1.6.2_2.12.15
+  #environment:
+    #Fetches history so Sonar can assign blame.
+    #GIT_SHALLOW_CLONE: false
+
+jobs:
+  pull-request:
+    requires: [ ~pr ]
+    steps:
+      - build: ./sbt clean test
+
+  main:
+    requires: [ ~commit ]
+    steps:
+      - prepare: echo "prepare"
+      - build: ./sbt clean dist
+      - publish: echo "publish"
