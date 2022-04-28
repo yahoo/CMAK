@@ -11,7 +11,7 @@ jobs:
   pull-request:
     requires: [ ~pr ]
     steps:
-      - build: ./sbt clean dist
+      - build: ./sbt clean test
 
   main:
     requires: [ ~commit ]
