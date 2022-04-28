@@ -2,7 +2,7 @@ shared:
   annotations:
     screwdriver.cd/cpu: TURBO
     screwdriver.cd/ram: TURBO
-  image: hseeberger/scala-sbt:8u222_1.3.5_2.13.1
+  image: hseeberger/scala-sbt:8u282_1.5.5_2.12.13
   #environment:
     #Fetches history so Sonar can assign blame.
     #GIT_SHALLOW_CLONE: false
