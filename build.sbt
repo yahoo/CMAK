@@ -5,7 +5,7 @@
 name := """cmak"""
 
 /* For packaging purposes, -SNAPSHOT MUST contain a digit */
-version := "3.0.0.6"
+version := "3.0.0.7"
 
 scalaVersion := "2.12.10"
 
