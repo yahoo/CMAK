@@ -14,3 +14,5 @@ RUNNING_PID
 .DS_Store
 *.log
 *.swp
+.metals
+.vscode
