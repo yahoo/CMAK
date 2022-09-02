@@ -57,6 +57,7 @@ object TopicConfigs {
     Kafka_2_8_1 -> two40.LogConfig,
     Kafka_3_0_0 -> two40.LogConfig,
     Kafka_3_1_0 -> two40.LogConfig,
+    Kafka_3_1_1 -> two40.LogConfig,
     Kafka_3_2_0 -> two40.LogConfig,
     Kafka_3_2_1 -> two40.LogConfig
   )

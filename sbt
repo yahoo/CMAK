@@ -10,7 +10,7 @@ declare -r sbt_release_version="1.3.8"
 declare -r sbt_unreleased_version="1.3.8"
 
 declare -r latest_32="3.2.1"
-declare -r latest_31="3.1.0"
+declare -r latest_31="3.1.1"
 declare -r latest_30="3.0.3"
 declare -r latest_213="2.13.8"
 declare -r latest_212="2.12.15"
