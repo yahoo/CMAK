@@ -1,0 +1,57 @@
+@*
+* Copyright 2015 Yahoo Inc. Licensed under the Apache License, Version 2.0
+* See accompanying LICENSE file.
+*@
+@import scalaz.{\/}
+@(cluster: String, brokerId: Int, errorOrForm: kafka.manager.ApiError \/ (Form[models.form.UpdateBrokerConfig], String)
+)(implicit af: features.ApplicationFeatures, messages: play.api.i18n.Messages, menus: models.navigation.Menus, request:RequestHeader)
+
+@import helper._
+@import controllers.routes
+
+
+@theMenu = {
+    @views.html.navigation.clusterMenu(cluster,"Broker","Update Config",menus.clusterMenus(cluster)(
+       kafka.manager.features.ClusterFeatures.default))
+}
+
+@renderForm(updateBrokerConfigForm: Form[models.form.UpdateBrokerConfig]) = {
+    @b4.vertical.form(routes.Cluster.handleUpdateBrokerConfig(cluster, brokerId)) { implicit fc =>
+        <table class="table">
+            <thead>
+            <tr><th>Update Config
+                <br />notice: replication.throttled.rate need set topic level replication.throttled.replicas to work.</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        @b4.text(updateBrokerConfigForm("broker"), '_label -> "Broker", 'placeholder -> "", 'autofocus -> true )
+                        @b4.hidden(updateBrokerConfigForm("readVersion").name,updateBrokerConfigForm("readVersion").value.getOrElse(-1))
+                        @helper.repeat(updateBrokerConfigForm("configs"), min = 1) { configsForm =>
+                            @b4.hidden(configsForm("name").name, configsForm("name").value.getOrElse(""))
+                            @b4.hidden(configsForm("help").name, configsForm("help").value.getOrElse(""))
+                            @b4.text(configsForm("value"), '_label -> configsForm("name").value.getOrElse(""), '_help -> configsForm("help").value.getOrElse(""))
+                        }
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        @b4.submit('class -> "submit-button btn btn-primary"){ Update Config }
+        <a href="@routes.Cluster.broker(cluster,brokerId)" class="cancel-button btn btn-secondary" role="button">Cancel</a>
+    }
+}
+
+@main(
+    "Update Config",
+    menu = theMenu,
+    breadcrumbs=views.html.navigation.breadCrumbs(models.navigation.BreadCrumbs.withNamedViewAndClusterAndBroker("Broker View",cluster,brokerId,"Update Config"))) {
+    <div class="col-md-6 un-pad-me">
+        <div class="card">
+            <div class="card-header"><h3><button type="button" class="btn btn-link" onclick="goBack()"><span class="octicon octicon-arrow-left" aria-hidden="true"></span></button>Update Config</h3></div>
+            <div class="card-body">
+                @errorOrForm.fold( views.html.errors.onApiError(_), t => renderForm(t._1))
+            </div>
+        </div>
+    </div>
+}
+<br />

@@ -52,7 +52,9 @@ object ActorModel {
   case class BVView(topicPartitions: Map[TopicIdentity, BrokerTopicInfo], clusterContext: ClusterContext,
                     metrics: Option[BrokerMetrics] = None,
                     messagesPerSecCountHistory: Option[Queue[BrokerMessagesPerSecCount]] = None,
-                    stats: Option[BrokerClusterStats] = None) extends QueryResponse {
+                    stats: Option[BrokerClusterStats] = None,
+                    broker: Option[BrokerIdentity] = None
+                   ) extends QueryResponse {
     def numTopics : Int = topicPartitions.size
     def numPartitions : Int = topicPartitions.values.foldLeft(0)((acc,i) => acc + i.partitions.size)
     def numPartitionsAsLeader : Int = topicPartitions.values.foldLeft(0)((acc,i) => acc + i.partitionsAsLeader.size)
@@ -64,11 +66,13 @@ object ActorModel {
 
   case object CMGetView extends QueryRequest
   case class CMGetTopicIdentity(topic: String) extends QueryRequest
+  case class CMGetBrokerIdentity(broker: Int) extends QueryRequest
   case object CMGetClusterContext extends QueryRequest
   case class CMView(topicsCount: Int, brokersCount: Int, clusterContext: ClusterContext) extends QueryResponse
   case class CMGetConsumerIdentity(consumer: String, consumerType: ConsumerType) extends QueryRequest
   case class CMGetConsumedTopicState(consumer: String, topic: String, consumerType: ConsumerType) extends QueryRequest
   case class CMTopicIdentity(topicIdentity: Try[TopicIdentity]) extends QueryResponse
+  case class CMBrokerIdentity(brokerIdentity: Try[BrokerIdentity]) extends QueryResponse
   case class CMConsumerIdentity(consumerIdentity: Try[ConsumerIdentity]) extends QueryResponse
   case class CMConsumedTopic(ctIdentity: Try[ConsumedTopicState]) extends QueryResponse
   case class CMGetGeneratedPartitionAssignments(topic: String) extends QueryRequest
@@ -87,6 +91,7 @@ object ActorModel {
                                            partitions: Int,
                                            readVersions: Map[String,Int]) extends CommandRequest
   case class CMUpdateTopicConfig(topic: String, config: Properties, readVersion: Int) extends CommandRequest
+  case class CMUpdateBrokerConfig(broker: Int, config: Properties, readVersion: Int) extends CommandRequest
   case class CMDeleteTopic(topic: String) extends CommandRequest
   case class CMRunPreferredLeaderElection(topics: Set[String]) extends CommandRequest
   case class CMSchedulePreferredLeaderElection(schedule: Map[String, Int]) extends CommandRequest
@@ -128,6 +133,7 @@ object ActorModel {
                                            partitions: Int,
                                            readVersions: Map[String, Int]) extends CommandRequest
   case class KCUpdateTopicConfig(topic: String, config: Properties, readVersion: Int) extends CommandRequest
+  case class KCUpdateBrokerConfig(broker: Int, config: Properties, readVersion: Int) extends CommandRequest
   case class KCDeleteTopic(topic: String) extends CommandRequest
   case class KCPreferredReplicaLeaderElection(topicAndPartition: Set[TopicPartition]) extends CommandRequest
   case class KCReassignPartition(currentTopicIdentity: Map[String, TopicIdentity]
@@ -161,6 +167,7 @@ object ActorModel {
   case object KSGetConsumers extends KSRequest
   case class KSGetTopicConfig(topic: String) extends KSRequest
   case class KSGetTopicDescription(topic: String) extends KSRequest
+  case class KSGetBrokerDescription(broker: Int) extends KSRequest
   case class KSGetAllTopicDescriptions(lastUpdateMillis: Option[Long]= None) extends KSRequest
   case class KSGetTopicDescriptions(topics: Set[String]) extends KSRequest
   case class KSGetConsumerDescription(consumer: String, consumerType: ConsumerType) extends KSRequest
@@ -199,6 +206,9 @@ object ActorModel {
   case class ConsumerNameAndType(name: String, consumerType: ConsumerType)
   case class ConsumerList(list: IndexedSeq[ConsumerNameAndType], clusterContext: ClusterContext) extends QueryResponse
 
+  case class BrokerDescription(broker: Int,
+                               config:Option[(Int,String)]
+                              )extends  QueryResponse
   case class TopicDescription(topic: String,
                               description: (Int,String),
                               partitionState: Option[Map[String, String]],
@@ -237,7 +247,7 @@ object ActorModel {
 
   case class GeneratedPartitionAssignments(topic: String, assignments: Map[Int, Seq[Int]], nonExistentBrokers: Set[Int])
 
-  case class BrokerIdentity(id: Int, host: String, jmxPort: Int, secure: Boolean, nonSecure:Boolean, endpoints: Map[SecurityProtocol, Int]) {
+  case class BrokerIdentity(id: Int, host: String, jmxPort: Int, secure: Boolean, nonSecure:Boolean, endpoints: Map[SecurityProtocol, Int], config: List[(String,String)]=List(),configReadVersion: Int= -1) {
     def endpointsString: String = endpoints.toList.map(tpl => s"${tpl._1.stringId}:${tpl._2}").mkString(",")
   }
 
@@ -466,6 +476,27 @@ import scala.language.reflectiveCalls
     import scala.language.reflectiveCalls
     import scala.concurrent.duration._
 
+    def parseCofig(config: Option[(Int,String)]): (Int,Map[String, String]) ={
+      import org.json4s.jackson.JsonMethods._
+      import org.json4s.scalaz.JsonScalaz._
+      import org.json4s._
+      try {
+        val resultOption: Option[(Int,Map[String, String])] = config.map { configString =>
+          val configJson = parse(configString._2)
+          val configMap : Map[String, String] = field[Map[String,String]]("config")(configJson).fold({ e =>
+            logger.error(s"Failed to parse topic config ${configString._2}")
+            Map.empty
+          }, identity)
+          (configString._1,configMap)
+        }
+        resultOption.getOrElse((-1,Map.empty[String, String]))
+      } catch {
+        case e: Exception =>
+          logger.error(s"[Failed to parse config : ${config.getOrElse("")}",e)
+          (-1,Map.empty[String, String])
+      }
+    }
+
     implicit val formats = Serialization.formats(FullTypeHints(List(classOf[TopicIdentity])))
     // Adding a write method to transform/sort the partitionsIdentity to be more readable in JSON and include Topic Identity vals
     implicit def topicIdentityJSONW: JSONW[TopicIdentity] = new JSONW[TopicIdentity] {
@@ -548,21 +579,7 @@ import scala.language.reflectiveCalls
       val partMap = getPartitionReplicaMap(td)
       val tpi : Map[Int,TopicPartitionIdentity] = getTopicPartitionIdentity(td, partMap, tdPrevious, tpSizes.getOrElse(Map.empty))
       val config : (Int,Map[String, String]) = {
-        try {
-          val resultOption: Option[(Int,Map[String, String])] = td.config.map { configString =>
-            val configJson = parse(configString._2)
-            val configMap : Map[String, String] = field[Map[String,String]]("config")(configJson).fold({ e =>
-              logger.error(s"Failed to parse topic config ${configString._2}")
-              Map.empty
-            }, identity)
-            (configString._1,configMap)
-          }
-          resultOption.getOrElse((-1,Map.empty[String, String]))
-        } catch {
-          case e: Exception =>
-            logger.error(s"[topic=${td.topic}] Failed to parse topic config : ${td.config.getOrElse("")}",e)
-            (-1,Map.empty[String, String])
-        }
+        parseCofig(td.config)
       }
       val size = tpi.flatMap(_._2.leaderSize).reduceLeftOption{ _ + _ }.map(FormatMetric.sizeFormat(_))
       TopicIdentity(td.topic,td.description._1,partMap.size,tpi,brokers,config._1,config._2.toList, clusterContext, tm, size)

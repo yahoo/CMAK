@@ -96,6 +96,15 @@ object BreadCrumbs {
     )
   )
 
+  val brokerBreadCrumbs: Map[String, IndexedSeq[BreadCrumb]] = Map(
+    "Broker View" -> IndexedSeq(
+      "Clusters".baseRouteBreadCrumb,
+      BCDynamicNamedLink(identity,"Summary".clusterRoute),
+      "Brokers".clusterRouteBreadCrumb,
+      BCDynamicMultiNamedLink(identity,"Broker View".brokerRoute)
+    )
+  )
+
   val consumerBreadCrumbs: Map[String, IndexedSeq[BreadCrumb]] = Map(
     "Consumer View" -> IndexedSeq(
       "Clusters".baseRouteBreadCrumb,
@@ -150,6 +159,17 @@ object BreadCrumbs {
     }
   }
 
+  private[this] def renderWithClusterAndBroker(s: String, clusterName: String, broker: Int) : IndexedSeq[BreadCrumbRendered] = {
+    brokerBreadCrumbs.getOrElse(s,IndexedSeq.empty[BreadCrumb]) map {
+      case BCStaticLink(n,c) => BCLink(n,c.toString())
+      case BCDynamicNamedLink(cn, cl) => BCLink(cn(clusterName),cl(clusterName).toString())
+      case BCDynamicMultiNamedLink(cn, cl) => BCLink(cn(broker.toString),cl(clusterName,List(broker.toString)).toString())
+      case BCDynamicLink(cn, cl) => BCLink(cn,cl(clusterName).toString())
+      case BCDynamicText(cn) => BCText(cn(clusterName))
+      case any => throw new UnsupportedOperationException(s"Unhandled breadcrumb : $any")
+    }
+  }
+
   private[this] def renderWithClusterAndConsumer(s: String, clusterName: String, consumer: String, consumerType: String, topic: String = "") : IndexedSeq[BreadCrumbRendered] = {
     consumerBreadCrumbs.getOrElse(s,IndexedSeq.empty[BreadCrumb]) map {
       case BCStaticLink(n,c) => BCLink(n,c.toString())
@@ -164,6 +184,10 @@ object BreadCrumbs {
 
   def withNamedViewAndClusterAndTopic(s: String, clusterName: String, topic: String, name: String) : IndexedSeq[BreadCrumbRendered] = {
     renderWithClusterAndTopic(s, clusterName,topic) :+ BCActive(name)
+  }
+
+  def withNamedViewAndClusterAndBroker(s: String, clusterName: String, broker: Int, name: String) : IndexedSeq[BreadCrumbRendered] = {
+    renderWithClusterAndBroker(s, clusterName, broker) :+ BCActive(name)
   }
 
   private[this] def renderWithClusterAndLogkafka(s: String, clusterName: String, logkafka_id: String, log_path: String) : IndexedSeq[BreadCrumbRendered] = {

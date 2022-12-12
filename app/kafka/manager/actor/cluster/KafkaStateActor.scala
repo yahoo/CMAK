@@ -996,6 +996,8 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
 
   private[this] val topicsConfigPathCache = new PathChildrenCache(config.curator,ZkUtils.TopicConfigPath,true)
 
+  private[this] val brokerConfigPathCache = new PathChildrenCache(config.curator,ZkUtils.BrokerConfigPath,true)
+
   private[this] val brokersPathCache = new PathChildrenCache(config.curator,ZkUtils.BrokerIdsPath,true)
 
   private[this] val adminPathCache = new PathChildrenCache(config.curator,ZkUtils.AdminPath,true)
@@ -1113,6 +1115,8 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
     topicsTreeCache.start()
     log.info("Starting topics config path cache...")
     topicsConfigPathCache.start(StartMode.BUILD_INITIAL_CACHE)
+    log.info("Starting brokers config path cache...")
+    brokerConfigPathCache.start(StartMode.BUILD_INITIAL_CACHE)
     log.info("Starting brokers path cache...")
     brokersPathCache.start(StartMode.BUILD_INITIAL_CACHE)
     log.info("Starting admin path cache...")
@@ -1162,6 +1166,8 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
     Try(brokersPathCache.close())
     log.info("Shutting down topics config path cache...")
     Try(topicsConfigPathCache.close())
+    log.info("Shutting down brokers config path cache...")
+    Try(brokerConfigPathCache.close())
     log.info("Shutting down topics tree cache...")
     Try(topicsTreeCache.close())
 
@@ -1183,6 +1189,11 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
     }
 
     partitionOffsets
+  }
+
+  def getBrokerDescription(broker:Int): Option[BrokerDescription] ={
+    val brokerConfig = getBrokerConfigString(broker)
+    brokerConfig.map(c=> BrokerDescription(broker,Option(c)))
   }
 
   def getTopicDescription(topic: String, interactive: Boolean) : Option[TopicDescription] = {
@@ -1226,6 +1237,12 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
   private[this] def getTopicConfigString(topic: String) : Option[(Int,String)] = {
     val data: mutable.Buffer[ChildData] = topicsConfigPathCache.getCurrentData.asScala
     val result: Option[ChildData] = data.find(p => p.getPath.endsWith("/" + topic))
+    result.map(cd => (cd.getStat.getVersion,asString(cd.getData)))
+  }
+
+  private[this] def getBrokerConfigString(broker: Int) : Option[(Int,String)] = {
+    val data: mutable.Buffer[ChildData] = brokerConfigPathCache.getCurrentData.asScala
+    val result: Option[ChildData] = data.find(p => p.getPath.endsWith("/" + broker.toString))
     result.map(cd => (cd.getStat.getVersion,asString(cd.getData)))
   }
 
@@ -1290,6 +1307,9 @@ class KafkaStateActor(config: KafkaStateActorConfig) extends BaseClusterQueryCom
 
       case KSGetTopicDescription(topic) =>
         sender ! getTopicDescription(topic, false)
+
+      case KSGetBrokerDescription(broker)=>
+        sender ! getBrokerDescription(broker)
 
       case KSGetTopicDescriptions(topics) =>
         sender ! TopicDescriptions(topics.toIndexedSeq.flatMap(getTopicDescription(_, false)), topicsTreeCacheLastUpdateMillis)

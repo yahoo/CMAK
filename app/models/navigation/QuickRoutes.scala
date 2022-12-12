@@ -33,6 +33,11 @@ object QuickRoutes {
     "List Logkafka" -> controllers.routes.Logkafka.logkafkas,
     "Create Logkafka" -> controllers.routes.Logkafka.createLogkafka
   )
+
+  val brokerRoutes : Map[String, (String, Int) => Call] = Map(
+    "Broker View" -> ((c,t)=>controllers.routes.Cluster.broker(c,t)),
+  )
+
   val topicRoutes : Map[String, (String, String) => Call] = Map(
     "Topic View" -> ((c, t) => controllers.routes.Topic.topic(c, t, force=false)),
     "Add Partitions" -> controllers.routes.Topic.addPartitions,
@@ -82,6 +87,12 @@ object QuickRoutes {
     }
     def topicRoute(c: String, t: List[String]): Call = {
       topicRoutes(s)(c,t.head)
+    }
+  }
+
+  implicit class BrokerRoute(s: String) {
+    def brokerRoute(c: String, t: List[String]): Call = {
+      brokerRoutes(s)(c,t.head.toInt)
     }
   }
 
