@@ -134,20 +134,29 @@ LDAP support is through the basic authentication filter.
 - basicAuthentication.iv="some-hex-string-representing-byte-array"
 - basicAuthentication.secret="my-secret-string"
 
-3. Configure LDAP/LDAPS authentication
+3. Configure LDAP / LDAP + StartTLS / LDAPS authentication
+
+_Note: LDAP is unencrypted and insecure. LDAPS is a commonly implemented 
+extension that implements an encryption layer in a manner similar to how 
+HTTPS adds encryption to an HTTP. LDAPS has not been documented, and the 
+specification is not formally defined anywhere. LDAP + StartTLS is the 
+currently recommended way to start an encrypted channel, and it upgrades 
+an existing LDAP connection to achieve this encryption._
+
 - basicAuthentication.ldap.enabled=< Boolean flag to enable/disable ldap authentication >
-- basicAuthentication.ldap.server=< fqdn of LDAP server>
-- basicAuthentication.ldap.port=< port of LDAP server>
-- basicAuthentication.ldap.username=< LDAP search username>
-- basicAuthentication.ldap.password=< LDAP search password>
-- basicAuthentication.ldap.search-base-dn=< LDAP search base>
-- basicAuthentication.ldap.search-filter=< LDAP search filter>
-- basicAuthentication.ldap.connection-pool-size=< number of connection to LDAP server>
-- basicAuthentication.ldap.ssl=< Boolean flag to enable/disable LDAPS>
+- basicAuthentication.ldap.server=< fqdn of LDAP server >
+- basicAuthentication.ldap.port=< port of LDAP server (typically 389 for LDAP and LDAP + StartTLS and typically 636 for LDAPS) >
+- basicAuthentication.ldap.username=< LDAP search username >
+- basicAuthentication.ldap.password=< LDAP search password >
+- basicAuthentication.ldap.search-base-dn=< LDAP search base >
+- basicAuthentication.ldap.search-filter=< LDAP search filter >
+- basicAuthentication.ldap.connection-pool-size=< maximum number of connection to LDAP server >
+- basicAuthentication.ldap.ssl=< Boolean flag to enable/disable LDAPS (usually incompatible with StartTLS) >
+- basicAuthentication.ldap.starttls=< Boolean flat to enable StartTLS (usually incompatible with SSL) >
 
 4. (Optional) Limit access to a specific LDAP Group
-- basicAuthentication.ldap.group-filter=< LDAP group filter>
-- basicAuthentication.ldap.ssl-trust-all=< Boolean flag to allow non-expired invalid certificates>
+- basicAuthentication.ldap.group-filter=< LDAP group filter >
+- basicAuthentication.ldap.ssl-trust-all=< Boolean flag to allow non-expired invalid certificates >
 
 #### Example (Online LDAP Test Server):
 
@@ -162,6 +171,7 @@ LDAP support is through the basic authentication filter.
 - basicAuthentication.ldap.connection-pool-size=10
 - basicAuthentication.ldap.ssl=false
 - basicAuthentication.ldap.ssl-trust-all=false
+- basicAuthetication.ldap.starttls=false
 
 
 Deployment

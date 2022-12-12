@@ -4,12 +4,13 @@ package controllers
 import java.nio.charset.StandardCharsets
 import java.security.SecureRandom
 import java.util.UUID
-
 import akka.stream.Materializer
 import com.typesafe.config.ConfigValueType
 import com.unboundid.ldap.sdk._
+import com.unboundid.ldap.sdk.extensions.StartTLSExtendedRequest
 import com.unboundid.util.ssl.{SSLUtil, TrustAllTrustManager}
 import grizzled.slf4j.Logging
+
 import javax.crypto.Mac
 import javax.net.ssl
 import org.apache.commons.codec.binary.Base64
@@ -143,19 +144,49 @@ case class LDAPAuthenticator(config: LDAPAuthenticationConfig)(implicit val mat:
   private lazy val unauthorizedResult = Future successful Unauthorized.withHeaders(WWW_AUTHENTICATE -> realm)
   private lazy val ldapConnectionPool: LDAPConnectionPool = {
     val (address, port) = (config.address, config.port)
+
+    if (config.sslEnabled && config.startTLSEnabled) {
+      logger.error("SSL and StartTLS enabled together. Most LDAP Server implementations will not handle this as it initializes an encrypted context over an already encrypted channel")
+    }
+
     val connection = if (config.sslEnabled) {
       if (config.sslTrustAll) {
         val sslUtil = new SSLUtil(null, new TrustAllTrustManager(true))
         val sslSocketFactory = sslUtil.createSSLSocketFactory
-        new LDAPConnection(sslSocketFactory, address, port, config.username, config.password)
+        new LDAPConnection(sslSocketFactory, address, port)
       } else {
         val sslSocketFactory = ssl.SSLSocketFactory.getDefault
-        new LDAPConnection(sslSocketFactory, address, port, config.username, config.password)
+        new LDAPConnection(sslSocketFactory, address, port)
       }
     } else {
-      new LDAPConnection(address, port, config.username, config.password)
+      new LDAPConnection(address, port)
     }
-    new LDAPConnectionPool(connection, config.connectionPoolSize)
+
+    var startTLSPostConnectProcessor : StartTLSPostConnectProcessor = null
+    if (config.startTLSEnabled) {
+      if (config.sslTrustAll) {
+        val sslUtil = new SSLUtil(null, new TrustAllTrustManager(true))
+        val sslContext = sslUtil.createSSLContext
+        connection.processExtendedOperation(new StartTLSExtendedRequest(sslContext))
+        startTLSPostConnectProcessor = new StartTLSPostConnectProcessor(sslContext)
+      } else {
+        val sslContext = new SSLUtil().createSSLContext
+        connection.processExtendedOperation(new StartTLSExtendedRequest(sslContext))
+        startTLSPostConnectProcessor = new StartTLSPostConnectProcessor(sslContext)
+      }
+    }
+
+    try {
+      connection.bind(config.username, config.password)
+    } catch {
+      case e: LDAPException => {
+        connection.setDisconnectInfo(DisconnectType.BIND_FAILED, null, e)
+        connection.close()
+        logger.error(s"Bind failed with ldap server ${config.address}:${config.port}", e)
+      }
+    }
+
+    new LDAPConnectionPool(connection, 1, config.connectionPoolSize, startTLSPostConnectProcessor)
   }
 
   def salt: Array[Byte] = config.salt
@@ -275,7 +306,8 @@ case class LDAPAuthenticationConfig(salt: Array[Byte]
                                     , groupFilter: String
                                     , connectionPoolSize: Int
                                     , sslEnabled: Boolean
-                                    , sslTrustAll: Boolean) extends AuthenticationConfig
+                                    , sslTrustAll: Boolean
+                                    , startTLSEnabled: Boolean) extends AuthenticationConfig
 
 sealed trait AuthType[T <: AuthenticationConfig] {
   def getConfig(config: AuthenticationConfig): T
@@ -357,13 +389,14 @@ object BasicAuthenticationFilterConfiguration {
       val connectionPoolSize = int("ldap.connection-pool-size").getOrElse(10)
       val sslEnabled = boolean("ldap.ssl").getOrElse(false)
       val sslTrustAll = boolean("ldap.ssl-trust-all").getOrElse(false)
+      val startTLSEnabled = boolean("ldap.starttls").getOrElse(false)
 
       BasicAuthenticationFilterConfiguration(
         enabled,
         LDAPAuth,
         LDAPAuthenticationConfig(salt, iv, secret,
           string("realm").getOrElse(defaultRealm),
-          server, port, username, password, searchDN, searchFilter, groupFilter, connectionPoolSize, sslEnabled, sslTrustAll
+          server, port, username, password, searchDN, searchFilter, groupFilter, connectionPoolSize, sslEnabled, sslTrustAll, startTLSEnabled
         ),
         excluded
       )
