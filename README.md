@@ -97,22 +97,22 @@ You can optionally enable/disable the following functionality by modifying the d
 
 Consider setting these parameters for larger clusters with jmx enabled :
 
- - cmak.broker-view-thread-pool-size=< 3 * number_of_brokers>
- - cmak.broker-view-max-queue-size=< 3 * total # of partitions across all topics>
- - cmak.broker-view-update-seconds=< cmak.broker-view-max-queue-size / (10 * number_of_brokers) >
+ - `cmak.broker-view-thread-pool-size=< 3 * number_of_brokers >`
+ - `cmak.broker-view-max-queue-size=< 3 * total # of partitions across all topics >`
+ - `cmak.broker-view-update-seconds=< cmak.broker-view-max-queue-size / (10 * number_of_brokers) >`
 
 Here is an example for a kafka cluster with 10 brokers, 100 topics, with each topic having 10 partitions giving 1000 total partitions with JMX enabled :
 
- - cmak.broker-view-thread-pool-size=30
- - cmak.broker-view-max-queue-size=3000
- - cmak.broker-view-update-seconds=30
+ - `cmak.broker-view-thread-pool-size=30`
+ - `cmak.broker-view-max-queue-size=3000`
+ - `cmak.broker-view-update-seconds=30`
 
 The follow control consumer offset cache's thread pool and queue :
 
- - cmak.offset-cache-thread-pool-size=< default is # of processors>
- - cmak.offset-cache-max-queue-size=< default is 1000>
- - cmak.kafka-admin-client-thread-pool-size=< default is # of processors>
- - cmak.kafka-admin-client-max-queue-size=< default is 1000>
+ - `cmak.offset-cache-thread-pool-size=< default is # of processors >`
+ - `cmak.offset-cache-max-queue-size=< default is 1000 >`
+ - `cmak.kafka-admin-client-thread-pool-size=< default is # of processors >`
+ - `cmak.kafka-admin-client-max-queue-size=< default is 1000 >`
 
 You should increase the above for large # of consumers with consumer polling enabled.  Though it mainly affects ZK based consumer polling.
 
@@ -126,13 +126,13 @@ On next request, the cookie value is compared with credentials from Authorizatio
 LDAP support is through the basic authentication filter.
 
 1. Configure basic authentication
-- basicAuthentication.enabled=true
-- basicAuthentication.realm=< basic authentication realm>
+- `basicAuthentication.enabled=true`
+- `basicAuthentication.realm=< basic authentication realm >`
 
 2. Encryption parameters (optional, otherwise randomly generated on startup) :
-- basicAuthentication.salt="some-hex-string-representing-byte-array"
-- basicAuthentication.iv="some-hex-string-representing-byte-array"
-- basicAuthentication.secret="my-secret-string"
+- `basicAuthentication.salt="some-hex-string-representing-byte-array"`
+- `basicAuthentication.iv="some-hex-string-representing-byte-array"`
+- `basicAuthentication.secret="my-secret-string"`
 
 3. Configure LDAP / LDAP + StartTLS / LDAPS authentication
 
@@ -143,56 +143,56 @@ specification is not formally defined anywhere. LDAP + StartTLS is the
 currently recommended way to start an encrypted channel, and it upgrades 
 an existing LDAP connection to achieve this encryption._
 
-- basicAuthentication.ldap.enabled=< Boolean flag to enable/disable ldap authentication >
-- basicAuthentication.ldap.server=< fqdn of LDAP server >
-- basicAuthentication.ldap.port=< port of LDAP server (typically 389 for LDAP and LDAP + StartTLS and typically 636 for LDAPS) >
-- basicAuthentication.ldap.username=< LDAP search username >
-- basicAuthentication.ldap.password=< LDAP search password >
-- basicAuthentication.ldap.search-base-dn=< LDAP search base >
-- basicAuthentication.ldap.search-filter=< LDAP search filter >
-- basicAuthentication.ldap.connection-pool-size=< maximum number of connection to LDAP server >
-- basicAuthentication.ldap.ssl=< Boolean flag to enable/disable LDAPS (usually incompatible with StartTLS) >
-- basicAuthentication.ldap.starttls=< Boolean flat to enable StartTLS (usually incompatible with SSL) >
+- `basicAuthentication.ldap.enabled=< Boolean flag to enable/disable ldap authentication >`
+- `basicAuthentication.ldap.server=< fqdn of LDAP server >`
+- `basicAuthentication.ldap.port=< port of LDAP server (typically 389 for LDAP and LDAP + StartTLS and typically 636 for LDAPS) >`
+- `basicAuthentication.ldap.username=< LDAP search username >`
+- `basicAuthentication.ldap.password=< LDAP search password >`
+- `basicAuthentication.ldap.search-base-dn=< LDAP search base >`
+- `basicAuthentication.ldap.search-filter=< LDAP search filter >`
+- `basicAuthentication.ldap.connection-pool-size=< maximum number of connection to LDAP server >`
+- `basicAuthentication.ldap.ssl=< Boolean flag to enable/disable LDAPS (usually incompatible with StartTLS) >`
+- `basicAuthentication.ldap.starttls=< Boolean flat to enable StartTLS (usually incompatible with SSL) >`
 
 4. (Optional) Limit access to a specific LDAP Group
-- basicAuthentication.ldap.group-filter=< LDAP group filter >
-- basicAuthentication.ldap.ssl-trust-all=< Boolean flag to allow non-expired invalid certificates >
+- `basicAuthentication.ldap.group-filter=< LDAP group filter >`
+- `basicAuthentication.ldap.ssl-trust-all=< Boolean flag to allow non-expired invalid certificates >`
 
 #### Example (Online LDAP Test Server):
 
-- basicAuthentication.ldap.enabled=true
-- basicAuthentication.ldap.server="ldap.forumsys.com"
-- basicAuthentication.ldap.port=389
-- basicAuthentication.ldap.username="cn=read-only-admin,dc=example,dc=com"
-- basicAuthentication.ldap.password="password"
-- basicAuthentication.ldap.search-base-dn="dc=example,dc=com"
-- basicAuthentication.ldap.search-filter="(uid=$capturedLogin$)"
-- basicAuthentication.ldap.group-filter="cn=allowed-group,ou=groups,dc=example,dc=com"
-- basicAuthentication.ldap.connection-pool-size=10
-- basicAuthentication.ldap.ssl=false
-- basicAuthentication.ldap.ssl-trust-all=false
-- basicAuthetication.ldap.starttls=false
+- `basicAuthentication.ldap.enabled=true`
+- `basicAuthentication.ldap.server="ldap.forumsys.com"`
+- `basicAuthentication.ldap.port=389`
+- `basicAuthentication.ldap.username="cn=read-only-admin,dc=example,dc=com"`
+- `basicAuthentication.ldap.password="password"`
+- `basicAuthentication.ldap.search-base-dn="dc=example,dc=com"`
+- `basicAuthentication.ldap.search-filter="(uid=$capturedLogin$)"`
+- `basicAuthentication.ldap.group-filter="cn=allowed-group,ou=groups,dc=example,dc=com"`
+- `basicAuthentication.ldap.connection-pool-size=10`
+- `basicAuthentication.ldap.ssl=false`
+- `basicAuthentication.ldap.ssl-trust-all=false`
+- `basicAuthetication.ldap.starttls=false`
 
 
 Deployment
 ----------
 
 The command below will create a zip file which can be used to deploy the application.
-
-    ./sbt clean dist
-
+```bash
+./sbt clean dist
+```
 Please refer to play framework documentation on [production deployment/configuration](https://www.playframework.com/documentation/2.4.x/ProductionConfiguration).
 
 If java is not in your path, or you need to build against a specific java version,
 please use the following (the example assumes zulu java11):
-
-    $ PATH=/usr/lib/jvm/zulu-11-amd64/bin:$PATH \
-      JAVA_HOME=/usr/lib/jvm/zulu-11-amd64 \
-      /path/to/sbt -java-home /usr/lib/jvm/zulu-11-amd64 clean dist
-
-This ensures that the 'java' and 'javac' binaries in your path are first looked up in the
-correct location. Next, for all downstream tools that only listen to JAVA_HOME, it points
-them to the java11 location. Lastly, it tells sbt to use the java11 location as
+```bash
+$ PATH=/usr/lib/jvm/zulu-11-amd64/bin:$PATH \
+  JAVA_HOME=/usr/lib/jvm/zulu-11-amd64 \
+  /path/to/sbt -java-home /usr/lib/jvm/zulu-11-amd64 clean dist
+```
+This ensures that the `java` and `javac` binaries in your path are first looked up in the
+correct location. Next, for all downstream tools that only listen to `JAVA_HOME`, it points
+them to the `java11` location. Lastly, it tells sbt to use the `java11` location as
 well.
 
 Starting the service
@@ -200,38 +200,38 @@ Starting the service
 
 After extracting the produced zipfile, and changing the working directory to it, you can
 run the service like this:
-
-    $ bin/cmak
-
+```bash
+$ bin/cmak
+```
 By default, it will choose port 9000. This is overridable, as is the location of the
 configuration file. For example:
-
-    $ bin/cmak -Dconfig.file=/path/to/application.conf -Dhttp.port=8080
-
+```bash
+$ bin/cmak -Dconfig.file=/path/to/application.conf -Dhttp.port=8080
+```
 Again, if java is not in your path, or you need to run against a different version of java,
 add the -java-home option as follows:
-
-    $ bin/cmak -java-home /usr/lib/jvm/zulu-11-amd64
-
+```bash
+$ bin/cmak -java-home /usr/lib/jvm/zulu-11-amd64
+```
 Starting the service with Security
 ----------------------------------
 
 To add JAAS configuration for SASL, add the config file location at start:
-
-    $ bin/cmak -Djava.security.auth.login.config=/path/to/my-jaas.conf
-
-NOTE: Make sure the user running CMAK (pka kafka manager) has read permissions on the jaas config file
+```bash
+$ bin/cmak -Djava.security.auth.login.config=/path/to/my-jaas.conf
+```
+**NOTE:** Make sure the user running CMAK (pka kafka manager) has read permissions on the jaas config file
 
 
 Packaging
 ---------
 
 If you'd like to create a Debian or RPM package instead, you can run one of:
+```bash
+sbt debian:packageBin
 
-    sbt debian:packageBin
-
-    sbt rpm:packageBin
-
+sbt rpm:packageBin
+```
 Credits
 -------
 
@@ -255,6 +255,6 @@ Producer offset is polled.  Consumer offset is read from the offset topic for Ka
 Migration from Kafka Manager to CMAK
 -------
 
-1. Copy config files from old version to new version (application.conf, consumer.properties)
-2. Change start script to use bin/cmak instead of bin/kafka-manager
+1. Copy config files from old version to new version (`application.conf`, `consumer.properties`)
+2. Change start script to use `bin/cmak` instead of `bin/kafka-manager`
 
