@@ -6,9 +6,8 @@ package kafka.test
 
 import java.io.File
 import java.util.Properties
-
 import com.google.common.io.Files
-import kafka.server.{KafkaConfig, KafkaServerStartable}
+import kafka.server.{KafkaConfig, KafkaServer}
 import org.apache.curator.framework.CuratorFramework
 import org.apache.curator.test.InstanceSpec
 
@@ -44,8 +43,8 @@ class KafkaTestBroker(zookeeper: CuratorFramework, zookeeperConnectionString: St
 
   private[this] val port: Int = InstanceSpec.getRandomPort
   private[this] val config: KafkaConfig = buildKafkaConfig(zookeeperConnectionString)
-  private[this] val kafkaServerStartable: KafkaServerStartable = new KafkaServerStartable(config)
-  kafkaServerStartable.startup()
+  private[this] val kafkaServer: KafkaServer = new KafkaServer(config)
+  kafkaServer.startup()
 
   //wait until broker shows up in zookeeper
   var count = 0
@@ -79,6 +78,6 @@ class KafkaTestBroker(zookeeper: CuratorFramework, zookeeperConnectionString: St
   def getPort: Int = port
 
   def shutdown() {
-    Try(kafkaServerStartable.shutdown())
+    Try(kafkaServer.shutdown())
   }
 }
