@@ -20,11 +20,11 @@ package kafka.manager.utils.two40
 import java.io.PrintStream
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
-import java.util.Optional
 import java.util.concurrent.locks.ReentrantLock
 
 import kafka.api.{ApiVersion, KAFKA_2_1_IV0, KAFKA_2_1_IV1}
-import kafka.common.{MessageFormatter, OffsetAndMetadata}
+import kafka.common.OffsetAndMetadata
+import org.apache.kafka.common.MessageFormatter
 import kafka.coordinator.group.JoinGroupResult
 import kafka.utils.{CoreUtils, Logging, nonthreadsafe}
 import org.apache.kafka.clients.consumer.ConsumerRecord
@@ -711,12 +711,10 @@ object GroupMetadataManager {
         OffsetAndMetadata(offset, metadata, commitTimestamp)
       } else if (version == 3) {
         val offset = value.get(OFFSET_VALUE_OFFSET_FIELD_V3).asInstanceOf[Long]
-        val leaderEpoch = value.get(OFFSET_VALUE_LEADER_EPOCH_FIELD_V3).asInstanceOf[Int]
         val metadata = value.get(OFFSET_VALUE_METADATA_FIELD_V3).asInstanceOf[String]
         val commitTimestamp = value.get(OFFSET_VALUE_COMMIT_TIMESTAMP_FIELD_V3).asInstanceOf[Long]
 
-        val leaderEpochOpt: Optional[Integer] = if (leaderEpoch < 0) Optional.empty() else Optional.of(leaderEpoch)
-        OffsetAndMetadata(offset, leaderEpochOpt, metadata, commitTimestamp)
+        OffsetAndMetadata(offset, metadata, commitTimestamp)
       } else {
         throw new IllegalStateException(s"Unknown offset message version: $version")
       }
