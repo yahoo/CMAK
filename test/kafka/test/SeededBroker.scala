@@ -7,7 +7,6 @@ package kafka.test
 import java.time.Duration
 import java.util.{Properties, UUID}
 import java.util.concurrent.atomic.AtomicInteger
-
 import grizzled.slf4j.Logging
 import kafka.consumer._
 import kafka.manager.model.{Kafka_0_8_2_0, Kafka_1_1_0}
@@ -26,6 +25,9 @@ import org.apache.kafka.clients.consumer.ConsumerConfig._
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.common.serialization.{ByteArrayDeserializer, Serdes}
 import org.apache.kafka.streams.StreamsConfig
+import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler
+import org.apache.kafka.streams.errors.StreamsUncaughtExceptionHandler.StreamThreadExceptionResponse
+import scalaz.NaturalTransformation.->
 
 import scala.util.Try
 
@@ -136,9 +138,10 @@ case class HighLevelConsumer(topic: String,
   val kstream : KStream[Array[Byte], Array[Byte]] = streamsBuilder.stream(topic)
 
   val kafkaStreams = new KafkaStreams(streamsBuilder.build(), commonConsumerConfig)
-  kafkaStreams.setUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler {
-    override def uncaughtException(t: Thread, e: Throwable): Unit = {
+  kafkaStreams.setUncaughtExceptionHandler(new StreamsUncaughtExceptionHandler {
+    override def handle( e: Throwable): StreamThreadExceptionResponse = {
       error("Failed to initialize KafkStreams", e)
+      StreamThreadExceptionResponse.SHUTDOWN_APPLICATION
     }
   })
 
