@@ -175,7 +175,7 @@ class ReassignPartitions (val cc: ControllerComponents, val kafkaManagerContext:
   private[this] def flattenTopicIdentity(td: TopicIdentity) = {
     (td.topic, td.partitionsIdentity.toList.map { case (partition, identity) =>
       (partition, identity.replicas.toList)
-    })
+    }.sortBy(p=>p._1))
   }
 
   def manualAssignments(c: String, t: String): Action[AnyContent] = Action.async { implicit request:RequestHeader =>
