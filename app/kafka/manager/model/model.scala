@@ -255,6 +255,7 @@ object ClusterConfig {
 
   def validateZkHosts(zkHosts: String): Unit = {
     require(zkHosts.length > 0, "cluster zk hosts is illegal, can't be empty!")
+    require(zkHosts.contains(":"), "cluster zk hosts is illegal, should contain colon!")
   }
 
   def apply(name: String
