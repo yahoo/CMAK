@@ -83,6 +83,7 @@ class Topic (val cc: ControllerComponents, val kafkaManagerContext: KafkaManager
   val kafka_3_1_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_3_1_0).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
   val kafka_3_1_1_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_3_1_1).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
   val kafka_3_2_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_3_2_0).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
+  val kafka_3_3_0_Default = CreateTopic("",1,1,TopicConfigs.configNamesAndDoc(Kafka_3_3_0).map{ case (n, h) => TConfig(n,None,Option(h))}.toList)
 
   val defaultCreateForm = Form(
     mapping(
@@ -201,6 +202,7 @@ class Topic (val cc: ControllerComponents, val kafkaManagerContext: KafkaManager
           case Kafka_3_1_0 => (defaultCreateForm.fill(kafka_3_1_0_Default), clusterContext)
           case Kafka_3_1_1 => (defaultCreateForm.fill(kafka_3_1_1_Default), clusterContext)
           case Kafka_3_2_0 => (defaultCreateForm.fill(kafka_3_2_0_Default), clusterContext)
+          case Kafka_3_3_0 => (defaultCreateForm.fill(kafka_3_3_0_Default), clusterContext)
         }
       }
     }
@@ -467,6 +469,7 @@ class Topic (val cc: ControllerComponents, val kafkaManagerContext: KafkaManager
           case Kafka_3_1_0 => TopicConfigs.configNamesAndDoc(Kafka_3_1_0).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
           case Kafka_3_1_1 => TopicConfigs.configNamesAndDoc(Kafka_3_1_1).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
           case Kafka_3_2_0 => TopicConfigs.configNamesAndDoc(Kafka_3_2_0).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
+          case Kafka_3_3_0 => TopicConfigs.configNamesAndDoc(Kafka_3_3_0).map { case (n, h) => (n,TConfig(n,None, Option(h))) }
         }
         val updatedConfigMap = ti.config.toMap
         val updatedConfigList = defaultConfigs.map {
